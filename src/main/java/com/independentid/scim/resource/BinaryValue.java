@@ -1,0 +1,97 @@
+/**********************************************************************
+ *  Independent Identity - Big Directory                              *
+ *  (c) 2015 Phillip Hunt, All Rights Reserved                        *
+ *                                                                    *
+ *  Confidential and Proprietary                                      *
+ *                                                                    *
+ *  This unpublished source code may not be distributed outside       *
+ *  “Independent Identity Org”. without express written permission of *
+ *  Phillip Hunt.                                                     *
+ *                                                                    *
+ *  People at companies that have signed necessary non-disclosure     *
+ *  agreements may only distribute to others in the company that are  *
+ *  bound by the same confidentiality agreement and distribution is   *
+ *  subject to the terms of such agreement.                           *
+ **********************************************************************/
+
+package com.independentid.scim.resource;
+
+import java.io.IOException;
+import java.text.ParseException;
+
+import org.bson.internal.Base64;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.SchemaException;
+
+/**
+ * This Value type handles SCIM Binary Value types which are base64 encoded values.
+ * @author pjdhunt
+ *
+ */
+public class BinaryValue extends Value {
+
+	byte[] value;
+	
+	public BinaryValue() {
+		
+	}
+
+	public BinaryValue(Attribute attr, JsonNode node) throws SchemaException, ParseException {
+		super(attr, node);
+		parseJson(attr,node);
+	}
+	
+	public BinaryValue(Attribute attr, byte[] bval) {
+		this.value = bval;
+		this.jtype = JsonNodeType.BINARY;
+	}
+
+	public BinaryValue(Attribute attr, String b64string) {
+		this.value = Base64.decode(b64string);
+		this.jtype = JsonNodeType.BINARY;
+	}
+
+	@Override
+	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
+		gen.writeString(Base64.encode(this.value));
+
+	}
+
+	@Override
+	public void parseJson(Attribute attr, JsonNode node)
+			throws SchemaException, ParseException {
+		//The value should be actually a base64 encoded string (DER)
+		if (node == null)
+			throw new SchemaException("Was expecting a JSON string (Base64 encoded) value but encountered null");
+		
+		this.value = Base64.decode(node.asText());
+		
+		//TODO:  SHould the DER Value encoding be validated?
+		
+		/*
+		if (!node.isBinary())
+			throw new SchemaException("Expecting binary value for attribute "+attr.getPath()+", received node endpoint: "+this.jtype);
+		try {
+			this.value = node.binaryValue();
+		} catch (IOException e) {
+			throw new SchemaException("Unknown IO Exception occurred parsing binary value.",e);
+		}
+		*/
+
+	}
+
+	@Override
+	public byte[] getValueArray() {
+		return this.value;
+	}
+	
+	public String toString() {
+		return Base64.encode(this.value);
+	}
+
+}

@@ -1,0 +1,105 @@
+{
+   	 	"id" : "urn:ietf:params:scim:schemas:core:2.0:Common",
+        "name" : "Common",
+        "description" : "Schema defined here are applied across all SCIM objects and resource types in server",
+        "attributes" : [
+        {
+        	"name" : "id",
+            "type" : "string",
+            "multiValued" : false,
+            "description" : "The unique, permanent ID of the SCIM resource",
+            "required" : true,
+            "caseExact" : false,
+            "mutability" : "readOnly",
+            "returned" : "always",
+            "uniqueness" : "server"
+        },
+        {
+        	"name" : "schemas",
+            "type" : "string",
+            "multiValued" : true,
+            "description" : "The schemas present in the SCIM resource",
+            "required" : true,
+            "caseExact" : true,
+            "mutability" : "immutable",
+            "returned" : "always"
+        },
+
+        {
+    	    "name" : "meta",
+            "type" : "complex",
+            "multiValued" : false,
+            "description" : "The meta information about an object such as modification date etc.",
+            "required" : true,
+            "returned" : "default",
+            "mutability" : "readOnly",
+            "subAttributes" : [
+            {
+	            "name" : "location",
+                "type" : "reference",
+                "referenceTypes" : ["external"],
+                "multiValued" : false,
+                "description" : "The permanent externally referenceable URL to this object.",
+                "required" : true,
+                "caseExact" : true,
+                "mutability" : "readOnly",
+                "returned" : "default",
+                "uniqueness" : "server"
+            },
+            {
+	            "name" : "created",
+                "type" : "dateTime",
+                "multiValued" : false,
+                "description" : "The date the object was created.",
+                "required" : true,
+                "caseExact" : true,
+                "mutability" : "readOnly",
+                "returned" : "default"
+            },
+            {
+	            "name" : "lastModified",
+                "type" : "dateTime",
+                "multiValued" : false,
+                "description" : "The date the object was created.",
+                "required" : true,
+                "caseExact" : true,
+                "mutability" : "readOnly",
+                "returned" : "default"
+            },
+            {
+           		"name" : "resourceType",
+                "type" : "string",
+                "multiValued" : false,
+                "description" : "The name of the ResourceType for the resource",
+                "required" : true,
+                "caseExact" : false,
+                "mutability" : "readOnly",
+                "returned" : "default",
+                "uniqueness" : "none"
+            },
+            {
+            	"name" : "version",
+                "type" : "string",
+                "multiValued" : false,
+                "description" : "The current ETag version of the resource per (Section 2.3 of[RFC7232]).",
+                "required" : false,
+                "caseExact" : false,
+                "mutability" : "readOnly",
+                "returned" : "default",
+                "uniqueness" : "none"
+            }
+            ]
+        },
+        {
+        	"name" : "externalid",
+            "type" : "string",
+            "multiValued" : false,
+            "description" : "An externally referenceable identifier usable by clients.",
+            "required" : false,
+            "caseExact" : true,
+            "mutability" : "readWrite",
+            "returned" : "default",
+            "uniqueness" : "server"
+        }
+	]
+}
