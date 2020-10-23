@@ -63,7 +63,8 @@ import com.mongodb.client.MongoDatabase;
 @TestMethodOrder(Alphanumeric.class)
 @TestPropertySource(properties = {
 		"scim.mongodb.test=true",
-		"scim.mongodb.dbname=testCrudSCIM"
+		"scim.mongodb.dbname=testCrudSCIM",
+		"scim.security.enable=false"
 })
 public class ScimAttributeQualTest {
 	

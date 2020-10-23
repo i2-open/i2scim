@@ -45,7 +45,8 @@ import com.independentid.scim.server.ScimException;
 @TestMethodOrder(Alphanumeric.class)
 @TestPropertySource(properties = {
 		"scim.mongodb.test=true",
-		"scim.mongodb.dbname=testSCIM"
+		"scim.mongodb.dbname=testSCIM",
+		"scim.security.enable=false"
 })
 public class MongoConfigTest {
 	
@@ -101,6 +102,7 @@ public class MongoConfigTest {
 
 		Collection<Schema> schCol = cmgr.getSchemas();
 		Collection<ResourceType> resTypeCol = cmgr.getResourceTypes();
+		//schCol.forEach(sch -> logger.debug("Cfg Schema: {}", sch.getName()));
 		
 		int confSchCnt = schCol.size();
 		logger.debug("  ConfigMgr loaded Schema count: "+confSchCnt);
@@ -108,9 +110,12 @@ public class MongoConfigTest {
 		Collection<Schema> scol = null;
 		try {
 			scol = provider.loadSchemas();
+			// Note; Config Schema always has one extra - "Common" for common attributes!
+			//scol.forEach(sch -> logger.debug("Per Schema: {}", sch.getName()));
 			assertThat(scol.size())
 				.as("Persisted schema count matches ConfigMgr count: "+scol.size())
-				.isEqualTo(confSchCnt);
+				.isEqualTo(confSchCnt-1); 
+			
 		} catch (ScimException e) {
 			logger.error("Error while loading schema from Mongo: "+e.getMessage(),e);
 			Assertions.fail("ScimException while loading schema from Mongo: "+e.getMessage(),e);

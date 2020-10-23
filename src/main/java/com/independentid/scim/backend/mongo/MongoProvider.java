@@ -238,7 +238,7 @@ public class MongoProvider implements IScimProvider {
 	protected ScimResponse putResource(MongoScimResource replacementResource, RequestCtx ctx)
 			throws ScimException, BackendException {
 	
-		Document orig = replacementResource.getOriginalDBObject();
+		//Document orig = replacementResource.getOriginalDBObject();
 		ctx.setEncodeExtensions(true);
 
 		// Update the modification date to now and set Etag version

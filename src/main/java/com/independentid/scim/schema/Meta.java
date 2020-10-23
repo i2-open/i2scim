@@ -23,9 +23,6 @@ import java.util.Date;
 
 import javax.servlet.ServletContext;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.protocol.RequestCtx;
@@ -38,8 +35,8 @@ import com.independentid.scim.serializer.ScimSerializer;
  */
 public class Meta implements ScimSerializer {
 	
-	private final static Logger logger = LoggerFactory
-			.getLogger(Meta.class);
+	//private final static Logger logger = LoggerFactory
+	//		.getLogger(Meta.class);
 	
     private String location = null;
 	
@@ -159,10 +156,12 @@ public class Meta implements ScimSerializer {
 			this.resourceType = item.asText();
 		
 		item = node.get("created");
+		/*
 		if (logger.isDebugEnabled() && item != null) {
 			logger.debug("node type:\t"+node.getNodeType()); 
 			logger.debug("create date:\t"+item.asText());
 		}
+		*/
 		
 		if (item != null && !item.asText().equals("")) {
 			try {
@@ -176,10 +175,13 @@ public class Meta implements ScimSerializer {
 		
 		item = node.get("lastModified");
 		
+		/*
 		if (logger.isDebugEnabled() && item != null) {
 			logger.debug("node type:\t"+node.getNodeType()); 
 			logger.debug("mod date:\t"+item.asText());
 		}
+		*/
+		
 		if (item != null) {
 			try {
 				this.lastModified = ScimDateFormat.parse(item.asText());

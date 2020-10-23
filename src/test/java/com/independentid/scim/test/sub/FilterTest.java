@@ -55,7 +55,6 @@ public class FilterTest {
 		{null,"urn:ietf:params:scim:schemas:core:2.0:User:userName sw \"J\""},
 		{"Users","title pr"},
 		{null,"undefinedattr eq bleh"},
-
 		{"Users","title pr and userType eq \"Employee\""},
 		{"Users","title pr or userType eq \"Intern\""},
 		{"Users","userType eq \"Employee\" and (emails co \"example.com\" or emails.value co \"example.org\")"},
@@ -66,7 +65,6 @@ public class FilterTest {
 		{"Users","userType eq \"Employee\" and (emails.type eq \"work\")"},
 		{"Users","userType eq \"Employee\" and emails[type eq \"work\" and value co \"@example.com\"]"},
 		{"Users","emails[type eq \"work\" and value co \"@example.com\"] or ims[type eq \"xmpp\" and value co \"@foo.com\"]"},
-
 		{null,"meta.lastModified gt \"2011-05-13T04:42:34Z\""},
 		{null,"meta.lastModified ge \"2011-05-13T04:42:34Z\""},
 		{null,"meta.lastModified lt \"2011-05-13T04:42:34Z\""},
@@ -100,6 +98,7 @@ public class FilterTest {
 			"meta.lastModified ge 2011-05-13T04:42:34Z",
 			"meta.lastModified lt 2011-05-13T04:42:34Z",
 			"meta.lastModified le 2011-05-13T04:42:34Z",
+			"schemas eq urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
 			"schemas eq urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
 
 	};
