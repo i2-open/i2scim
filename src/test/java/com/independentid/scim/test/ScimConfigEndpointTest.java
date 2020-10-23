@@ -30,6 +30,7 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import com.independentid.scim.backend.BackendHandler;
@@ -46,6 +47,11 @@ import com.independentid.scim.server.ScimV2Servlet;
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = {ScimBootApplication.class,ScimV2Servlet.class,ConfigMgr.class,BackendHandler.class,PoolManager.class}, webEnvironment = WebEnvironment.RANDOM_PORT)
 @ContextConfiguration(classes = ConfigMgr.class)
+@TestPropertySource(properties = {
+		"scim.mongodb.test=true",
+		"scim.mongodb.dbname=testSCIM",
+		"scim.security.enable=false"
+})
 @TestMethodOrder(Alphanumeric.class)
 public class ScimConfigEndpointTest {
 	

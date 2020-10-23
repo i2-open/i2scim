@@ -33,7 +33,8 @@ import com.independentid.scim.server.ConfigMgr;
  * @author pjdhunt
  * Spring web security config for enabling OAuth2 JWT tokens
  */
-@EnableWebSecurity(debug = true)
+//@EnableWebSecurity(debug = true)
+@EnableWebSecurity
 @Configuration
 @Order(2)
 public class ScimJwtSecurityConfig extends WebSecurityConfigurerAdapter {
@@ -54,7 +55,7 @@ public class ScimJwtSecurityConfig extends WebSecurityConfigurerAdapter {
 			logger.info("Configuring JWT Access");
 			//logger.info("Configuring JWT Token Access");
 			
-			http.cors().and()
+			http
 				.sessionManagement()
 					.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
 				.and()

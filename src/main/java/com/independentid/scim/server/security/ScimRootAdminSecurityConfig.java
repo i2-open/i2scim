@@ -33,7 +33,8 @@ import com.independentid.scim.server.ConfigMgr;
  * @author pjdhunt
  * If <ConfigMgr>.isRootEnabled, this security config enables root access via BasicAuth
  */
-@EnableWebSecurity(debug = true)
+//@EnableWebSecurity(debug = true)
+@EnableWebSecurity
 @Configuration
 @Order(1)
 public class ScimRootAdminSecurityConfig extends WebSecurityConfigurerAdapter {

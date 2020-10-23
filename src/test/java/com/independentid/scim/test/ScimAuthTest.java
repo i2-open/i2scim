@@ -1,3 +1,18 @@
+/**********************************************************************
+ *  Independent Identity - Big Directory                              *
+ *  (c) 2020 Phillip Hunt, All Rights Reserved                        *
+ *                                                                    *
+ *  Confidential and Proprietary                                      *
+ *                                                                    *
+ *  This unpublished source code may not be distributed outside       *
+ *  “Independent Identity Org”. without express written permission of *
+ *  Phillip Hunt.                                                     *
+ *                                                                    *
+ *  People at companies that have signed necessary non-disclosure     *
+ *  agreements may only distribute to others in the company that are  *
+ *  bound by the same confidentiality agreement and distribution is   *
+ *  subject to the terms of such agreement.                           *
+ **********************************************************************/
 package com.independentid.scim.test;
 
 
@@ -96,7 +111,7 @@ public class ScimAuthTest {
 	public void b_ScimGetUserAnonTest() {
 		String req = "http://localhost:"+port+"/Schemas";
 		
-		logger.info("\tC. Retrieving user from backend using: "+req);
+		logger.info("\n\n\tRetrieving /Schemas using anonymous: "+req);
 		
 		CloseableHttpClient client = HttpClients.createDefault();
 		
@@ -120,7 +135,7 @@ public class ScimAuthTest {
 	public void c_ScimGetUserBasicTest() {
 		String req = "http://localhost:"+port+"/Schemas";
 		
-		logger.info("\tC. Retrieving user from backend using: "+req);
+		logger.info("\n\n]rRetrieving /Schemas using Basic Auth using: "+req);
 		
 		CloseableHttpClient client = HttpClients.createDefault();
 		
@@ -136,7 +151,7 @@ public class ScimAuthTest {
 			
 			
 			assertThat(resp.getStatusLine().getStatusCode())
-				.as("GET User (Basic Auth) - Check for status response 200 OK")
+				.as("GET /Schemas (Basic Auth) - Check for status response 200 OK")
 				.isEqualTo(ScimResponse.ST_OK);
 			
 			HttpEntity entity = resp.getEntity();
@@ -144,7 +159,7 @@ public class ScimAuthTest {
 			String body = EntityUtils.toString(entity);
 			
 			assertThat(body)
-				.as("Check that it is not a ListResponse")
+				.as("Check that it is a ListResponse")
 				.contains(ScimParams.SCHEMA_API_ListResponse);
 			
 			resp.close();
@@ -161,7 +176,7 @@ public class ScimAuthTest {
 	public void d_ScimGetUserJwtTest() {
 		String req = "http://localhost:"+port+"/Schemas";
 		
-		logger.info("\tD. Retrieving Schemas using Bearer JWT: "+req);
+		logger.info("\n\n\tRetrieving Schemas using Bearer JWT: "+req);
 		
 		CloseableHttpClient client = HttpClients.createDefault();
 		
@@ -176,7 +191,7 @@ public class ScimAuthTest {
 			
 			
 			assertThat(resp.getStatusLine().getStatusCode())
-				.as("GET User (Bearer JWT Auth) - Check for status response 200 OK")
+				.as("GET /Schemas (Bearer JWT Auth) - Check for status response 200 OK")
 				.isEqualTo(ScimResponse.ST_OK);
 			
 			HttpEntity entity = resp.getEntity();
@@ -184,7 +199,7 @@ public class ScimAuthTest {
 			String body = EntityUtils.toString(entity);
 			
 			assertThat(body)
-				.as("Check that it is not a ListResponse")
+				.as("Check that it is a ListResponse")
 				.contains(ScimParams.SCHEMA_API_ListResponse);
 			
 			resp.close();

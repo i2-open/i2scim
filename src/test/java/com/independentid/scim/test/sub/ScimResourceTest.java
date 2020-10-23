@@ -23,6 +23,7 @@ import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -42,8 +43,13 @@ import com.independentid.scim.server.ScimException;
 @ActiveProfiles("testing")
 @RunWith(SpringRunner.class)
 @ExtendWith(SpringExtension.class)
-@SpringBootTest(classes = ScimBootApplication.class, webEnvironment = WebEnvironment.DEFINED_PORT)
+@SpringBootTest(classes = ScimBootApplication.class, webEnvironment = WebEnvironment.RANDOM_PORT)
 @ContextConfiguration(classes = ConfigMgr.class)
+@TestPropertySource(properties = {
+		"scim.mongodb.test=true",
+		"scim.mongodb.dbname=testSCIM",
+		"scim.security.enable=false"
+})
 @TestMethodOrder(Alphanumeric.class)
 public class ScimResourceTest {
 	
