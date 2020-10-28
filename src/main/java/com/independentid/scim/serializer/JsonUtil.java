@@ -94,7 +94,11 @@ public class JsonUtil {
 	 * @throws IOException
 	 */
 	public static JsonNode getJsonTree(InputStream instream) throws JsonProcessingException, IOException {
-		return JsonUtil.getMapper().readTree(instream);
+		return JsonUtil.getMapper().readTree(instream);  
+	}
+	
+	public static JsonNode getJsonTree(byte[] inbytes) throws IOException {
+		return JsonUtil.getMapper().readTree(inbytes); 
 	}
 
 }
