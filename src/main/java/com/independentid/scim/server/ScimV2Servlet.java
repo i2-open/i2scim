@@ -16,10 +16,13 @@
 
 package com.independentid.scim.server;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 
 import javax.annotation.Resource;
 import javax.servlet.ServletException;
+import javax.servlet.ServletOutputStream;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -95,6 +98,10 @@ public class ScimV2Servlet extends HttpServlet {
 	@Override
 	protected void service(HttpServletRequest req, HttpServletResponse resp)
 			throws ServletException, IOException {
+		if (req.getPathInfo().startsWith("/certs")) {
+			super.service(req, resp);
+			return;
+		}
 		if (req.getMethod().equalsIgnoreCase("PATCH")) 
 			doPatch(req,resp);
 		else
@@ -151,6 +158,16 @@ public class ScimV2Servlet extends HttpServlet {
 		//String cp = getServletContext().getContextPath();
 		String path = new UrlPathHelper().getPathWithinApplication(req);
 		
+		//Used when jwks-certs needs to be served locally (usually for testing)
+		if (path.startsWith("/certs")) {
+			//super.doGet(req, resp);
+			File filePath = cfgMgr.findClassLoaderResource("classpath:"+path);
+			ServletOutputStream out = resp.getOutputStream();
+			FileInputStream instream = new FileInputStream(filePath);
+			instream.transferTo(out);
+			instream.close();
+			return;
+		}
 		if (path.startsWith("/v2"))
 			path = path.substring(3);
 		
