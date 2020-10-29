@@ -34,7 +34,7 @@ import com.independentid.scim.server.ConfigMgr;
  * Spring web security config for enabling OAuth2 JWT tokens
  */
 //@EnableWebSecurity(debug = true)
-@EnableWebSecurity
+@EnableWebSecurity (debug = true)
 @Configuration
 @Order(2)
 public class ScimJwtSecurityConfig extends WebSecurityConfigurerAdapter {
@@ -56,12 +56,20 @@ public class ScimJwtSecurityConfig extends WebSecurityConfigurerAdapter {
 			//logger.info("Configuring JWT Token Access");
 			
 			http
+				.csrf().disable()
 				.sessionManagement()
 					.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
 				.and()
-				.authorizeRequests().anyRequest().authenticated()
+					.authorizeRequests()
+						.antMatchers("/ServiceProviderConfig").permitAll()
+						
+						.antMatchers("/certs/*").permitAll()
+						
+				.antMatchers("/**")
+					.authenticated()						
 				.and()
-				.oauth2ResourceServer().jwt();		
+					.oauth2ResourceServer().jwt();
+				
 			
 		} 
 	}

@@ -61,14 +61,15 @@ import com.independentid.scim.server.ScimBootApplication;
 @ActiveProfiles("testing")
 @RunWith(SpringJUnit4ClassRunner.class)
 @ExtendWith(SpringExtension.class)
-@SpringBootTest(classes = ScimBootApplication.class, webEnvironment = WebEnvironment.RANDOM_PORT)
+@SpringBootTest(classes = ScimBootApplication.class, webEnvironment = WebEnvironment.DEFINED_PORT)
 @ContextConfiguration(classes = ConfigMgr.class)
 @TestMethodOrder(Alphanumeric.class)
 @TestPropertySource(properties = {
 		"scim.mongodb.test=true",
 		"scim.mongodb.dbname=testCrudSCIM",
 		"scim.security.enable=true",
-		"spring.security.oauth2.resourceserver.jwt.jwk-set-uri=classpath:/certs/jwks-certs.json"
+		"server.port=8081",
+		"spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://127.0.0.1:8081/certs/jwks-certs.json"
 })
 public class ScimAuthTest {
 	
