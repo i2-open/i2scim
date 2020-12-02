@@ -1,99 +1,110 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 package com.independentid.scim.op;
-
-import java.io.IOException;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
+import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.InternalException;
+import com.independentid.scim.core.err.InvalidSyntaxException;
+import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.independentid.scim.schema.ResourceType;
-import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.server.InternalException;
-import com.independentid.scim.server.ScimException;
+import javax.servlet.ServletInputStream;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
 /**
+ * The SCIM Search Operation is invoked by an HTTP POST request. Instead of parsing the URL, Search processes the
+ * HTTP Payload as per RFC7644 Sec 3.4.3
  * @author pjdhunt
  *
  */
 public class SearchOp extends Operation {
 
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = -3586153424932556487L;
 	private final static Logger logger = LoggerFactory.getLogger(SearchOp.class);
 
 	/**
 	 * @param req HttpServletRequest object
 	 * @param resp HttpServletResponse object
-	 * @throws IOException
+	 * @param configMgr A pointer to the server ConfigMgr object for Schema and handler access
 	 */
-	public SearchOp(HttpServletRequest req, 
-					HttpServletResponse resp) throws IOException {
-		super(req, resp, true);
+	public SearchOp(HttpServletRequest req,
+					HttpServletResponse resp, ConfigMgr configMgr) {
+		super(req, resp);
+		this.cfgMgr = configMgr;
 		
 		if (!req.getRequestURI().endsWith(ScimParams.PATH_SEARCH)) {
 			InternalException ie = new InternalException(
 					"Was expecting a search request, got: "
 							+ req.getRequestURI());
 			setCompletionError(ie);
-			return;
 		}
+	}
+
+	@Override
+	protected void doPreOperation() {
+		parseRequestUrl();
+		if (state == OpState.invalid)
+			return;
+
+		ServletInputStream bodyStream;
+		try {
+			bodyStream = getRequest().getInputStream();
+			//Because the backendhalder logic just uses RequestCtx, the search body is handled by RequestCtx
+			this.ctx.parseSearchBody(bodyStream);
+		} catch (IOException | ScimException e) {
+			setCompletionError(new InvalidSyntaxException(
+					"Unable to parse request body (SCIM JSON Search Schema format expected)."));
+			this.state = OpState.invalid;
+		}
+
 	}
 
 	/* (non-Javadoc)
 	 * @see com.independentid.scim.op.Operation#doOperation()
 	 */
 	@Override
-	protected void doOperation() throws ScimException {
+	protected void doOperation() {
 		try {
 			this.scimresp = getHandler().get(ctx);
-			return;
+
 		} catch (ScimException e) {
 			setCompletionError(e);
-			return;
+
 		} catch (BackendException e) {
 			ScimException se = new InternalException("Unknown backend exception during SCIM Search: "+e.getLocalizedMessage(),e);
 			setCompletionError(se);
 			logger.error(
 					"Received backend error while processing SCIM Search for: ["
 							+ this.ctx.getPath() + "] " + e.getMessage(), e);
-			return;
 		}
-
-
-
 	}
 
 	/* (non-Javadoc)
 	 * @see com.independentid.scim.op.Operation#parseJson(com.fasterxml.jackson.databind.JsonNode)
 	 */
 	@Override
-	protected void parseJson(JsonNode node, ResourceType type) throws ScimException,
-			SchemaException {
-		// nothing to do.
-		
+	protected void parseJson(JsonNode node) {
+		// not used. {@link RequestCtx#parseSearchBody} used instead.
+
 	}
 
 }

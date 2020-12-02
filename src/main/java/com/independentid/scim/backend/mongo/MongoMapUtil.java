@@ -1,35 +1,28 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2020 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.backend.mongo;
 
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Pattern;
-
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.resource.*;
+import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.Meta;
+import com.independentid.scim.schema.Schema;
+import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
 import org.bson.Document;
 import org.bson.internal.Base64;
 import org.bson.json.JsonWriterSettings;
@@ -38,28 +31,13 @@ import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.resource.BinaryValue;
-import com.independentid.scim.resource.BooleanValue;
-import com.independentid.scim.resource.ComplexValue;
-import com.independentid.scim.resource.DateValue;
-import com.independentid.scim.resource.DecimalValue;
-import com.independentid.scim.resource.ExtensionValues;
-import com.independentid.scim.resource.IntegerValue;
-import com.independentid.scim.resource.MultiValue;
-import com.independentid.scim.resource.ReferenceValue;
-import com.independentid.scim.resource.ScimResource;
-import com.independentid.scim.resource.StringValue;
-import com.independentid.scim.resource.Value;
-import com.independentid.scim.resource.ValueUtil;
-import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.Meta;
-import com.independentid.scim.schema.Schema;
-import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.serializer.JsonUtil;
-import com.independentid.scim.server.ConflictException;
-import com.independentid.scim.server.ScimException;
+import java.math.BigDecimal;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.util.*;
+import java.util.regex.Pattern;
 
 
 
@@ -77,9 +55,8 @@ public class MongoMapUtil {
 	 * Performs necessary "id" to "_id" conversion.
 	 * @param res The <ScimResource> object to be mapped to Mongo.
 	 * @return A <Document> translation of the provided SCIM resource.
-	 * @throws ScimException
 	 */
-	public static Document mapResource(final ScimResource res) throws ScimException {
+	public static Document mapResource(final ScimResource res) {
 		Document doc = new Document();
 		if (res.getId() == null)
 			doc.put("_id", new ObjectId());
@@ -113,17 +90,19 @@ public class MongoMapUtil {
 		}
 		
 		Map<String,Object> map = mapCoreAttributes(res);
-		map.forEach((aname,item)->
-			doc.put(aname, item));
-		
+		for (Map.Entry<String, Object> entry : map.entrySet()) {
+			String key = entry.getKey();
+			Object value = entry.getValue();
+			doc.put(key, value);
+		}
+
 		Map<String,Document> emap = mapExtensions(res);
-		emap.forEach((aname,item)->
-			doc.put(aname, item));
+		emap.forEach(doc::put);
 		return doc;
 	}
 	
 	public static Map<String,Object> mapCoreAttributes(final ScimResource res) {
-		LinkedHashMap<String,Object> map = new LinkedHashMap<String, Object>();
+		LinkedHashMap<String,Object> map = new LinkedHashMap<>();
 		
 		Map<String,Value> cmap = res.getCoreAttrs();
 		cmap.forEach((aname,val)->{
@@ -144,7 +123,7 @@ public class MongoMapUtil {
 	 * @return A Map<String,Document> whose keys are the encoded URIs and the value is a DBObject containing mapped claims.
 	 */
 	public static Map<String,Document> mapExtensions(final ScimResource res) {
-		Map<String,Document> map = new LinkedHashMap<String,Document>();
+		Map<String,Document> map = new LinkedHashMap<>();
 		Map<String,ExtensionValues> cmap = res.getExtensions();
 		cmap.forEach((aname,ext)->{
 			String mname = ScimResource.SCHEMA_EXT_PREFIX+Base64.encode(aname.getBytes());
@@ -188,10 +167,6 @@ public class MongoMapUtil {
 		return val.getValueArray();
 	}
 	
-	/**
-	 * @param val
-	 * @return
-	 */
 	public static Object mapValue(StringValue val) {
 		return val.getValueArray();
 	}
@@ -224,8 +199,8 @@ public class MongoMapUtil {
 	public static Object mapValue(MultiValue val) {
 		List<Object> values = new ArrayList<>();
 		Value[] mvarray = val.getValueArray();
-		for (int i=0; i < mvarray.length; i++) {
-			values.add(MongoMapUtil.mapValue(mvarray[i]));
+		for (Value value : mvarray) {
+			values.add(MongoMapUtil.mapValue(value));
 		}
 		
 		return values;
@@ -261,10 +236,9 @@ public class MongoMapUtil {
 	 * Performs necessary "_id" to "id" conversion.
 	 * @param doc The original Mongo Document to be converted
 	 * @return a <JsonNode> object containing SCIM object (ready for using in ScimResource constructor)
-	 * @throws JsonProcessingException
-	 * @throws IOException
+	 * @throws JsonProcessingException May be thrown by Jackson JSON parser.
 	 */
-	public static JsonNode toScimJsonNode(final Document doc) throws JsonProcessingException, IOException {
+	public static JsonNode toScimJsonNode(final Document doc) throws JsonProcessingException {
 		
 		Document copy = Document.parse(doc.toJson());
 		copy.put("id",doc.get("_id").toString());		
@@ -286,13 +260,11 @@ public class MongoMapUtil {
 	/**
 	 * Takes a container BSON Document and maps the requested Attribute to a SCIM Value.
 	 * @param attr An Attribute specifying the attribute to be mapped from the Document
-	 * @param containerDoc The Document containing the attribute to be mapped.
+	 * @param value A java object value (coming from BSON docs) containing a value to be mapped to BSON (e.g. String, Boolean, Date, URI...)
 	 * @return A SCIM <Value> object.
-	 * @throws ParseException 
-	 * @throws SchemaException 
 	 */
 	@SuppressWarnings("unchecked")
-	public static Value mapBson(Attribute attr, Object value) throws ScimException, SchemaException, ParseException {
+	public static Value mapBson(Attribute attr, Object value) {
 		if (value instanceof String)
 			return mapBson(attr, (String) value);
 		if (value instanceof List )
@@ -326,11 +298,9 @@ public class MongoMapUtil {
 	 * @param attr The <Attribute> to be retrieved from the containerDoc.
 	 * @param containerDoc A Mongo BSON <Document> that contains 1 or more sub-objects (attributes) to be mapped.
 	 * @return A SCIM <Value> object for the requested attr or NULL.
-	 * @throws ScimException
-	 * @throws SchemaException
-	 * @throws ParseException
+	 * @throws SchemaException thrown due to an invalid schema or malformed attribute error
 	 */
-	public static Value mapBsonDocument(final Attribute attr, final Document containerDoc) throws ScimException, SchemaException, ParseException {
+	public static Value mapBsonDocument(final Attribute attr, final Document containerDoc) throws  SchemaException {
 		Value val = null;
 		String name = attr.getName();
 		if (name.equals("$ref"))
@@ -361,7 +331,7 @@ public class MongoMapUtil {
 			break;
 		case ValueUtil.TYPE_REF:
 			String newUri = containerDoc.getString(name);
-			URI uri = null;
+			URI uri;
 			try {
 				if (newUri.startsWith("urn:"))
 					uri = new URI(newUri);
@@ -378,8 +348,7 @@ public class MongoMapUtil {
 				
 				throw new SchemaException ("Invalid url parsed: "+newUri+ " for attribute: "+attr.getPath(),e);
 			}
-			if (uri != null)
-				val = mapBson(attr, uri);	
+			val = mapBson(attr, uri);
 			break;
 		case ValueUtil.TYPE_DECIMAL:
 			val = mapBson(attr,new BigDecimal(containerDoc.getInteger(name)));
@@ -389,11 +358,11 @@ public class MongoMapUtil {
 		return val;
 	}
 	
-	public static IntegerValue mapBson(Attribute attr, Integer value) throws SchemaException, ParseException {
+	public static IntegerValue mapBson(Attribute attr, Integer value) {
 		return new IntegerValue(attr,value);
 	}
 	
-	public static DecimalValue mapBson(Attribute attr, BigDecimal value) throws SchemaException, ParseException {
+	public static DecimalValue mapBson(Attribute attr, BigDecimal value) {
 		return new DecimalValue(attr,value);
 	}
 	
@@ -405,7 +374,7 @@ public class MongoMapUtil {
 		return new BooleanValue(attr,value);
 	}
 	
-	public static DateValue mapBson(Attribute attr, Date value) throws SchemaException, ParseException {
+	public static DateValue mapBson(Attribute attr, Date value) {
 		return new DateValue(attr, value);
 	}
 	
@@ -417,7 +386,7 @@ public class MongoMapUtil {
 		return new BinaryValue(attr,val.getData());
 	}
 	
-	public static ReferenceValue mapBson(Attribute attr, URI value) throws ConflictException, SchemaException, ParseException {
+	public static ReferenceValue mapBson(Attribute attr, URI value) {
 		return new ReferenceValue(attr,value);
 	}
 	
@@ -426,20 +395,15 @@ public class MongoMapUtil {
 	 * @param attr The multi-value <Attribute> to be represented.
 	 * @param values A <List> of Java objects to be mapped.
 	 * @return A <MultiValue> representation of the Array of objects that have been mapped.
-	 * @throws ParseException
 	 */
-	public static MultiValue mapBson(final Attribute attr, final List<Object> values) throws ParseException {
+	public static MultiValue mapBson(final Attribute attr, final List<Object> values) {
 	
-		List<Value> mvals = new ArrayList<Value>();
+		List<Value> mvals = new ArrayList<>();
 		
 		values.forEach((val)->{
-				try {
 					//TODO Will we ever need an array of arrays?
 					mvals.add(mapBson(attr,val));
-				} catch (ScimException | SchemaException | ParseException e) {
-					logger.error("Unexpected error mapping multi-value from Mongo: "+e.getLocalizedMessage(),e);
 				}
-		}
 		);
 		return new MultiValue(attr,mvals);
 	}
@@ -451,16 +415,14 @@ public class MongoMapUtil {
 	 * @return A <ComplexValue> representation of the Mongo <Document>
 	 */
 	public static ComplexValue mapBsonComplex(Attribute attr, final Document doc) {
-		LinkedHashMap<String,Value> vals = new LinkedHashMap<String,Value>();
+		LinkedHashMap<String,Value> vals = new LinkedHashMap<>();
 		Map<String,Attribute> attrs = attr.getSubAttributesMap();
 		attrs.forEach((name,sattr)->{
 			String docName = (name.equals("$ref")?"href":name);
 			if (doc.containsKey(docName))
-				try {
+
 					vals.put(name, mapBson(sattr,doc.get(docName)));
-				} catch (ScimException | SchemaException | ParseException e) {
-					logger.error("Unexpected error mapping complex value from Mongo: "+e.getLocalizedMessage(),e);
-				}
+
 		});
 		
 		return new ComplexValue(attr,vals);
@@ -472,25 +434,22 @@ public class MongoMapUtil {
 	 * @param schema A <Schema> object representing the schema id to be mapped from the provided container <Document>.
 	 * @param containerDoc A <Document> containing the extension schema object to be mapped.
 	 * @return A SCIM <ExtensionValues> object mapped from the containing <Document>
-	 * @throws ConflictException
-	 * @throws SchemaException
-	 * @throws ParseException
 	 */
-	public static ExtensionValues mapBsonExtension(Schema schema, final Document containerDoc) throws ConflictException, SchemaException, ParseException {
+	public static ExtensionValues mapBsonExtension(Schema schema, final Document containerDoc) {
 		String mschema = ScimResource.SCHEMA_EXT_PREFIX+Base64.encode(schema.getId().getBytes());		
 		Document extDoc = containerDoc.get(mschema, Document.class);
 		if (extDoc == null)
 			return null;
 		
-		LinkedHashMap<String,Value> valMap = new LinkedHashMap<String,Value>();
+		LinkedHashMap<String,Value> valMap = new LinkedHashMap<>();
 		Attribute[] attrs = schema.getAttributes();
-		for (int i=0; i < attrs.length; i++) {
+		for (Attribute attr : attrs) {
 			try {
-				Value val = mapBsonDocument(attrs[i],extDoc);
+				Value val = mapBsonDocument(attr, extDoc);
 				if (val != null)
-					valMap.put(attrs[i].getName(), val);
-			} catch (ScimException | SchemaException | ParseException e) {
-				logger.warn("Error parsing Mongo document: "+e.getLocalizedMessage(),e);
+					valMap.put(attr.getName(), val);
+			} catch (SchemaException e) {
+				logger.warn("Error parsing Mongo document: " + e.getLocalizedMessage(), e);
 			}
 		}
 		return new ExtensionValues(schema,valMap);

@@ -1,31 +1,29 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.protocol;
 
-import java.text.ParseException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.schema.SchemaException;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.server.ConfigMgr;
-
 /*
- * This class holds a parsed SCIM JSON Modify request.
+ * This class holds a parsed SCIM JSON Modify request as per Sec 3.5.2 of RFC7644
  * @author pjdhunt
  *
  */
@@ -36,26 +34,17 @@ public class JsonPatchRequest {
 	protected RequestCtx ctx;
 	
 	protected ArrayList<JsonPatchOp> ops;
-	
-	/**
-	 * 
-	 */
-	public JsonPatchRequest() {
-		this.cfg = null;
-		this.ctx = null;
-		this.ops = new ArrayList<JsonPatchOp>();
-	}
-	
+
 	/**
 	 * @param cfg The current context Configuration context.
 	 * @param resourceNode A pointer to  SCIM Json Modify request message to be parsed.
-	 * @throws SchemaException
-	 * @throws ParseException
+	 * @param ctx An the associated request context received with the patch request.
+	 * @throws SchemaException Thrown when a missing or required attribute is detected
 	 */
-	public JsonPatchRequest(ConfigMgr cfg, JsonNode resourceNode, RequestCtx ctx) throws SchemaException, ParseException {
+	public JsonPatchRequest(ConfigMgr cfg, JsonNode resourceNode, RequestCtx ctx) throws SchemaException {
 		this.cfg = cfg;
 		this.ctx = ctx;
-		this.ops = new ArrayList<JsonPatchOp>();
+		this.ops = new ArrayList<>();
 		parseJson(resourceNode);
 	}
 	
@@ -92,8 +81,7 @@ public class JsonPatchRequest {
 			JsonPatchOp op = new JsonPatchOp(this.ctx,oper);
 			this.ops.add(op);
 		}	
-	
-	}
+		}
 	
 	public int getSize() {
 		return this.ops.size();
@@ -106,7 +94,7 @@ public class JsonPatchRequest {
 	public String toString() {
 		if (this.ops.size() == 0) return "JsonPatchRequest ops: <EMPTY>";
 		
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		buf.append("JsonPatchRequest ops: \n");
 		Iterator<JsonPatchOp> iter = this.ops.iterator();
 		while (iter.hasNext()) {

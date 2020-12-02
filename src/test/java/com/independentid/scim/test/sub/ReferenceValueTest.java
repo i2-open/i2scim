@@ -1,29 +1,36 @@
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
+
 package com.independentid.scim.test.sub;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
-
-import java.text.ParseException;
-
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.MethodOrderer.Alphanumeric;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
-import org.junit.jupiter.api.TestMethodOrder;
-
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.core.err.ConflictException;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ReferenceValue;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
-import com.independentid.scim.server.ConflictException;
-import com.independentid.scim.server.ScimException;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.*;
 
-@TestMethodOrder(Alphanumeric.class)
-@TestInstance(Lifecycle.PER_CLASS)
+import java.text.ParseException;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
+
+@TestMethodOrder(MethodOrderer.MethodName.class)
 public class ReferenceValueTest {
 
 	//private Logger logger = LoggerFactory.getLogger(ReferenceValueTest.class);

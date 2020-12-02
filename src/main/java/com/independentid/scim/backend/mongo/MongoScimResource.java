@@ -1,28 +1,22 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.backend.mongo;
 
-import java.io.IOException;
-import java.text.ParseException;
-
-import org.bson.Document;
-import org.bson.types.ObjectId;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.resource.ExtensionValues;
 import com.independentid.scim.resource.ScimResource;
@@ -31,9 +25,10 @@ import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.Meta;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.server.ConfigMgr;
-import com.independentid.scim.server.ConflictException;
-import com.independentid.scim.server.ScimException;
+import org.bson.Document;
+import org.bson.types.ObjectId;
+
+import java.text.ParseException;
 
 /**
  * @author pjdhunt
@@ -60,21 +55,20 @@ public class MongoScimResource extends ScimResource {
 	/**
 	 * Parses a Mongo <Document> and converts to <ScimResource> using <MongoMapUtil>.
 	 * @param cfg A handle to SCIM <ConfigMgr> which holds the Schema definitions
-	 * @param container TODO
-	 * @param resourceNode A Mongo <Document> object containing the Mongo resource to be converted to ScimResource
+	 * @param dbResource A Mongo <Document> object containing the Mongo record to be converted to ScimResource
+	 * @param container A Mongo <String> representing the Resource Type path (e.g. Users) for the object. Used to lookup <ResourceType> and <Schema>.
 	 * @throws SchemaException is thrown when unable to parse data not defined in SCIM <Schema> configuration
 	 * @throws ParseException is thrown when a known format is invalid (e.g. URI, Date, etc)
-	 * @throws IOException  is thrown due to an unexpected IO Error
-	 * @throws JsonProcessingException  is thrown when converting from/to Jackson <JsonNode> representation.
-	 * @throws ConflictException 
+	 * @throws  ScimException is thrown when a general SCIM protocol error has occurred.
 	 */
 	public MongoScimResource(ConfigMgr cfg, Document dbResource, String container)
-			throws SchemaException, ParseException, ScimException, JsonProcessingException, IOException {
+			throws SchemaException, ParseException, ScimException {
 		super();
+		super.cfg = cfg;
 		//super(cfg, MongoMapUtil.toScimJsonNode(dbResource), null);
 		
 		this.originalResource = dbResource;	
-		setResourceType(container);;
+		setResourceType(container);
 		parseDocument(dbResource);
 		
 	}
@@ -118,20 +112,20 @@ public class MongoScimResource extends ScimResource {
 		// Look for all the core schema vals
 		//Schema core = cfg.getSchemaById(coreSchemaId);
 		
-		Attribute[] attrs = coreSchema.getAttributes(); 
-		for (int i=0; i < attrs.length; i++) {
-			Value val = MongoMapUtil.mapBsonDocument(attrs[i], doc);
-			
+		Attribute[] attrs = coreSchema.getAttributes();
+		for (Attribute attr : attrs) {
+			Value val = MongoMapUtil.mapBsonDocument(attr, doc);
+
 			if (val != null)
-				this.coreAttrs.put(attrs[i].getName(), val);
+				this.coreAttrs.put(attr.getName(), val);
 		}
 		
 		String[] eids = type.getSchemaExtension();
-		for (int i=0; i < eids.length; i++) {
-			Schema schema = cfg.getSchemaById(eids[i]);
+		for (String eid : eids) {
+			Schema schema = cfg.getSchemaById(eid);
 			ExtensionValues val = MongoMapUtil.mapBsonExtension(schema, doc);
-			if (val != null) 
-				this.extAttrs.put(eids[i], val);
+			if (val != null)
+				this.extAttrs.put(eid, val);
 		}
 		
 	}

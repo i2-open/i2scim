@@ -1,19 +1,25 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 package com.independentid.scim.schema;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.protocol.ScimParams;
+import com.independentid.scim.serializer.JsonUtil;
+import com.independentid.scim.serializer.ScimSerializer;
 
 import java.io.IOException;
 import java.io.StringWriter;
@@ -22,13 +28,6 @@ import java.net.URISyntaxException;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.protocol.ScimParams;
-import com.independentid.scim.serializer.JsonUtil;
-import com.independentid.scim.serializer.ScimSerializer;
 
 public class ResourceType implements ScimSerializer {
 
@@ -55,7 +54,7 @@ public class ResourceType implements ScimSerializer {
 	}
 	
 	public ResourceType(JsonNode node) throws SchemaException {
-		this.schemaExtensions = new LinkedHashMap<String,SchemaExtension>();
+		this.schemaExtensions = new LinkedHashMap<>();
 		this.parseJson(node);
 	}
 	
@@ -149,7 +148,7 @@ public class ResourceType implements ScimSerializer {
 	 * supported by the ResourceType.
 	 */
 	public String[] getSchemaExtension() {
-		return schemaExtensions.keySet().toArray(new String[schemaExtensions.size()]);
+		return schemaExtensions.keySet().toArray(new String[0]);
 	}
 	
 	
@@ -158,7 +157,7 @@ public class ResourceType implements ScimSerializer {
 	 * Resource Type. The key is the URI for the schema extension.
 	 */
 	public void setSchemaExtensions(Map<String,SchemaExtension> schemaExtensions) {
-		this.schemaExtensions = new LinkedHashMap<String,SchemaExtension>();
+		this.schemaExtensions = new LinkedHashMap<>();
 		this.schemaExtensions.putAll(schemaExtensions);
 		
 		//this.schemaExtensions = schemaExtensions;
@@ -264,9 +263,7 @@ public class ResourceType implements ScimSerializer {
 		
 		if (schemaExtensions != null && schemaExtensions.size() > 0) {
 			gen.writeArrayFieldStart("schemaExtensions");
-			Iterator<SchemaExtension> iter = schemaExtensions.values().iterator();
-			while (iter.hasNext()) {
-				SchemaExtension ext = iter.next();
+			for (SchemaExtension ext : schemaExtensions.values()) {
 				ext.serialize(gen, ctx, false);
 			}
 			gen.writeEndArray();
@@ -315,14 +312,10 @@ public class ResourceType implements ScimSerializer {
 				// TODO What should happen with an invalid resourcetype endpoint?
 				e.printStackTrace();
 			}
-			if (ep == null)
-				this.lastPathSegment = null;
-			else {
-				this.lastPathSegment = ep.replaceFirst(".*/([^/?]+).*", "$1");
-			}
+
+			this.lastPathSegment = ep.replaceFirst(".*/([^/?]+).*", "$1");
 		}
-		
-		
+
 		item = node.get("description");
 		if (item != null)
 			this.description = item.asText();

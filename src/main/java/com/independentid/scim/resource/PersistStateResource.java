@@ -1,34 +1,33 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2020 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.resource;
 
-import java.io.IOException;
-import java.text.ParseException;
-import java.util.Date;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.schema.Meta;
 import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.server.ConfigMgr;
-import com.independentid.scim.server.ScimException;
+
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.Date;
 
 /**
  * @author pjdhunt
@@ -59,6 +58,7 @@ public class PersistStateResource extends ScimResource {
 	
 	public PersistStateResource(ConfigMgr cfg, int rCnt, int sCnt) {
 		super();
+		this.cfg = cfg;
 		setId(CONFIG_ID);
 		
 		this.rTypeCnt = rCnt;
@@ -141,6 +141,14 @@ public class PersistStateResource extends ScimResource {
 		// Write out the end of object for the resource
 		gen.writeEndObject();
 	}
-	
 
+	@Override
+	public String toString() {
+		try {
+			return this.toJsonString();
+		} catch (ScimException e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
 }

@@ -1,37 +1,35 @@
-/**********************************************************************
-this.attrs = new LinkedHashMap<String,Value>();this.attrs = new LinkedHashMap<String,Value>();this.attrs = new LinkedHashMap<String,Value>();this.attrs = new LinkedHashMap<String,Value>();this.attrs = new LinkedHashMap<String,Value>(); *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.resource;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.text.ParseException;
-import java.util.Iterator;
-import java.util.Set;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.Meta;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.server.ConfigMgr;
-import com.independentid.scim.server.ConflictException;
+
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.text.ParseException;
+import java.util.Set;
 
 /**
  * ValueUtil is a general utility to parse JsonNode structures and create the correct Value object class.
@@ -49,7 +47,8 @@ public class ValueUtil {
 	public final static String TYPE_INTEGER = "integer";
 	public final static String TYPE_DECIMAL = "decimal";
 
-	public static ConfigMgr cfg = ConfigMgr.getInstance();
+	static ConfigMgr cfg = ConfigMgr.getConfig();
+	
 	/**
 	 * Static method used to parse a <JsonNode> object for its appropriate SCIM Value type based on the declared Attribute.
 	 * @param attr The SCIM <Attribute> type for the value being parsed
@@ -57,9 +56,9 @@ public class ValueUtil {
 	 * @param bulkIdResolver This resolver is used for bulk operations where an Identifier may be temporary.
 	 * @return The parsed <Value> instance. See com.independentid.scim.resource package for sub-classes (Complex, String,
 	 * Boolean, DateTime, Binary, Reference).
-	 * @throws ConflictException
-	 * @throws SchemaException
-	 * @throws ParseException
+	 * @throws ConflictException May be thrown by ValueUtil parser.
+	 * @throws SchemaException May be thrown by ValueUtil parser.
+	 * @throws ParseException May be thrown by ValueUtil parser.
 	 */
 	public static Value parseJson(Attribute attr, JsonNode fnode, IBulkIdResolver bulkIdResolver)
 			throws ConflictException, SchemaException, ParseException {
@@ -148,7 +147,7 @@ public class ValueUtil {
 				new URL(value);
 			return TYPE_REF;
 		} catch (MalformedURLException e) {
-			
+			e.printStackTrace();
 		}
 		
 		return TYPE_STRING;
@@ -168,7 +167,7 @@ public class ValueUtil {
 	 */
 	public static boolean isReturnable(String name, RequestCtx ctx) {
 		    
-		Attribute attr = cfg.findAttribute(name, ctx);
+		Attribute attr = ValueUtil.cfg.findAttribute(name, ctx);
 		if (attr != null)
 			return isReturnable(attr,ctx);
    
@@ -211,10 +210,8 @@ public class ValueUtil {
 		Schema sch = ext.getSchema();
 		
 		//loop through the set of values and check if the attribute is returnable
-		Iterator<String> niter = ext.getValueMap().keySet().iterator();
-		while (niter.hasNext()) {
-			
-			if (isReturnable(sch,niter.next(),ctx))
+		for (String s : ext.getValueMap().keySet()) {
+			if (isReturnable(sch, s, ctx))
 				return true;
 		}
 		return false;

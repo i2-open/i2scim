@@ -1,47 +1,36 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 package com.independentid.scim.op;
 
-import java.io.IOException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.ConflictException;
+import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.core.err.TooLargeException;
+import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.protocol.ScimParams;
+import com.independentid.scim.schema.SchemaException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.UUID;
-
-import javax.servlet.ServletInputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.protocol.ScimParams;
-import com.independentid.scim.schema.ResourceType;
-import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.serializer.JsonUtil;
-import com.independentid.scim.server.ConfigMgr;
-import com.independentid.scim.server.ConflictException;
-import com.independentid.scim.server.InvalidSyntaxException;
-import com.independentid.scim.server.PoolManager;
-import com.independentid.scim.server.ScimException;
-import com.independentid.scim.server.TooLargeException;
 
 /**
  * @author pjdhunt
@@ -55,11 +44,13 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	 * 
 	 */
 	private static final long serialVersionUID = 794465867214870343L;
-	
-	protected static ConfigMgr cfg = ConfigMgr.getInstance();
 
-	protected static PoolManager pool = PoolManager.getInstance();
-	
+	/*
+	@Inject
+	@Resource(name="PoolMgr")
+	protected PoolManager pool;
+	*/
+
 	protected RequestCtx ctx;
 	protected ArrayList<Operation> ops;
 	protected HashMap<String, Operation> bulkMap;
@@ -67,73 +58,46 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	//protected BackendHandler handler;
 	
 	protected int opCompleted = 0, opFailed = 0, opRequested = 0;
-
-	
-
 	protected int failOnErrors = 0;
 
-	public BulkOps(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		super (req,resp,false);
+	public BulkOps(HttpServletRequest req, HttpServletResponse resp, ConfigMgr configMgr) {
+		super (req,resp);
+		this.cfgMgr = configMgr;
 		
-		this.ops = new ArrayList<Operation>();
-		this.bulkMap = new HashMap<String, Operation>();
-		this.bulkValMap = new HashMap<Operation, List<String>>();
-		
-		ServletInputStream input = req.getInputStream();
-		if (input == null) {
-			logger.warn("Missing body for Bulk request received");
-			setCompletionError(new InvalidSyntaxException(
-					"Request body missing."));
-			return;
-		}
-		ObjectMapper mapper = JsonUtil.getMapper();
-		JsonNode node;
-		try {
-			node = mapper.readTree(input);
-		} catch (Exception e) {
-			logger.info(
-					"JSON Parsing error parsing patch request: "
-							+ e.getMessage(), e);
-			setCompletionError(new InvalidSyntaxException(
-					"JSON parsing error found parsing SCIM BULK request: "
-							+ e.getLocalizedMessage(), e));
-			return;
-		}
-		
-		try {
-			parseJson(node, null);
-		} catch (ScimException | SchemaException e) {
-			// TODO Auto-generated catch block
-			setCompletionError(new InvalidSyntaxException("SCIM operation parsing error found parsing SCIM BULK request: "+e.getLocalizedMessage(),e));
-			return;
-		}
-		
-		
-	}
-	/**
-	 * @throws ScimException
-	 * 
-	 */
-	public BulkOps(JsonNode node, RequestCtx ctx) {
-		super(ctx, 0);
-		this.ops = new ArrayList<Operation>();
-		this.bulkMap = new HashMap<String, Operation>();
-		this.bulkValMap = new HashMap<Operation, List<String>>();
-		
-		try {
-			parseJson(node, null);
-		} catch (ScimException | SchemaException e) {
-			// TODO Auto-generated catch block
-			setCompletionError(new InvalidSyntaxException("SCIM operation parsing error found parsing SCIM BULK request: "+e.getLocalizedMessage(),e));
-			return;
-		}
+		this.ops = new ArrayList<>();
+		this.bulkMap = new HashMap<>();
+		this.bulkValMap = new HashMap<>();
 	}
 
-	public void parseJson(JsonNode node, ResourceType type) throws ScimException, SchemaException {
+	public BulkOps(JsonNode node, RequestCtx ctx) {
+		super(ctx, 0);
+		this.cfgMgr = ctx.getConfigMgr();
+		this.node = node;
+		this.ops = new ArrayList<>();
+		this.bulkMap = new HashMap<>();
+		this.bulkValMap = new HashMap<>();
+
+	}
+
+	@Override
+	protected void doPreOperation() {
+		parseRequestUrl();
+		if (state == OpState.invalid)
+			return;
+		parseRequestBody();
+		if (state == OpState.invalid)
+			return;
+		parseJson(node);
+
+	}
+
+	public void parseJson(JsonNode node) {
 		JsonNode snode = node.get("schemas");
-		if (snode == null)
-			throw new SchemaException("JSON is missing 'schemas' attribute.");
-	
+		if (snode == null) {
+			setCompletionError(new SchemaException("JSON is missing 'schemas' attribute."));
+			return;
+		}
+
 		boolean invalidSchema = true;
 		if (snode.isArray()) {
 			Iterator<JsonNode> jiter = snode.elements();
@@ -147,50 +111,66 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 				ScimParams.SCHEMA_API_BulkRequest))
 			invalidSchema = false;
 	
-		if (invalidSchema)
-			throw new SchemaException(
+		if (invalidSchema) {
+			setCompletionError(new SchemaException(
 					"Expecting JSON with schemas attribute of: "
-							+ ScimParams.SCHEMA_API_BulkRequest);
-	
-		this.failOnErrors = this.sconfig.getBulkMaxErrors();
+							+ ScimParams.SCHEMA_API_BulkRequest));
+			return;
+		}
+
+		this.failOnErrors = this.cfgMgr.getBulkMaxErrors();
 		JsonNode fnode = node.get("failOnErrors");
 		if (fnode != null) {
 			this.failOnErrors = fnode.asInt();
 		}
 			
 		JsonNode opsnode = node.get("Operations");
-		if (opsnode == null)
-			throw new SchemaException("Missing 'Operations' attribute array.");
-	
+		if (opsnode == null) {
+			setCompletionError(new SchemaException("Missing 'Operations' attribute array."));
+			return;
+		}
 		if (!opsnode.isArray()) {
-			throw new SchemaException("Expecting 'Operations' to be an array.");
+			setCompletionError(new SchemaException("Expecting 'Operations' to be an array."));
+			return;
 		}
 	
 		int requestNum = 0;
-		int maxOps = this.sconfig.getBulkMaxOps();
+		int maxOps = this.cfgMgr.getBulkMaxOps();
 		Iterator<JsonNode> oiter = opsnode.elements();
 		while (oiter.hasNext()) {
 			JsonNode oper = oiter.next();
 			requestNum++;
-			if (requestNum > maxOps)
-				throw new TooLargeException(
+			if (requestNum > maxOps) {
+				setCompletionError(new TooLargeException(
 						"Bulk request exceeds server maximum operations of "
-								+ maxOps);
-			
-			Operation op = parseOperation(oper,	requestNum);
-			
+								+ maxOps));
+				return;
+			}
+
+			Operation op;
+			try {
+				op = parseOperation(oper,	requestNum);
+			} catch (ScimException e) {
+				setCompletionError(e);
+				return;
+			}
+
+			/*
 			String key = op.getBulkId();
 			if (key == null)
 				key = UUID.randomUUID().toString();
+				*/
+
 			this.ops.add(op); // add to the list of operations
-			
-	
+
 			String bulkId = op.getBulkId();
 			if (bulkId != null) {
 				// Check if this is a repeat bulkId
-				if (this.bulkMap.containsKey(bulkId))
-					throw new ConflictException("Detected repeated bulkId "
-							+ bulkId + " at operation number " + requestNum);
+				if (this.bulkMap.containsKey(bulkId)) {
+					setCompletionError(new ConflictException("Detected repeated bulkId "
+							+ bulkId + " at operation number " + requestNum));
+					return;
+				}
 				this.bulkMap.put(bulkId, op);
 			}
 	
@@ -201,15 +181,22 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 		}
 	
 		this.opRequested = this.ops.size();
-		
-		validateBulkIds();
-		
-	
+
+		try {
+			validateBulkIds();
+		} catch (ScimException e) {
+			setCompletionError(e);
+			return;
+		}
+
+
 		JsonNode feNode = node.get("failOnErrors");
 		if (feNode != null) {
-			if (!feNode.isInt())
-				throw new SchemaException(
-						"Expecting 'failOnErrors' to be an integer value.");
+			if (!feNode.isInt()) {
+				setCompletionError(new SchemaException(
+						"Expecting 'failOnErrors' to be an integer value."));
+				return;
+			}
 			this.failOnErrors = feNode.asInt();
 		}
 	}
@@ -230,9 +217,9 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	 * This routine checks if b depends on a. The assumption is that a already
 	 * depends on b
 	 * 
-	 * @param a
-	 * @param b
-	 * @throws ScimException
+	 * @param a Scim operation A.
+	 * @param b Scim operation B.
+	 * @throws ScimException Exception thrown if a circular/conflict reference is detected.
 	 */
 	protected void checkCircular(Operation a, Operation b) throws ScimException {
 		// We know a references b. Does b reference a?
@@ -240,9 +227,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 		List<String> vals = this.bulkValMap.get(b);
 		if (vals == null)
 			return;
-		Iterator<String> viter = vals.iterator();
-		while (viter.hasNext()) {
-			String bvalue = viter.next();
+		for (String bvalue : vals) {
 			// Check that there is an operation that defines the value
 			if (this.bulkMap.containsKey(bvalue)) {
 				Operation op = this.bulkMap.get(bvalue);
@@ -260,15 +245,11 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 		// First, check that every value specified has a corresponding bulkdId
 		// transtraction
 
-		Iterator<Operation> oiter = this.bulkValMap.keySet().iterator();
-		while (oiter.hasNext()) {
-			Operation op = oiter.next();
+		for (Operation op : this.bulkValMap.keySet()) {
 			List<String> vals = this.bulkValMap.get(op);
 			if (vals == null)
 				continue;
-			Iterator<String> viter = vals.iterator();
-			while (viter.hasNext()) {
-				String bvalue = viter.next();
+			for (String bvalue : vals) {
 				// Check that there is an operation that defines the value
 				if (!this.bulkMap.containsKey(bvalue))
 					throw new ConflictException(
@@ -287,9 +268,8 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	}
 
 	protected Operation parseOperation(
-			JsonNode bulkOpNode, int requestNum) throws ScimException,
-			SchemaException {
-		RequestCtx octx = new RequestCtx(bulkOpNode);
+			JsonNode bulkOpNode, int requestNum) throws ScimException {
+		RequestCtx octx = new RequestCtx(bulkOpNode,cfgMgr);
 
 		JsonNode item = bulkOpNode.get("data");
 		if (item == null) {
@@ -326,7 +306,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 		if (bulkId == null)
 			return null;
 
-		String id = bulkId;
+		String id;
 		if (bulkId.toLowerCase().startsWith("bulkid:"))
 			id = bulkId.substring(7);
 		else
@@ -346,7 +326,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 		if (bulkId == null)
 			return null;
 
-		String id = bulkId;
+		String id;
 		if (bulkId.toLowerCase().startsWith("bulkid:"))
 			id = bulkId.substring(7);
 		else
@@ -361,34 +341,31 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	 * @see com.independentid.scim.op.Operation#doOperation()
 	 */
 	@Override
-	protected void doOperation() throws ScimException {
+	protected void doOperation() {
 		int batchExecNum = 0;
 		if (logger.isDebugEnabled()) {
 			logger.debug("========Begin BATCH Request========");
 		}
-		Iterator<Operation> iter = this.ops.iterator();
-		while (iter.hasNext()) {
-			Operation op = iter.next();
+		for (Operation op : this.ops) {
 			if (!op.isDone()) {
 				OpStat stat = op.getStats();
 				stat.setBulkExecNumber(batchExecNum++);
 				op.compute();
 			}
-			
+
 			if (op.isError())
 				this.opFailed++;
 			else
 				this.opCompleted++;
-			if (this.opFailed >= this.failOnErrors) 
+			if (this.opFailed >= this.failOnErrors)
 				break; // stop processing as we have had too many errors
 		}
 		
 		if (logger.isDebugEnabled()) {
-			StringBuffer buf = new StringBuffer();
-			buf.append("Bulk Ops Requesed: ").append(this.opRequested);
-			buf.append(", Completed: ").append(this.opCompleted);
-			buf.append(", Failed: ").append(this.opFailed);
-			logger.debug(buf.toString());
+			String buf = "Bulk Ops Requesed: " + this.opRequested +
+					", Completed: " + this.opCompleted +
+					", Failed: " + this.opFailed;
+			logger.debug(buf);
 			logger.debug("=========End BATCH Request==========");
 		}
 	}

@@ -1,20 +1,29 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.resource;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.independentid.scim.core.err.ConflictException;
+import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.op.IBulkIdResolver;
+import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.SchemaException;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -23,16 +32,6 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeType;
-import com.independentid.scim.op.IBulkIdResolver;
-import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.server.ConflictException;
-import com.independentid.scim.server.ScimException;
-
 public class ComplexValue extends Value {
 
 	public LinkedHashMap<String, Value> vals;
@@ -40,7 +39,7 @@ public class ComplexValue extends Value {
 	private Attribute attr;
 
 	public ComplexValue() {
-		this.vals = new LinkedHashMap<String, Value>();
+		this.vals = new LinkedHashMap<>();
 		this.resolver = null;
 		
 	}
@@ -54,7 +53,7 @@ public class ComplexValue extends Value {
 	public ComplexValue(Attribute attrDef, JsonNode node, IBulkIdResolver resolver)
 			throws ConflictException, SchemaException, ParseException {
 		super(attrDef, node);
-		this.vals = new LinkedHashMap<String, Value>();
+		this.vals = new LinkedHashMap<>();
 		this.resolver = resolver;
 		this.attr = attrDef;
 		this.parseJson(attrDef, node);
@@ -63,7 +62,7 @@ public class ComplexValue extends Value {
 	
 	public ComplexValue(Attribute attr, Map<String,Value> vals) {
 		super.jtype = JsonNodeType.OBJECT;
-		this.vals = new LinkedHashMap<String,Value>(vals);
+		this.vals = new LinkedHashMap<>(vals);
 		this.attr = attr;
 	}
 
@@ -79,24 +78,21 @@ public class ComplexValue extends Value {
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException, ScimException {
 		gen.writeStartObject();
 		
-		boolean parentRequested = (ctx == null)?true:ctx.isAttrRequested(attr);
-		
-		Iterator<String> iter = this.vals.keySet().iterator();
-		while (iter.hasNext()) {
-			String field = iter.next();
+		boolean parentRequested = ctx == null || ctx.isAttrRequested(attr);
+
+		for (String field : this.vals.keySet()) {
 			Attribute sAttr = this.attr.getSubAttribute(field);
 
 			// if parent is returnable then return the client by normal defaults
 			// Check if the sub attribute should be returned based on request ctx
-			if (ValueUtil.isReturnable(sAttr, (parentRequested)?null:ctx))
-			{
-				Value val = this.vals.get(field); 
-				if(ctx != null && ctx.useEncodedExtensions()) {
-					if(field.equalsIgnoreCase("$ref"))
+			if (ValueUtil.isReturnable(sAttr, (parentRequested) ? null : ctx)) {
+				Value val = this.vals.get(field);
+				if (ctx != null && ctx.useEncodedExtensions()) {
+					if (field.equalsIgnoreCase("$ref"))
 						field = "href";
 				}
 				gen.writeFieldName(field);
-	
+
 				val.serialize(gen, ctx);
 			}
 		}
@@ -140,7 +136,7 @@ public class ComplexValue extends Value {
 
 		if (val instanceof BooleanValue) {
 			BooleanValue bval = (BooleanValue) val;
-			return bval.getValueArray().booleanValue();
+			return bval.getValueArray();
 		}
 		return false;
 	}
@@ -162,9 +158,7 @@ public class ComplexValue extends Value {
 	}
 
 	public void mergeValues(ComplexValue val) {
-		Iterator<String> iter = val.vals.keySet().iterator();
-		while (iter.hasNext()) {
-			String sname = iter.next();
+		for (String sname : val.vals.keySet()) {
 			this.vals.put(sname, val.getValue(sname));
 		}
 	}

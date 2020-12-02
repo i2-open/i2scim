@@ -1,34 +1,31 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.protocol;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.resource.ScimResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-
-import javax.servlet.http.HttpServletResponse;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.independentid.scim.resource.ScimResource;
-import com.independentid.scim.server.ScimException;
 
 /**
  * ResourceResponse is used to generate a SCIM response per RFC7644. This response
@@ -46,7 +43,7 @@ public class ResourceResponse extends ScimResponse {
 	protected int smax;  // max server response size
 	protected String id;
 
-	protected ArrayList<ScimResource> entries = new ArrayList<ScimResource>();
+	protected ArrayList<ScimResource> entries = new ArrayList<>();
 	
 	
 	public ResourceResponse(ScimResource val, RequestCtx ctx) {

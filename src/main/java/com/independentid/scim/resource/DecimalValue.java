@@ -1,24 +1,19 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.resource;
-
-import java.io.IOException;
-import java.math.BigDecimal;
-import java.text.ParseException;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,6 +21,10 @@ import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.text.ParseException;
 
 public class DecimalValue extends Value {
 	public BigDecimal value;
@@ -38,7 +37,7 @@ public class DecimalValue extends Value {
 		parseJson(attr, node);
 	}
 	
-	public DecimalValue(Attribute attr, BigDecimal num) throws SchemaException, ParseException {
+	public DecimalValue(Attribute attr, BigDecimal num) {
 		super();
 		this.jtype = JsonNodeType.NUMBER;
 		this.value = num;

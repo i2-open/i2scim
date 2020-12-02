@@ -1,66 +1,42 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 package com.independentid.scim.resource;
-
-import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.StringWriter;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.springframework.data.annotation.Id;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.IResourceModifier;
+import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.*;
 import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.op.IBulkIdTarget;
-import com.independentid.scim.protocol.JsonPatchOp;
-import com.independentid.scim.protocol.JsonPatchRequest;
-import com.independentid.scim.protocol.JsonPath;
-import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.protocol.ScimParams;
-import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.Meta;
-import com.independentid.scim.schema.ResourceType;
-import com.independentid.scim.schema.Schema;
-import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.protocol.*;
+import com.independentid.scim.schema.*;
 import com.independentid.scim.serializer.JsonUtil;
-import com.independentid.scim.server.ConfigMgr;
-import com.independentid.scim.server.ConflictException;
-import com.independentid.scim.server.InvalidSyntaxException;
-import com.independentid.scim.server.InvalidValueException;
-import com.independentid.scim.server.NoTargetException;
-import com.independentid.scim.server.PreconditionFailException;
-import com.independentid.scim.server.ScimException;
+
+import java.io.*;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.text.ParseException;
+import java.util.*;
 
 public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 	public final static String SCHEMA_EXT_PREFIX = "Ext-";
 	
-	@Id
+	protected ConfigMgr cfg;
+
 	protected String id;
 
 	protected String externalId;
@@ -69,8 +45,6 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	public Schema commonSchema;
 	protected Schema coreSchema;
 	protected ResourceType type;
-	
-
 
 	// Holds the meta data about the resource
 	
@@ -79,11 +53,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	protected LinkedHashMap<String, Value> coreAttrs;
 
 	protected LinkedHashMap<String, ExtensionValues> extAttrs;
-
-	protected final ConfigMgr cfg;
-	
-	
-	
+		
 	protected boolean modified;
 	
 	protected IBulkIdResolver idResolver;
@@ -103,11 +73,10 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	}
 
 	protected ScimResource () {
-		this.coreAttrs = new LinkedHashMap<String, Value>();
-		this.extAttrs = new LinkedHashMap<String, ExtensionValues>();
+		this.coreAttrs = new LinkedHashMap<>();
+		this.extAttrs = new LinkedHashMap<>();
 		this.idResolver = null;
 		this.modified = false;
-		this.cfg = ConfigMgr.getInstance();
 	}
 	
 	
@@ -125,8 +94,8 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			throws SchemaException, ParseException, ScimException {
 		
 		this.cfg = cfg;
-		this.coreAttrs = new LinkedHashMap<String, Value>();
-		this.extAttrs = new LinkedHashMap<String, ExtensionValues>();
+		this.coreAttrs = new LinkedHashMap<>();
+		this.extAttrs = new LinkedHashMap<>();
 		this.commonSchema = cfg.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
 		setResourceType(container);
 		this.idResolver = bulkIdResolver;
@@ -204,7 +173,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		//ResourceType type = cfg.getResourceType(getResourceType());
 		//String core = type.getSchema();
 
-		Attribute rootAttribute = null;
+		Attribute rootAttribute;
 		if (attr.isChild())
 			rootAttribute = attr.getParent();
 		else
@@ -261,7 +230,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		//ResourceType type = cfg.getResourceType(getResourceType());
 		String core = type.getSchema();
 
-		Attribute rootAttribute = null;
+		Attribute rootAttribute;
 		if (attr.isChild())
 			rootAttribute = attr.getParent();
 		else
@@ -333,7 +302,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		if (snode == null) throw new SchemaException("Schemas attribute missing");
 		else {
 			Iterator<JsonNode> iter = snode.elements();
-			this.schemas = new ArrayList<String>();
+			this.schemas = new ArrayList<>();
 			while (iter.hasNext()) {
 				JsonNode anode = iter.next();
 				this.schemas.add(anode.asText());
@@ -496,11 +465,11 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			MessageDigest md = MessageDigest.getInstance("MD5");
 
 			md.update(baos.toByteArray());
-			byte hashBytes[] = md.digest();
+			byte[] hashBytes = md.digest();
 			// convert byte array to hex
-			StringBuffer sb = new StringBuffer();
-			for (int i = 0; i < hashBytes.length; i++) {
-				sb.append(Integer.toString((hashBytes[i] & 0xff) + 0x100, 16)
+			StringBuilder sb = new StringBuilder();
+			for (byte hashByte : hashBytes) {
+				sb.append(Integer.toString((hashByte & 0xff) + 0x100, 16)
 						.substring(1));
 			}
 			return sb.toString();
@@ -565,7 +534,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			ParseException {
 		
 		JsonNode attrNode = node.get(attr.getName());
-		Value val = null;
+		Value val;
 		if (attrNode != null) {
 			if (isReplace || !attr.isMultiValued()) {
 				val = ValueUtil.parseJson(attr, attrNode, this.idResolver);
@@ -616,13 +585,13 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		//ResourceType type = cfg.getResourceType(getResourceType());
 		String core = type.getSchema();
 
-		Attribute rootAttribute = null;
+		Attribute rootAttribute;
 		if (attr.isChild())
 			rootAttribute = attr.getParent();
 		else
 			rootAttribute = attr;
 
-		Value val = null;
+		Value val;
 		if (attr.getSchema().equals(core)) {
 			val = this.coreAttrs.get(rootAttribute.getName());
 		} else {
@@ -800,7 +769,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 								nval = ValueUtil.parseJson(sattr, op.value, null);
 							    if (nval instanceof BooleanValue) {
 							    	BooleanValue bval = (BooleanValue) nval;
-							    	if (bval.getValueArray().booleanValue() && sattr.getName().equals("primary"))
+							    	if (bval.getValueArray() && sattr.getName().equals("primary"))
 							    		mval.resetPrimary();
 							    }
 									
@@ -889,7 +858,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 							.equalsIgnoreCase(Attribute.TYPE_Complex)) {
 						try {
 							Value cval = ValueUtil.parseJson(path.getTargetAttribute(), op.value, null);
-							mval.removeValue(val);; // remove the current value
+							mval.removeValue(val);// remove the current value
 							mval.addValue(cval);
 							break;
 						} catch (SchemaException | ParseException e) {
@@ -968,9 +937,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	private void copyExtensionAttributes(String schema, ExtensionValues eattrs, RequestCtx ctx) {
 		
 		ExtensionValues localExt = this.getExtensionValues(schema);
-		Iterator<String> eiter = eattrs.attrNameSet().iterator();
-		while (eiter.hasNext()) {
-			String aname = eiter.next();
+		for (String aname : eattrs.attrNameSet()) {
 			Attribute attr = cfg.findAttribute(schema, aname, null, ctx);
 			String mutability = attr.getMutability();
 			if (mutability.equals(Attribute.MUTABILITY_readWrite)
@@ -1052,19 +1019,15 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 */
 	@Override
 	public boolean hasBulkIds() {
-		Iterator<Value> iter = coreAttrs.values().iterator();
-		while (iter.hasNext()) {
-			Value attribute = iter.next();
+		for (Value attribute : coreAttrs.values()) {
 			if (attribute instanceof IBulkIdTarget) {
 				IBulkIdTarget bAttr = (IBulkIdTarget) attribute;
-				if (bAttr.hasBulkIds()) 
+				if (bAttr.hasBulkIds())
 					return true;
 			}
 		}
-		
-		Iterator<ExtensionValues> eiter = extAttrs.values().iterator();
-		while (eiter.hasNext()) {
-			ExtensionValues eattrs = eiter.next();
+
+		for (ExtensionValues eattrs : extAttrs.values()) {
 			if (eattrs.hasBulkIds())
 				return true;
 		}
@@ -1078,18 +1041,14 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 */
 	@Override
 	public void getBulkIdsRequired(List<String> bulkList) {
-		Iterator<Value> iter = coreAttrs.values().iterator();
-		while (iter.hasNext()) {
-			Value attribute = iter.next();
+		for (Value attribute : coreAttrs.values()) {
 			if (attribute instanceof IBulkIdTarget) {
 				IBulkIdTarget bAttr = (IBulkIdTarget) attribute;
 				bAttr.getBulkIdsRequired(bulkList);
 			}
 		}
-		
-		Iterator<ExtensionValues> eiter = extAttrs.values().iterator();
-		while (eiter.hasNext()) {
-			ExtensionValues eattrs = eiter.next();
+
+		for (ExtensionValues eattrs : extAttrs.values()) {
 			eattrs.getBulkIdsRequired(bulkList);
 		}
 	}
@@ -1099,18 +1058,14 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 */
 	@Override
 	public void getAttributesWithBulkIdValues(List<Value> bulkIdAttrs) {
-		Iterator<Value> iter = coreAttrs.values().iterator();
-		while (iter.hasNext()) {
-			Value attribute = iter.next();
+		for (Value attribute : coreAttrs.values()) {
 			if (attribute instanceof IBulkIdTarget) {
 				IBulkIdTarget bAttr = (IBulkIdTarget) attribute;
 				bAttr.getAttributesWithBulkIdValues(bulkIdAttrs);
 			}
 		}
-		
-		Iterator<ExtensionValues> eiter = extAttrs.values().iterator();
-		while (eiter.hasNext()) {
-			ExtensionValues eattrs = eiter.next();
+
+		for (ExtensionValues eattrs : extAttrs.values()) {
 			eattrs.getAttributesWithBulkIdValues(bulkIdAttrs);
 		}
 

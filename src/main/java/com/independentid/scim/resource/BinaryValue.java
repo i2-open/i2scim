@@ -1,25 +1,19 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.resource;
-
-import java.io.IOException;
-import java.text.ParseException;
-
-import org.bson.internal.Base64;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,6 +22,12 @@ import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.Base64;
+import java.util.Base64.Decoder;
+import java.util.Base64.Encoder;
+
 /**
  * This Value type handles SCIM Binary Value types which are base64 encoded values.
  * @author pjdhunt
@@ -35,6 +35,9 @@ import com.independentid.scim.schema.SchemaException;
  */
 public class BinaryValue extends Value {
 
+	static final Decoder decoder = Base64.getDecoder();
+	static final Encoder encoder = Base64.getEncoder();
+	
 	byte[] value;
 	
 	public BinaryValue() {
@@ -46,19 +49,23 @@ public class BinaryValue extends Value {
 		parseJson(attr,node);
 	}
 	
+	/**
+	 * @param attr The <Attribute> type definition for the value.
+	 * @param bval The unencoded value as an array of <byte>.
+	 */
 	public BinaryValue(Attribute attr, byte[] bval) {
 		this.value = bval;
-		this.jtype = JsonNodeType.BINARY;
+		this.jtype = JsonNodeType.BINARY;  
 	}
 
 	public BinaryValue(Attribute attr, String b64string) {
-		this.value = Base64.decode(b64string);
+		this.value = decoder.decode(b64string.getBytes());  
 		this.jtype = JsonNodeType.BINARY;
 	}
 
 	@Override
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
-		gen.writeString(Base64.encode(this.value));
+		gen.writeString(encoder.encodeToString(this.value));
 
 	}
 
@@ -68,8 +75,8 @@ public class BinaryValue extends Value {
 		//The value should be actually a base64 encoded string (DER)
 		if (node == null)
 			throw new SchemaException("Was expecting a JSON string (Base64 encoded) value but encountered null");
-		
-		this.value = Base64.decode(node.asText());
+
+		this.value = decoder.decode(node.asText());
 		
 		//TODO:  SHould the DER Value encoding be validated?
 		
@@ -85,13 +92,19 @@ public class BinaryValue extends Value {
 
 	}
 
+	/**
+	 * Returns the unencoded raw binary as byte[]
+	 */
 	@Override
 	public byte[] getValueArray() {
 		return this.value;
 	}
 	
+	/**
+	 * Returns the base64 encoded binary value
+	 */
 	public String toString() {
-		return Base64.encode(this.value);
+		return encoder.encodeToString(this.value);
 	}
 
 }

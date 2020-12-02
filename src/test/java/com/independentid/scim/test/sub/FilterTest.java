@@ -1,47 +1,50 @@
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
+
 package com.independentid.scim.test.sub;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
-
-import javax.annotation.Resource;
-
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringRunner;
-
+import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.AttributeFilter;
 import com.independentid.scim.protocol.Filter;
 import com.independentid.scim.protocol.LogicFilter;
 import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.server.ConfigMgr;
-import com.independentid.scim.server.ScimException;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.annotation.Resource;
+import javax.inject.Inject;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
-/*
- * 
- * 
- */
-@ActiveProfiles("testing")
-@RunWith(SpringRunner.class)
-@SpringBootTest(
-		classes = {ConfigMgr.class})
-@ContextConfiguration(classes = ConfigMgr.class)
+@QuarkusTest
+@TestProfile(ScimSubComponentTestProfile.class)
+@TestMethodOrder(MethodOrderer.MethodName.class)
 public class FilterTest {
 
-	private Logger logger = LoggerFactory.getLogger(FilterTest.class);
+	private final Logger logger = LoggerFactory.getLogger(FilterTest.class);
 
+	@Inject
 	@Resource(name="ConfigMgr")
-	private ConfigMgr cfgMgr;
+	ConfigMgr cfgMgr;
 	
 	/**
 	 * Test filters from RFC7644, figure 2
@@ -103,32 +106,25 @@ public class FilterTest {
 
 	};
 	
-	@BeforeAll
-	static void setUpBeforeClass() throws Exception {
-	}
-
-	@AfterAll
-	static void tearDownAfterClass() throws Exception {
-	}
-
-	@BeforeEach
-	void setUp() throws Exception {
-	}
-
-	@AfterEach
-	void tearDown() throws Exception {
-	}
-
+	
 	@Test
-	void testParseFilterString() {
+	public void cfgTest() {
+		assertThat(cfgMgr).as("Check injection worked")
+			.isNotNull();
+		assertThat(cfgMgr.isReady()).as("Config is ready.").isTrue();
+	}
+	
+	@Test
+	public void testParseFilterString() {
 		for(int i = 0; i < testArray.length; i++) {
 			logger.debug("Parsing filter: ("+i+"):\t"+testArray[i][1]);
 			RequestCtx ctx = null;
 			try {
-				ctx = new RequestCtx(testArray[i][0],null,testArray[i][1]);
+				ctx = new RequestCtx(testArray[i][0],null,testArray[i][1], cfgMgr);
 			} catch (ScimException e) {
 				fail("Failed while generating RequestCtx and Filter: "+e.getMessage(),e);
 			}
+			assert ctx != null;
 			Filter filter = ctx.getFilter();
 			String sfilter = filter.toString();
 			logger.debug("Parsed filter:      \t"+sfilter);

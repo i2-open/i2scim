@@ -1,32 +1,30 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 package com.independentid.scim.schema;
 
-import java.io.IOException;
-import java.io.StringWriter;
-import java.util.Iterator;
-import java.util.TreeMap;
-
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.util.Iterator;
+import java.util.TreeMap;
 
 /*
  * Schema defines a SCIM schema, its attributes and associated meta data. 
@@ -43,24 +41,22 @@ public class Schema implements ScimSerializer  {
 	
     private String description;
     
-    private TreeMap<String,Attribute> attributes;
+    private final TreeMap<String,Attribute> attributes;
     
     
 	public Schema () {
-		this.attributes = new TreeMap<String,Attribute>(String.CASE_INSENSITIVE_ORDER);
+		this.attributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 		
 	}	
         
 	/**
 	 * Create a new <code>Schema</code> object based on Json Parser
-	 * @param jp A <JsonMode> parser handle containing a SCIM Schema object
-	 * @throws JsonProcessingException
-	 * @throws IOException
-	 * @throws SchemaException 
+	 * @param node A <JsonMode> parser handle containing a SCIM Schema object
+	 * @throws SchemaException May be thrown when parsing an invalid JSON representation of SCIM Schema
 	 */
-	public Schema (JsonNode node) throws JsonProcessingException, IOException, SchemaException {
+	public Schema (JsonNode node) throws SchemaException {
 		
-		this.attributes = new TreeMap<String,Attribute>(String.CASE_INSENSITIVE_ORDER);
+		this.attributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 		
 		this.parseJson(node);
 	}
@@ -123,7 +119,7 @@ public class Schema implements ScimSerializer  {
 
     public Attribute[] getAttributes() {
         return this.attributes.values()
-        		.toArray(new Attribute[this.attributes.size()]);
+        		.toArray(new Attribute[0]);
     }
     
     
@@ -210,9 +206,7 @@ public class Schema implements ScimSerializer  {
 			gen.writeStringField("description", this.description);
 		
 		gen.writeArrayFieldStart("attributes");
-		Iterator<Attribute> iter = this.attributes.values().iterator();
-		while (iter.hasNext()) {
-			Attribute attr = iter.next();
+		for (Attribute attr : this.attributes.values()) {
 			attr.serialize(gen, ctx, false);
 		}
 		gen.writeEndArray();
@@ -264,6 +258,4 @@ public class Schema implements ScimSerializer  {
 		
 	}
 
-
-    
 }

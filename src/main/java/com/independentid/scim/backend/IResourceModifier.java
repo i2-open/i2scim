@@ -1,29 +1,28 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.backend;
 
-import java.text.ParseException;
-
+import com.independentid.scim.core.err.PreconditionFailException;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.server.PreconditionFailException;
-import com.independentid.scim.server.ScimException;
+
+import java.text.ParseException;
 
 /**
  * IResourceModifier defines an interface to a <code>ScimResource</code> which can 
@@ -44,7 +43,7 @@ public interface IResourceModifier {
 	 * @throws ParseException 
 	 * @throws SchemaException 
 	 */
-	public void modifyResource(JsonPatchRequest req, RequestCtx ctx) throws ScimException;
+	void modifyResource(JsonPatchRequest req, RequestCtx ctx) throws ScimException;
 	
 	/**
 	 * Attempts to replace the current resource (subject to attribute mutability) with the specified
@@ -54,12 +53,12 @@ public interface IResourceModifier {
 	 * @return True if the inbound ScimResource was used to replace the current resource.
 	 * @throws ScimException
 	 */
-	public boolean replaceResAttributes(ScimResource res, RequestCtx ctx) throws ScimException;
+	boolean replaceResAttributes(ScimResource res, RequestCtx ctx) throws ScimException;
 	
 	/**
 	 * @return true if the resource has been modified and not yet persisted.
 	 */
-	public boolean isModified();
+	boolean isModified();
 	
 	/**
 	 * Checks the <code>RequestCtx</code> for the "ETag" header. If specified compares
@@ -67,5 +66,5 @@ public interface IResourceModifier {
 	 * @param ctx A RequestCtx containing an etag hash (or null)
 	 * @return true if RequestCtx etag is null OR RequestCtx etag matches current resource hash
 	 */
-	public boolean checkPreCondition(RequestCtx ctx) throws PreconditionFailException;
+	boolean checkPreCondition(RequestCtx ctx) throws PreconditionFailException;
 }

@@ -1,33 +1,32 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 package com.independentid.scim.resource;
-
-import java.io.IOException;
-import java.io.StringWriter;
-import java.text.ParseException;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.independentid.scim.core.err.ConflictException;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
-import com.independentid.scim.server.ConflictException;
-import com.independentid.scim.server.ScimException;
+
+import java.io.IOException;
+import java.io.StringWriter;
+import java.text.ParseException;
 
 public abstract class Value {
 	public JsonNodeType jtype;
@@ -59,8 +58,8 @@ public abstract class Value {
 			e.printStackTrace();
 		}
 		return null;
-	};
-	
+	}
+
 	public  String toString() {
 		StringWriter writer = new StringWriter();
 		try {
@@ -70,8 +69,7 @@ public abstract class Value {
 			
 			gen.close();
 			writer.close();
-			String result = writer.getBuffer().toString();
-			return result;
+			return writer.getBuffer().toString();
 		} catch (IOException | ScimException e) {
 			// Should not happen
 			e.printStackTrace();
