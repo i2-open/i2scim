@@ -12,12 +12,13 @@
  * bound by the same confidentiality agreement and distribution is
  * subject to the terms of such agreement.
  */
-package com.independentid.scim.test.http;
+package com.independentid.scim.test.auth;
 
 
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.protocol.ScimResponse;
+import com.independentid.scim.test.http.ScimUserCRUDTest;
 import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
@@ -51,7 +52,7 @@ import static org.assertj.core.api.Assertions.fail;
 
 
 @QuarkusTest
-@TestProfile(ScimHttpTestProfile.class)
+@TestProfile(ScimAuthTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
 public class ScimAuthTest {
 	
@@ -64,7 +65,7 @@ public class ScimAuthTest {
 	@Resource(name="ConfigMgr")
 	ConfigMgr cmgr ;
 
-	@ConfigProperty(name="scim.security.oauth2.resourceserver.jwt.jwk-set-uri",defaultValue = "classpath:/certs/jwks-certs.json")
+	@ConfigProperty(name="smallrye.jwt.verify.key.location",defaultValue = "classpath:/certs/jwks-certs.json")
 	String jwks;
 
 	@TestHTTPResource("/")

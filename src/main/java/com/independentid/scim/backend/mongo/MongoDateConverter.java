@@ -20,7 +20,7 @@ import java.util.Date;
 import org.bson.json.Converter;
 import org.bson.json.StrictJsonWriter;
 
-import com.independentid.scim.schema.Meta;
+import com.independentid.scim.resource.Meta;
 
 public class MongoDateConverter implements Converter<Long> {
 

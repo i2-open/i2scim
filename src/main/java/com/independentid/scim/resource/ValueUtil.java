@@ -22,7 +22,6 @@ import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.Meta;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaException;
 

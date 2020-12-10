@@ -142,7 +142,7 @@ public abstract class Operation extends RecursiveAction {
     protected void parseRequestUrl() {
         try {
             this.ctx = new RequestCtx(req, resp, cfgMgr);
-        } catch (ScimException | IOException e) {
+        } catch (ScimException e) {
             setCompletionError(new InternalException("Error parsing request URL: " + e.getMessage(), e));
             this.state = OpState.invalid;
         }

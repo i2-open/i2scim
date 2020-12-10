@@ -20,7 +20,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.Meta;
 import com.independentid.scim.schema.SchemaException;
 
 import java.io.IOException;

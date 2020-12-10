@@ -19,7 +19,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.Meta;
+import com.independentid.scim.resource.Meta;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;

@@ -12,13 +12,17 @@
  * bound by the same confidentiality agreement and distribution is
  * subject to the terms of such agreement.
  */
-package com.independentid.scim.schema;
+package com.independentid.scim.resource;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.security.AccessManager;
 import com.independentid.scim.serializer.ScimSerializer;
 
+import javax.inject.Inject;
 import javax.servlet.ServletContext;
 import java.io.IOException;
 import java.text.DateFormat;
@@ -32,7 +36,9 @@ import java.util.Date;
  *
  */
 public class Meta implements ScimSerializer {
-	
+	@Inject
+	AccessManager aMgr;
+
 	//private final static Logger logger = LoggerFactory
 	//		.getLogger(Meta.class);
 	
@@ -137,8 +143,23 @@ public class Meta implements ScimSerializer {
 			} else
 				url = this.location;
 			gen.writeStringField("location", url);
-		}			
-		
+
+			AccessManager.AciSet set = aMgr.getAcisByPath(this.location);
+			if (set.acis.size() > 0) {
+				gen.writeFieldName("acis");
+				gen.writeStartArray();
+				for (AccessControl aci : set.acis) {
+					try {
+						aci.serialize(gen,ctx);
+					} catch (ScimException e) {
+						e.printStackTrace();
+					}
+				}
+				gen.writeEndArray();
+			}
+		}
+
+
 		gen.writeEndObject();
 	}
 

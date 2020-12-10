@@ -22,7 +22,7 @@ import com.independentid.scim.resource.ExtensionValues;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.Meta;
+import com.independentid.scim.resource.Meta;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaException;
 import org.bson.Document;

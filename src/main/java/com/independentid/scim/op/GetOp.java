@@ -53,6 +53,10 @@ public class GetOp extends Operation {
 
 	}
 
+	public GetOp(RequestCtx ctx, int requestNum) {
+		super(ctx,requestNum);
+	}
+
 	/* (non-Javadoc)
 	 * @see com.independentid.scim.op.Operation#doOperation()
 	 */

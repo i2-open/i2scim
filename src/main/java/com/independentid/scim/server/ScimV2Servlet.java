@@ -28,7 +28,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.ejb.Startup;
-import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.servlet.ServletConfig;
@@ -38,6 +38,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.core.Context;
 import java.io.FileInputStream;
 import java.io.IOException;
 
@@ -48,7 +49,7 @@ import java.io.IOException;
  */
 
 @Startup
-@ApplicationScoped
+@RequestScoped
 @Named("ScimServlet")
 @WebServlet("/")
 public class ScimV2Servlet extends HttpServlet {
@@ -70,7 +71,10 @@ public class ScimV2Servlet extends HttpServlet {
 	@Inject
 	@Resource(name="PoolMgr")
   	PoolManager pool;
-	
+
+	@Context
+	HttpServletResponse requestTest;
+
 	public ScimV2Servlet() {
 		
 	}

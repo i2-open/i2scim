@@ -22,7 +22,6 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
-import com.independentid.scim.schema.Meta;
 import com.independentid.scim.schema.SchemaException;
 
 import java.io.IOException;

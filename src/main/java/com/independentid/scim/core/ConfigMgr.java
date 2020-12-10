@@ -35,7 +35,6 @@ import javax.annotation.ManagedBean;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
-import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -93,6 +92,9 @@ public class ConfigMgr {
 	
 	@ConfigProperty(name = "scim.coreSchema.path", defaultValue="classpath:/schema/scimCommonSchema.json")
 	String coreSchemaPath;
+
+	@ConfigProperty(name = "scim.security.acis.path", defaultValue = "classpath:/schema/acis.json")
+	String acisPath;
 	
 
 	//public final static String PARAM_PRETTY_JSON = "scim.json.pretty";
@@ -129,10 +131,13 @@ public class ConfigMgr {
 	int threadCount;
 	
 	@ConfigProperty(name = "scim.security.enable", defaultValue="true")
-	boolean isSecure;
+	boolean isSecurityEnabled;
 
 	@ConfigProperty(name = "scim.security.authen.jwt", defaultValue="true")
 	boolean authJwt;
+
+	@ConfigProperty(name = "scim.security.authen.jwt.claim.scope", defaultValue = "scope")
+	String jwtScopeClaim;
 	
 	@ConfigProperty(name = "scim.security.authen.opaque", defaultValue="false")
 	boolean authOpaque;
@@ -278,22 +283,15 @@ public class ConfigMgr {
 	public String getRoot() {
 		return this.scimRoot;
 	}
-	
-	/*
-	@Bean	
-	public ServletRegistrationBean<HttpServlet> scimServlet() {
-	   ServletRegistrationBean<HttpServlet> servRegBean = new ServletRegistrationBean<>();
-	   servRegBean.setServlet(new ScimV2Servlet());
-	   servRegBean.addUrlMappings("/v2/*","/*");
-	   servRegBean.setLoadOnStartup(1);
-	   return servRegBean;
-	}*/
-	
+
+	public InputStream getAcisStream() throws IOException {
+		return this.getClassLoaderFile(this.acisPath);
+	}
 	/**
 	 * @return the isSecure
 	 */
-	public boolean isSecure() {
-		return isSecure;
+	public boolean isSecurityEnabled() {
+		return isSecurityEnabled;
 	}
 
 	/**
@@ -302,6 +300,8 @@ public class ConfigMgr {
 	public boolean isAuthJwt() {
 		return authJwt;
 	}
+
+	public String getJwtScopeClaim() { return jwtScopeClaim; }
 
 	/**
 	 * @return the authOpaque

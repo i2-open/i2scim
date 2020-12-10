@@ -21,6 +21,7 @@ import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.*;
 import com.independentid.scim.protocol.*;
+import com.independentid.scim.resource.Meta;
 import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.*;
