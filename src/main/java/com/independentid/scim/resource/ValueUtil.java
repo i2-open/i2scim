@@ -24,6 +24,7 @@ import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.schema.SchemaManager;
 
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -47,6 +48,7 @@ public class ValueUtil {
 	public final static String TYPE_DECIMAL = "decimal";
 
 	static ConfigMgr cfg = ConfigMgr.getConfig();
+	static SchemaManager smgr = cfg.getSchemaManager();
 	
 	/**
 	 * Static method used to parse a <JsonNode> object for its appropriate SCIM Value type based on the declared Attribute.
@@ -166,7 +168,7 @@ public class ValueUtil {
 	 */
 	public static boolean isReturnable(String name, RequestCtx ctx) {
 		    
-		Attribute attr = ValueUtil.cfg.findAttribute(name, ctx);
+		Attribute attr = smgr.findAttribute(name, ctx);
 		if (attr != null)
 			return isReturnable(attr,ctx);
    

@@ -15,12 +15,12 @@
 
 package com.independentid.scim.test.sub;
 
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.AttributeFilter;
 import com.independentid.scim.protocol.Filter;
 import com.independentid.scim.protocol.LogicFilter;
 import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.schema.SchemaManager;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.MethodOrderer;
@@ -43,8 +43,8 @@ public class FilterTest {
 	private final Logger logger = LoggerFactory.getLogger(FilterTest.class);
 
 	@Inject
-	@Resource(name="ConfigMgr")
-	ConfigMgr cfgMgr;
+	@Resource(name="SchemaMgr")
+	SchemaManager smgr;
 	
 	/**
 	 * Test filters from RFC7644, figure 2
@@ -108,19 +108,19 @@ public class FilterTest {
 	
 	
 	@Test
-	public void cfgTest() {
-		assertThat(cfgMgr).as("Check injection worked")
+	public void a_cfgTest() {
+		assertThat(smgr).as("Check injection worked")
 			.isNotNull();
-		assertThat(cfgMgr.isReady()).as("Config is ready.").isTrue();
+
 	}
 	
 	@Test
-	public void testParseFilterString() {
+	public void b_testParseFilterString() {
 		for(int i = 0; i < testArray.length; i++) {
 			logger.debug("Parsing filter: ("+i+"):\t"+testArray[i][1]);
 			RequestCtx ctx = null;
 			try {
-				ctx = new RequestCtx(testArray[i][0],null,testArray[i][1], cfgMgr);
+				ctx = new RequestCtx(testArray[i][0],null,testArray[i][1], smgr);
 			} catch (ScimException e) {
 				fail("Failed while generating RequestCtx and Filter: "+e.getMessage(),e);
 			}

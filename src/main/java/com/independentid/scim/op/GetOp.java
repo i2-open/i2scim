@@ -28,7 +28,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 
 /**
  * @author pjdhunt
@@ -50,11 +49,14 @@ public class GetOp extends Operation {
 	public GetOp(HttpServletRequest req, HttpServletResponse resp, ConfigMgr configMgr) {
 		super(req, resp);
 		this.cfgMgr = configMgr;
+		this.smgr = cfgMgr.getSchemaManager();
 
 	}
 
-	public GetOp(RequestCtx ctx, int requestNum) {
+	public GetOp(RequestCtx ctx, int requestNum, ConfigMgr configMgr) {
 		super(ctx,requestNum);
+		this.cfgMgr = configMgr;
+		this.smgr = cfgMgr.getSchemaManager();
 	}
 
 	/* (non-Javadoc)
@@ -72,7 +74,7 @@ public class GetOp extends Operation {
 		} 
 		
 		// Check if an undefined endpoint was requested.
-		ResourceType type = cfgMgr.getResourceTypeByPath(container);
+		ResourceType type = smgr.getResourceTypeByPath(container);
 		if (type == null) {
 			setCompletionError(new NotFoundException("Undefined resource endpoint."));
 			return;

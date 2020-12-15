@@ -18,16 +18,22 @@ package com.independentid.scim.security;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.resource.AccessControl;
+import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
+import io.quarkus.security.identity.SecurityIdentity;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
 import javax.ejb.Startup;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
+import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -37,18 +43,23 @@ import java.util.TreeMap;
 @Startup
 @Named("AccessMgr")
 public class AccessManager {
+
     private final static Logger logger = LoggerFactory
             .getLogger(AccessManager.class);
 
+    @ConfigProperty(name = "scim.security.acis.path", defaultValue = "classpath:/schema/acis.json")
+    String acisPath;
+
     @Inject
-    ConfigMgr cmgr;
+    @Resource(name="SchemaMgr")
+    SchemaManager smgr;
 
     public static class AciSet {
         public AciSet(String path) {
             this.path = path;
         }
-        public String path;
-        public ArrayList<AccessControl> acis = new ArrayList<>();
+        public final String path;
+        public final ArrayList<AccessControl> acis = new ArrayList<>();
     }
 
     TreeMap<String, AciSet> pathMap = new TreeMap<>();
@@ -59,12 +70,12 @@ public class AccessManager {
 
     @PostConstruct
     public void init() throws IOException {
-        InputStream aciStream = cmgr.getAcisStream();
+        InputStream aciStream = ConfigMgr.getClassLoaderFile(this.acisPath);
         JsonNode node = JsonUtil.getJsonTree(aciStream);
         JsonNode acis = node.get("acis");
         for (JsonNode anode : acis) {
             try {
-                AccessControl aci = new AccessControl(anode);
+                AccessControl aci = new AccessControl(smgr, anode);
                 if (logger.isDebugEnabled())
                     logger.debug("Loaded ACI: "+aci.toJsonString());
                 addAci(aci);
@@ -75,7 +86,7 @@ public class AccessManager {
     }
 
     public void addAci(AccessControl aci) {
-        String path = aci.getPath();
+        String path = aci.getAciPath();
 
         AciSet set = pathMap.get(path);
         if (set == null) {
@@ -118,6 +129,18 @@ public class AccessManager {
      */
     public AciSet getAcisByKey(String path) {
         return pathMap.get(path);
+    }
+
+    public boolean isOperationValid(RequestCtx ctx, SecurityIdentity identity, HttpServletRequest req) {
+        String method = req.getMethod();
+
+        AciSet set = getAcisByPath(ctx.getPath());
+        set.acis.removeIf(aci -> !aci.isOpPermitted(method,ctx,identity));
+
+        if (set.acis.isEmpty())
+            return false;
+        ctx.setAccessContext(identity,set);
+        return true;
     }
 
 

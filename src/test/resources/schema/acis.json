@@ -15,8 +15,16 @@
       "targetAttrs" : "*,+",
       "rights" : "read, search, compare",
       "actors" : [
-        "group=/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a",
-        "role=admin"
+        "role=admin test"
+      ]
+    },
+    {
+      "path" : "/",
+      "name" : "Root can update all systems",
+      "targetAttrs" : "*,+",
+      "rights" : "add, modify, delete",
+      "actors" : [
+        "role=admin test"
       ]
     },
 
@@ -31,6 +39,20 @@
 
     {
       "path" : "/ServiceProviderConfig",
+      "name" : "Allow unauthenticated access to ServiceProviderConfig",
+      "targetAttrs" :"*",
+      "rights" : "read, search, compare",
+      "actors" : ["any"]
+    },
+    {
+      "path" : "/Schemas",
+      "name" : "Allow unauthenticated access to ServiceProviderConfig",
+      "targetAttrs" :"*",
+      "rights" : "read, search, compare",
+      "actors" : ["any"]
+    },
+    {
+      "path" : "/ResourceTypes",
       "name" : "Allow unauthenticated access to ServiceProviderConfig",
       "targetAttrs" :"*",
       "rights" : "read, search, compare",

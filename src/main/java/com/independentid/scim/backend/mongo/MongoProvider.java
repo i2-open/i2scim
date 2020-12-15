@@ -64,6 +64,7 @@ public class MongoProvider implements IScimProvider {
 	private boolean ready = false;
 
 	ConfigMgr cfgMgr;
+	SchemaManager smgr;
 
 	final String dbUrl = System.getProperty("scim.mongodb.uri", "mongodb://localhost:27017");
 
@@ -100,6 +101,7 @@ public class MongoProvider implements IScimProvider {
 	@PostConstruct
 	public synchronized void init(ConfigMgr cfg) {
 		cfgMgr = cfg;
+		smgr = cfg.getSchemaManager();
 		if (singleton == null)
 			singleton = this;
 		if (this.ready)
@@ -107,8 +109,8 @@ public class MongoProvider implements IScimProvider {
 		// this.scfg = cfg;
 		logger.info("======Initializing SCIM MongoDB Provider======");
 		// Connect to the instance define by injected dbUrl value
-		if (this.mclient == null)
-			this.mclient = MongoClients.create(this.dbUrl);
+		if (mclient == null)
+			mclient = MongoClients.create(this.dbUrl);
 		
 		
 		this.scimDb = mclient.getDatabase(this.scimDbName);
@@ -138,7 +140,7 @@ public class MongoProvider implements IScimProvider {
 			colIter.forEach(name ->
 					logger.info("Resource Type: "+name));
 		}
-		if (this.mclient != null) {
+		if (mclient != null) {
 			this.ready = true;
 			logger.info("================ SCIM Mongo Provider initialized ================");
 		}
@@ -199,7 +201,7 @@ public class MongoProvider implements IScimProvider {
 			return new ScimResponse(ScimResponse.ST_INTERNAL,e.getLocalizedMessage(),null);
 		}
 		ctx.setEncodeExtensions(false);
-		ResourceResponse resp = new ResourceResponse(res, ctx);
+		ResourceResponse resp = new ResourceResponse(res, ctx, cfgMgr);
 		resp.setStatus(ScimResponse.ST_CREATED);
 		resp.setLocation(res.getMeta().getLocation());
 		resp.setETag(res.getMeta().getVersion());
@@ -253,7 +255,7 @@ public class MongoProvider implements IScimProvider {
 		
 		// meta.setVersion(etag);
 		ctx.setEncodeExtensions(false);
-		ResourceResponse resp = new ResourceResponse(replacementResource, ctx);
+		ResourceResponse resp = new ResourceResponse(replacementResource, ctx, cfgMgr);
 		resp.setStatus(ScimResponse.ST_OK);
 		resp.setLocation(replacementResource.getMeta().getLocation());
 		resp.setETag(replacementResource.getMeta().getVersion());
@@ -261,7 +263,7 @@ public class MongoProvider implements IScimProvider {
 		return resp;
 	}
 	
-	public PersistStateResource getConfigState() throws ScimException, IOException, SchemaException, ParseException {
+	public PersistStateResource getConfigState() throws ScimException, IOException, ParseException {
 		if (stateResource == null) {
 		
 			Document query = new Document();
@@ -281,7 +283,7 @@ public class MongoProvider implements IScimProvider {
 			String jsonstr = pdoc.toJson();
 			JsonNode jdoc = JsonUtil.getJsonTree(jsonstr);
 			
-			stateResource = new PersistStateResource(cfgMgr,jdoc,null, PersistStateResource.RESTYPE_CONFIG);
+			stateResource = new PersistStateResource(this.smgr,jdoc,null, PersistStateResource.RESTYPE_CONFIG);
 		}
 		
 		return stateResource;
@@ -318,7 +320,7 @@ public class MongoProvider implements IScimProvider {
 		//String json = JSON.serialize(res);
 		
 		try {
-			return new MongoScimResource(cfgMgr, res, type);
+			return new MongoScimResource(smgr, res, type);
 			
 		} catch (SchemaException | ParseException e) {
 			throw new BackendException(
@@ -346,13 +348,13 @@ public class MongoProvider implements IScimProvider {
 			
 			// if this is a get of a specific resource return the object
 			if (ctx.getFilter() == null)
-				return new ResourceResponse(res,ctx);
+				return new ResourceResponse(res,ctx,cfgMgr);
 			
 			// if this is a filtered request, must return a list response per RFC7644 Sec 3.4.2
 			if (Filter.checkMatch(res, ctx)) 
-				return new ListResponse(res, ctx);  // return the single item
+				return new ListResponse(res, ctx, cfgMgr);  // return the single item
 			else
-				return new ListResponse(ctx);  // return an empty response			
+				return new ListResponse(ctx, cfgMgr);  // return an empty response
 		}
 		
 		String type = ctx.getResourceContainer();
@@ -381,7 +383,7 @@ public class MongoProvider implements IScimProvider {
 		MongoCursor<Document> iter = fiter.iterator();
 		// If there are no results return empty set.
 		if (!iter.hasNext())
-			return new ListResponse(ctx);
+			return new ListResponse(ctx, cfgMgr);
 
 		// Multi-object response.
 		ArrayList<ScimResource> vals = new ArrayList<>();
@@ -390,7 +392,7 @@ public class MongoProvider implements IScimProvider {
 			Document res = iter.next();
 
 			try {
-				ScimResource sres = new MongoScimResource(cfgMgr, res, type);
+				ScimResource sres = new MongoScimResource(smgr, res, type);
 			
 				// if (Filter.checkMatch(sres, ctx))
 				vals.add(sres);
@@ -404,7 +406,7 @@ public class MongoProvider implements IScimProvider {
 								*/
 			}
 		}
-		return new ListResponse(vals, ctx);
+		return new ListResponse(vals, ctx, cfgMgr);
 
 	}
 
@@ -613,7 +615,7 @@ public class MongoProvider implements IScimProvider {
 
 
 			MongoCollection<Document> col = sDb.getCollection(dbName);
-			Attribute attr = cfgMgr.findAttribute(index, null);
+			Attribute attr = smgr.findAttribute(index, null);
 			if (attr == null) {
 				logger.warn("Attribute configuration for " + attrName + " was not found. Ignoring index: " + index);
 				continue;
@@ -649,7 +651,7 @@ public class MongoProvider implements IScimProvider {
 		int scnt = schemaCol.size();
 		int rcnt = resTypeCol.size();
 			
-		PersistStateResource confState = new PersistStateResource(cfgMgr,rcnt,scnt);
+		PersistStateResource confState = new PersistStateResource(this.smgr,rcnt,scnt);
 		
 		// Process the schemas
 		

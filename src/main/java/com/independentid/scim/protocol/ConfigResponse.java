@@ -23,6 +23,7 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
+import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,7 +43,8 @@ public class ConfigResponse extends ListResponse {
 
     //private RequestCtx ctx;
 
-   ConfigMgr scfg;
+    ConfigMgr cmgr;
+    SchemaManager smgr;
 
     private boolean isResourceResponse = false;
 
@@ -52,8 +54,10 @@ public class ConfigResponse extends ListResponse {
      * @param configMgr The system {@link ConfigMgr} object containing the operational configuration and schema
      */
     public ConfigResponse(RequestCtx ctx, ConfigMgr configMgr) {
-        super(ctx);
-        this.scfg = configMgr;
+        super(ctx, configMgr);
+        this.cmgr = configMgr;
+        this.smgr = configMgr.getSchemaManager();
+
         switch (ctx.endpoint) {
             case ScimParams.PATH_SERV_PROV_CFG:
                 if (ctx.getPathId() != null) {
@@ -66,11 +70,11 @@ public class ConfigResponse extends ListResponse {
                         isResourceResponse = true;
                     StringWriter writer = new StringWriter();
                     JsonGenerator gen = JsonUtil.getGenerator(writer, true);
-                    scfg.serializeServiceProviderConfig(ctx, gen);
+                    cmgr.serializeServiceProviderConfig(ctx, gen);
                     gen.close();
                     writer.close();
                     JsonNode jCfg = JsonUtil.getJsonTree(writer.toString());
-                    ScimResource res = new ScimResource(scfg, jCfg, ScimParams.PATH_SERV_PROV_CFG);
+                    ScimResource res = new ScimResource(smgr, jCfg, ScimParams.PATH_SERV_PROV_CFG);
 
                     if (Filter.checkMatch(res, ctx))
                         this.entries.add(res);
@@ -89,7 +93,7 @@ public class ConfigResponse extends ListResponse {
                 }
 
                 if (ctx.getPathId() != null) {
-                    Schema sch = scfg.getSchemaById(ctx.getPathId());
+                    Schema sch = smgr.getSchemaById(ctx.getPathId());
                     if (sch == null) {
                         this.setError(new NotFoundException("Not Found: " + ctx.path));
                         break;
@@ -99,7 +103,7 @@ public class ConfigResponse extends ListResponse {
                     isResourceResponse = true;
                     try {
                         JsonNode jsch = sch.toJsonNode();
-                        ScimResource res = new ScimResource(scfg, jsch, ScimParams.PATH_TYPE_SCHEMAS);
+                        ScimResource res = new ScimResource(smgr, jsch, ScimParams.PATH_TYPE_SCHEMAS);
                         this.entries.add(res);
                     } catch (Exception e) {
                         logger.warn("Exception occurred serializing Schema", e);
@@ -107,10 +111,10 @@ public class ConfigResponse extends ListResponse {
                 } else {
                     // Return all schemas
 
-                    for (Schema sch : scfg.getSchemas()) {
+                    for (Schema sch : smgr.getSchemas()) {
                         try {
 
-                            this.entries.add(new ScimResource(scfg, sch.toJsonNode(), ScimParams.PATH_TYPE_SCHEMAS));
+                            this.entries.add(new ScimResource(smgr, sch.toJsonNode(), ScimParams.PATH_TYPE_SCHEMAS));
                         } catch (ParseException | ScimException | IOException e) {
                             // THis should not happen because it would be caught elsewhere in boot
                             logger.warn("Exception occurred serializing Schema id: " + sch.getId(), e);
@@ -127,7 +131,7 @@ public class ConfigResponse extends ListResponse {
                 }
 
                 if (ctx.getPathId() != null) {
-                    Iterator<ResourceType> iter = scfg.getResourceTypes().iterator();
+                    Iterator<ResourceType> iter = smgr.getResourceTypes().iterator();
                     ResourceType rt = null;
                     String id = ctx.getPathId();
                     while (iter.hasNext() && rt == null) {
@@ -146,7 +150,7 @@ public class ConfigResponse extends ListResponse {
                     isResourceResponse = true;
                     try {
                         JsonNode jrt = rt.toJsonNode();
-                        ScimResource res = new ScimResource(scfg, jrt, ScimParams.PATH_TYPE_RESOURCETYPE);
+                        ScimResource res = new ScimResource(smgr, jrt, ScimParams.PATH_TYPE_RESOURCETYPE);
                         this.entries.add(res);
                     } catch (Exception e) {
                         logger.warn("Exception occurred serializing ResourceType id: " + rt.getId(), e);
@@ -154,10 +158,10 @@ public class ConfigResponse extends ListResponse {
                 } else {
                     // Return all ResourceTypes
 
-                    for (ResourceType rt : scfg.getResourceTypes()) {
+                    for (ResourceType rt : smgr.getResourceTypes()) {
                         try {
 
-                            this.entries.add(new ScimResource(scfg, rt.toJsonNode(), ScimParams.PATH_TYPE_RESOURCETYPE));
+                            this.entries.add(new ScimResource(smgr, rt.toJsonNode(), ScimParams.PATH_TYPE_RESOURCETYPE));
                         } catch (ParseException | ScimException | IOException e) {
                             // THis should not happen because it would be caught elsewhere in boot
                             logger.warn("Exception occurred serializing ResourceType id: " + rt.getId(), e);
@@ -181,7 +185,7 @@ public class ConfigResponse extends ListResponse {
 
         if (this.isResourceResponse && this.entries.size() == 1) {
             // Converts to a resource response for single entry non-filter GETs
-            ResourceResponse rresp = new ResourceResponse(this.entries.get(0), ctx);
+            ResourceResponse rresp = new ResourceResponse(this.entries.get(0), ctx, cmgr);
             rresp.serialize(gen, ctx, forHash);
             return;
         }

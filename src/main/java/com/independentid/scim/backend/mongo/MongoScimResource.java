@@ -15,7 +15,6 @@
 
 package com.independentid.scim.backend.mongo;
 
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.resource.ExtensionValues;
@@ -25,6 +24,7 @@ import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.resource.Meta;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.schema.SchemaManager;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 
@@ -40,11 +40,8 @@ import java.text.ParseException;
  */
 public class MongoScimResource extends ScimResource {
 
-	
-
 	private Document originalResource;
-	
-	
+
 	/**
 	 * MongoScimResource wraps ScimResource in order to provide direct Mongo BSON Document mapping.
 	 */
@@ -54,17 +51,17 @@ public class MongoScimResource extends ScimResource {
 
 	/**
 	 * Parses a Mongo <Document> and converts to <ScimResource> using <MongoMapUtil>.
-	 * @param cfg A handle to SCIM <ConfigMgr> which holds the Schema definitions
+	 * @param schemaManager A handle to SCIM <ConfigMgr> which holds the Schema definitions
 	 * @param dbResource A Mongo <Document> object containing the Mongo record to be converted to ScimResource
 	 * @param container A Mongo <String> representing the Resource Type path (e.g. Users) for the object. Used to lookup <ResourceType> and <Schema>.
 	 * @throws SchemaException is thrown when unable to parse data not defined in SCIM <Schema> configuration
 	 * @throws ParseException is thrown when a known format is invalid (e.g. URI, Date, etc)
 	 * @throws  ScimException is thrown when a general SCIM protocol error has occurred.
 	 */
-	public MongoScimResource(ConfigMgr cfg, Document dbResource, String container)
+	public MongoScimResource(SchemaManager schemaManager, Document dbResource, String container)
 			throws SchemaException, ParseException, ScimException {
 		super();
-		super.cfg = cfg;
+		this.smgr = schemaManager;
 		//super(cfg, MongoMapUtil.toScimJsonNode(dbResource), null);
 		
 		this.originalResource = dbResource;	
@@ -122,7 +119,7 @@ public class MongoScimResource extends ScimResource {
 		
 		String[] eids = type.getSchemaExtension();
 		for (String eid : eids) {
-			Schema schema = cfg.getSchemaById(eid);
+			Schema schema = smgr.getSchemaById(eid);
 			ExtensionValues val = MongoMapUtil.mapBsonExtension(schema, doc);
 			if (val != null)
 				this.extAttrs.put(eid, val);

@@ -15,12 +15,14 @@
 
 package com.independentid.scim.test.sub;
 
-import com.independentid.scim.core.ConfigMgr;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
-import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.ResourceType;
+import com.independentid.scim.schema.*;
+import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.MethodOrderer;
@@ -31,9 +33,10 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.StringWriter;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Collection;
 import java.util.Iterator;
 
@@ -43,32 +46,37 @@ import static org.assertj.core.api.Assertions.fail;
 @QuarkusTest
 @TestProfile(ScimSubComponentTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
-public class ConfigMgrTest {
+public class SchemaManagerTest {
 	
-	private final Logger logger = LoggerFactory.getLogger(ConfigMgrTest.class);
+	private final Logger logger = LoggerFactory.getLogger(SchemaManagerTest.class);
 
 	@Inject
-	@Resource(name="ConfigMgr")
-	ConfigMgr cmgr;
+	@Resource(name="SchemaMgr")
+	SchemaManager smgr;
 
 	@Test
 	public void a_ConfigTest() {
 		
 		
-		logger.info("==========ConfigMgr Tests==========");
-		logger.info("  Checking ConfigMgr bean instantiated.");
+		logger.info("==========Schema Manager Tests==========");
+
+		assertThat(smgr).isNotNull();
+
+		logger.debug("\t\tChecking Schema");
+
+		Collection<Schema> scol =  smgr.getSchemas();
+		assertThat(scol).isNotNull();
+		assertThat(scol).isNotEmpty();
+
+		for (Schema type : scol) {
+			logger.debug("\t\tSchema: "+type.getName()+", Id: "+type.getId());
+		}
+		logger.debug("\t\tSchema types loaded: "+scol.size());
+		assertThat(scol.size()).isGreaterThan(1);
+
+		logger.debug("\t\tChecking Resource Types");
 		
-		assertThat(cmgr).isNotNull();
-		
-		// These values should be returning default values and should not fail.
-		assertThat(cmgr.getResourceTypePath()).isNotNull();
-		logger.info("\tResource Type file path="+cmgr.getResourceTypePath());
-		
-		assertThat(cmgr.getSchemaPath()).isNotNull();
-				
-		logger.debug("\t\tGetting Resource Types");
-		
-		Collection<ResourceType> rcol = cmgr.getResourceTypes();
+		Collection<ResourceType> rcol = smgr.getResourceTypes();
 		
 		assertThat(rcol).isNotNull();
 		assertThat(rcol).isNotEmpty();
@@ -101,7 +109,7 @@ public class ConfigMgrTest {
 	@Test
 	public void b_findAttributeNoCtxTest() {
 		logger.info("\tFind attribute with null RequestCtx test");
-		Attribute attr = cmgr.findAttribute("name.middleName", null);
+		Attribute attr = smgr.findAttribute("name.middleName", null);
 		
 		// Should be null because the wrong name will match
 		assertThat(attr)
@@ -112,12 +120,12 @@ public class ConfigMgrTest {
 			.isEqualTo("urn:ietf:params:scim:schemas:core:2.0:User");
 			
 		
-		Attribute aUserName = cmgr.findAttribute("User:name", null);
+		Attribute aUserName = smgr.findAttribute("User:name", null);
 		assertThat(aUserName)
 		.as("Check User:name attribute returned")
 		.isNotNull();
 		
-		Attribute aUserNameMiddle = cmgr.findAttribute("User:name.middleName", null);
+		Attribute aUserNameMiddle = smgr.findAttribute("User:name.middleName", null);
 		assertThat(aUserNameMiddle)
 		.as("Check User:name.middleName attribute returned")
 		.isNotNull();
@@ -126,13 +134,13 @@ public class ConfigMgrTest {
 			.as("Check that middleName is a sub attribute of User:name")
 			.isEqualTo(aUserNameMiddle);
 		
-		Attribute afullpath = cmgr.findAttribute("urn:ietf:params:scim:schemas:core:2.0:User:name.middleName", null);
+		Attribute afullpath = smgr.findAttribute("urn:ietf:params:scim:schemas:core:2.0:User:name.middleName", null);
 		assertThat(afullpath)
 			.as("Check urn:ietf:params:scim:schemas:core:2.0:User:name.middleName is same as name.middleName")
 			.isEqualTo(attr);
 		
 		// Fetch the id attribute via its full path
-		Attribute id = cmgr.findAttribute("Common:id", null);
+		Attribute id = smgr.findAttribute("Common:id", null);
 		assertThat(id)
 			.as("Check the id attribute is defined")
 			.isNotNull();
@@ -144,7 +152,7 @@ public class ConfigMgrTest {
 			.isEqualTo(ScimParams.SCHEMA_SCHEMA_Common);
 		
 		// Now check that id is retrievable by short name
-		id = cmgr.findAttribute("id", null);
+		id = smgr.findAttribute("id", null);
 		assertThat(id)
 			.as("Check the id attribute is found")
 			.isNotNull();
@@ -155,7 +163,7 @@ public class ConfigMgrTest {
 			.as("Schema of id attribute is Common")
 			.isEqualTo(ScimParams.SCHEMA_SCHEMA_Common);
 		
-		Attribute org = cmgr.findAttribute("organization", null);
+		Attribute org = smgr.findAttribute("organization", null);
 		
 		assertThat(org)
 			.as("Check that Enterprise Organization Fouund")
@@ -172,7 +180,7 @@ public class ConfigMgrTest {
 
 		RequestCtx ctx = null;
 		try {
-			ctx = new RequestCtx("Users",null,"userName eq dummy", cmgr);
+			ctx = new RequestCtx("Users",null,"userName eq dummy", smgr);
 		} catch (ScimException e) {
 			fail("Error creating RequestCtx: "+e.getLocalizedMessage(),e);
 		}
@@ -181,7 +189,7 @@ public class ConfigMgrTest {
 			.as("Check RequestCtx is asserted")
 			.isNotNull();
 		
-		Attribute attr = cmgr.findAttribute("name.middleName", ctx);
+		Attribute attr = smgr.findAttribute("name.middleName", ctx);
 		
 		// Should be null because the wrong name will match
 		assertThat(attr)
@@ -192,12 +200,12 @@ public class ConfigMgrTest {
 			.isEqualTo("urn:ietf:params:scim:schemas:core:2.0:User");
 			
 		
-		Attribute aUserName = cmgr.findAttribute("User:name", ctx);
+		Attribute aUserName = smgr.findAttribute("User:name", ctx);
 		assertThat(aUserName)
 		.as("Check User:name attribute returned")
 		.isNotNull();
 		
-		Attribute aUserNameMiddle = cmgr.findAttribute("User:name.middleName", ctx);
+		Attribute aUserNameMiddle = smgr.findAttribute("User:name.middleName", ctx);
 		assertThat(aUserNameMiddle)
 		.as("Check User:name.middleName attribute returned")
 		.isNotNull();
@@ -206,13 +214,13 @@ public class ConfigMgrTest {
 			.as("Check that middleName is a sub attribute of User:name")
 			.isEqualTo(aUserNameMiddle);
 		
-		Attribute afullpath = cmgr.findAttribute("urn:ietf:params:scim:schemas:core:2.0:User:name.middleName", ctx);
+		Attribute afullpath = smgr.findAttribute("urn:ietf:params:scim:schemas:core:2.0:User:name.middleName", ctx);
 		assertThat(afullpath)
 			.as("Check urn:ietf:params:scim:schemas:core:2.0:User:name.middleName is same as name.middleName")
 			.isEqualTo(attr);
 		
 		// Fetch the id attribute via its full path
-		Attribute id = cmgr.findAttribute("Common:id", ctx);
+		Attribute id = smgr.findAttribute("Common:id", ctx);
 		assertThat(id)
 			.as("Check the id attribute is defined")
 			.isNotNull();
@@ -224,7 +232,7 @@ public class ConfigMgrTest {
 			.isEqualTo(ScimParams.SCHEMA_SCHEMA_Common);
 		
 		// Now check that id is retrievable by short name
-		id = cmgr.findAttribute("id", ctx);
+		id = smgr.findAttribute("id", ctx);
 		assertThat(id)
 			.as("Check the id attribute is found")
 			.isNotNull();
@@ -235,7 +243,7 @@ public class ConfigMgrTest {
 			.as("Schema of id attribute is Common")
 			.isEqualTo(ScimParams.SCHEMA_SCHEMA_Common);
 		
-		Attribute org = cmgr.findAttribute("organization", ctx);
+		Attribute org = smgr.findAttribute("organization", ctx);
 		
 		assertThat(org)
 			.as("Check that Enterprise Organization Fouund")
@@ -247,31 +255,76 @@ public class ConfigMgrTest {
 	}
 
 	@Test
-	public void d_findResourceTest() {
-		logger.info("\tTesting file loaders");
+	public void d_addSchemaAndResTypeTest()  {
+		Schema a = new Schema();
+		a.setId("urn:bla.de.blah.TEST");
+		a.setName("TestSchema");
+		Attribute name = smgr.findAttribute("User","name",null,null);
 
-		String schemaPath = cmgr.getSchemaPath();
 
-		assertThat(schemaPath).isNotNull();
+        //copy the name
+		Attribute testAttr = null;
+		try {  // yeah yeah...we don't have a clone method
+			StringWriter writer = new StringWriter();
+			JsonGenerator gen = JsonUtil.getGenerator(writer,true);
+			name.serialize(gen,null,false);
+			gen.close();
+			writer.close();
+			String jsonStr = writer.toString();
+			JsonNode json = JsonUtil.getJsonTree(jsonStr);
+			testAttr = new Attribute(json,null);
+			testAttr.setPath(a.getId(),name.getName());
+		} catch (SchemaException | IOException e) {
+			e.printStackTrace();
+		}
+		assertThat(testAttr).isNotNull();
+
+		a.putAttribute(testAttr);
+
+		smgr.addSchema(a);
+
+		Attribute nameCompare = smgr.findAttribute(a.getId(),"name",null,null);
+
+		assertThat(nameCompare)
+				.as("Added attribute was found")
+				.isNotNull();
+		assertThat(nameCompare.getSchema())
+				.as("New name attribute associated with Test schema")
+				.isEqualTo(a.getId());
+
+		Attribute userName = smgr.findAttribute("User","name",null,null);
+		assertThat(userName).isNotNull();
+		assertThat(userName)
+				.as("User name has not been changed")
+				.isEqualTo(name);
+		assertThat(userName)
+				.as("Check test:Name not the same as User:Name")
+				.isNotEqualTo(nameCompare);
+
+
+		ResourceType type = new ResourceType();
+		type.setId("urn:bla.de.blah.TEST");
+		type.setSchema(a.getId());
+		try {
+			type.setEndpoint(new URI("/Tests"));
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+			fail("Invalid URL");
+		}
+		type.setName("Test");
 
 		try {
-			File sFile = cmgr.findClassLoaderResource(schemaPath);
-			assertThat(sFile).isNotNull();
-
-			assertThat(sFile.exists())
-					.as("Schema File located")
-					.isTrue();
-
-			InputStream stream = cmgr.getClassLoaderFile(schemaPath);
-			byte[] bytes = stream.readAllBytes();
-			stream.close();
-			assertThat(bytes.length)
-					.as("Schema file readable")
-					.isGreaterThan(10);
-		} catch (IOException e) {
-			fail(e.getLocalizedMessage());
+			smgr.addResourceType(type);
+		} catch (SchemaException e) {
+			e.printStackTrace();
+			fail("Failed to add Test ResourceType");
 		}
 
+		ResourceType typeCopy = smgr.getResourceType(type.getId());
+		assertThat(typeCopy).isNotNull();
+		assertThat(typeCopy)
+				.as("Check new type is equal to the old")
+				.isEqualTo(type);
 	}
 
 }

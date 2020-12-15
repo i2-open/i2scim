@@ -38,6 +38,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.Context;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -97,7 +98,7 @@ public class ScimV2Servlet extends HttpServlet {
 			super.service(req, resp);
 			return;
 		}
-		if (req.getMethod().equalsIgnoreCase("PATCH")) 
+		if (req.getMethod().equals(HttpMethod.PATCH))
 			doPatch(req,resp);
 		else
 			super.service(req, resp);
@@ -145,7 +146,7 @@ public class ScimV2Servlet extends HttpServlet {
 			
 		complete(op);
 	}
-	
+
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {

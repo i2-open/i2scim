@@ -50,12 +50,14 @@ public class CreateOp extends Operation implements IBulkOp {
      * @param ctx        The associated bulk operation RequestCtx
      * @param parent     When part of a series of bulk operations, the parent {@link BulkOps} operation.
      * @param requestNum An identifier that identifies a request number in a series of bulk operations.
+     * @param configMgr  The system ConfigMgr object
      */
-    public CreateOp(JsonNode data, RequestCtx ctx, BulkOps parent, int requestNum) {
+    public CreateOp(JsonNode data, RequestCtx ctx, BulkOps parent, int requestNum, ConfigMgr configMgr) {
         super(ctx, requestNum);
         this.parent = parent;
         this.node = data;
-        this.cfgMgr = ctx.getConfigMgr();
+        this.cfgMgr = configMgr;
+        this.smgr = configMgr.getSchemaManager();
     }
 
     /**
@@ -69,6 +71,7 @@ public class CreateOp extends Operation implements IBulkOp {
         super(req, resp);
         this.parent = null;
         this.cfgMgr = mgr;
+        this.smgr = mgr.getSchemaManager();
     }
 
     /**
@@ -91,7 +94,7 @@ public class CreateOp extends Operation implements IBulkOp {
         }
 
         try {
-            this.newResource = new ScimResource(this.cfgMgr, node, null, getResourceType().getTypePath());
+            this.newResource = new ScimResource(this.smgr, node, null, getResourceType().getTypePath());
         } catch (ScimException | ParseException e) {
             ScimException se;
             if (e instanceof ParseException) {

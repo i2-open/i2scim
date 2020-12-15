@@ -24,6 +24,7 @@ import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
+import com.independentid.scim.schema.SchemaManager;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +32,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.ejb.Startup;
-import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Named;
 import javax.inject.Singleton;
 import java.io.IOException;
@@ -160,8 +160,8 @@ public class BackendHandler {
 		return provider.delete(ctx);
 	}
 
-	public void syncConfig(ConfigMgr cfgmgr) throws IOException {
-		provider.syncConfig(cfgmgr.getSchemas(), cfgmgr.getResourceTypes());
+	public void syncConfig(SchemaManager smgr) throws IOException {
+		provider.syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
 	}
 	
 	public Collection<Schema> loadSchemas() throws ScimException {

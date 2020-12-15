@@ -27,6 +27,7 @@ import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.StringValue;
 import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.SchemaManager;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.credential.PasswordCredential;
 import io.quarkus.security.identity.AuthenticationRequestContext;
@@ -54,10 +55,16 @@ import java.util.Iterator;
  */
 @ApplicationScoped
 public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePasswordAuthenticationRequest> {
+    public static final String ATTR_SELF_ID = "id";
+    public static final String ATTR_ACTOR_RES = "scimActor";
+
     private static final Logger logger = LoggerFactory.getLogger(ScimBasicIdentityProvider.class);
 
     @Inject
     ConfigMgr cmgr;
+
+    @Inject
+    SchemaManager smgr;
 
     @Inject
     BackendHandler handler;
@@ -109,7 +116,7 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
         String filter = URLEncoder.encode("UserName eq \"" + user + "\" and password eq \"" + pwd + "\"", StandardCharsets.UTF_8);
         RequestCtx ctx;
         try {
-            ctx = new RequestCtx("/Users", null, filter, cmgr);
+            ctx = new RequestCtx("/Users", null, filter, smgr);
         } catch (ScimException e) {
             logger.warn("Exception creating search filter for user " + user + ": " + e.getLocalizedMessage(), e);
             return Uni.createFrom().failure(new AuthenticationFailedException());
@@ -137,11 +144,13 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
                 //Get the roles from the matched user resource
                 Attribute role = resource.getAttribute("roles", ctx);
                 Value val = resource.getValue(role);
-
+                String id = resource.getId();
                 QuarkusSecurityIdentity.Builder builder = QuarkusSecurityIdentity.builder();
                 builder
                         .setPrincipal(new BasicUserPrincipal(user))
                         .addAttribute("uri", resource.getMeta().getLocation())
+                        .addAttribute(ATTR_SELF_ID,id)
+                        .addAttribute(ATTR_ACTOR_RES,resource)
                         .addCredential(new PasswordCredential(pwd.toCharArray()))
                         .addRole("user"); // add the default role
 

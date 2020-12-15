@@ -49,12 +49,14 @@ public class PutOp extends Operation implements IBulkOp {
      * @param data       The JsonNode of a data element of a SCIM Bulk operation
      * @param ctx        The associated bulk operation RequestCtx
      * @param requestNum If part of a series of bulk operations, the request number
+     * @param configMgr  The system ConfigMgr object
      */
-    public PutOp(JsonNode data, RequestCtx ctx, BulkOps parent, int requestNum) {
+    public PutOp(JsonNode data, RequestCtx ctx, BulkOps parent, int requestNum, ConfigMgr configMgr) {
         super(ctx, requestNum);
         this.parent = parent;
         this.node = data;
-        this.cfgMgr = ctx.getConfigMgr();
+        this.cfgMgr = configMgr;
+        this.smgr = cfgMgr.getSchemaManager();
     }
 
     /**
@@ -66,7 +68,7 @@ public class PutOp extends Operation implements IBulkOp {
         super(req, resp);
         this.parent = null;
         this.cfgMgr = configMgr;
-
+        this.smgr = cfgMgr.getSchemaManager();
     }
 
     protected void parseJson(JsonNode node) {
@@ -84,7 +86,7 @@ public class PutOp extends Operation implements IBulkOp {
         }
 
         try {
-            this.newResource = new ScimResource(this.cfgMgr, node, null, type.getTypePath());
+            this.newResource = new ScimResource(smgr, node, null, type.getTypePath());
         } catch (ScimException | ParseException e) {
             if (e instanceof ScimException)
                 setCompletionError(e);

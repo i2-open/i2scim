@@ -50,12 +50,14 @@ public class PatchOp extends Operation implements IBulkOp {
      * @param ctx        The associated bulk operation RequestCtx
      * @param parent     When part of a bulk operation, the parent Operation.
      * @param requestNum The request sequence number of this operation in a parent set of bulk requests
+     * @param configMgr
      */
-    public PatchOp(JsonNode data, RequestCtx ctx, BulkOps parent, int requestNum) {
+    public PatchOp(JsonNode data, RequestCtx ctx, BulkOps parent, int requestNum, ConfigMgr configMgr) {
         super(ctx, requestNum);
         this.parent = parent;
         this.node = data;
-        this.cfgMgr = ctx.getConfigMgr();
+        this.cfgMgr = configMgr;
+        this.smgr = cfgMgr.getSchemaManager();
     }
 
     /**
@@ -69,6 +71,7 @@ public class PatchOp extends Operation implements IBulkOp {
         super(req, resp);
         this.parent = null;
         this.cfgMgr = configMgr;
+        this.smgr = cfgMgr.getSchemaManager();
     }
 
     @Override

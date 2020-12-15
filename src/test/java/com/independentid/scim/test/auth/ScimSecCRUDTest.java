@@ -13,7 +13,7 @@
  * subject to the terms of such agreement.
  */
 
-package com.independentid.scim.test.http;
+package com.independentid.scim.test.auth;
 
 
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -29,6 +29,7 @@ import com.independentid.scim.resource.StringValue;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
+import com.independentid.scim.test.http.ScimHttpTestProfile;
 import com.independentid.scim.test.misc.TestUtils;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -39,6 +40,7 @@ import io.quarkus.test.junit.TestProfile;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.*;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.InputStreamEntity;
@@ -70,11 +72,11 @@ import static org.assertj.core.api.Assertions.fail;
 @QuarkusTest
 @TestProfile(ScimHttpTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
-public class ScimUserCRUDTest {
+public class ScimSecCRUDTest {
 	
-	private final static Logger logger = LoggerFactory.getLogger(ScimUserCRUDTest.class);
-	
-	//private static String userSchemaId = "urn:ietf:params:scim:schemas:core:2.0:User";
+	private final static Logger logger = LoggerFactory.getLogger(ScimSecCRUDTest.class);
+
+	public static String bearer = "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJSLURla2xmOU5XSXpRMVVmRTVRNnY5UXRnVnNDQ1ROdE5iRUxnNXZjZ1J3In0.eyJleHAiOjE2MzQ0OTIzMDcsImlhdCI6MTYwMjk1NjMwNywianRpIjoiNWYyNDQ0ZGUtMDVlNi00MDFjLWIzMjYtZjc5YjJiMmZhNmZiIiwiaXNzIjoiaHR0cDovLzEwLjEuMTAuMTA5OjgxODAvYXV0aC9yZWFsbXMvZGV2Iiwic3ViIjoiNDA2MDQ0OWYtNDkxMy00MWM1LTkxYjAtYTRlZjY5MjYxZTY0IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoic2NpbS1zZXJ2ZXItY2xpZW50Iiwic2Vzc2lvbl9zdGF0ZSI6ImE2NGZkNjA3LWU1MzItNGQ0Ni04MGQ2LWE0NTUzYzRjZWQ1OCIsImFjciI6IjEiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsibWFuYWdlciIsIm9mZmxpbmVfYWNjZXNzIl19LCJzY29wZSI6ImZ1bGwgbWFuYWdlciIsImNsaWVudElkIjoic2NpbS1zZXJ2ZXItY2xpZW50IiwiY2xpZW50SG9zdCI6IjEwLjEuMTAuMTE4IiwidXNlcl9uYW1lIjoic2VydmljZS1hY2NvdW50LXNjaW0tc2VydmVyLWNsaWVudCIsImNsaWVudEFkZHJlc3MiOiIxMC4xLjEwLjExOCJ9.Wouztkr7APb2_juPBhMtPbAqmFwQqsDQXYIQBeDpMuWnKGXZZMs17Rpzq8YnVSGfbfyrAduMAK2PAWnw8hxC4cGc0xEVS3lf-KcA5bUr4EnLcPVeQdEPsQ5eLrt_-BSPCQ8ere2fw6-Obv7FJ6aofAlT8LttWvEvkPzo2R0T0aZX8Oh7b15-icAVZ8ER0j7aFQ2k34dAq0Uwn58wakT6MA4qEFxze6GLeBuC4cAqNPYoOkUWTJxu1J_zLFDkpomt_zzx9u0Ig4asaErRyPj-ettElaGXMELZrNsaVbikCHgK7ujwMJDlEhUf8jxM8qwhCuf50-9ZydPAFA8Phj6FkQ";
 
 	@Inject
 	@Resource(name="SchemaMgr")
@@ -149,7 +151,9 @@ public class ScimUserCRUDTest {
 			
 			
 			HttpPost post = new HttpPost(req);
-				
+
+			// This section should fail, anonymous request
+
 			InputStreamEntity reqEntity = new InputStreamEntity(
 	        userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
 			reqEntity.setChunked(false);
@@ -159,7 +163,17 @@ public class ScimUserCRUDTest {
 			//logger.debug(EntityUtils.toString(reqEntity));
 		
 			CloseableHttpResponse resp = client.execute(post);
-			
+			int statcode = resp.getStatusLine().getStatusCode();
+			assertThat(statcode)
+					.as("Anonymous request should be unauthorized")
+					.isEqualTo(HttpStatus.SC_UNAUTHORIZED);
+
+			// Try that again with authorization
+			post = new HttpPost(req);
+			post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+			post.setEntity(reqEntity);
+			resp = client.execute(post);
+
 			logger.debug("Response is: "+resp.getStatusLine());
 			String body = EntityUtils.toString(resp.getEntity());
 			logger.debug("Body:\n"+body);
@@ -249,6 +263,7 @@ public class ScimUserCRUDTest {
 		CloseableHttpClient client = HttpClients.createDefault();
 		
 		HttpUriRequest request = new HttpGet(req);
+		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		
 		try {
 			CloseableHttpResponse resp = client.execute(request);
@@ -312,7 +327,7 @@ public class ScimUserCRUDTest {
 				"/Users?filter="+URLEncoder.encode("UserName eq bjensen@example.com",StandardCharsets.UTF_8));
 		
 		HttpUriRequest request = new HttpGet(req);
-		
+		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		try {
 			CloseableHttpResponse resp = client.execute(request);
 			HttpEntity entity = resp.getEntity();
@@ -375,6 +390,8 @@ public class ScimUserCRUDTest {
 		//?filter="+URLEncoder.encode("UserName eq bjensen@example.com",StandardCharsets.UTF_8);
 		
 		HttpPost request = new HttpPost(req);
+		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+
 		request.setHeader("Content-type",ScimParams.SCIM_MIME_TYPE);
 		request.setHeader("Accept",ScimParams.SCIM_MIME_TYPE);
 		try {
@@ -440,6 +457,7 @@ public class ScimUserCRUDTest {
 				"/Users?filter="+URLEncoder.encode("UserName eq bjensen@example.com and addresses[country eq \"USA\" and type eq \"home\"]",StandardCharsets.UTF_8));
 		
 		HttpUriRequest request = new HttpGet(req);
+		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		
 		try {
 			CloseableHttpResponse resp = client.execute(request);
@@ -565,6 +583,7 @@ public class ScimUserCRUDTest {
 		String req = TestUtils.mapPathToReqUrl(baseUrl, user1url);
 		
 		HttpUriRequest request = new HttpDelete(req);
+		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		
 		try {
 			CloseableHttpResponse resp = client.execute(request);

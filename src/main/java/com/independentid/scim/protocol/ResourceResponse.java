@@ -16,6 +16,7 @@
 package com.independentid.scim.protocol;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ScimResource;
 import org.slf4j.Logger;
@@ -46,11 +47,11 @@ public class ResourceResponse extends ScimResponse {
 	protected ArrayList<ScimResource> entries = new ArrayList<>();
 	
 	
-	public ResourceResponse(ScimResource val, RequestCtx ctx) {
+	public ResourceResponse(ScimResource val, RequestCtx ctx, ConfigMgr configMgr) {
 		super();
 		this.ctx = ctx;
-		
-		this.smax = this.ctx.getConfigMgr().getMaxResults();
+
+		this.smax = configMgr.getMaxResults();
 		if (this.ctx.count == 0 || this.ctx.count > this.smax)  
 			this.ctx.count = this.smax;
 		

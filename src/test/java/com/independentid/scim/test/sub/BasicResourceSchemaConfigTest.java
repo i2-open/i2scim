@@ -20,6 +20,7 @@ import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
+import com.independentid.scim.schema.SchemaManager;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.MethodOrderer;
@@ -49,8 +50,11 @@ public class BasicResourceSchemaConfigTest {
 	@Inject
 	@Resource(name="ConfigMgr")
 	ConfigMgr cmgr ;
-	
-	
+
+	@Inject
+	@Resource(name="SchemaMgr")
+	SchemaManager smgr;
+
 	/**
 	 * This test checks that the resource types file was parsed and that at least one object parsed correctly.
 	 */
@@ -62,7 +66,7 @@ public class BasicResourceSchemaConfigTest {
 		//ConfigMgr mgr = (ConfigMgr) ctx.getBean("Configmgr");
 		
 		// Test the User object
-		ResourceType typ = cmgr.getResourceType("User");
+		ResourceType typ = smgr.getResourceType("User");
 		assertThat(typ.getEndpoint()).isEqualTo(URI.create("/Users"));
 		assertThat(typ.getSchema()).isEqualTo("urn:ietf:params:scim:schemas:core:2.0:User");
 		String[] schemaExts = typ.getSchemaExtension();
@@ -78,7 +82,7 @@ public class BasicResourceSchemaConfigTest {
 	@Test
 	public void b_schemaTest() {
 		logger.info("==========  Schema Test  ==========");
-		Schema userSchema = cmgr.getSchemaById(userSchemaId);
+		Schema userSchema = smgr.getSchemaById(userSchemaId);
 		
 		assertThat(userSchema).isNotNull();
 		

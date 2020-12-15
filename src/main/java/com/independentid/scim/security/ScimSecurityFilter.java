@@ -16,23 +16,19 @@
 package com.independentid.scim.security;
 
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
 import io.quarkus.security.identity.SecurityIdentity;
-import io.smallrye.jwt.auth.principal.JWTCallerPrincipal;
-import org.apache.http.auth.BasicUserPrincipal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
-import javax.security.auth.Subject;
 import javax.servlet.*;
 import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
-import javax.ws.rs.core.SecurityContext;
 import java.io.IOException;
-import java.security.Principal;
 import java.util.Set;
 
 @WebFilter(filterName = "ScimSecurity",urlPatterns = "/*")
@@ -41,6 +37,9 @@ public class ScimSecurityFilter implements Filter {
 
     @Inject
     ConfigMgr cmgr;
+
+    @Inject
+    AccessManager amgr;
 
     @Inject
     SecurityIdentity identity;
@@ -59,25 +58,47 @@ public class ScimSecurityFilter implements Filter {
         if (logger.isDebugEnabled())
             logger.debug("\tEvaluating request for: User="+identity.getPrincipal().getName()+", Type="+identity.getPrincipal().getClass().toString());
         if (cmgr.isSecurityEnabled()) {
+            RequestCtx ctx = (RequestCtx) request.getAttribute(RequestCtx.REQUEST_ATTRIBUTE);
+            if (ctx == null) {
+                try {
+                    ctx = new RequestCtx((HttpServletRequest) request,(HttpServletResponse) response, cmgr.getSchemaManager());
+                    request.setAttribute(RequestCtx.REQUEST_ATTRIBUTE,ctx);
+                } catch (ScimException e) {
+                    e.printStackTrace();
+                }
+            }
+            assert ctx != null;
+            if (amgr.isOperationValid(ctx,identity,(HttpServletRequest) request)) {
+                chain.doFilter(request, response);
+                return;
+            }
 
+            // Process default overrides
             Set<String> roles = identity.getRoles();
 
             if (roles.contains("root")) {
+                if (logger.isDebugEnabled())
+                    logger.debug("Allowing request for "+identity.getPrincipal().getName()+" based on root access rights");
                 chain.doFilter(request, response);
                 return;
             }
 
             if(roles.contains("full")) {
+                if (logger.isDebugEnabled())
+                    logger.debug("Allowing request for "+identity.getPrincipal().getName()+" based on \"full\" role.");
                 chain.doFilter(request, response);
                 return;
             }
 
             if (response instanceof HttpServletResponse) {
                 if (logger.isDebugEnabled())
-                    logger.debug("No scopes matched for user: "+identity.getPrincipal().getName()+", Scopes Provided: "+roles.toString());
+                    logger.debug("No acis/roles matched for user: "+identity.getPrincipal().getName()+", Scopes Provided: "+roles.toString());
                 //No further chain processing
                 HttpServletResponse resp = (HttpServletResponse) response;
-                resp.setStatus(ScimResponse.ST_UNAUTHORIZED);
+                if (identity.isAnonymous())
+                    resp.setStatus(ScimResponse.ST_UNAUTHORIZED);
+                else
+                    resp.setStatus(ScimResponse.ST_FORBIDDEN);
                 return;
             }
         }

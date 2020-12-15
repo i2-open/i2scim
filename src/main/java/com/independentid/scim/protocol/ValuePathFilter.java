@@ -21,16 +21,18 @@ import com.independentid.scim.resource.MultiValue;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.SchemaManager;
 
 public class ValuePathFilter extends Filter {
 
 	private final Attribute attr;
 	private final Filter filter;
 	
-	public ValuePathFilter(String attr, String filterStr) throws BadFilterException {
+	public ValuePathFilter(String attr, String filterStr, SchemaManager schemaManager) throws BadFilterException {
 		super(filterStr);
-		this.filter = Filter.parseFilter(filterStr, attr, null);
-		this.attr = cfg.findAttribute(attr, null);
+		smgr = schemaManager;
+		this.filter = Filter.parseFilter(filterStr, attr,null , smgr);
+		this.attr = smgr.findAttribute(attr, null);
 	}
 
 	public String getAttributeName() {

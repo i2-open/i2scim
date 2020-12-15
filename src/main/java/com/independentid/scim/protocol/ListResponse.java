@@ -16,6 +16,7 @@
 package com.independentid.scim.protocol;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.core.err.TooManyException;
 import com.independentid.scim.resource.ScimResource;
@@ -53,12 +54,13 @@ public class ListResponse extends ScimResponse {
 	/**
 	 * Constructor used to create an empty SCIM List Response.
 	 * @param ctx A <RequestCtx> object containing the original request information.
+	 * @param configMgr System configuration to obtain max results.
 	 */
-	public ListResponse(RequestCtx ctx) {
+	public ListResponse(RequestCtx ctx, ConfigMgr configMgr) {
 		super();
 		this.ctx = ctx; 
 		
-		this.smax = this.ctx.getConfigMgr().getMaxResults();
+		this.smax = configMgr.getMaxResults();
 		if (this.ctx.count == 0 || this.ctx.count > this.smax)  
 			this.ctx.count = this.smax;
 		this.totalRes = 0;
@@ -77,12 +79,13 @@ public class ListResponse extends ScimResponse {
 	 * For resource retrievals see <ResourceResponse>.
 	 * @param val The <ScimResource> object to be returned.
 	 * @param ctx The <RequestCtx> containing the original request/search.
+	 * @param configMgr System config to obtain max results
 	 */
-	public ListResponse(final ScimResource val, RequestCtx ctx) {
+	public ListResponse(final ScimResource val, RequestCtx ctx, ConfigMgr configMgr) {
 		super();
 		this.ctx = ctx;
 		
-		this.smax = this.ctx.getConfigMgr().getMaxResults();
+		this.smax = configMgr.getMaxResults();
 		if (this.ctx.count == 0 || this.ctx.count > this.smax)  
 			this.ctx.count = this.smax;
 		
@@ -101,13 +104,13 @@ public class ListResponse extends ScimResponse {
 	}
 	
 	
-	public ListResponse(final List<ScimResource> vals, RequestCtx ctx) throws ScimException {
+	public ListResponse(final List<ScimResource> vals, RequestCtx ctx, ConfigMgr configMgr) throws ScimException {
 		super();
 		this.ctx = ctx;
 		
 		this.id = null;
 		
-		this.smax = this.ctx.getConfigMgr().getMaxResults();
+		this.smax = configMgr.getMaxResults();
 		if (this.ctx.count == 0 || this.ctx.count > this.smax)  
 			this.ctx.count = this.smax;
 		

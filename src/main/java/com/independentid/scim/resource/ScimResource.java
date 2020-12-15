@@ -33,9 +33,11 @@ import java.util.*;
 
 public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
+	public SchemaManager smgr;
+
 	public final static String SCHEMA_EXT_PREFIX = "Ext-";
 	
-	protected ConfigMgr cfg;
+	//protected ConfigMgr cfg;
 
 	protected String id;
 
@@ -60,15 +62,17 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 	/**
 	 * Construct the resource based on JsonNode
+	 *
+	 * @param schemaManager The {@link SchemaManager} object holding SCIM shema definitions
 	 * @param container TODO
-	 * 
+	 *
 	 * @throws SchemaException
 	 * @throws ParseException
 	 * @throws ScimException  
 	 */
-	public ScimResource(ConfigMgr cfg, JsonNode resourceNode, String container)
+	public ScimResource(SchemaManager schemaManager, JsonNode resourceNode, String container)
 			throws SchemaException, ParseException, ScimException {
-				this(cfg, resourceNode, null, container);
+				this(schemaManager, resourceNode, null, container);
 		
 	}
 
@@ -82,7 +86,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	
 	/**
 	 * Creates a ScimResource based on a JsonNode structure
-	 * @param cfg The server <ConfigMgr> instance container server schema
+	 * @param schemaManager The server {@link SchemaManager} instance container server schema
 	 * @param resourceNode A <JsonNode> object containing a SCIM JSON parsed object
 	 * @param bulkIdResolver An <IBulkIdResulver> used to resolve identifiers during bulk operations
 	 * @param container A <String> identifying the resource container where the object is from or to be stored (e.g. Users, Groups). Used to lookup <ResourceType> and <Schema>
@@ -90,16 +94,17 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 * @throws ParseException
 	 * @throws ScimException
 	 */
-	public ScimResource(ConfigMgr cfg, JsonNode resourceNode, IBulkIdResolver bulkIdResolver, String container)
+	public ScimResource(SchemaManager schemaManager, JsonNode resourceNode, IBulkIdResolver bulkIdResolver, String container)
 			throws SchemaException, ParseException, ScimException {
 		
-		this.cfg = cfg;
+		this.smgr = schemaManager;
+
 		this.coreAttrs = new LinkedHashMap<>();
 		this.extAttrs = new LinkedHashMap<>();
-		this.commonSchema = cfg.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
+		this.commonSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
 		setResourceType(container);
 		this.idResolver = bulkIdResolver;
-		this.parseJson(cfg, resourceNode);
+		this.parseJson(schemaManager, resourceNode);
 		this.modified = false;
 		
 	}
@@ -117,12 +122,12 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	}
 	
 	/**
-	 * @param type The String resource type of the resource (e.g. User, Group)
+	 * @param container The String resource type of the resource (e.g. User, Group)
 	 */
 	public void setResourceType(String container) {
-		this.type = cfg.getResourceTypeByPath(container);
+		this.type = smgr.getResourceTypeByPath(container);
 		if (this.type != null)
-			this.coreSchema = cfg.getSchemaById(this.type.getSchema());
+			this.coreSchema = smgr.getSchemaById(this.type.getSchema());
 	
 	}
 	
@@ -295,7 +300,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		return this.coreSchema;
 	}
 	
-	public void parseJson(ConfigMgr cfg, JsonNode node) throws SchemaException,
+	public void parseJson(SchemaManager cfg, JsonNode node) throws SchemaException,
 			ParseException, ScimException {
 
 		JsonNode snode = node.get("schemas");
@@ -319,8 +324,8 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		if (meta != null) {
 			this.meta = new Meta(meta);
 			if (this.type == null) {
-				this.type = cfg.getResourceType(this.meta.getResourceType());
-				this.coreSchema = cfg.getSchemaById(this.type.getSchema());
+				this.type = smgr.getResourceType(this.meta.getResourceType());
+				this.coreSchema = smgr.getSchemaById(this.type.getSchema());
 			}
 		} else
 			this.meta = new Meta();
@@ -387,7 +392,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	
 	protected void processExtension(ResourceType type, String extensionId,JsonNode parent) throws SchemaException, ParseException, ConflictException {
 		
-		Schema eSchema = cfg.getSchemaById(extensionId);
+		Schema eSchema = smgr.getSchemaById(extensionId);
 		if (eSchema == null)
 			return;  //ignore, unsupported core attribute or schema
 		String sname = eSchema.getName();
@@ -568,7 +573,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 * @return The corresponding <code>Attribute</code> definition
 	 */
 	public Attribute getAttribute(String name,RequestCtx ctx) {
-		return cfg.findAttribute(name, ctx);
+		return smgr.findAttribute(name, ctx);
 	}
 	
 	/**
@@ -625,61 +630,6 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		}
 		return super.toString();
 	}
-
-	/**
-	 * @param ctx
-	 *            Based on the RequestCtx (which contains the requested and
-	 *            excluded attributes) and attribute returnability, filterAttributes removes attributes not
-	 *            requested.
-	 */
-	/*  This is now handled in the serialize code for objects.z
-	public void filterAttributes(RequestCtx ctx) {
-		List<String> attrsReq = ctx.getAttrNamesReq();
-		List<String> exclAttrs = ctx.getExcludedAttrNames();
-		if (attrsReq == null) {
-			Iterator<String> iter = this.coreAttrs.keySet().iterator();
-			while (iter.hasNext()) {
-				String aname = iter.next();
-				Attribute attr = this.cfg.findAttribute(aname, ctx);
-				if (ctx.isAttrRequested(attr))
-					continue;
-				if (attr.getReturned().equals(Attribute.RETURNED_default))
-					continue;
-				
-				// Attribute is not returned by default or is never returned. Remove it.
-				iter.remove();
-			}
-		} else {
-			HashSet<String> map = new HashSet<String>(attrsReq);
-			Iterator<String> iter = this.coreAttrs.keySet().iterator();
-			while (iter.hasNext()) {
-				String aname = iter.next();
-				Attribute attr = this.cfg.findAttribute(aname, ctx);
-				if (attr.getReturned().equals(Attribute.RETURNED_always))
-					continue;
-				if (attr.getReturned().equals(Attribute.RETURNED_never)) {
-					iter.remove();
-					continue;
-				}
-				if (map.contains(aname) || map.contains(attr.getRelativePath()))
-					continue;
-				iter.remove();
-				
-			}
-		}
-		
-		if (exclAttrs != null) {
-			for (int i=0; i < exclAttrs.size(); i++) {
-				String aname = exclAttrs.get(i);
-				if (this.coreAttrs.containsKey(aname)) {
-					Attribute attr = this.cfg.findAttribute(aname, ctx);
-					if (attr != null && !attr.getReturned().equals(Attribute.RETURNED_always))
-						this.coreAttrs.remove(aname);
-				}
-			}
-		}
-	}
-	*/
 	
 	public Set<String> coreAttrNameSet() {
 		return this.coreAttrs.keySet();
@@ -938,7 +888,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		
 		ExtensionValues localExt = this.getExtensionValues(schema);
 		for (String aname : eattrs.attrNameSet()) {
-			Attribute attr = cfg.findAttribute(schema, aname, null, ctx);
+			Attribute attr = smgr.findAttribute(schema, aname, null, ctx);
 			String mutability = attr.getMutability();
 			if (mutability.equals(Attribute.MUTABILITY_readWrite)
 					|| mutability.equals(Attribute.MUTABILITY_writeOnly))
@@ -964,7 +914,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			if (aname.equals("meta")) 
 				continue;
 			
-			Attribute attr = cfg.findAttribute(coreSchemaId, aname, null, ctx);
+			Attribute attr = smgr.findAttribute(coreSchemaId, aname, null, ctx);
 			if (attr.getMutability().equals(Attribute.MUTABILITY_readWrite))
 				iter.remove();
 		}
@@ -977,7 +927,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			Iterator<String> eiter = eattrs.attrNameSet().iterator();
 			while (eiter.hasNext()) {
 				String aname = eiter.next();
-				Attribute attr = cfg.findAttribute(eschema, aname, null, ctx);
+				Attribute attr = smgr.findAttribute(eschema, aname, null, ctx);
 				if (attr.getMutability().equals(Attribute.MUTABILITY_readWrite))
 					eiter.remove();
 			}

@@ -54,7 +54,7 @@ public class JsonPath {
 		
 		filter = null;
 		if (vpath != null)
-			filter = Filter.parseFilter(vpath,aname, null);
+			filter = Filter.parseFilter(vpath,aname, ctx, null);
 		
 		// check to see if attribute has a multi-value parent
 		if (targAttr.isChild()){

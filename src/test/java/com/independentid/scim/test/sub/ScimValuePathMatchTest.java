@@ -22,7 +22,7 @@
  import com.independentid.scim.resource.ScimResource;
  import com.independentid.scim.resource.Value;
  import com.independentid.scim.schema.Attribute;
- import com.independentid.scim.schema.SchemaException;
+ import com.independentid.scim.schema.SchemaManager;
  import com.independentid.scim.serializer.JsonUtil;
  import io.quarkus.test.junit.QuarkusTest;
  import io.quarkus.test.junit.TestProfile;
@@ -51,8 +51,8 @@
      //private static String userSchemaId = "urn:ietf:params:scim:schemas:core:2.0:User";
 
      @Inject
-     @Resource(name = "ConfigMgr")
-     ConfigMgr cmgr;
+     @Resource(name="SchemaMgr")
+     SchemaManager smgr;
 
      final static String testUserFile1 = "/schema/TestUser-bjensen.json";
 
@@ -67,10 +67,10 @@
          logger.info("========== SCIM ValuePath Match Test ==========");
 
          try {
-             InputStream userStream = cmgr.getClassLoaderFile(testUserFile1);
+             InputStream userStream = ConfigMgr.getClassLoaderFile(testUserFile1);
              //InputStream userStream = this.resourceloader.getResource(testUserFile1).getInputStream();
              JsonNode node = JsonUtil.getJsonTree(userStream);
-             user1 = new ScimResource(cmgr, node, "Users");
+             user1 = new ScimResource(smgr, node, "Users");
              //logger.debug("User loaded: \n" + user1.toString());
 
              assert userStream != null;
@@ -85,11 +85,11 @@
 
      @Test
      public void b_ValPathFilterTest() throws BadFilterException {
-         Attribute addr = cmgr.findAttribute("addresses", null);
+         Attribute addr = smgr.findAttribute("addresses", null);
          assertThat(addr).isNotNull();
          Value val = user1.getValue(addr);
 
-         Filter filter = Filter.parseFilter("addresses[type eq work and postalCode eq 91608]", null, null);
+         Filter filter = Filter.parseFilter("addresses[type eq work and postalCode eq 91608]", null, null, smgr);
 
          assertThat(filter.isMatch(user1))
                  .as("Check the value path filter is true for Babs Jensen")
@@ -99,7 +99,7 @@
                  .as("Check the value match for addresses attribute")
                  .isTrue();
 
-         filter = Filter.parseFilter("addresses[type eq work and postalCode eq 11111]", null, null);
+         filter = Filter.parseFilter("addresses[type eq work and postalCode eq 11111]", null, null, smgr);
 
          assertThat(filter.isMatch(user1))
                  .as("Check the value path filter is not true for Babs Jensen")

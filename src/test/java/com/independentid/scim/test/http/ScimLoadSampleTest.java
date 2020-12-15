@@ -24,7 +24,7 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.ScimResource;
-import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -78,8 +78,8 @@ public class ScimLoadSampleTest {
 	
 	//private static String userSchemaId = "urn:ietf:params:scim:schemas:core:2.0:User";
 	@Inject
-	@Resource(name = "ConfigMgr")
-	ConfigMgr cfgMgr;
+	@Resource(name="SchemaMgr")
+	SchemaManager smgr;
 
 	@Inject
 	BackendHandler handler;
@@ -105,10 +105,10 @@ public class ScimLoadSampleTest {
 	
 	//private static ScimResource user1,user2 = null;
 
-	private void readSampleData() throws IOException, SchemaException, ParseException, ScimException {
+	private void readSampleData() throws IOException, ParseException, ScimException {
 		logger.debug("\t\tReading sample data from: "+dataSet);
 		Instant start = Instant.now();
-		File dataFile = cfgMgr.findClassLoaderResource(dataSet);
+		File dataFile = ConfigMgr.findClassLoaderResource(dataSet);
 		InputStream dataStream = new FileInputStream(dataFile);
 		JsonNode dataNode = JsonUtil.getJsonTree(dataStream);
 		
@@ -131,7 +131,7 @@ public class ScimLoadSampleTest {
 		logger.info("\t\tMapping complete. "+cnt+" records mapped to SCIM Resource in "+readTime);
 	}
 	
-	private void parseUser(JsonNode mapNode) throws IOException, SchemaException, ParseException, ScimException {
+	private void parseUser(JsonNode mapNode) throws IOException, ParseException, ScimException {
 		StringWriter writer = new StringWriter();
 
 		JsonGenerator gen = JsonUtil.getGenerator(writer, true);
@@ -232,7 +232,7 @@ public class ScimLoadSampleTest {
 		writer.close();
 		
 		JsonNode scimjnode = JsonUtil.getJsonTree(writer.toString());
-		ScimResource user = new ScimResource(cfgMgr,scimjnode,null,"Users");
+		ScimResource user = new ScimResource(smgr,scimjnode,null,"Users");
 		data.add(user);
 			
 	}
@@ -252,7 +252,7 @@ public class ScimLoadSampleTest {
 		scimDb.drop();  // reset the database.
 		
 		try {
-			handler.getProvider().syncConfig(cfgMgr.getSchemas(), cfgMgr.getResourceTypes());
+			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
 		} catch (IOException | InstantiationException | ClassNotFoundException e) {
 			fail("Failed to initialize test Mongo DB: "+scimDbName);
 		}
@@ -277,16 +277,14 @@ public class ScimLoadSampleTest {
 		CloseableHttpClient client = HttpClients.createDefault();
 
 		Iterator<ScimResource> iter = data.iterator();
-		
-		int i = 0;
+
 		try {
 			
 			while (iter.hasNext()) {
-				i++;
 				ScimResource user = iter.next();
 				
 				StringEntity reqEntity = null;
-				String record = null;
+				String record;
 				try {
 					record = user.toJsonString();
 					//logger.debug(record);

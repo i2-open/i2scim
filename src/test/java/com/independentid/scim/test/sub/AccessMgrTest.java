@@ -68,7 +68,7 @@ public class AccessMgrTest {
                 .isGreaterThan(0);
         AccessControl aci = setnode.acis.get(0);
         logger.info("ServiceProviderConfig aci\n"+aci.toString());
-        assertThat(aci.isActorAny())
+        assertThat(aci.isAnyClient())
                 .as("ServiceProviderConfig aci applies to any actor")
                 .isTrue();
     }

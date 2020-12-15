@@ -18,6 +18,7 @@ package com.independentid.scim.protocol;
 import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.SchemaManager;
 
 import java.util.Arrays;
 import java.util.Date;
@@ -51,21 +52,22 @@ public class AttributeFilter extends Filter {
 
     private Object val;
 
-    public AttributeFilter(String attr, String cond, String value, RequestCtx ctx) throws BadFilterException {
-        this(attr, cond, value, null, ctx);
+    public AttributeFilter(String attr, String cond, String value, RequestCtx ctx, SchemaManager schemaManager) throws BadFilterException {
+        this(attr, cond, value, null,ctx , schemaManager);
     }
 
-    public AttributeFilter(String aname, String cond, String value, String parentAttr, RequestCtx ctx) throws BadFilterException {
+    public AttributeFilter(String aname, String cond, String value, String parentAttr, RequestCtx ctx, SchemaManager schemaManager) throws BadFilterException {
         super();
+        smgr = schemaManager;
         if (parentAttr == null)
             this.parentAttr = null;
         else
-            this.parentAttr = cfg.findAttribute(parentAttr, ctx);
+            this.parentAttr = smgr.findAttribute(parentAttr, ctx);
 
         if (this.parentAttr != null) {
             this.attr = this.parentAttr.getSubAttribute(aname);
         } else
-            this.attr = cfg.findAttribute(aname, ctx);
+            this.attr = smgr.findAttribute(aname, ctx);
 
         if (this.attr == null) {
             // If no attribute check if it is common schema or just create a placeholder attribute definition

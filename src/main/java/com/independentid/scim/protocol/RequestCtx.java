@@ -16,14 +16,16 @@
 package com.independentid.scim.protocol;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.InvalidSyntaxException;
 import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.Operation;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.schema.SchemaManager;
+import com.independentid.scim.security.AccessManager;
 import com.independentid.scim.serializer.JsonUtil;
+import io.quarkus.security.identity.SecurityIdentity;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
@@ -39,8 +41,11 @@ import java.util.*;
  */
 @SuppressWarnings("FieldCanBeLocal")
 public class RequestCtx {
+	public static String REQUEST_ATTRIBUTE = "ScimRequest";
 
-	ConfigMgr cmgr;
+	//ConfigMgr cmgr;
+
+	SchemaManager smgr;
 
 	//private static final Logger logger = LoggerFactory.getLogger(RequestCtx.class);
 
@@ -85,28 +90,30 @@ public class RequestCtx {
 	// This can be used by a provider to request URL encoded extension names be used
 	// Used to address field name and length restrictions in some dbs
 	protected boolean encodeFields = false;
-	
+
 	HttpServletResponse hresp = null;
 	
 	ServletContext sctx;
 	
-	private final boolean hasSecAuth = false;
-	private final String secSubject = null;
-	private final ArrayList<String> secRoles = null;
+	private boolean hasSecAuth = false;
+	private SecurityIdentity identity = null;
+	private ArrayList<String> secRoles = null;
+	private AccessManager.AciSet acis = null;
+
 
 	/**
 	 * Used to create a request context that exists within a single SCIM Bulk operation
 	 * @param bulkReqOp A parsed JSON structure representing a single SCIM bulk operation
-	 * @param cmgr A pointer to the server ConfigMgr object (for schema)
+	 * @param schemaManager A pointer to the server ConfigMgr object (for schema)
 	 * @throws SchemaException thrown when the bulk request JSON structure is invalid
 	 * @throws ScimException thrown due to a schema or other Scim related issue
 	 */
-	public RequestCtx(JsonNode bulkReqOp, ConfigMgr cmgr) throws ScimException, SchemaException {
+	public RequestCtx(JsonNode bulkReqOp, SchemaManager schemaManager) throws ScimException, SchemaException {
 		if (!bulkReqOp.isObject()) {
 			throw new SchemaException(
 					"Expecting an object element of 'Operations' array.");
 		}
-		this.cmgr = cmgr;
+		this.smgr = schemaManager;
 		this.sctx = null;
 	
 
@@ -164,11 +171,11 @@ public class RequestCtx {
 	 * @param resEndpoint A String containing the top level container or resource type path element
 	 * @param id A String that is the resource identifier (typically a GUID).
 	 * @param filter A String representation of a SCIM query filter or null.
-	 * @param configMgr A pointer to the server ConfigMgr object (for schema)
+	 * @param schemaManager A pointer to the server ConfigMgr object (for schema)
 	 * @throws ScimException for invalid filter, invalid parameters etc.
 	 */
-	public RequestCtx(String resEndpoint, String id, String filter, ConfigMgr configMgr) throws ScimException {
-		this.cmgr = configMgr;
+	public RequestCtx(String resEndpoint, String id, String filter, SchemaManager schemaManager) throws ScimException {
+		this.smgr = schemaManager;
 		this.endpoint = resEndpoint;
 		this.id = id;
 		StringBuilder buf = new StringBuilder();
@@ -185,7 +192,7 @@ public class RequestCtx {
 		this.path = buf.toString();
 		parsePath();
 		if (filter != null)
-			this.filter = Filter.parseFilter(filter, this);
+			this.filter = Filter.parseFilter(filter, this, this.smgr);
 		this.sctx = null;
 	}
 	
@@ -197,12 +204,12 @@ public class RequestCtx {
 	 * @param allParams All parameters after "?" e.g. as provided by @RequestParam Map<String,String> allParams
 	 * @param allHeaders All HTTP request headers e,g, as orovided by @RequestHeader MultiValueMap<String, String> headers
 	 * @param body Optional, the request body (e.g. from PATCH or PUT)
-	 * @param configMgr A pointer to the server ConfigMgr object (for schema)
+	 * @param schemaManager A pointer to the server ConfigMgr object (for schema)
 	 * @throws ScimException for invalid filter, invalid parameters etc.
 	 */
 	public RequestCtx(ServletContext sctx, String resType, String id,
-					  Map<String, String> allParams, Map<String, String> allHeaders, String body, ConfigMgr configMgr) throws ScimException {
-		this.cmgr = configMgr;
+					  Map<String, String> allParams, Map<String, String> allHeaders, String body, SchemaManager schemaManager) throws ScimException {
+		this.smgr = schemaManager;
 		this.endpoint = resType;
 		this.id = id;
 		StringBuilder buf = new StringBuilder("/");
@@ -228,7 +235,7 @@ public class RequestCtx {
 		param = allParams.get(ScimParams.QUERY_filter);
 		
 		if (param != null) {
-			this.filter = Filter.parseFilter(param, this);
+			this.filter = Filter.parseFilter(param, this, smgr);
 		}
 		
 		this.sortBy = allParams.get(ScimParams.QUERY_sortby);
@@ -259,13 +266,13 @@ public class RequestCtx {
 	 * Constructor uses HTTPSevletRequest to capture the relevant SCIM Parameters from the URL and optionally from the request body.
 	 * @param req The {@link HttpServletRequest} provided by the Scim Servlet
 	 * @param resp The HTTPServletResponse object (used to set status and headers)
-	 * @param configMgr A pointer to the server ConfigMgr object (for schema)
+	 * @param schemaManager A pointer to the server ConfigMgr object (for schema)
 	 * @throws ScimException for invalid filter, invalid parameters etc.
 	 */
-	public RequestCtx(HttpServletRequest req, HttpServletResponse resp, ConfigMgr configMgr) throws ScimException {
+	public RequestCtx(HttpServletRequest req, HttpServletResponse resp, SchemaManager schemaManager) throws ScimException {
 		//this.req = request;
 		//sctx = request.getServletContext();
-		this.cmgr = configMgr;
+		this.smgr = schemaManager;
 		path = req.getPathInfo();
 		if (path == null)
 			path = req.getRequestURI();   // This seems to be needed for Quarkus
@@ -309,7 +316,7 @@ public class RequestCtx {
 		String filt = req.getParameter(ScimParams.QUERY_filter);
 		if (filt == null) filter=null;
 		else
-			filter = Filter.parseFilter(filt, this);
+			filter = Filter.parseFilter(filt, this, smgr);
 		
 		this.sortBy = req.getParameter(ScimParams.QUERY_sortby);
 		
@@ -413,13 +420,13 @@ public class RequestCtx {
 				Iterator<JsonNode> iter = vnode.elements();
 				while (iter.hasNext()) {
 					String name = iter.next().asText();
-					Attribute attr = cmgr.findAttribute(name, this);
+					Attribute attr = smgr.findAttribute(name, this);
 					if (attr != null)
 						this.attrs.put(attr.getPath(),attr);
 				}
 			} else {
 				String name = vnode.asText();
-				Attribute attr = cmgr.findAttribute(name, this);
+				Attribute attr = smgr.findAttribute(name, this);
 				if (attr != null)
 					this.attrs.put(attr.getPath(),attr);
 				
@@ -433,20 +440,20 @@ public class RequestCtx {
 				Iterator<JsonNode> iter = vnode.elements();
 				while (iter.hasNext()) {
 					String name = iter.next().asText();
-					Attribute attr = cmgr.findAttribute(name, this);
+					Attribute attr = smgr.findAttribute(name, this);
 					if (attr != null)
 						this.excluded.put(attr.getPath(),attr);
 				}
 			} else {
 				String name = vnode.asText();
-				Attribute attr = cmgr.findAttribute(name, this);
+				Attribute attr = smgr.findAttribute(name, this);
 				if (attr != null)
 					this.excluded.put(attr.getPath(),attr);
 			}
 		}			
 		vnode = node.get("filter");
 		if (vnode != null) {
-			this.filter = Filter.parseFilter(vnode.asText(), this);					
+			this.filter = Filter.parseFilter(vnode.asText(), this, smgr);
 		}
 		
 		vnode = node.get("sortBy");
@@ -475,7 +482,7 @@ public class RequestCtx {
 		StringTokenizer tkn = new StringTokenizer(attrList,",");
 		while (tkn.hasMoreTokens()) {
 			String name = tkn.nextToken();
-			Attribute attr = cmgr.findAttribute(name, this);
+			Attribute attr = smgr.findAttribute(name, this);
 			if (attr != null)
 				this.attrs.put(attr.getPath(),attr);
 		}
@@ -488,7 +495,7 @@ public class RequestCtx {
 		StringTokenizer tkn = new StringTokenizer(exclList,",");
 		while (tkn.hasMoreTokens()) {
 			String name = tkn.nextToken();
-			Attribute attr = cmgr.findAttribute(name, this);
+			Attribute attr = smgr.findAttribute(name, this);
 			if (attr != null)
 				this.excluded.put(attr.getPath(),attr);	
 		}
@@ -668,8 +675,8 @@ public class RequestCtx {
 		return this.path;
 	}
 	
-	public ConfigMgr getConfigMgr() {
-		return cmgr;
+	public SchemaManager getSchemaMgr() {
+		return smgr;
 	}
 	
 	public void setEncodeExtensions(boolean mode) {
@@ -690,8 +697,8 @@ public class RequestCtx {
 	/**
 	 * @return the secSubject
 	 */
-	public String getSecSubject() {
-		return secSubject;
+	public SecurityIdentity getSecSubject() {
+		return this.identity;
 	}
 
 	/**
@@ -703,9 +710,25 @@ public class RequestCtx {
 	
 	public boolean hasRole(String role) {
 		if (secRoles == null)
-			return true;
+			return false;
 		
 		return secRoles.contains(role.toLowerCase());
 	}
-	
+
+	public void setAccessContext(SecurityIdentity identity, AccessManager.AciSet acis) {
+		this.identity = identity;
+		this.secRoles = new ArrayList<>();
+		this.secRoles.addAll(
+				identity.getRoles());
+		this.acis = acis;
+
+	}
+
+	public AccessManager.AciSet getAcis() {
+		return this.acis;
+	}
+
+	public void setAcis(AccessManager.AciSet acis) {
+		this.acis = acis;
+	}
 }

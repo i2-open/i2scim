@@ -24,7 +24,7 @@ import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.StringValue;
 import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -55,8 +55,8 @@ public class ScimResourceTest {
 	//private static String userSchemaId = "urn:ietf:params:scim:schemas:core:2.0:User";
 
 	@Inject
-	@Resource(name="ConfigMgr")
-	ConfigMgr cmgr ;
+	@Resource(name="SchemaMgr")
+	SchemaManager smgr ;
 	
 	final static String testUserFile1 = "classpath:/schema/TestUser-bjensen.json";
 	final static String testUserFile2 = "classpath:/schema/TestUser-jsmith.json";
@@ -76,18 +76,18 @@ public class ScimResourceTest {
 		logger.info("========== ScimResource Test ==========");
 
 		try {
-			InputStream userStream = cmgr.getClassLoaderFile(testUserFile1);
+			InputStream userStream = ConfigMgr.getClassLoaderFile(testUserFile1);
 			//InputStream userStream = this.resourceloader.getResource(testUserFile1).getInputStream();
 			JsonNode node = JsonUtil.getJsonTree(userStream);
-			user1 = new ScimResource(cmgr,node, "Users");
+			user1 = new ScimResource(smgr,node, "Users");
 			logger.debug("User loaded: \n"+user1.toString());
 
 			assert userStream != null;
 			userStream.close();
 			
-			userStream = cmgr.getClassLoaderFile(testUserFile2);
+			userStream = ConfigMgr.getClassLoaderFile(testUserFile2);
 			node = JsonUtil.getJsonTree(userStream);
-			user2 = new ScimResource(cmgr,node, "Users");
+			user2 = new ScimResource(smgr,node, "Users");
 			logger.debug("User loaded: \n"+user2.toString());
 			
 			assertThat(user1)

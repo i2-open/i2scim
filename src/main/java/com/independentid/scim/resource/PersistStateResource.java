@@ -23,6 +23,7 @@ import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.schema.SchemaManager;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -48,16 +49,16 @@ public class PersistStateResource extends ScimResource {
 	public static String CONFIG_ID = "ConfigState";
 			
 
-	public PersistStateResource(ConfigMgr cfg, JsonNode resourceNode, IBulkIdResolver bulkIdResolver, String container)
-			throws SchemaException, ParseException, ScimException {
-		super(cfg, resourceNode, bulkIdResolver, container);
+	public PersistStateResource(SchemaManager schemaManager, JsonNode resourceNode, IBulkIdResolver bulkIdResolver, String container)
+			throws ParseException, ScimException {
+		super(schemaManager, resourceNode, bulkIdResolver, container);
 		setId(CONFIG_ID);
 		
 	}
 	
-	public PersistStateResource(ConfigMgr cfg, int rCnt, int sCnt) {
+	public PersistStateResource(SchemaManager schemaManager, int rCnt, int sCnt) {
 		super();
-		this.cfg = cfg;
+		this.smgr = schemaManager;
 		setId(CONFIG_ID);
 		
 		this.rTypeCnt = rCnt;
@@ -81,7 +82,6 @@ public class PersistStateResource extends ScimResource {
 		return this.schemaCnt;
 	}
 
-	@Override
 	public void parseJson(ConfigMgr cfg, JsonNode node) throws SchemaException, ParseException, ScimException {
 		// TODO Auto-generated method stub
 		
@@ -126,9 +126,9 @@ public class PersistStateResource extends ScimResource {
 
 		gen.writeStringField(FIELD_LAST_SYNC, getLastSync());
 		
-		gen.writeNumberField(FIELD_RTYPE_CNT, cfg.getResourceTypeCnt());
+		gen.writeNumberField(FIELD_RTYPE_CNT, smgr.getResourceTypeCnt());
 		
-		gen.writeNumberField(FIELD_SCHEMA_CNT, cfg.getSchemaCnt());
+		gen.writeNumberField(FIELD_SCHEMA_CNT, smgr.getSchemaCnt());
 		
 		// Write out the meta information
 		// Meta will not be used for hash calculations.

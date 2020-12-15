@@ -21,6 +21,7 @@ import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.test.misc.TestUtils;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -73,6 +74,10 @@ public class ScimAttributeQualTest {
 	ConfigMgr cmgr ;
 
 	@Inject
+	@Resource(name="SchemaMgr")
+	SchemaManager smgr;
+
+	@Inject
 	BackendHandler handler;
 
 	@ConfigProperty(name="scim.mongodb.dbname",defaultValue = "testSCIM")
@@ -110,14 +115,14 @@ public class ScimAttributeQualTest {
 		scimDb.drop();
 		
 		try {
-			handler.getProvider().syncConfig(cmgr.getSchemas(), cmgr.getResourceTypes());
+			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
 			loadTestUser();
 		} catch (IOException | InstantiationException | ClassNotFoundException e) {
 			fail("Failed to initialize test Mongo DB: "+scimDbName);
 		}
 
 		if (logger.isDebugEnabled()) {
-			Attribute mname = cmgr.findAttribute("User:name.middleName", null);
+			Attribute mname = smgr.findAttribute("User:name.middleName", null);
 			if (mname != null)
 				logger.debug("\t\tUser:name.middleName returnability is: " + mname.getReturned());
 		}
@@ -134,7 +139,7 @@ public class ScimAttributeQualTest {
 		CloseableHttpClient client = HttpClients.createDefault();
 
 		try {
-			File uFile = cmgr.findClassLoaderResource(testUserFile1);
+			File uFile = ConfigMgr.findClassLoaderResource(testUserFile1);
 			InputStream userStream = new FileInputStream(uFile);
 
 			String req = TestUtils.mapPathToReqUrl(baseUrl, "/Users");

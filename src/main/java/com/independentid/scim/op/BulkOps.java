@@ -63,15 +63,16 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	public BulkOps(HttpServletRequest req, HttpServletResponse resp, ConfigMgr configMgr) {
 		super (req,resp);
 		this.cfgMgr = configMgr;
-		
+		this.smgr = configMgr.getSchemaManager();
 		this.ops = new ArrayList<>();
 		this.bulkMap = new HashMap<>();
 		this.bulkValMap = new HashMap<>();
 	}
 
-	public BulkOps(JsonNode node, RequestCtx ctx) {
+	public BulkOps(JsonNode node, RequestCtx ctx, ConfigMgr configMgr) {
 		super(ctx, 0);
-		this.cfgMgr = ctx.getConfigMgr();
+		this.cfgMgr = configMgr;
+		this.smgr = configMgr.getSchemaManager();
 		this.node = node;
 		this.ops = new ArrayList<>();
 		this.bulkMap = new HashMap<>();
@@ -269,7 +270,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 
 	protected Operation parseOperation(
 			JsonNode bulkOpNode, int requestNum) throws ScimException {
-		RequestCtx octx = new RequestCtx(bulkOpNode,cfgMgr);
+		RequestCtx octx = new RequestCtx(bulkOpNode,smgr);
 
 		JsonNode item = bulkOpNode.get("data");
 		if (item == null) {
@@ -280,16 +281,16 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 
 		switch (octx.getBulkMethod()) {
 		case Operation.Bulk_Method_POST:
-			return new CreateOp(item, octx, this, requestNum);
+			return new CreateOp(item, octx, this, requestNum, cfgMgr);
 
 		case Operation.Bulk_Method_PUT:
-			return new PutOp(item, octx, this, requestNum);
+			return new PutOp(item, octx, this, requestNum, cfgMgr);
 
 		case Operation.Bulk_Method_PATCH:
-			return new PatchOp(item, octx, this, requestNum);
+			return new PatchOp(item, octx, this, requestNum, cfgMgr);
 
 		case Operation.Bulk_Method_DELETE:
-			return new DeleteOp(octx, this, requestNum);
+			return new DeleteOp(octx, this, requestNum, cfgMgr);
 
 		}
 		return null;

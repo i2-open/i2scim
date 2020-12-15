@@ -121,6 +121,7 @@ public class ResourceType implements ScimSerializer {
 	 */
 	public void setEndpoint(URI endpoint) {
 		this.endpoint = endpoint;
+		this.lastPathSegment = endpoint.toString().replaceFirst(".*/([^/?]+).*", "$1");
 	}
 	/**
 	 * @return A String containing the SCIM main schema URI for the resource type.

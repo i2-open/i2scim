@@ -29,6 +29,7 @@ import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Meta;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
+import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,6 +63,7 @@ public class MemoryProvider implements IScimProvider {
 	private final HashMap<String,ScimResource> mainMap;
 
 	static ConfigMgr config =  null;
+	SchemaManager smgr;
 	
 	private boolean ready;
 	
@@ -106,7 +108,7 @@ public class MemoryProvider implements IScimProvider {
 		//ServletContext sctx = ctx.getServletContext();
 						
 		String path = ctx.getResourceContainer();
-		ResourceType type = config.getResourceTypeByPath(path);
+		ResourceType type = smgr.getResourceTypeByPath(path);
 		if (type != null)
 			meta.setResourceType(type.getName());
 		
@@ -116,7 +118,7 @@ public class MemoryProvider implements IScimProvider {
 		
 		this.mainMap.put(res.getId(), res);
 		
-		ListResponse resp = new ListResponse(res,ctx);
+		ListResponse resp = new ListResponse(res,ctx, config);
 		resp.setStatus(ScimResponse.ST_CREATED);
 		resp.setLocation(res.getMeta().getLocation());
 		if (logger.isDebugEnabled())
@@ -140,7 +142,7 @@ public class MemoryProvider implements IScimProvider {
 						"\nMatches:\t" + vals.size();
 				logger.debug(buf);
 			}
-			return new ListResponse(vals,ctx);
+			return new ListResponse(vals,ctx, config);
 		}
 		ScimResource res = this.mainMap.get(id);
 		if (res == null) {
@@ -161,7 +163,7 @@ public class MemoryProvider implements IScimProvider {
 					"\nMatches:\t" + "1";
 			logger.debug(buf);
 		}
-		return new ListResponse(res,ctx);
+		return new ListResponse(res,ctx, config);
 	}
 	
 	/* (non-Javadoc)
@@ -222,6 +224,7 @@ public class MemoryProvider implements IScimProvider {
 	@PostConstruct
 	public void init(ConfigMgr cfg) {
 		config = cfg;
+		smgr = cfg.getSchemaManager();
 		if (singleton == null)
 			singleton = this;
 		//String file = cfg.getInitParameter(PARAM_PERSIST_FILE);
@@ -242,7 +245,7 @@ public class MemoryProvider implements IScimProvider {
 			for (JsonNode resNode : node) {
 				ScimResource res;
 				try {
-					res = new ScimResource(config, resNode, null, null);
+					res = new ScimResource(smgr, resNode, null, null);
 					this.mainMap.put(res.getId(), res);
 				} catch (ScimException | ParseException e) {
 					System.err.println("Error parsing SCIM resource");

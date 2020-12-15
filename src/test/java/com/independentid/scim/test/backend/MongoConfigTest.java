@@ -19,12 +19,11 @@ package com.independentid.scim.test.backend;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.backend.mongo.MongoProvider;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
-import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.schema.SchemaManager;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.MethodOrderer;
@@ -54,8 +53,8 @@ public class MongoConfigTest {
 	BackendHandler handler;
 
 	@Inject
-	@Resource(name="ConfigMgr")
-	ConfigMgr cmgr ;
+	@Resource(name="SchemaMgr")
+	SchemaManager smgr;
 
 	static IScimProvider provider = null;
 
@@ -77,8 +76,8 @@ public class MongoConfigTest {
 	
 	@Test
 	public void b_SchemaTest() {
-		Schema userById = cmgr.getSchemaById("urn:ietf:params:scim:schemas:core:2.0:User");
-		Schema userByName = cmgr.getSchemaByName("User");
+		Schema userById = smgr.getSchemaById("urn:ietf:params:scim:schemas:core:2.0:User");
+		Schema userByName = smgr.getSchemaByName("User");
 		
 		assertThat(userById == userByName).as("Is the same Schema config instance").isTrue();
 		
@@ -88,8 +87,8 @@ public class MongoConfigTest {
 
 	@Test 
 	public void c_ResTypeTest() {
-		ResourceType resByEp = cmgr.getResourceTypeByPath("Users");
-		ResourceType resByName = cmgr.getResourceType("User");
+		ResourceType resByEp = smgr.getResourceTypeByPath("Users");
+		ResourceType resByName = smgr.getResourceType("User");
 		
 		assertThat(resByEp == resByName).as("Is the same ResourceType config instance").isTrue();
 		
@@ -102,8 +101,8 @@ public class MongoConfigTest {
 		
 		logger.info("* Checking schema");
 
-		Collection<Schema> schCol = cmgr.getSchemas();
-		Collection<ResourceType> resTypeCol = cmgr.getResourceTypes();
+		Collection<Schema> schCol = smgr.getSchemas();
+		Collection<ResourceType> resTypeCol = smgr.getResourceTypes();
 		//schCol.forEach(sch -> logger.debug("Cfg Schema: {}", sch.getName()));
 		
 		int confSchCnt = schCol.size();

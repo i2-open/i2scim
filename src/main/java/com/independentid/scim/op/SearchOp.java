@@ -20,7 +20,6 @@ import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.InternalException;
 import com.independentid.scim.core.err.InvalidSyntaxException;
 import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,8 +47,9 @@ public class SearchOp extends Operation {
 	 */
 	public SearchOp(HttpServletRequest req,
 					HttpServletResponse resp, ConfigMgr configMgr) {
-		super(req, resp);
+		super(req, resp );
 		this.cfgMgr = configMgr;
+		this.smgr = cfgMgr.getSchemaManager();
 		
 		if (!req.getRequestURI().endsWith(ScimParams.PATH_SEARCH)) {
 			InternalException ie = new InternalException(

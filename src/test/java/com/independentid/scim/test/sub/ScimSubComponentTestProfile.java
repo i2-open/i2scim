@@ -28,7 +28,8 @@ public class ScimSubComponentTestProfile implements QuarkusTestProfile {
                 "scim.provider.bean","null",
                 "scim.security.enable", "false",
                 "logging.level.com.independentid.scim","DEBUG",
-                "quarkus.log.category.\"com.independentid.scim\".level","DEBUG"
+                "quarkus.log.category.\"com.independentid.scim\".level","DEBUG",
+                "scim.persist.schema","false"
         );
     }
 

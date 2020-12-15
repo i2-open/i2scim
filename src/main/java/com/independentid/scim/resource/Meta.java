@@ -22,6 +22,7 @@ import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.security.AccessManager;
 import com.independentid.scim.serializer.ScimSerializer;
 
+import javax.annotation.Resource;
 import javax.inject.Inject;
 import javax.servlet.ServletContext;
 import java.io.IOException;
@@ -36,12 +37,13 @@ import java.util.Date;
  *
  */
 public class Meta implements ScimSerializer {
-	@Inject
-	AccessManager aMgr;
-
 	//private final static Logger logger = LoggerFactory
 	//		.getLogger(Meta.class);
-	
+
+	@Inject
+	@Resource(name="AccessMgr")
+	AccessManager amgr;
+
     private String location = null;
 	
     private String resourceType = null;
@@ -144,8 +146,8 @@ public class Meta implements ScimSerializer {
 				url = this.location;
 			gen.writeStringField("location", url);
 
-			AccessManager.AciSet set = aMgr.getAcisByPath(this.location);
-			if (set.acis.size() > 0) {
+			AccessManager.AciSet set = amgr.getAcisByPath(this.location) ;
+			if (set != null && set.acis.size() > 0) {
 				gen.writeFieldName("acis");
 				gen.writeStartArray();
 				for (AccessControl aci : set.acis) {

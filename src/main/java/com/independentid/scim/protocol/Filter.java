@@ -15,19 +15,22 @@
 
 package com.independentid.scim.protocol;
 
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
+import com.independentid.scim.schema.SchemaManager;
 
+import javax.transaction.Transactional;
 import java.util.ArrayList;
 
-
+@Transactional
 public abstract class Filter {
+
+	public static SchemaManager smgr;
 
 	private final String filter;
 
-	final static ConfigMgr cfg = ConfigMgr.getConfig();
+	//cfg = ConfigMgr.getConfig();
 	
 	public final static String REGX_URN =
 			"urn:[a-zA-Z0-9][a-zA-Z0-9-]{1,31}:([a-zA-Z0-9()+,.:=@;$_!*'-]|%[0-9A-Fa-f]{2})+";
@@ -66,22 +69,23 @@ public abstract class Filter {
 		return this.filter;
 	} 
 	
-	public static Filter parseFilter(String filterStr, RequestCtx ctx) throws BadFilterException {
-		return parseFilter(filterStr, null, ctx);
+	public static Filter parseFilter(String filterStr, RequestCtx ctx, SchemaManager schemaManager) throws BadFilterException {
+		return parseFilter(filterStr, null, ctx, schemaManager);
 	}
 
 	/**
 	 * Parses the provided filterStr and returns a Filter object
 	 * @param filterStr A SCIM filter expressed in string form
 	 * @param parentAttr Optional parent attribute, used when parsing Value Filters.
-	 * @param ctx Optional RequestCtx that provides additional context for matching 
-	 * short attribute names. For example, ambiguous attribute "name" can be matched to User schema if 
+	 * @param ctx
+	 * @param schemaManager Optional RequestCtx that provides additional context for matching
+	 * short attribute names. For example, ambiguous attribute "name" can be matched to User schema if
 	 * searching within the Users container.
 	 * @return A Filter object containing the parsed filter.
 	 * @throws BadFilterException Thrown if the filter is an invalid SCIM filter.
 	 */
-	public static Filter parseFilter(String filterStr, String parentAttr, RequestCtx ctx) throws BadFilterException {
-
+	public static Filter parseFilter(String filterStr, String parentAttr, RequestCtx ctx, SchemaManager schemaManager) throws BadFilterException {
+		smgr = schemaManager;
 		int bCnt = 0;  int bIndex = -1;
 		int valPathCnt = 0;  int vPathStartIndex = -1;
 		int wordIndex = -1;
@@ -132,7 +136,7 @@ public abstract class Filter {
 						bCnt--;
 						if (bCnt == 0) {
 							String subFilterStr = filterStr.substring(bIndex+1,i);
-							Filter subFilter = Filter.parseFilter(subFilterStr, parentAttr, ctx);
+							Filter subFilter = Filter.parseFilter(subFilterStr, parentAttr, ctx, schemaManager);
 							// Precedence is redundant if Attribute Filter
 							if (! (subFilter instanceof AttributeFilter))
 								clauses.add(new PrecedenceFilter(subFilter, isNot));
@@ -179,7 +183,7 @@ public abstract class Filter {
 						if (valPathCnt == 0) {
 							String aname = filterStr.substring(wordIndex,vPathStartIndex);
 							String valueFilterStr = filterStr.substring(vPathStartIndex+1,i);
-							Filter clause = new ValuePathFilter(aname,valueFilterStr);
+							Filter clause = new ValuePathFilter(aname,valueFilterStr,smgr );
 							clauses.add(clause);
 							//reset for next phrase
 							vPathStartIndex = -1;
@@ -218,7 +222,7 @@ public abstract class Filter {
 							cond = phrase;
 							wordIndex = -1;
 							if (cond.equalsIgnoreCase(AttributeFilter.FILTEROP_PRESENCE)) {
-								Filter attrExp = new AttributeFilter(attr,cond,null,parentAttr, ctx);
+								Filter attrExp = new AttributeFilter(attr,cond,null,parentAttr, ctx, schemaManager);
 								attr = null; isAttr = false;
 								cond = null; isExpr = false;
 								isValue = false;
@@ -228,7 +232,7 @@ public abstract class Filter {
 							if (isValue) {
 								value = phrase;
 								wordIndex = -1;
-								Filter attrExp = new AttributeFilter(attr,cond,value,parentAttr, ctx);
+								Filter attrExp = new AttributeFilter(attr,cond,value,parentAttr, ctx, schemaManager);
 								attr = null; isAttr = false;
 								cond = null; isExpr = false;
 								isValue = false;
@@ -288,7 +292,7 @@ public abstract class Filter {
 				if (value.startsWith("\"") && value.endsWith("\"")) {
 					value = value.substring(1, value.length()-1);
 				}
-				Filter attrExp = new AttributeFilter(attr,cond,value,parentAttr, ctx);
+				Filter attrExp = new AttributeFilter(attr,cond,value,parentAttr, ctx, schemaManager);
 				
 				clauses.add(attrExp);
 			} else {
@@ -296,7 +300,7 @@ public abstract class Filter {
 				if (isAttr) 
 					cond = filterStr.substring(wordIndex);
 				// in a presence filter the value is always null.
-				Filter attrExp = new AttributeFilter(attr,cond,null,parentAttr,ctx);
+				Filter attrExp = new AttributeFilter(attr,cond,null,parentAttr, ctx, schemaManager);
 				clauses.add(attrExp);
 			}
 		}

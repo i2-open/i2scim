@@ -28,10 +28,13 @@ import com.independentid.scim.protocol.ResourceResponse;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.ResourceType;
+import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Resource;
+import javax.inject.Inject;
 import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -76,7 +79,8 @@ public abstract class Operation extends RecursiveAction {
     @Context
     HttpServletResponse resp;
 
-    ConfigMgr cfgMgr = null;
+    ConfigMgr cfgMgr;
+    SchemaManager smgr;
 
     BackendHandler handler = null;
 
@@ -133,7 +137,6 @@ public abstract class Operation extends RecursiveAction {
         //this.handler = handler;
         this.predicateOps = new ArrayList<>();
 
-
     }
 
     /**
@@ -141,7 +144,10 @@ public abstract class Operation extends RecursiveAction {
      */
     protected void parseRequestUrl() {
         try {
-            this.ctx = new RequestCtx(req, resp, cfgMgr);
+            // CHeck if RequestCtx is already defined
+            this.ctx = (RequestCtx) req.getAttribute(RequestCtx.REQUEST_ATTRIBUTE);
+            if (this.ctx == null)  // If RequestCtx wasn't created by the filter, do it now
+                this.ctx = new RequestCtx(req, resp, smgr);
         } catch (ScimException e) {
             setCompletionError(new InternalException("Error parsing request URL: " + e.getMessage(), e));
             this.state = OpState.invalid;
@@ -257,7 +263,7 @@ public abstract class Operation extends RecursiveAction {
      * @return Returns the request ResourceType based on the endpoint of the request or null.
      */
     public ResourceType getResourceType() {
-        return cfgMgr.getResourceTypeByPath(ctx.getResourceContainer());
+        return smgr.getResourceTypeByPath(ctx.getResourceContainer());
     }
 
     /**

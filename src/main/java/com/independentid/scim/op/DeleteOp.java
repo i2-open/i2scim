@@ -26,7 +26,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 
 /**
  * @author pjdhunt
@@ -47,16 +46,18 @@ public class DeleteOp extends Operation implements IBulkOp {
      * @param configMgr A pointer to the server ConfigMgr object (for schema)
      */
     public DeleteOp(HttpServletRequest req, HttpServletResponse resp, ConfigMgr configMgr) {
-        super(req, resp);
+        super(req, resp );
         this.parent = null;
         this.cfgMgr = configMgr;
+        this.smgr = configMgr.getSchemaManager();
         this.handler = configMgr.getBackendHandler();
     }
 
-    public DeleteOp(RequestCtx ctx, BulkOps parent, int requestNum) {
+    public DeleteOp(RequestCtx ctx, BulkOps parent, int requestNum, ConfigMgr configMgr) {
         super(ctx, requestNum);
         this.parent = parent;
-        this.cfgMgr = ctx.getConfigMgr();
+        this.cfgMgr = configMgr;
+        this.smgr = cfgMgr.getSchemaManager();
     }
 
     public BulkOps getParentBulkRequest() {
