@@ -73,11 +73,15 @@ public class ConfigMgr {
 			"id","externalid","schemas","meta");
 
 	private final static Logger logger = LoggerFactory.getLogger(ConfigMgr.class);
+	public static final String SCIM_PERSIST_SCHEMA = "scim.persist.schema";
+	public static final String SCIM_JSON_PRETTY = "scim.json.pretty";
+	public static final String SCIM_QUERY_MAX_RESULTSIZE = "scim.query.max.resultsize";
+	public static final String SCIM_QUERY_MAX_RESULTS_DEFAULT = "1000";
 
-	@ConfigProperty(name = "scim.json.pretty", defaultValue="false")
+	@ConfigProperty(name = SCIM_JSON_PRETTY, defaultValue="false")
 	boolean jsonPretty;
 	
-	@ConfigProperty(name = "scim.persist.schema", defaultValue="true")
+	@ConfigProperty(name = SCIM_PERSIST_SCHEMA, defaultValue="true")
 	boolean persistSchema;
 
 	//public final static String PARAM_PROVIDER_CLASS = "scim.provider.class";
@@ -86,7 +90,7 @@ public class ConfigMgr {
 	//public final static String PARAM_MAX_RESULTS = "scim.query.max.resultsize";
 	//public final static String DEFAULT_MAX_RESULTS = "1000";
 	
-	@ConfigProperty(name = "scim.query.max.resultsize", defaultValue="1000")
+	@ConfigProperty(name = SCIM_QUERY_MAX_RESULTSIZE, defaultValue= SCIM_QUERY_MAX_RESULTS_DEFAULT)
 	int maxResults; 
 	
 	//public final static String PARAM_BULK_MAX_OPS = "scim.bulk.max.ops";

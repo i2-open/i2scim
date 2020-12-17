@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.ejb.Startup;
+import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -39,8 +40,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.TreeMap;
 
-@Singleton
 @Startup
+@Singleton
 @Named("AccessMgr")
 public class AccessManager {
 
@@ -102,7 +103,8 @@ public class AccessManager {
      * @return The set of ACIs that apply
      */
     public AciSet getAcisByPath(String path) {
-
+        if (path.startsWith("/v2/"))
+            path = path.substring(3);
         AciSet resp = new AciSet(path);
         // Do Global Level
         if (pathMap.containsKey("/")) // add global acis if any
@@ -143,5 +145,5 @@ public class AccessManager {
         return true;
     }
 
-
+    public String toString() { return "AccessManager";}
 }

@@ -108,6 +108,7 @@ public class ScimConfigEndpointTest {
         HttpEntity body = resp.getEntity();
 
         String res = EntityUtils.toString(body);
+        logger.debug("Response returned: \n"+res);
 
         assertThat(res).isNotNull();
 
@@ -148,6 +149,7 @@ public class ScimConfigEndpointTest {
         HttpEntity entity = httpResponse.getEntity();
 
         res = EntityUtils.toString(entity, StandardCharsets.UTF_8);
+        logger.debug("Response returned: \n"+res);
 
         assertThat(httpResponse.getStatusLine().getStatusCode())
                 .as("Check for status response 200 OK")

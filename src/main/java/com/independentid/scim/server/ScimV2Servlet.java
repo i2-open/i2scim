@@ -22,15 +22,14 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.*;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.serializer.JsonUtil;
+import org.apache.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.ejb.Startup;
-import javax.enterprise.context.RequestScoped;
 import javax.inject.Inject;
-import javax.inject.Named;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
@@ -50,9 +49,10 @@ import java.io.IOException;
  */
 
 @Startup
-@RequestScoped
-@Named("ScimServlet")
-@WebServlet("/")
+//@RequestScoped
+//@Named("ScimServlet")
+//@WebServlet("/")
+@WebServlet(name = "ScimServlet", urlPatterns = "/*")
 public class ScimV2Servlet extends HttpServlet {
 
 	/**
@@ -77,8 +77,9 @@ public class ScimV2Servlet extends HttpServlet {
 	HttpServletResponse requestTest;
 
 	public ScimV2Servlet() {
-		
+		logger.info("Scim Servlet Constructed");
 	}
+
 
 	private String reqPath(HttpServletRequest req) {
 		String pathInfo = req.getPathInfo();
@@ -160,7 +161,11 @@ public class ScimV2Servlet extends HttpServlet {
 			//super.doGet(req, resp);
 
 			ServletOutputStream out = resp.getOutputStream();
-			FileInputStream instream = cfgMgr.getClassLoaderFile(path);
+			FileInputStream instream = ConfigMgr.getClassLoaderFile(path);
+			if (instream == null) {
+				resp.setStatus(HttpStatus.SC_NOT_FOUND);
+				return;
+			}
 			instream.transferTo(out);
 			instream.close();
 			return;

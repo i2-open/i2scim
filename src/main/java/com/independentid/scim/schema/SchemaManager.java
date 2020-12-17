@@ -28,10 +28,11 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.ManagedBean;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
+import javax.ejb.Startup;
+import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -46,8 +47,9 @@ import java.util.*;
  * other classes to provide resource and attribute type definitions.  Previously this was contained within ConfigMgr and
  * is migrated to solve bootstrap issues.
  */
+@Startup
 @Singleton
-@ManagedBean
+//@ApplicationScoped
 @Named("SchemaMgr")
 public class SchemaManager {
     private final static Logger logger = LoggerFactory.getLogger(SchemaManager.class);
@@ -102,6 +104,12 @@ public class SchemaManager {
         if (initialized)
             return;
 
+        loadDefaultSchema();
+        loadDefaultResourceTypes();
+        loadCoreSchema();
+        initialized = true;
+
+        /*
         //If the server will not persist its schema in the database, then load directly into config.
         if (!this.persistSchemaMode()) {
             // Nothing to do, SchemaManager should have initialized itself
@@ -123,9 +131,7 @@ public class SchemaManager {
             persistSchema();
         }
 
-
-
-        initialized = true;
+         */
 
     }
 
@@ -133,10 +139,7 @@ public class SchemaManager {
     public synchronized void shutdown() {
         // clean up so that GC works faster
         logger.debug("SchemaManager shutdown.");
-        rTypePaths.clear();
-        rTypes.clear();
-        schIdMap.clear();
-        schNameMap.clear();
+        resetSchema();
     }
 
     /**
@@ -191,6 +194,7 @@ public class SchemaManager {
      * backend handler.
      */
     public void resetSchema() {
+        initialized = false;
         schIdMap.clear();
         schNameMap.clear();
 
@@ -649,6 +653,8 @@ public class SchemaManager {
             logger.error("BackendHandler not initialized.");
             return false;
         }
+        backendHandler.isReady();
+
 
         //TODO: Complete stored schema implementation
         Collection<Schema> dbschemas = backendHandler.loadSchemas();
