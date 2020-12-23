@@ -114,7 +114,7 @@ public class MongoScimResource extends ScimResource {
 			Value val = MongoMapUtil.mapBsonDocument(attr, doc);
 
 			if (val != null)
-				this.coreAttrs.put(attr.getName(), val);
+				this.coreAttrVals.put(attr, val);
 		}
 		
 		String[] eids = type.getSchemaExtension();
@@ -122,7 +122,7 @@ public class MongoScimResource extends ScimResource {
 			Schema schema = smgr.getSchemaById(eid);
 			ExtensionValues val = MongoMapUtil.mapBsonExtension(schema, doc);
 			if (val != null)
-				this.extAttrs.put(eid, val);
+				this.extAttrVals.put(eid, val);
 		}
 		
 	}

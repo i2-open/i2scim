@@ -16,7 +16,9 @@ package com.independentid.scim.resource;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.core.err.ScimException;
@@ -25,8 +27,12 @@ import com.independentid.scim.protocol.Filter;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
+import org.mvel2.optimizers.impl.refl.nodes.ArrayAccessorNest;
 
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.text.ParseException;
 import java.util.Collection;
 import java.util.List;
@@ -45,16 +51,20 @@ public class MultiValue extends Value {
 		this.attr = null;
 	}
 
-	public MultiValue(Attribute attr, JsonNode node, IBulkIdResolver bulkIdResolver)
+	public MultiValue(@NotNull Attribute attr, JsonNode node, IBulkIdResolver bulkIdResolver)
 			throws ConflictException, SchemaException, ParseException {
 		super(attr, node);
+		if (attr == null)
+			throw new SchemaException("Attribute schema is null");
 		this.values = new Vector<>();
 		this.resolver = bulkIdResolver;
 		parseJson(attr, node);
 		this.attr = attr;
 	}
 	
-	public MultiValue(Attribute attr, List<Value> vals) {
+	public MultiValue(@NotNull Attribute attr, List<Value> vals) throws SchemaException {
+		if (attr == null)
+			throw new SchemaException("Attribute schema is null");
 		this.jtype = JsonNodeType.ARRAY;
 		this.values = new Vector<>();
 		this.values.addAll(vals);
@@ -70,6 +80,48 @@ public class MultiValue extends Value {
 		}
 		gen.writeEndArray();
 
+	}
+
+	@Override
+	public JsonNode toJsonNode(ObjectNode parent, String aname) {
+		ArrayNode anode = null;
+		if (parent == null)
+			parent = JsonUtil.getMapper().createObjectNode();
+		anode = parent.putArray(aname);
+		switch (attr.getType()) {
+			case ValueUtil.TYPE_BOOLEAN:
+				for(Value val: values)
+					anode.add((Boolean) val.getValueArray());
+				break;
+
+			case ValueUtil.TYPE_BINARY:
+			case ValueUtil.TYPE_DATETIME:
+			case ValueUtil.TYPE_REF:
+				for(Value val: values)
+					anode.add(val.toString());
+				break;
+
+			case ValueUtil.TYPE_STRING:
+				for(Value val: values)
+					anode.add((String) val.getValueArray());
+				break;
+
+			case ValueUtil.TYPE_DECIMAL:
+				for(Value val: values)
+					anode.add((BigDecimal) val.getValueArray());
+				break;
+			case ValueUtil.TYPE_INTEGER:
+				for(Value val: values)
+					anode.add((Integer) val.getValueArray());
+				break;
+			case ValueUtil.TYPE_COMPLEX:
+				for(Value val: values) {
+					anode.add(val.toJsonNode(null,aname).get(aname));
+				}
+				break;
+		}
+
+		return parent;
 	}
 
 	@Override

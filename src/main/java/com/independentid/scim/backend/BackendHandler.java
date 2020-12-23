@@ -29,11 +29,13 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.ManagedBean;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.ejb.Startup;
 import javax.inject.Named;
 import javax.inject.Singleton;
+import javax.ws.rs.Produces;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
@@ -107,6 +109,7 @@ public class BackendHandler {
 		return self;
 	}*/
 
+	@Produces
 	public synchronized IScimProvider getProvider() throws InstantiationException, ClassNotFoundException {
 		if (provider != null)
 			return provider;

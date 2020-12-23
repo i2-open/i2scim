@@ -16,6 +16,7 @@
 package com.independentid.scim.protocol;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.core.err.TooManyException;
@@ -220,5 +221,9 @@ public class ListResponse extends ScimResponse {
 			resp.setHeader("Location", loc);
 		// TODO should we check for response size of 0 for not found?
 	}
-	
+
+	@Override
+	public JsonNode toJsonNode() {
+		return super.toJsonNode();
+	}
 }

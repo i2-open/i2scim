@@ -17,15 +17,14 @@ package com.independentid.scim.resource;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.serializer.JsonUtil;
 
 import java.io.IOException;
-import java.io.StringWriter;
 import java.text.ParseException;
 
 public abstract class Value {
@@ -45,35 +44,9 @@ public abstract class Value {
 	
 	public abstract Object getValueArray();
 	
-	public  JsonNode toJsonNode() throws ScimException {
-		StringWriter writer = new StringWriter();
-		try {
-			JsonGenerator gen = JsonUtil.getGenerator(writer, false);
-			this.serialize(gen, null);
-			gen.close();
-			writer.close();
-			return JsonUtil.getJsonTree(writer.toString());
-		} catch (IOException e) {
-			// Should not happen
-			e.printStackTrace();
-		}
-		return null;
-	}
+	public abstract JsonNode toJsonNode(ObjectNode parent, String aname);
 
-	public  String toString() {
-		StringWriter writer = new StringWriter();
-		try {
-			JsonGenerator gen = JsonUtil.getGenerator(writer, false);
-		
-			this.serialize(gen, null);
-			
-			gen.close();
-			writer.close();
-			return writer.getBuffer().toString();
-		} catch (IOException | ScimException e) {
-			// Should not happen
-			e.printStackTrace();
-		}
-		return super.toString();
+	public  String toString(Attribute attr) {
+		return toJsonNode(null,attr.getName()).toString();
 	}
 }

@@ -16,6 +16,7 @@ package com.independentid.scim.resource;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.IBulkIdResolver;
@@ -24,8 +25,10 @@ import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
 
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.*;
@@ -37,7 +40,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 	private final String sname;
 	private final IBulkIdResolver resolver;
 	
-	private final LinkedHashMap<String,Value> attrs = new LinkedHashMap<>();
+	private final LinkedHashMap<Attribute,Value> attrs = new LinkedHashMap<>();
 	
 	/**
 	 * Creates a value container for Extension Schema Attributes
@@ -56,7 +59,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 		
 	}
 	
-	public ExtensionValues(Schema extensionSchema, Map<String,Value> valMap) {
+	public ExtensionValues(Schema extensionSchema, Map<Attribute,Value> valMap) {
 		this.sname = extensionSchema.getId();
 		this.eSchema = extensionSchema;
 		this.resolver = null;
@@ -96,28 +99,49 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 			gen.writeFieldName(eSchema.getId());
 		gen.writeStartObject();
 		
-		for (String field : attrs.keySet()) {
-			Attribute attr = eSchema.getAttribute(field);
+		for (Attribute attr: attrs.keySet()) {
+
 			if (ValueUtil.isReturnable(attr, ctx)) {
-				gen.writeFieldName(field);
-				Value val = attrs.get(field);
+				gen.writeFieldName(attr.getName());
+				Value val = attrs.get(attr);
 				val.serialize(gen, ctx);
 			}
 		}
 		gen.writeEndObject();
 
 	}
-	
+
+	@Override
+	public JsonNode toJsonNode() {
+		ObjectNode parent = JsonUtil.getMapper().createObjectNode();
+
+		for (Attribute attr : attrs.keySet()) {
+			Value val = getValue(attr);
+			val.toJsonNode(parent,attr.getName());
+		}
+		return parent;
+	}
+
 	public Value getValue(String name) {
-		return this.attrs.get(name);
+		Attribute attr = eSchema.getAttribute(name);
+		return getValue(attr);
+	}
+
+	public Value getValue(Attribute attr) {
+		return this.attrs.get(attr);
 	}
 	
-	public Map<String,Value> getValueMap() {
+	public Map<Attribute,Value> getValueMap() {
 		return this.attrs;
 	}
 	
 	public void removeValue(String name) {
-		this.attrs.remove(name);
+		Attribute attr = eSchema.getAttribute(name);
+		removeValue(attr);
+	}
+
+	public void removeValue(Attribute attr) {
+		this.attrs.remove(attr);
 	}
 	
 	/**
@@ -126,12 +150,90 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 	public int getSize() {
 		return this.attrs.size();
 	}
-	
-	public void putValue(String name, Value val) {
-		this.attrs.put(name, val);
+
+	/**
+	 * Adds a value to the extension object. If the attribute is a multi-value, it will add the value.
+	 * @param attribute The name of the attribute or sub-attribute to add
+	 * @param val The Value to add
+	 */
+	public void addValue(@NotNull Attribute attribute, @NotNull Value val) throws SchemaException {
+		Attribute rootAttribute = attribute;
+		if (attribute.isChild()) {
+			rootAttribute = attribute.getParent();
+		}
+
+		if (attribute.isChild()) {
+			Value rval = getValue(rootAttribute.getName());
+			// If parent was undefined, add it.
+			if (rval == null) {
+				ComplexValue cval = new ComplexValue();
+				cval.addValue(attribute,val);
+				attrs.put(rootAttribute, cval);
+			}
+			if (rval instanceof ComplexValue) {
+				// Add the sub attribute value to the parent
+				ComplexValue cval = (ComplexValue) rval;
+				cval.addValue(attribute, val);
+				return;
+			}
+		}
+
+		// Not a complex sub attribute, just add it.
+		if(rootAttribute.isMultiValued()) {
+			MultiValue mval = (MultiValue) getValue(rootAttribute);
+			if (mval == null) {
+				mval = new MultiValue(rootAttribute,new LinkedList<>());
+				attrs.put(attribute,mval);
+			}
+			mval.addValue(val);
+			return;
+		}
+
+		// Just add the regular attribute
+		attrs.put(attribute, val);
+	}
+
+	/**
+	 * Replaces the existing value object with the new one. If MultiValue, replaces the entire set of values.
+	 * @param attribute The definition of the attribute value to be added
+	 * @param val The Value to be added
+	 */
+	public void putValue(@NotNull Attribute attribute,@NotNull Value val) throws SchemaException {
+		Attribute rootAttribute = attribute;
+		if (attribute.isChild()) {
+			rootAttribute = attribute.getParent();
+		}
+
+		if (attribute.isChild()) {
+			Value rval = getValue(rootAttribute.getName());
+			// If parent was undefined, add it.
+			if (rval == null) {
+				ComplexValue cval = new ComplexValue();
+				cval.addValue(attribute,val);
+				putValue(rootAttribute, cval);
+			}
+			if (rval instanceof ComplexValue) {
+				// Add the sub attribute value to the parent
+				ComplexValue cval = (ComplexValue) rval;
+				cval.addValue(attribute, val);
+				return;
+			}
+		}
+
+		// Not a complex sub attribute, just add it.
+		if(rootAttribute.isMultiValued()) {
+			MultiValue mval = new MultiValue(rootAttribute,new LinkedList<>());
+
+			mval.addValue(val);
+			this.attrs.put(attribute,mval);
+			return;
+		}
+
+		// Just add the regular attribute
+		this.attrs.put(attribute, val);
 	}
 	
-	public Set<String> attrNameSet() {
+	public Set<Attribute> getAttributeSet() {
 		return this.attrs.keySet();
 	}
 	
@@ -140,7 +242,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 		Value val;
 		if (attrNode != null) {
 			val = ValueUtil.parseJson(attr, attrNode, this.resolver);
-			this.attrs.put(attr.getName(), val);
+			this.attrs.put(attr, val);
 		}
 	}
 	

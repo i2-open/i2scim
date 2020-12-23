@@ -143,11 +143,7 @@ public class PersistStateResource extends ScimResource {
 
 	@Override
 	public String toString() {
-		try {
-			return this.toJsonString();
-		} catch (ScimException e) {
-			e.printStackTrace();
-		}
-		return null;
+		return this.toJsonString();
+
 	}
 }

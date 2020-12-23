@@ -18,11 +18,14 @@ package com.independentid.scim.resource;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.util.Base64;
 import java.util.Base64.Decoder;
@@ -76,7 +79,7 @@ public class BinaryValue extends Value {
 		if (node == null)
 			throw new SchemaException("Was expecting a JSON string (Base64 encoded) value but encountered null");
 
-		this.value = decoder.decode(node.asText());
+		this.value = decoder.decode(node.asText().getBytes(StandardCharsets.UTF_8));
 		
 		//TODO:  SHould the DER Value encoding be validated?
 		
@@ -90,6 +93,14 @@ public class BinaryValue extends Value {
 		}
 		*/
 
+	}
+
+	@Override
+	public JsonNode toJsonNode(ObjectNode parent, String aname) {
+		if (parent == null)
+			parent = JsonUtil.getMapper().createObjectNode();
+		parent.put(aname,toString());
+		return parent;
 	}
 
 	/**

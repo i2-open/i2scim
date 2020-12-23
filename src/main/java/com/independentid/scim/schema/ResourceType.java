@@ -16,6 +16,8 @@ package com.independentid.scim.schema;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.resource.Meta;
@@ -230,9 +232,27 @@ public class ResourceType implements ScimSerializer {
     	return writer.toString();
 	}
 	
-	public JsonNode toJsonNode() throws IOException {
-    	
-    	return JsonUtil.getJsonTree(toJsonString());
+	public JsonNode toJsonNode() {
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+    	node.putArray("schemas").add(SCHEMA_ID);
+    	if (id != null)
+    		node.put("id",id);
+    	if (name != null)
+    		node.put("name",name);
+    	if (endpoint != null)
+    		node.put("endpoint",endpoint.toString());
+    	if (description != null)
+    		node.put("description",description);
+    	if (schema != null)
+    		node.put("schema",getSchema());
+    	if (schemaExtensions != null && schemaExtensions.size()>0) {
+			ArrayNode anode = node.putArray("schemaExtensions");
+			for (SchemaExtension ext : schemaExtensions.values())
+				anode.add(ext.toJsonNode());
+		}
+    	if (meta != null)
+    		node.set("meta",meta.toJsonNode());
+    	return node;
     }
 	
 	@Override

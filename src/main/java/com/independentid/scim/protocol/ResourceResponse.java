@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ScimResource;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +38,7 @@ import java.util.Date;
 public class ResourceResponse extends ScimResponse {
 	private static final Logger logger = LoggerFactory.getLogger(ListResponse.class);
 	final static SimpleDateFormat headDate = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");
-	
+
 	protected Date lastMod;
 	protected int totalRes;
 	protected RequestCtx ctx;

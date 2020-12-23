@@ -16,7 +16,10 @@ package com.independentid.scim.schema;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
 
 import java.io.IOException;
@@ -170,6 +173,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
      */
     public boolean isReturnable(RequestCtx ctx) {
     	if (ctx == null) {
+    		/*
     		switch (this.getReturned()) {
     			case Attribute.RETURNED_default:
     			case Attribute.RETURNED_always:
@@ -179,9 +183,11 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
         			// is only returned when specifically requested
         			return false;
     		}
+    		 */
+			// If no RequestCtx, this is an internal call. Always return all values!
+			return true;
     	}
 
-		assert ctx != null;
 		boolean isReturnable = ctx.isAttrRequested(this);
     	if (this.getSubAttributesMap().isEmpty())
     		return isReturnable;
@@ -302,6 +308,34 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 	@Override
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
 		serialize(gen, ctx, false);
+	}
+
+	@Override
+	public JsonNode toJsonNode() {
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+		node.put("name",name);
+		node.put("type",type);
+		if (description != null)
+			node.put("description",description);
+		if (returned != null)
+			node.put("returned",returned);
+		if (mutability != null)
+			node.put("mutability",mutability);
+		if (type.equals(TYPE_String)) {
+			node.put("caseExact",caseExact);
+			if (uniqueness != null)
+				node.put("uniqueness",uniqueness);
+			if (canonicalValues != null && canonicalValues.size() > 0) {
+				ArrayNode anode = node.putArray("canonicalValues");
+				for (String val: canonicalValues)
+					anode.add(val);
+			}
+
+
+		}
+		return node;
+
+
 	}
 
 	@Override
@@ -454,7 +488,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 		}
 
 	}
-	
+
 	public boolean isModifiable() {
 		return (this.mutability.equalsIgnoreCase(MUTABILITY_readWrite)
 				|| this.mutability.equalsIgnoreCase(MUTABILITY_writeOnly));

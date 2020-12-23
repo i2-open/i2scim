@@ -106,6 +106,10 @@ public class JsonPath {
 	public String getSubAttrName() {
 		return this.subAttr;
 	}
+
+	public Attribute getSubAttribute() {
+		return targAttr.getSubAttribute(this.subAttr);
+	}
 	
 	public String toString() {
 		StringBuilder buf = new StringBuilder();

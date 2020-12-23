@@ -16,11 +16,14 @@ package com.independentid.scim.resource;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.security.AccessManager;
+import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
 
 import javax.servlet.ServletContext;
@@ -112,6 +115,39 @@ public class Meta implements ScimSerializer {
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
 		serialize(gen, ctx, false);
 	}
+
+	public JsonNode toJsonNode() {
+		return toJsonNode(null);
+	}
+
+	public JsonNode toJsonNode(RequestCtx ctx) {
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+		if (created != null)
+			node.put("created",getCreated());
+		if (lastModified != null)
+			node.put("lastModified",getLastModified());
+		if (this.resourceType != null)
+			node.put("resourceType",resourceType);
+		if (this.version != null)
+			node.put("version",version);
+		if (location != null)
+			node.put("location",location);
+
+		AccessManager amgr = ConfigMgr.getConfig().getAccessManager();
+		if (amgr != null) {
+			AccessManager.AciSet set = amgr.getAcisByPath(this.location);
+			if (set != null && set.acis.size() > 0) {
+				ArrayNode anode = node.putArray("acis");
+				for (AccessControl aci : set.acis) {
+						anode.add(aci.toJsonNode());
+				}
+			}
+		}
+		// acis will be added elsewhere
+		return node;
+	}
+
+
 
 	public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException {
 				

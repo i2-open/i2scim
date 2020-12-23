@@ -16,6 +16,8 @@ package com.independentid.scim.schema;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.resource.Meta;
@@ -178,9 +180,24 @@ public class Schema implements ScimSerializer  {
 		return false;
 	}
 
-	public JsonNode toJsonNode() throws IOException {
-    	
-    	return JsonUtil.getJsonTree(toJsonString());
+	public JsonNode toJsonNode() {
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+		node.putArray("schemas").add(SCHEMA_ID);
+		node.put("id",id);
+
+		if (this.name != null)
+			node.put("name",name);
+		if (this.description != null)
+			node.put("description",description);
+		if (!attributes.values().isEmpty()){
+			ArrayNode anode = node.putArray("attributes");
+			for (Attribute attr : this.attributes.values()) {
+				anode.add(attr.toJsonNode());
+			}
+		}
+		node.set("meta",meta.toJsonNode());
+		return node;
+
     }
     
 	@Override
@@ -188,6 +205,7 @@ public class Schema implements ScimSerializer  {
 		
 		serialize(gen, ctx, false);
 	}
+
 
 	@Override
 	public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException {

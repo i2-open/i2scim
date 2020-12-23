@@ -17,6 +17,8 @@ package com.independentid.scim.resource;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.Filter;
@@ -116,16 +118,6 @@ public class AccessControl implements ScimSerializer {
     public void setClientRoles(ArrayList<String> roles) {
         this.clientRoles = roles;
     }
-
-    /*
-    public ArrayList<ReferenceValue> getActorGroups() {
-        return actorGroups;
-    }
-
-    public void setActorGroups(ArrayList<ReferenceValue> groups) {
-        this.actorGroups = groups;
-    }
-     */
 
     public ArrayList<ReferenceValue> getClientRefs() {
         return clientRefs;
@@ -339,11 +331,6 @@ public class AccessControl implements ScimSerializer {
         if (this.isClientSelf) actorVals.add("self");
         for (String arole : this.clientRoles)
             actorVals.add("role=" + arole);
-        /*
-        for (ReferenceValue gRef : actorGroups)
-            actorVals.add("group="+gRef.toString());
-
-         */
 
         for (Filter fval : this.clientFilters)
             actorVals.add("filter=" + fval.getFilterStr());
@@ -381,19 +368,64 @@ public class AccessControl implements ScimSerializer {
         return super.toString();
     }
 
-    public JsonNode toJsonNode() throws ScimException {
-        StringWriter writer = new StringWriter();
-        try {
-            JsonGenerator gen = JsonUtil.getGenerator(writer, true);
-            this.serialize(gen, null, false);
-            gen.close();
-            writer.close();
-            return JsonUtil.getJsonTree(writer.toString());
-        } catch (IOException e) {
-            // Should not happen
-            e.printStackTrace();
+    public JsonNode toJsonNode() {
+        ObjectNode node = JsonUtil.getMapper().createObjectNode();
+        node.put("path",path);
+        if (name != null)
+            node.put("name",name);
+
+        if (targetFilter != null)
+            node.put("targetFilter",targetFilter.getFilterStr());
+        if (targetAttrs != null)
+            node.put("targetAttrs",targetAttrs);
+
+        if (!this.privs.isEmpty()) {
+            StringBuilder builder = new StringBuilder();
+            Iterator<Rights> riter = this.privs.iterator();
+            while (riter.hasNext()) {
+                switch (riter.next()) {
+                    case all:
+                        builder.append("all");
+                        break;
+                    case add:
+                        builder.append("add");
+                        break;
+                    case modify:
+                        builder.append("modify");
+                        break;
+                    case delete:
+                        builder.append("delete");
+                        break;
+                    case read:
+                        builder.append("read");
+                        break;
+                    case search:
+                        builder.append("search");
+                        break;
+                    case compare:
+                        builder.append("compare");
+                }
+                if (riter.hasNext())
+                    builder.append(",");
+            }
+            node.put("rights",builder.toString());
         }
-        return null;
+
+        ArrayList<String> actorVals = new ArrayList<>();
+        if (this.isAnyClient) actorVals.add("any");
+        if (this.isClientSelf) actorVals.add("self");
+        for (String arole : this.clientRoles)
+            actorVals.add("role=" + arole);
+
+        for (Filter fval : this.clientFilters)
+            actorVals.add("filter=" + fval.getFilterStr());
+        if (actorVals.size() > 0) {
+            ArrayNode anode = node.putArray("actors");
+            for (String val : actorVals)
+                anode.add(val);
+        }
+
+        return node;
     }
 
     public boolean isClientMatch(RequestCtx ctx, SecurityIdentity identity) {
@@ -483,6 +515,4 @@ public class AccessControl implements ScimSerializer {
         }
         return false;
     }
-
-
 }

@@ -37,6 +37,8 @@ import javax.inject.Singleton;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.TreeMap;
 
@@ -103,6 +105,14 @@ public class AccessManager {
      * @return The set of ACIs that apply
      */
     public AciSet getAcisByPath(String path) {
+        if (path.contains("//")) {
+            try {
+                URL url = new URL(path);
+                path = url.getPath();
+            } catch (MalformedURLException e) {
+                return null;
+            }
+        }
         if (path.startsWith("/v2/"))
             path = path.substring(3);
         AciSet resp = new AciSet(path);

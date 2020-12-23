@@ -38,7 +38,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
 import javax.ejb.Singleton;
+import javax.inject.Inject;
+import javax.ws.rs.ext.Provider;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -64,6 +67,7 @@ public class MongoProvider implements IScimProvider {
 	private boolean ready = false;
 
 	ConfigMgr cfgMgr;
+
 	SchemaManager smgr;
 
 	final String dbUrl = System.getProperty("scim.mongodb.uri", "mongodb://localhost:27017");

@@ -18,9 +18,11 @@ package com.independentid.scim.resource;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -53,6 +55,14 @@ public class DateValue extends Value {
 			throw new SchemaException("Invalid field data endpoint. Expecting 'string' datetime."+node.toString());
 		this.value = Meta.ScimDateFormat.parse(node.asText());
 	}
+
+	@Override
+	public JsonNode toJsonNode(ObjectNode parent, String aname) {
+		if (parent == null)
+			parent = JsonUtil.getMapper().createObjectNode();
+		parent.put(aname,Meta.ScimDateFormat.format(this.value));
+		return parent;
+	}
 	
 	public String getValueArray() {
 		return Meta.ScimDateFormat.format(this.value);
@@ -60,6 +70,10 @@ public class DateValue extends Value {
 	
 	public Date getDateValue() {
 		return this.value;
+	}
+
+	public String toString() {
+		return Meta.ScimDateFormat.format(this.value);
 	}
 
 }

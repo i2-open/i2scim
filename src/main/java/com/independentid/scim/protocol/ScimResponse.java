@@ -17,9 +17,13 @@ package com.independentid.scim.protocol;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -72,7 +76,10 @@ public class ScimResponse implements ScimSerializer {
 	public static final String DESCR_TYPE_TARGET     = "The specified path did not yield an attribute or value that could be operated on.";
 	public static final String DESCR_TYPE_BADVAL     = "A required value is missing, or the supplied value is not compatible.";
 	public static final String DESCR_TYPE_BADVERS    = "The specified SCIM protocol version is not supported.";
-	
+
+	@ConfigProperty(name = ConfigMgr.SCIM_QUERY_MAX_RESULTSIZE, defaultValue= ConfigMgr.SCIM_QUERY_MAX_RESULTS_DEFAULT)
+	int maxResults;
+
 	private int status;
 	private String stype;
 	private String location;
@@ -141,6 +148,18 @@ public class ScimResponse implements ScimSerializer {
 		
 			return;
 		}
+	}
+
+	@Override
+	public JsonNode toJsonNode() {
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+		if (this.status >= 500) {
+			node.putArray("schemas").add(SCHEMA_ERROR);
+			node.put("scimType", stype);
+			node.put("detail", detail);
+			node.put("status", status);
+		}
+		return node;
 	}
 
 	/*

@@ -16,6 +16,8 @@ package com.independentid.scim.resource;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.IResourceModifier;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.*;
@@ -24,7 +26,10 @@ import com.independentid.scim.op.IBulkIdTarget;
 import com.independentid.scim.protocol.*;
 import com.independentid.scim.schema.*;
 import com.independentid.scim.serializer.JsonUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.validation.constraints.NotNull;
 import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -32,6 +37,7 @@ import java.text.ParseException;
 import java.util.*;
 
 public class ScimResource implements IResourceModifier, IBulkIdTarget {
+	private final Logger logger = LoggerFactory.getLogger(ScimResource.class);
 
 	public SchemaManager smgr;
 
@@ -52,9 +58,9 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	
 	protected Meta meta;
 
-	protected LinkedHashMap<String, Value> coreAttrs;
+	protected LinkedHashMap<Attribute, Value> coreAttrVals;
 
-	protected LinkedHashMap<String, ExtensionValues> extAttrs;
+	protected LinkedHashMap<String, ExtensionValues> extAttrVals;
 		
 	protected boolean modified;
 	
@@ -64,11 +70,11 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 * Construct the resource based on JsonNode
 	 *
 	 * @param schemaManager The {@link SchemaManager} object holding SCIM shema definitions
-	 * @param container TODO
-	 *
-	 * @throws SchemaException
-	 * @throws ParseException
-	 * @throws ScimException  
+	 * @param resourceNode The JsonNode representation of a SCIM resource to be parsed
+	 * @param container The top level path element (e.g. Users).
+	 * @throws SchemaException Thrown when object parsed violates SCIM Schema
+	 * @throws ParseException Thrown when a JSON parsing error occurs
+	 * @throws ScimException Thrown due to internal SCIM error (TBD)
 	 */
 	public ScimResource(SchemaManager schemaManager, JsonNode resourceNode, String container)
 			throws SchemaException, ParseException, ScimException {
@@ -77,8 +83,8 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	}
 
 	protected ScimResource () {
-		this.coreAttrs = new LinkedHashMap<>();
-		this.extAttrs = new LinkedHashMap<>();
+		this.coreAttrVals = new LinkedHashMap<>();
+		this.extAttrVals = new LinkedHashMap<>();
 		this.idResolver = null;
 		this.modified = false;
 	}
@@ -90,21 +96,21 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 * @param resourceNode A <JsonNode> object containing a SCIM JSON parsed object
 	 * @param bulkIdResolver An <IBulkIdResulver> used to resolve identifiers during bulk operations
 	 * @param container A <String> identifying the resource container where the object is from or to be stored (e.g. Users, Groups). Used to lookup <ResourceType> and <Schema>
-	 * @throws SchemaException
-	 * @throws ParseException
-	 * @throws ScimException
+	 * @throws SchemaException Thrown when object parsed violates SCIM Schema
+	 * @throws ParseException Thrown when a JSON parsing error occurs
+	 * @throws ScimException Thrown due to internal SCIM error (TBD)
 	 */
 	public ScimResource(SchemaManager schemaManager, JsonNode resourceNode, IBulkIdResolver bulkIdResolver, String container)
 			throws SchemaException, ParseException, ScimException {
 		
 		this.smgr = schemaManager;
 
-		this.coreAttrs = new LinkedHashMap<>();
-		this.extAttrs = new LinkedHashMap<>();
+		this.coreAttrVals = new LinkedHashMap<>();
+		this.extAttrVals = new LinkedHashMap<>();
 		this.commonSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
 		setResourceType(container);
 		this.idResolver = bulkIdResolver;
-		this.parseJson(schemaManager, resourceNode);
+		this.parseJson(resourceNode);
 		this.modified = false;
 		
 	}
@@ -122,7 +128,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	}
 	
 	/**
-	 * @param container The String resource type of the resource (e.g. User, Group)
+	 * @param container The String resource type of the resource (e.g. User, Group).
 	 */
 	public void setResourceType(String container) {
 		this.type = smgr.getResourceTypeByPath(container);
@@ -166,15 +172,15 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		this.id = id;
 	}
 	
-	public Map<String,Value> getCoreAttrs() {
-		return this.coreAttrs;
+	public Map<Attribute,Value> getCoreAttrVals() {
+		return this.coreAttrVals;
 	}
 	
 	public Map<String,ExtensionValues> getExtensions() {
-		return this.extAttrs;
+		return this.extAttrVals;
 	}
 
-	public void addValue(Attribute attr, Value addval) {
+	public void addValue(@NotNull Attribute attr,@NotNull Value addval) throws SchemaException {
 		//ResourceType type = cfg.getResourceType(getResourceType());
 		//String core = type.getSchema();
 
@@ -185,49 +191,58 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			rootAttribute = attr;
 
 		if (attr.getSchema().equals(coreSchema.getId())) {
+			if (rootAttribute.isMultiValued()) {
+				if (addval instanceof MultiValue) {
+					MultiValue rval =(MultiValue) this.getValue(rootAttribute);
+					if (rval == null) {
+						coreAttrVals.put(rootAttribute, addval);
+						return;
+					}
+					rval.addValue(addval);
+					return;
+				}
+				MultiValue rval =(MultiValue) this.getValue(rootAttribute);
+				if (rval == null) {
+					rval = new MultiValue(rootAttribute, new LinkedList<>());
+					coreAttrVals.put(rootAttribute,rval);
+				}
+				rval.addValue(addval);
+				return;
+			}
 			if (attr.isChild()) {
 				Value rval = this.getValue(rootAttribute);
 				// If parent was undefined, add it.
 				if (rval == null) {
 					rval = new ComplexValue();
-					this.coreAttrs.put(rootAttribute.getName(), rval);
+					this.coreAttrVals.put(rootAttribute, rval);
 					
 				}
 				if (rval instanceof ComplexValue) { 
 					// Add the sub attribute value to the parent
 					ComplexValue cval = (ComplexValue) rval;
-					cval.addValue(attr.getName(), addval);
+					cval.addValue(attr, addval);
 					return;
 				}
 			}
-			this.coreAttrs.put(attr.getName(), addval);
+			this.coreAttrVals.put(attr, addval);
 			return;
 			
 		}
 		
 		// The attribute is an extension attribute
-		ExtensionValues map = this.extAttrs.get(attr.getSchema());
-		//refval1 = map.getAttribute(rootAttribute.getName());
-		
-		if (attr.isChild()) {
-			Value rval = map.getValue(rootAttribute.getName());
-			// If parent was undefined, add it.
-			if (rval == null) {
-				rval = new ComplexValue();
-				map.putValue(rootAttribute.getName(), rval);
-				
+		Schema eschema = smgr.getSchemaById(attr.getSchema());
+		if (!eschema.getId().equalsIgnoreCase(this.coreSchema.getId())) {
+			ExtensionValues map = this.extAttrVals.get(eschema.getId());
+			if (map == null) {
+				// This occurs if the existing resource did not have the extension previously
+				map = new ExtensionValues(eschema, new LinkedHashMap<>());
+				this.extAttrVals.put(eschema.getId(), map);
 			}
-			if (rval instanceof ComplexValue) { 
-				// Add the sub attribute value to the parent
-				ComplexValue cval = (ComplexValue) rval;
-				cval.addValue(attr.getName(), addval);
-				return;
-			}
+			map.addValue(attr,addval);
+			return;
 		}
-		
-		// Not a complex attribute, just add it.
-		map.putValue(attr.getName(), addval);
-		return;
+
+		logger.error("Attribute ("+attr.getName()+") could not be mapped to current resource (type: "+type.getName()+").");
 		
 	}
 	
@@ -252,23 +267,26 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 				if (rval instanceof ComplexValue) { 
 					// Add the sub attribute value to the parent
 					ComplexValue cval = (ComplexValue) rval;
-					cval.vals.remove(attr.getName());
+					cval.removeValue(attr);
 					// if the parent has no sub-attributes left, remove the parent
-					if (cval.vals.size() == 0)
-						this.coreAttrs.remove(rootAttribute.getName());
+					if (cval.valueSize() == 0)
+						this.coreAttrVals.remove(rootAttribute);
 					return;
 				}
 			}
 			// remove the simple core attribute
-			this.coreAttrs.remove(attr.getName());
+			this.coreAttrVals.remove(attr);
 			return;
 			
 		}
 		
 		// The attribute is an extension attribute
-		ExtensionValues map = this.extAttrs.get(attr.getSchema());
+		Schema eSchema = smgr.getSchemaById(attr.getSchema());
+		ExtensionValues map = this.extAttrVals.get(eSchema.getId());
 		//refval1 = map.getAttribute(rootAttribute.getName());
-		
+		if (map == null)
+			return;  // Nothing to remove
+
 		if (attr.isChild()) {
 			Value rval = map.getValue(rootAttribute.getName());
 			// If parent was undefined, add it.
@@ -279,16 +297,16 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			if (rval instanceof ComplexValue) { 
 				// Add the sub attribute value to the parent
 				ComplexValue cval = (ComplexValue) rval;
-				cval.vals.remove(attr.getName());
+				cval.removeValue(attr);
 				// if the parent has no sub-attributes left, remove the parent
-				if (cval.vals.size() == 0)
+				if (cval.valueSize() == 0)
 					map.removeValue(rootAttribute.getName());
 				return;
 			}
 		}
 		
 		// Not a complex attribute, just remove it.
-		map.removeValue(attr.getName());
+		map.removeValue(attr);
 		
 		
 	}
@@ -300,8 +318,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		return this.coreSchema;
 	}
 	
-	public void parseJson(SchemaManager cfg, JsonNode node) throws SchemaException,
-			ParseException, ScimException {
+	public void parseJson(JsonNode node) throws ParseException, ScimException {
 
 		JsonNode snode = node.get("schemas");
 		if (snode == null) throw new SchemaException("Schemas attribute missing");
@@ -377,7 +394,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			//If an attribute is undefined, it is skipped.
 			if (attr == null) continue;	
 			
-			processAttribute(this.coreAttrs, attr, node,isReplace);
+			processAttribute(this.coreAttrVals, attr, node,isReplace);
 	
 		}
 
@@ -406,47 +423,65 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		if (extNode == null)
 			return; // skip optional missing schema
 
-		ExtensionValues ext = this.extAttrs.get(extensionId);
+		ExtensionValues ext = this.extAttrVals.get(extensionId);
 		if (ext == null)
 			ext = new ExtensionValues(eSchema, extNode,	this.idResolver);
 		if (ext.getSize() > 0)
-			this.extAttrs.put(extensionId, ext);
+			this.extAttrVals.put(extensionId, ext);
 	}
 
 	/**
-	 * Generate a JSON representation of the resource
+	 * Generate a JSON representation of the resource. No contextual security filtering is provided!
 	 * 
 	 * @return A String containing the JSON representation of the resource
-	 * @throws ScimException 
 	 */
-	public String toJsonString() throws ScimException {
-		StringWriter writer = new StringWriter();
-		try {
-			JsonGenerator gen = JsonUtil.getGenerator(writer, true);
-			this.serialize(gen, null, false);
-			gen.close();
-			writer.close();
-			return writer.toString();
-		} catch (IOException e) {
-			// Should not happen
-			e.printStackTrace();
-		}
-		return super.toString();
+	public String toJsonString()  {
+		return toJsonNode(null).toString();
 	}
-	
-	public JsonNode toJsonNode() throws ScimException {
-		StringWriter writer = new StringWriter();
-		try {
-			JsonGenerator gen = JsonUtil.getGenerator(writer, true);
-			this.serialize(gen, null, false);
-			gen.close();
-			writer.close();
-			return JsonUtil.getJsonTree(writer.toString());
-		} catch (IOException e) {
-			// Should not happen
-			e.printStackTrace();
+
+	/**
+	 * Returns a JSON node representation of the resource. Can be used in copying and other transformations.
+	 * @param requestCtx IF provided, will cause request filtering to be provided based on the request context.
+	 * @return A {@link JsonNode} representation of the SCIM resource.
+	 */
+	public JsonNode toJsonNode(RequestCtx requestCtx)  {
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+		ArrayNode sarray = node.putArray("schemas");
+		for (String scheme : schemas)
+			sarray.add(scheme);
+
+		// Write out the id and externalId
+		if (this.id != null)
+			node.put("id",id);
+
+		if (this.externalId != null && ValueUtil.isReturnable(commonSchema,"externalId", requestCtx))
+			node.put("externalId",externalId);
+
+		// Write out the meta information
+		// Meta will not be used for hash calculations.
+		if (this.meta != null && ValueUtil.isReturnable(commonSchema,"meta", requestCtx)) {
+			node.set("meta",meta.toJsonNode(requestCtx));
 		}
-		return null;
+
+		// Write out the core attribute values
+
+		for (Attribute field : coreAttrVals.keySet()) {
+			if (ValueUtil.isReturnable(field,requestCtx)) {
+				Value val = this.coreAttrVals.get(field);
+				val.toJsonNode(node, field.getName());
+			}
+		}
+
+		// Write out the extensions...
+		for (ExtensionValues ext : extAttrVals.values()) {
+			if (ValueUtil.isReturnable(ext,requestCtx)) {
+				String eName = ext.getSchemaName();
+				node.set(eName,ext.toJsonNode());
+			}
+		}
+
+		return node;
+
 	}
 
 	/**
@@ -454,7 +489,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 * representation.
 	 * 
 	 * @return An String usable as an ETag for versioning/matching purposes
-	 * @throws ScimException 
+	 * @throws ScimException Thrown when error occurs when serializing resource for hash generation.
 	 */
 	public String calcVersionHash() throws ScimException {
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -493,9 +528,8 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 		// Write out the schemas value
 		gen.writeArrayFieldStart("schemas");
-		Iterator<String> iter = this.schemas.iterator();
-		while (iter.hasNext())
-			gen.writeString(iter.next());
+		for (String schema : this.schemas)
+			gen.writeString(schema);
 		gen.writeEndArray();
 
 		// Write out the id and externalId
@@ -510,21 +544,20 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		// Meta will not be used for hash calculations.
 		if (this.meta != null && !forHash && ValueUtil.isReturnable(commonSchema,"meta", ctx)) {
 			gen.writeFieldName("meta");
-			this.meta.serialize(gen, ctx, forHash);
+			this.meta.serialize(gen, ctx, false);
 		}
 	
 		// Write out the core attribute values
-		iter = this.coreAttrs.keySet().iterator();  
-		while (iter.hasNext()) {
-			String field = iter.next();
-			if(!ValueUtil.isReturnable(getBodySchema(),field, ctx))
+
+		for (Attribute attr: coreAttrVals.keySet()) {
+			if(!ValueUtil.isReturnable(attr, ctx))
 				continue;
-			Value val = this.coreAttrs.get(field);
-			gen.writeFieldName(field);
+			Value val = this.coreAttrVals.get(attr);
+			gen.writeFieldName(attr.getName());
 			val.serialize(gen, ctx);
 		}
 
-		for (ExtensionValues ext : this.extAttrs.values()) {
+		for (ExtensionValues ext : this.extAttrVals.values()) {
 			if (ValueUtil.isReturnable(ext, ctx))
 				ext.serialize(gen, ctx, forHash);
 		}
@@ -534,7 +567,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 	}
 
-	protected void processAttribute(LinkedHashMap<String, Value> map,
+	protected void processAttribute(LinkedHashMap<Attribute, Value> map,
 			Attribute attr, JsonNode node, boolean isReplace) throws ConflictException, SchemaException,
 			ParseException {
 		
@@ -543,10 +576,10 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		if (attrNode != null) {
 			if (isReplace || !attr.isMultiValued()) {
 				val = ValueUtil.parseJson(attr, attrNode, this.idResolver);
-				map.put(attr.getName(), val);
+				map.put(attr, val);
 			} else {
 				val = ValueUtil.parseJson(attr, attrNode, this.idResolver);
-				MultiValue mval = (MultiValue) map.get(attr.getName());
+				MultiValue mval = (MultiValue) map.get(attr);
 				// Initialize if this is a new value
 				if (mval == null)
 					mval = new MultiValue();
@@ -558,7 +591,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 				} else
 					// node was a single json object
 					mval.addValue(val);
-				map.put(attr.getName(), mval);
+				map.put(attr, mval);
 			}
 		}
 
@@ -598,9 +631,9 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 		Value val;
 		if (attr.getSchema().equals(core)) {
-			val = this.coreAttrs.get(rootAttribute.getName());
+			val = this.coreAttrVals.get(rootAttribute);
 		} else {
-			ExtensionValues map = this.extAttrs.get(attr.getSchema());
+			ExtensionValues map = this.extAttrVals.get(attr.getSchema());
 			val = map.getValue(rootAttribute.getName());
 		}
 
@@ -631,12 +664,12 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		return super.toString();
 	}
 	
-	public Set<String> coreAttrNameSet() {
-		return this.coreAttrs.keySet();
+	public Set<Attribute> coreAttrSet() {
+		return this.coreAttrVals.keySet();
 	}
 	
 	public Set<String> extSchemaUrns() {
-		return this.extAttrs.keySet();
+		return this.extAttrVals.keySet();
 	}
 	
 	/**
@@ -645,7 +678,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 * @return An ExtensionValues object contained the parsed extension attributes for the URI provided.
 	 */
 	public ExtensionValues getExtensionValues(String urnName) {
-		return this.extAttrs.get(urnName);
+		return this.extAttrVals.get(urnName);
 	}
 	
 	public void modifyResource(JsonPatchRequest req, RequestCtx ctx) throws ScimException {
@@ -694,7 +727,6 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 				throw new InvalidValueException("The operation requested ("+op.op+") is not supported");
 			}
 		}
-		return;	
 		
 	}
 	
@@ -722,8 +754,9 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 							    	if (bval.getValueArray() && sattr.getName().equals("primary"))
 							    		mval.resetPrimary();
 							    }
-									
-								cval.vals.put(path.getSubAttrName(), nval);
+
+								//cval.vals.put(path.getSubAttrName(), nval);
+								cval.addValue(sattr,nval);
 							} catch (SchemaException | ParseException e) {
 								throw new InvalidValueException("JSON parsing error parsing value parameter.",e);
 							}	
@@ -748,7 +781,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 									}
 									cval.mergeValues((ComplexValue)nval);
 								} else {
-									cval.addValue(path.getTargetAttrName(),nval);
+									cval.addValue(path.getTargetAttribute(),nval);
 								}
 							} else
 								throw new ScimException("Unknown error. Expecting ComplexValue, got "+val.getClass().getCanonicalName());
@@ -765,7 +798,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 						if (val instanceof ComplexValue) {
 							ComplexValue cval = (ComplexValue) val;
 							//TODO do we care if the attribute didn't exist? Probably not
-							cval.vals.remove(path.getSubAttrName());
+							cval.removeValue(path.getSubAttribute());
 							break;
 						}
 						// There was a sub attribute specified, but the parent does not support sub-attributes.
@@ -781,7 +814,8 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 					if (path.hasSubAttr() && !op.value.isObject()) {
 						if (val instanceof ComplexValue) {
 							ComplexValue cval = (ComplexValue) val;
-							Attribute sattr = target.getAttribute(path.getTargetAttrName()+"."+path.getSubAttrName(), ctx);
+							//Attribute sattr = target.getAttribute(path.getTargetAttrName()+"."+path.getSubAttrName(), ctx);
+							Attribute sattr = path.getSubAttribute();
 							Value nval;
 							try {
 								nval = ValueUtil.parseJson(sattr, op.value, null);
@@ -789,7 +823,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 									cval.replaceValues((ComplexValue)nval);
 								} else {
 									// TODO may need to check if sub attribute is multi-valued
-									cval.addValue(path.getTargetAttrName(),nval);
+									cval.addValue(sattr,nval);
 								}
 								//cval.attrs.remove(path.getTargetAttrName());
 								//cval.attrs.put(path.getSubAttrName(), nval);
@@ -850,7 +884,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		return true;
 	}
 	
-	private void copyAttributesFrom(ScimResource res, RequestCtx ctx) {
+	private void copyAttributesFrom(ScimResource res, RequestCtx ctx)  {
 		//ResourceType type = cfg.getResourceType(getResourceType());
 		//String coreSchemaId = type.getSchema();
 		
@@ -860,39 +894,38 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		
 		
 		//Copy core read-write vals
-		Iterator<String> iter = res.coreAttrNameSet().iterator();
-		while (iter.hasNext()) {
-			String aname = iter.next();
-			
-			//Attribute attr = cfg.findAttribute(coreSchemaId, aname, null, ctx);
-			Attribute attr = coreSchema.getAttribute(aname);
+		for (Attribute attr : res.coreAttrSet()) {
+
 			String mutability = attr.getMutability();
 			
 			if (mutability.equals(Attribute.MUTABILITY_readWrite)
 					|| mutability.equals(Attribute.MUTABILITY_writeOnly)) {
 				//this.coreAttrs.remove(aname);
-				this.coreAttrs.put(aname, res.getValue(attr));
+				this.coreAttrVals.put(attr, res.getValue(attr));
 			}
 		}
 		
 		//Copy extension vals
-		iter = res.extSchemaUrns().iterator();
-		while (iter.hasNext()) {
-			String eschema = iter.next();
+		for (String eschema : res.extSchemaUrns()) {
 			ExtensionValues eattrs = res.getExtensionValues(eschema);
 			copyExtensionAttributes(eschema, eattrs,ctx);
 		}
 	}
 	
-	private void copyExtensionAttributes(String schema, ExtensionValues eattrs, RequestCtx ctx) {
+	private void copyExtensionAttributes(String schema, ExtensionValues eattrs, RequestCtx ctx)  {
 		
 		ExtensionValues localExt = this.getExtensionValues(schema);
-		for (String aname : eattrs.attrNameSet()) {
-			Attribute attr = smgr.findAttribute(schema, aname, null, ctx);
+		for (Attribute attr : eattrs.getAttributeSet()) {
 			String mutability = attr.getMutability();
 			if (mutability.equals(Attribute.MUTABILITY_readWrite)
-					|| mutability.equals(Attribute.MUTABILITY_writeOnly))
-				localExt.putValue(aname, eattrs.getValue(aname));
+					|| mutability.equals(Attribute.MUTABILITY_writeOnly)) {
+				try {
+					localExt.putValue(attr, eattrs.getValue(attr));
+				} catch (SchemaException e) {
+					//Since we are copying from an existing resource. This should not happen.
+					logger.error("Unexpected error occurred copying extension attribute: "+e.getLocalizedMessage(),e);
+				}
+			}
 		}
 	}
 	
@@ -906,34 +939,33 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		String coreSchemaId = type.getSchema();
 		
 		//Remove core read-write vals
-		Iterator<String> iter = this.coreAttrs.keySet().iterator();
+		Iterator<Attribute> iter = this.coreAttrVals.keySet().iterator();
 		while (iter.hasNext()) {
-			String aname = iter.next();
+			Attribute attr = iter.next();
+			String aname = attr.getName();
 			
 			// Meta should never be removed (regardless of server setting)
 			if (aname.equals("meta")) 
 				continue;
 			
-			Attribute attr = smgr.findAttribute(coreSchemaId, aname, null, ctx);
+			//Attribute attr = smgr.findAttribute(coreSchemaId, aname, null, ctx);
 			if (attr.getMutability().equals(Attribute.MUTABILITY_readWrite))
 				iter.remove();
 		}
 		
 		//Remove extension read-write vals
-		iter = this.extAttrs.keySet().iterator();
-		while (iter.hasNext()) {
-			String eschema = iter.next();
-			ExtensionValues eattrs = this.extAttrs.get(eschema);
-			Iterator<String> eiter = eattrs.attrNameSet().iterator();
-			while (eiter.hasNext()) {
-				String aname = eiter.next();
-				Attribute attr = smgr.findAttribute(eschema, aname, null, ctx);
-				if (attr.getMutability().equals(Attribute.MUTABILITY_readWrite))
-					eiter.remove();
-			}
+		Iterator<String> siter = this.extAttrVals.keySet().iterator();
+		while (siter.hasNext()) {
+			String eschemaId = siter.next();
+			ExtensionValues eattrs = this.extAttrVals.get(eschemaId);
+			Schema  eSchema = eattrs.getSchema();
+			//
+			eattrs.getAttributeSet()
+					.removeIf(attr ->
+							attr.getMutability().equals(Attribute.MUTABILITY_readWrite));
 			// If no more extension attributes, remove the extension schema
 			if (eattrs.getSize() == 0)
-				iter.remove();
+				siter.remove();
 		}
 	}
 
@@ -969,7 +1001,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 */
 	@Override
 	public boolean hasBulkIds() {
-		for (Value attribute : coreAttrs.values()) {
+		for (Value attribute : coreAttrVals.values()) {
 			if (attribute instanceof IBulkIdTarget) {
 				IBulkIdTarget bAttr = (IBulkIdTarget) attribute;
 				if (bAttr.hasBulkIds())
@@ -977,7 +1009,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			}
 		}
 
-		for (ExtensionValues eattrs : extAttrs.values()) {
+		for (ExtensionValues eattrs : extAttrVals.values()) {
 			if (eattrs.hasBulkIds())
 				return true;
 		}
@@ -991,14 +1023,14 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 */
 	@Override
 	public void getBulkIdsRequired(List<String> bulkList) {
-		for (Value attribute : coreAttrs.values()) {
+		for (Value attribute : coreAttrVals.values()) {
 			if (attribute instanceof IBulkIdTarget) {
 				IBulkIdTarget bAttr = (IBulkIdTarget) attribute;
 				bAttr.getBulkIdsRequired(bulkList);
 			}
 		}
 
-		for (ExtensionValues eattrs : extAttrs.values()) {
+		for (ExtensionValues eattrs : extAttrVals.values()) {
 			eattrs.getBulkIdsRequired(bulkList);
 		}
 	}
@@ -1008,18 +1040,29 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 */
 	@Override
 	public void getAttributesWithBulkIdValues(List<Value> bulkIdAttrs) {
-		for (Value attribute : coreAttrs.values()) {
+		for (Value attribute : coreAttrVals.values()) {
 			if (attribute instanceof IBulkIdTarget) {
 				IBulkIdTarget bAttr = (IBulkIdTarget) attribute;
 				bAttr.getAttributesWithBulkIdValues(bulkIdAttrs);
 			}
 		}
 
-		for (ExtensionValues eattrs : extAttrs.values()) {
+		for (ExtensionValues eattrs : extAttrVals.values()) {
 			eattrs.getAttributesWithBulkIdValues(bulkIdAttrs);
 		}
 
 		
+	}
+
+	/**
+	 * Copies the current ScimResource and returns a new ScimResource object. Include a requestctx to do attribute filtering.
+	 * @param requestCtx A RequestCtx object which may be used to filter included/excluded attributes and security filtering.
+	 * @return a New ScimResource based on a JsonNode copied result.
+	 */
+	public ScimResource copy(RequestCtx requestCtx) throws ScimException, ParseException {
+		JsonNode node = toJsonNode(requestCtx);
+		return new ScimResource(smgr,node,this.getResourceType());
+
 	}
 
 

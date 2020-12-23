@@ -250,7 +250,7 @@ public class AttributeFilter extends Filter {
             // locate the sub-attribute value that is to be matched.
             ComplexValue cval = (ComplexValue) value;
 
-            value = cval.vals.get(this.attr.getName());
+            value = cval.getValue(attr);
         }
 
         switch (attr.getType().toLowerCase()) {

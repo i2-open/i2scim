@@ -17,12 +17,14 @@ package com.independentid.scim.resource;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.op.IBulkIdTarget;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -82,6 +84,14 @@ public class ReferenceValue extends Value implements IBulkIdTarget  {
 	public void parseJson(Attribute attr, JsonNode node)
 			throws ConflictException, SchemaException, ParseException {
 		setUri(attr,node.asText());
+	}
+
+	@Override
+	public JsonNode toJsonNode(ObjectNode parent, String aname) {
+		if (parent == null)
+			parent = JsonUtil.getMapper().createObjectNode();
+		parent.put(aname,toString());
+		return parent;
 	}
 	
 	private void setUri(Attribute attr,String newUri) throws SchemaException {

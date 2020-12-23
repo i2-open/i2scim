@@ -18,13 +18,16 @@ package com.independentid.scim.resource;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
 
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.HashMap;
@@ -34,7 +37,7 @@ import java.util.Map;
 
 public class ComplexValue extends Value {
 
-	public LinkedHashMap<String, Value> vals;
+	private final LinkedHashMap<Attribute, Value> vals;
 	private IBulkIdResolver resolver;
 	private Attribute attr;
 
@@ -44,15 +47,16 @@ public class ComplexValue extends Value {
 		
 	}
 
-	public ComplexValue(Attribute attrDef, JsonNode node) throws ConflictException,
+	public ComplexValue(@NotNull Attribute attrDef, JsonNode node) throws ConflictException,
 			SchemaException, ParseException {
 		this(attrDef, node, null);
-		this.attr = attrDef;
 	}
 
-	public ComplexValue(Attribute attrDef, JsonNode node, IBulkIdResolver resolver)
+	public ComplexValue(@NotNull Attribute attrDef, JsonNode node, IBulkIdResolver resolver)
 			throws ConflictException, SchemaException, ParseException {
 		super(attrDef, node);
+		if (attrDef == null)
+			throw new SchemaException("Attribute schema is null");
 		this.vals = new LinkedHashMap<>();
 		this.resolver = resolver;
 		this.attr = attrDef;
@@ -60,18 +64,38 @@ public class ComplexValue extends Value {
 
 	}
 	
-	public ComplexValue(Attribute attr, Map<String,Value> vals) {
+	public ComplexValue(@NotNull Attribute attr, Map<Attribute,Value> vals) throws SchemaException {
 		super.jtype = JsonNodeType.OBJECT;
-		this.vals = new LinkedHashMap<>(vals);
+		if (attr == null)
+			throw new SchemaException("Attribute schema is null");
+		this.resolver = null;
+		this.vals = new LinkedHashMap<>();
+		if (vals != null)
+			this.vals.putAll(vals);
 		this.attr = attr;
 	}
 
-	public void addValue(String name, Value val) {
-		this.vals.put(name, val);
+	public void addValue(Attribute attr, Value val) {
+		this.vals.put(attr, val);
 	}
 
 	public void removeValue(String name) {
-		this.vals.remove(name);
+		Iterator<Attribute> aiter = vals.keySet().iterator();
+		while (aiter.hasNext()) {
+			if (aiter.next().getName().equals(name)) {
+				aiter.remove();
+				break;
+			}
+		}
+	}
+
+	public void removeValue(Attribute attr) {
+		if (attr != null)
+			vals.remove(attr);
+	}
+
+	public int valueSize() {
+		return vals.size();
 	}
 
 	@Override
@@ -80,24 +104,40 @@ public class ComplexValue extends Value {
 		
 		boolean parentRequested = ctx == null || ctx.isAttrRequested(attr);
 
-		for (String field : this.vals.keySet()) {
-			Attribute sAttr = this.attr.getSubAttribute(field);
+		for (Attribute sAttr : this.vals.keySet()) {
+
 
 			// if parent is returnable then return the client by normal defaults
 			// Check if the sub attribute should be returned based on request ctx
 			if (ValueUtil.isReturnable(sAttr, (parentRequested) ? null : ctx)) {
-				Value val = this.vals.get(field);
+				Value val = this.vals.get(sAttr);
 				if (ctx != null && ctx.useEncodedExtensions()) {
-					if (field.equalsIgnoreCase("$ref"))
-						field = "href";
-				}
-				gen.writeFieldName(field);
+					if (sAttr.getName().equalsIgnoreCase("$ref"))
+						gen.writeFieldName("href");
+				} else
+				gen.writeFieldName(sAttr.getName());
 
 				val.serialize(gen, ctx);
 			}
 		}
 		gen.writeEndObject();
 
+	}
+
+	@Override
+	public JsonNode toJsonNode(ObjectNode parent, String aname) {
+		if (parent == null)
+			parent = JsonUtil.getMapper().createObjectNode();
+
+		//Create the object to hold the complex value
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+
+		for (Attribute sAttr : this.vals.keySet()) {
+			Value val = this.vals.get(sAttr);
+			val.toJsonNode(node,sAttr.getName());
+		}
+		parent.set(aname,node);
+		return parent;
 	}
 
 	@Override
@@ -113,7 +153,7 @@ public class ComplexValue extends Value {
 				Attribute sattr = map.get(field);
 				Value val = ValueUtil
 						.parseJson(sattr, fnode, this.resolver);
-				this.vals.put(field, val);
+				this.vals.put(sattr, val);
 			}
 
 		}
@@ -121,11 +161,18 @@ public class ComplexValue extends Value {
 	}
 
 	public Value getValue(String subattrname) {
-		return this.vals.get(subattrname);
+		Attribute attr = this.attr.getSubAttribute(subattrname);
+		if (attr == null) return null;
+		return this.vals.get(attr);
+	}
+
+	public Value getValue(Attribute attr) {
+		if (attr == null) return null;
+		return vals.get(attr);
 	}
 
 	@Override
-	public HashMap<String, Value> getValueArray() {
+	public HashMap<Attribute, Value> getValueArray() {
 		return this.vals;
 	}
 
@@ -158,8 +205,8 @@ public class ComplexValue extends Value {
 	}
 
 	public void mergeValues(ComplexValue val) {
-		for (String sname : val.vals.keySet()) {
-			this.vals.put(sname, val.getValue(sname));
+		for (Attribute sname : val.vals.keySet()) {
+			this.vals.put(sname, val.getValue(sname.getName()));
 		}
 	}
 

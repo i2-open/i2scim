@@ -211,9 +211,10 @@ public class ValueUtil {
 		Schema sch = ext.getSchema();
 		
 		//loop through the set of values and check if the attribute is returnable
-		for (String s : ext.getValueMap().keySet()) {
-			if (isReturnable(sch, s, ctx))
-				return true;
+		for (Attribute attr : ext.getValueMap().keySet()) {
+			if (attr.isReturnable(ctx))
+				return true;  // true if one attribute is returnable
+//			if (isReturnable(sch, s, ctx)) return true;
 		}
 		return false;
 	}

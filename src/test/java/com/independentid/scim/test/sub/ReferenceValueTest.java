@@ -111,20 +111,20 @@ public class ReferenceValueTest {
 	}
 	
 	@Test
-	void c_testSerialize() {
+	void c_testJsonOut() {
 		//This exercises toString and the serialize function
 		JsonNode jout;
 		JsonNode valueComp = jnodetest1.get("$ref");
-		try {
-			jout = refval1.toJsonNode();
-			
-			assertThat(jout)
-				.as("Serialized JsonNode out matches input test.")
-				.isEqualTo(valueComp);
-		} catch (ScimException e) {
-			fail("ScimException while serializing to JSON. "+e.getMessage(),e);
-		}
-		
+		jout = refval1.toJsonNode(null,"$ref");
+
+		assertThat(jout.get("$ref"))
+			.as("JsonNode value objects match.")
+			.isEqualTo(valueComp);
+
+		assertThat(jout)
+				.as("Reference value JsonNodes match")
+				.isEqualTo(jnodetest1);
+
 	}
 
 	@Test

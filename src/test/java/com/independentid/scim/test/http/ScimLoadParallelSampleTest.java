@@ -350,7 +350,7 @@ public class ScimLoadParallelSampleTest {
                 record = user.toJsonString();
                 //logger.debug(record);
                 reqEntity = new StringEntity(record, ContentType.create(ScimParams.SCIM_MIME_TYPE, StandardCharsets.UTF_8));
-            } catch (UnsupportedCharsetException | ScimException e) {
+            } catch (UnsupportedCharsetException e) {
                 fail("Unexpected error serializing sample data: " + e.getLocalizedMessage(), e);
             }
 

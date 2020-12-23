@@ -17,9 +17,11 @@ package com.independentid.scim.resource;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -44,6 +46,14 @@ public class IntegerValue extends Value {
 	@Override
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
 		gen.writeNumber(this.value);
+	}
+
+	@Override
+	public JsonNode toJsonNode(ObjectNode parent, String aname) {
+		if (parent == null)
+			parent = JsonUtil.getMapper().createObjectNode();
+		parent.put(aname,this.value);
+		return parent;
 	}
 
 	@Override

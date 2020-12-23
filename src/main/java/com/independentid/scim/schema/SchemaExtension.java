@@ -17,7 +17,9 @@ package com.independentid.scim.schema;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
 
 import java.io.IOException;
@@ -71,6 +73,13 @@ public class SchemaExtension implements ScimSerializer {
 		gen.writeStringField("schema", id);
 		gen.writeBooleanField("required", required);
 		gen.writeEndObject();
+	}
+
+	public JsonNode toJsonNode() {
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+		node.put("schema",id);
+		node.put("required",required);
+		return node;
 	}
 
 }

@@ -115,7 +115,7 @@ public class ConfigResponse extends ListResponse {
                         try {
 
                             this.entries.add(new ScimResource(smgr, sch.toJsonNode(), ScimParams.PATH_TYPE_SCHEMAS));
-                        } catch (ParseException | ScimException | IOException e) {
+                        } catch (ParseException | ScimException e) {
                             // THis should not happen because it would be caught elsewhere in boot
                             logger.warn("Exception occurred serializing Schema id: " + sch.getId(), e);
                         }
@@ -162,7 +162,7 @@ public class ConfigResponse extends ListResponse {
                         try {
 
                             this.entries.add(new ScimResource(smgr, rt.toJsonNode(), ScimParams.PATH_TYPE_RESOURCETYPE));
-                        } catch (ParseException | ScimException | IOException e) {
+                        } catch (ParseException | ScimException e) {
                             // THis should not happen because it would be caught elsewhere in boot
                             logger.warn("Exception occurred serializing ResourceType id: " + rt.getId(), e);
                         }

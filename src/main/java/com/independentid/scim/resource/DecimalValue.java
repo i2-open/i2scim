@@ -18,9 +18,11 @@ package com.independentid.scim.resource;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -53,6 +55,14 @@ public class DecimalValue extends Value {
 		if (!this.jtype.equals(JsonNodeType.NUMBER))
 			throw new SchemaException("Invalid field data endpoint. Expecting decimal 'number'."+node.toString());
 		this.value = node.decimalValue();
+	}
+
+	@Override
+	public JsonNode toJsonNode(ObjectNode parent, String aname) {
+		if (parent == null)
+			parent = JsonUtil.getMapper().createObjectNode();
+		parent.put(aname,this.value);
+		return parent;
 	}
 
 	@Override
