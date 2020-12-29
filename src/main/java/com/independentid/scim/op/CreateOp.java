@@ -16,7 +16,6 @@ package com.independentid.scim.op;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.InternalException;
 import com.independentid.scim.core.err.InvalidSyntaxException;
 import com.independentid.scim.core.err.NotFoundException;
@@ -50,14 +49,12 @@ public class CreateOp extends Operation implements IBulkOp {
      * @param ctx        The associated bulk operation RequestCtx
      * @param parent     When part of a series of bulk operations, the parent {@link BulkOps} operation.
      * @param requestNum An identifier that identifies a request number in a series of bulk operations.
-     * @param configMgr  The system ConfigMgr object
      */
-    public CreateOp(JsonNode data, RequestCtx ctx, BulkOps parent, int requestNum, ConfigMgr configMgr) {
+    public CreateOp(JsonNode data, RequestCtx ctx, BulkOps parent, int requestNum) {
         super(ctx, requestNum);
         this.parent = parent;
         this.node = data;
-        this.cfgMgr = configMgr;
-        this.smgr = configMgr.getSchemaManager();
+
     }
 
     /**
@@ -65,13 +62,10 @@ public class CreateOp extends Operation implements IBulkOp {
      * Search request. The body of the request must contain a valid SCIM resource.
      * @param req  The {@link HttpServletRequest} object received by the SCIM Servlet
      * @param resp The {@link HttpServletResponse} to be returned by the SCIM Servlet
-     * @param mgr Pointer to the system ConfigMgr instance for Schema definitions
      */
-    public CreateOp(HttpServletRequest req, HttpServletResponse resp, ConfigMgr mgr ) {
+    public CreateOp(HttpServletRequest req, HttpServletResponse resp) {
         super(req, resp);
         this.parent = null;
-        this.cfgMgr = mgr;
-        this.smgr = mgr.getSchemaManager();
     }
 
     /**
@@ -94,7 +88,7 @@ public class CreateOp extends Operation implements IBulkOp {
         }
 
         try {
-            this.newResource = new ScimResource(this.smgr, node, null, getResourceType().getTypePath());
+            this.newResource = new ScimResource(schemaManager, node, null, getResourceType().getTypePath());
         } catch (ScimException | ParseException e) {
             ScimException se;
             if (e instanceof ParseException) {
@@ -116,10 +110,10 @@ public class CreateOp extends Operation implements IBulkOp {
     @Override
     protected void doPreOperation() {
         parseRequestUrl();
-        if (state == OpState.invalid)
+        if (opState == OpState.invalid)
             return;
         parseRequestBody();
-        if (state == OpState.invalid)
+        if (opState == OpState.invalid)
             return;
         parseJson(node);
     }
@@ -134,7 +128,7 @@ public class CreateOp extends Operation implements IBulkOp {
     protected void doOperation() {
 
         try {
-            this.scimresp = getHandler().create(ctx, this.newResource);
+            this.scimresp = backendHandler.create(ctx, this.newResource);
 
         } catch (ScimException e) {
             logger.info("SCIM error while processing SCIM Create for: ["

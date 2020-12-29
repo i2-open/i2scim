@@ -16,7 +16,6 @@ package com.independentid.scim.op;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.InternalException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
@@ -43,21 +42,16 @@ public class DeleteOp extends Operation implements IBulkOp {
     /**
      * @param req       HttpServletRequest containing the path of the object to be deleted
      * @param resp      HttpServlet response where the response may be serialized
-     * @param configMgr A pointer to the server ConfigMgr object (for schema)
      */
-    public DeleteOp(HttpServletRequest req, HttpServletResponse resp, ConfigMgr configMgr) {
+    public DeleteOp(HttpServletRequest req, HttpServletResponse resp) {
         super(req, resp );
         this.parent = null;
-        this.cfgMgr = configMgr;
-        this.smgr = configMgr.getSchemaManager();
-        this.handler = configMgr.getBackendHandler();
     }
 
-    public DeleteOp(RequestCtx ctx, BulkOps parent, int requestNum, ConfigMgr configMgr) {
+    public DeleteOp(RequestCtx ctx, BulkOps parent, int requestNum) {
         super(ctx, requestNum);
         this.parent = parent;
-        this.cfgMgr = configMgr;
-        this.smgr = cfgMgr.getSchemaManager();
+
     }
 
     public BulkOps getParentBulkRequest() {
@@ -71,7 +65,7 @@ public class DeleteOp extends Operation implements IBulkOp {
             logger.debug("Initiating delete of " + ctx.getPath());
         if (type != null) {
             try {
-                this.scimresp = getHandler().delete(ctx);
+                this.scimresp = Operation.backendHandler.delete(ctx);
                 if (logger.isDebugEnabled())
                     logger.debug("Successfull delete of " + ctx.getPath());
 

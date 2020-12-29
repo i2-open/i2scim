@@ -258,7 +258,10 @@ public class Schema implements ScimSerializer  {
 			this.meta = new Meta(item);
 		else {
 			this.meta = new Meta();
+			// Set default location and type
 			this.meta.setResourceType(ScimParams.TYPE_SCHEMA);
+			String loc = "/"+ScimParams.PATH_TYPE_SCHEMAS+"/"+getId();
+			this.meta.setLocation(loc);
 		}
 		JsonNode attrs = node.get("attributes");
 		if (attrs != null) {

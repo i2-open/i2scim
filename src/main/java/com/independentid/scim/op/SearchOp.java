@@ -16,7 +16,6 @@ package com.independentid.scim.op;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.InternalException;
 import com.independentid.scim.core.err.InvalidSyntaxException;
 import com.independentid.scim.core.err.ScimException;
@@ -43,14 +42,11 @@ public class SearchOp extends Operation {
 	/**
 	 * @param req HttpServletRequest object
 	 * @param resp HttpServletResponse object
-	 * @param configMgr A pointer to the server ConfigMgr object for Schema and handler access
 	 */
 	public SearchOp(HttpServletRequest req,
-					HttpServletResponse resp, ConfigMgr configMgr) {
+					HttpServletResponse resp) {
 		super(req, resp );
-		this.cfgMgr = configMgr;
-		this.smgr = cfgMgr.getSchemaManager();
-		
+
 		if (!req.getRequestURI().endsWith(ScimParams.PATH_SEARCH)) {
 			InternalException ie = new InternalException(
 					"Was expecting a search request, got: "
@@ -62,7 +58,7 @@ public class SearchOp extends Operation {
 	@Override
 	protected void doPreOperation() {
 		parseRequestUrl();
-		if (state == OpState.invalid)
+		if (opState == OpState.invalid)
 			return;
 
 		ServletInputStream bodyStream;
@@ -73,7 +69,12 @@ public class SearchOp extends Operation {
 		} catch (IOException | ScimException e) {
 			setCompletionError(new InvalidSyntaxException(
 					"Unable to parse request body (SCIM JSON Search Schema format expected)."));
-			this.state = OpState.invalid;
+			this.opState = OpState.invalid;
+		}
+		try {
+			pluginHandler.doPreOperations(this);
+		} catch (ScimException e) {
+			e.printStackTrace();
 		}
 
 	}
@@ -84,7 +85,7 @@ public class SearchOp extends Operation {
 	@Override
 	protected void doOperation() {
 		try {
-			this.scimresp = getHandler().get(ctx);
+			this.scimresp = backendHandler.get(ctx);
 
 		} catch (ScimException e) {
 			setCompletionError(e);

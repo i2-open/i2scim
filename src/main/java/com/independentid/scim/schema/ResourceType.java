@@ -184,7 +184,9 @@ public class ResourceType implements ScimSerializer {
 			this.meta = new Meta(metaNode);
 		} else {
 			this.meta = new Meta();
+			// Set proper defaults
 			this.meta.setResourceType(ScimParams.TYPE_RESOURCETYPE);
+			this.meta.setLocation("/"+ScimParams.PATH_TYPE_RESOURCETYPE+"/"+getId());
 		}
 	}
 	

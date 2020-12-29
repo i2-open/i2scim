@@ -16,7 +16,6 @@ package com.independentid.scim.op;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.InternalException;
 import com.independentid.scim.core.err.InvalidSyntaxException;
 import com.independentid.scim.core.err.NotFoundException;
@@ -49,26 +48,22 @@ public class PutOp extends Operation implements IBulkOp {
      * @param data       The JsonNode of a data element of a SCIM Bulk operation
      * @param ctx        The associated bulk operation RequestCtx
      * @param requestNum If part of a series of bulk operations, the request number
-     * @param configMgr  The system ConfigMgr object
      */
-    public PutOp(JsonNode data, RequestCtx ctx, BulkOps parent, int requestNum, ConfigMgr configMgr) {
+    public PutOp(JsonNode data, RequestCtx ctx, BulkOps parent, int requestNum) {
         super(ctx, requestNum);
         this.parent = parent;
         this.node = data;
-        this.cfgMgr = configMgr;
-        this.smgr = cfgMgr.getSchemaManager();
+
     }
 
     /**
      * @param req  The {@link HttpServletRequest} object received by the SCIM Servlet
      * @param resp The {@link HttpServletResponse} to be returned by the SCIM Servlet
-     * @param configMgr A pointer to the server ConfigMgr object for schema and handler access.
      */
-    public PutOp(HttpServletRequest req, HttpServletResponse resp, ConfigMgr configMgr) {
+    public PutOp(HttpServletRequest req, HttpServletResponse resp) {
         super(req, resp);
         this.parent = null;
-        this.cfgMgr = configMgr;
-        this.smgr = cfgMgr.getSchemaManager();
+
     }
 
     protected void parseJson(JsonNode node) {
@@ -86,7 +81,7 @@ public class PutOp extends Operation implements IBulkOp {
         }
 
         try {
-            this.newResource = new ScimResource(smgr, node, null, type.getTypePath());
+            this.newResource = new ScimResource(schemaManager, node, null, type.getTypePath());
         } catch (ScimException | ParseException e) {
             if (e instanceof ScimException)
                 setCompletionError(e);
@@ -100,12 +95,17 @@ public class PutOp extends Operation implements IBulkOp {
     @Override
     protected void doPreOperation() {
         parseRequestUrl();
-        if (state == OpState.invalid)
+        if (opState == OpState.invalid)
             return;
         parseRequestBody();
-        if (state == OpState.invalid)
+        if (opState == OpState.invalid)
             return;
         parseJson(node);
+        try {
+            pluginHandler.doPreOperations(this);
+        } catch (ScimException e) {
+            e.printStackTrace();
+        }
     }
 
     public BulkOps getParentBulkRequest() {
@@ -121,7 +121,7 @@ public class PutOp extends Operation implements IBulkOp {
     protected void doOperation() {
 
         try {
-            this.scimresp = getHandler().replace(ctx, this.newResource);
+            this.scimresp = backendHandler.replace(ctx, this.newResource);
 
         } catch (ScimException e) {
             logger.info("SCIM error while processing SCIM PUT for: ["

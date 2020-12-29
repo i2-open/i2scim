@@ -203,7 +203,7 @@ public class ScimConfigEndpointTest {
                 .isEqualTo(ScimResponse.ST_NOTFOUND);
 
         // This tests that a filter can be executed against ServiceProviderConfig
-        req = "/ServiceProviderConfig?filter=" + URLEncoder.encode("patch.supported eq true", StandardCharsets.UTF_8);
+        req = "/ServiceProviderConfig?filter=" + URLEncoder.encode("patch.supported eq false", StandardCharsets.UTF_8);
         httpResponse = executeGet(req);
         assert httpResponse != null;
         HttpEntity entity = httpResponse.getEntity();
@@ -231,10 +231,11 @@ public class ScimConfigEndpointTest {
                 .contains(ScimResponse.SCHEMA_LISTRESP);
 
         //This should return an empty ListResponse (no match)
-        req = "/ServiceProviderConfig?filter=" + URLEncoder.encode("patch.supported eq false", StandardCharsets.UTF_8);
+        req = "/ServiceProviderConfig?filter=" + URLEncoder.encode("patch.supported eq true", StandardCharsets.UTF_8);
         httpResponse = executeGet(req);
         assert httpResponse != null;
         entity = httpResponse.getEntity();
+
         assertThat(httpResponse.getStatusLine().getStatusCode())
                 .as("Check for normal 200 response to filtered SPC request")
                 .isEqualByComparingTo(ScimResponse.ST_OK);

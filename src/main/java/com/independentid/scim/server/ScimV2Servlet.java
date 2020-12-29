@@ -38,7 +38,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.HttpMethod;
-import javax.ws.rs.core.Context;
 import java.io.FileInputStream;
 import java.io.IOException;
 
@@ -73,13 +72,10 @@ public class ScimV2Servlet extends HttpServlet {
 	@Resource(name="PoolMgr")
   	PoolManager pool;
 
-	@Context
-	HttpServletResponse requestTest;
 
 	public ScimV2Servlet() {
 		logger.info("Scim Servlet Constructed");
 	}
-
 
 	private String reqPath(HttpServletRequest req) {
 		String pathInfo = req.getPathInfo();
@@ -107,7 +103,7 @@ public class ScimV2Servlet extends HttpServlet {
 
 	protected void doPatch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 
-		PatchOp op = new PatchOp(req, resp, cfgMgr);
+		PatchOp op = new PatchOp(req, resp);
 
 		complete(op);
 	}
@@ -119,7 +115,7 @@ public class ScimV2Servlet extends HttpServlet {
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
 
-		PutOp op = new PutOp(req, resp, cfgMgr);
+		PutOp op = new PutOp(req, resp);
 
 		complete(op);
 	}
@@ -135,7 +131,7 @@ public class ScimV2Servlet extends HttpServlet {
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
 
-		DeleteOp op = new DeleteOp(req, resp, cfgMgr);
+		DeleteOp op = new DeleteOp(req, resp);
 
 		complete(op);
 		
@@ -143,7 +139,7 @@ public class ScimV2Servlet extends HttpServlet {
 	
 	protected void doSearch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		
-		SearchOp op = new SearchOp(req, resp, cfgMgr);
+		SearchOp op = new SearchOp(req, resp);
 			
 		complete(op);
 	}
@@ -181,7 +177,7 @@ public class ScimV2Servlet extends HttpServlet {
 		}
 		
 		
-		GetOp op = new GetOp(req,resp, cfgMgr);
+		GetOp op = new GetOp(req,resp);
 
 		complete(op);
 	}
@@ -189,7 +185,7 @@ public class ScimV2Servlet extends HttpServlet {
 	protected void doBulk(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
 		
-		BulkOps op = new BulkOps(req, resp, cfgMgr);
+		BulkOps op = new BulkOps(req, resp);
 		complete(op);
 	}
 	
@@ -222,7 +218,7 @@ public class ScimV2Servlet extends HttpServlet {
 		//CreateOp op = CDI.current().getBeanManager().getExtension()
 
 		//CreateOp op = getBean(CreateOp.class);
-		CreateOp op = new CreateOp(req, resp, cfgMgr);
+		CreateOp op = new CreateOp(req, resp);
 
 		complete(op);
 		
@@ -259,8 +255,8 @@ public class ScimV2Servlet extends HttpServlet {
 		
 		// trying to get ConfigMgr to load on startup...
 		// suggested by: https://stackoverflow.com/questions/3600534/how-do-i-force-an-application-scoped-bean-to-instantiate-at-application-startup
-		config.getServletContext().setAttribute("ConfigMgr", ConfigMgr.getConfig());
-
+		config.getServletContext().setAttribute("ConfigMgr", cfgMgr);
+		Operation.initialize(cfgMgr);
 		//pool.initialize();
 	}
 
@@ -270,15 +266,18 @@ public class ScimV2Servlet extends HttpServlet {
 					+ op.toString());
 		}
 	}
+
+
 	
 	private void complete (Operation op) throws IOException {
 		
-		JsonGenerator gen = JsonUtil.getGenerator(op.getResponse().getWriter(), false);
+
 		
 		pool.addJobAndWait(op);
 
 		checkDone(op);
 
+		JsonGenerator gen = JsonUtil.getGenerator(op.getResponse().getWriter(), false);
 		op.doResponse(gen); 
 
 		gen.flush();

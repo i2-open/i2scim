@@ -18,11 +18,13 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.plugin.PluginHandler;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.security.AccessManager;
 import com.independentid.scim.serializer.JsonUtil;
+import io.quarkus.runtime.Startup;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +55,7 @@ import java.util.List;
 
 //@ApplicationScoped
 @Singleton
+@Startup
 @ManagedBean
 @Named("ConfigMgr")
 public class ConfigMgr {
@@ -73,6 +76,7 @@ public class ConfigMgr {
 			"id","externalid","schemas","meta");
 
 	private final static Logger logger = LoggerFactory.getLogger(ConfigMgr.class);
+
 	public static final String SCIM_PERSIST_SCHEMA = "scim.persist.schema";
 	public static final String SCIM_JSON_PRETTY = "scim.json.pretty";
 	public static final String SCIM_QUERY_MAX_RESULTSIZE = "scim.query.max.resultsize";
@@ -156,6 +160,10 @@ public class ConfigMgr {
 	@Resource(name="SchemaMgr")
 	SchemaManager smgr;
 
+	@Inject
+	@Resource(name="ScimPlugins")
+	PluginHandler pluginHandler;
+
 	private static boolean initialized = false;
 
 	@Inject
@@ -170,6 +178,8 @@ public class ConfigMgr {
 	}
 
 	public AccessManager getAccessManager() { return amgr; }
+
+	public PluginHandler getPluginHandler() { return pluginHandler; }
 
 	/**
 	 * @param ctx the ctx to set
@@ -190,8 +200,21 @@ public class ConfigMgr {
 	
 	public static ConfigMgr getConfig()  {
 		if (self == null) {
-			System.out.println("\nConfigMgr.getConfig() called before CDI??\n");
-			self = new ConfigMgr();
+			int i=0;
+			while (self == null && i < 10) {
+				try {
+					System.err.println("Pausing configmgr startup until injection complete.");
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+				i++;
+			}
+			if (self == null) {
+				System.out.println("\nConfigMgr.getConfig() called before CDI??\n");
+				return null;
+			}
+			//self = new ConfigMgr();
 			try {
 				self.initializeConfiguration();
 			} catch (ScimException | IOException e) {
@@ -319,101 +342,7 @@ public class ConfigMgr {
 		return  null;
 	}
 
-	public void serializeServiceProviderConfig(RequestCtx ctx, JsonGenerator gen) throws IOException {
-		
-        gen.writeStartObject();
-        
-        gen.writeArrayFieldStart("schemas");
-        gen.writeString(ScimParams.SCHEMA_SCHEMA_ServiceProviderConfig);
-        gen.writeEndArray();
-        
-        // Identify the server
-        gen.writeStringField("ProductName", "IndependentId SCIM Test Directory");
-        //gen.writeStringField("ProductId", "BigDirectory");
-        gen.writeStringField("ProductVersion", "V1.0");
-        
-        /* Not defined in standard schema.
-        gen.writeArrayFieldStart("ScimVersionSupport");
-        gen.writeString("2.0");
-        gen.writeEndArray();
-        */
-        
-        // Documentation
-        // TODO set up web documentation URL
-        
-        gen.writeStringField("documentationUri", "https://independentid.com/scim");
-        
-        
-        // Indicate Patch supported
-        gen.writeFieldName("patch");
-        gen.writeStartObject();
-        gen.writeBooleanField("supported", true);
-        gen.writeEndObject();
-        
-        // Indicate Bulk support
-        gen.writeFieldName("bulk");
-        gen.writeStartObject();
-        gen.writeBooleanField("supported", false);
-        gen.writeNumberField("maxOperations", 0);
-        gen.writeNumberField("maxPayloadSize", 0);
-        gen.writeEndObject();
-        
-        // Indicate Filter support
-        gen.writeFieldName("filter");
-        gen.writeStartObject();
-        gen.writeBooleanField("supported", true);
-        gen.writeNumberField("maxResults", 0);
-        gen.writeEndObject();
-        
-        // Change Password support
-        gen.writeFieldName("changePassword");
-        gen.writeStartObject();
-        gen.writeBooleanField("supported", true);
-        gen.writeEndObject();
 
-        // Sorting
-        gen.writeFieldName("sort");
-        gen.writeStartObject();
-        gen.writeBooleanField("supported", false);
-        gen.writeEndObject();
-
-
-        // ETag
-        gen.writeFieldName("etag");
-        gen.writeStartObject();
-        gen.writeBooleanField("supported", true);
-        gen.writeEndObject();
-        
-        // Authentication Schemes
-        gen.writeArrayFieldStart("authenticationSchemes");
-        gen.writeStartObject();
-        gen.writeStringField("name", "httpbasic");
-        gen.writeStringField("description", "HTTP Basic Authentication");
-        gen.writeStringField("specUri", "https://www.ietf.org/rfc/rfc2617.txt");
-        gen.writeEndObject();
-        gen.writeEndArray();
-
-	}
-
-	public String serializeServiceProviderConfig(RequestCtx ctx, Writer writer) throws IOException {
-		
-		//TODO: Check for filter and apply to response
-		
-		Writer swriter;
-		if (writer == null)
-			swriter = new StringWriter();
-		else
-			swriter = writer;
-		
-        JsonGenerator gen = JsonUtil.getGenerator(swriter, false);
-		
-        serializeServiceProviderConfig(ctx,gen);
-        
-        gen.close();
-        
-        return swriter.toString();
-
-	}
 	
 	public boolean isPrettyJsonMode() {
 		return this.jsonPretty;

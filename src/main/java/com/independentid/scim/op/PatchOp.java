@@ -16,7 +16,6 @@ package com.independentid.scim.op;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.InternalException;
 import com.independentid.scim.core.err.InvalidSyntaxException;
 import com.independentid.scim.core.err.ScimException;
@@ -50,14 +49,12 @@ public class PatchOp extends Operation implements IBulkOp {
      * @param ctx        The associated bulk operation RequestCtx
      * @param parent     When part of a bulk operation, the parent Operation.
      * @param requestNum The request sequence number of this operation in a parent set of bulk requests
-     * @param configMgr
      */
-    public PatchOp(JsonNode data, RequestCtx ctx, BulkOps parent, int requestNum, ConfigMgr configMgr) {
+    public PatchOp(JsonNode data, RequestCtx ctx, BulkOps parent, int requestNum) {
         super(ctx, requestNum);
         this.parent = parent;
         this.node = data;
-        this.cfgMgr = configMgr;
-        this.smgr = cfgMgr.getSchemaManager();
+
     }
 
     /**
@@ -65,22 +62,20 @@ public class PatchOp extends Operation implements IBulkOp {
      * constructor. If successfully parsed, the runnable portion executes the operation.
      * @param req  The {@link HttpServletRequest} passed from the Scim Servlet
      * @param resp The {@link HttpServletResponse} passed from the Scim Servlet
-     * @param configMgr A pointer to the system ConfigMgr bean for access to schema and handler.
      */
-    public PatchOp(HttpServletRequest req, HttpServletResponse resp, ConfigMgr configMgr) {
+    public PatchOp(HttpServletRequest req, HttpServletResponse resp) {
         super(req, resp);
         this.parent = null;
-        this.cfgMgr = configMgr;
-        this.smgr = cfgMgr.getSchemaManager();
+
     }
 
     @Override
     protected void doPreOperation() {
         parseRequestUrl();
-        if (state == OpState.invalid)
+        if (opState == OpState.invalid)
             return;
         parseRequestBody();
-        if (state == OpState.invalid)
+        if (opState == OpState.invalid)
             return;
         parseJson(node);
     }
@@ -92,7 +87,7 @@ public class PatchOp extends Operation implements IBulkOp {
                         "Detected array, expecting JSON object for SCIM PATCH request."));
                 return;
             }
-            this.preq = new JsonPatchRequest(this.cfgMgr, node, ctx);
+            this.preq = new JsonPatchRequest(configMgr, node, ctx);
 
         } catch (SchemaException e) {
             ScimException se;
@@ -110,7 +105,7 @@ public class PatchOp extends Operation implements IBulkOp {
     @Override
     protected void doOperation() {
         try {
-            this.scimresp = getHandler().patch(this.ctx, this.preq);
+            this.scimresp = backendHandler.patch(this.ctx, this.preq);
 
         } catch (ScimException e) {
             // Catch the scim error and serialize it

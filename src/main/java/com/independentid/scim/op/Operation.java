@@ -22,6 +22,7 @@ import com.independentid.scim.core.err.InternalException;
 import com.independentid.scim.core.err.InvalidSyntaxException;
 import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.plugin.PluginHandler;
 import com.independentid.scim.protocol.ListResponse;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ResourceResponse;
@@ -33,12 +34,9 @@ import com.independentid.scim.serializer.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Resource;
-import javax.inject.Inject;
 import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.core.Context;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -51,7 +49,7 @@ import java.util.concurrent.RecursiveAction;
  * @author pjdhunt
  */
 
-public abstract class Operation extends RecursiveAction {
+public class Operation extends RecursiveAction {
     private final static Logger logger = LoggerFactory.getLogger(Operation.class);
 
     /**
@@ -70,25 +68,29 @@ public abstract class Operation extends RecursiveAction {
 
     public enum OpState {pending, preOp, executing, postOp, done, invalid, fatal}
 
-    protected OpState state;
+    protected OpState opState;
     private OpState finalState = OpState.pending;
     private OpStat stats; //Used for tracking operation nos and timing
 
-    @Context
     HttpServletRequest req;
-    @Context
+
     HttpServletResponse resp;
 
-    ConfigMgr cfgMgr;
-    SchemaManager smgr;
 
-    BackendHandler handler = null;
+
+    static ConfigMgr configMgr;
+
+    static SchemaManager schemaManager;
+
+    static BackendHandler backendHandler;
+
+    static PluginHandler pluginHandler;
 
     protected RequestCtx ctx;
     protected Date start = new Date();
     protected Date end = null;
     private Exception err = null;
-    public ScimResponse scimresp = null;
+    ScimResponse scimresp = null;
     protected JsonNode node;
     protected ScimResource newResource = null;
     protected List<String> bulkList = null;
@@ -97,6 +99,13 @@ public abstract class Operation extends RecursiveAction {
     protected String bulkExecNumber = null;
     protected ArrayList<Operation> predicateOps;
 
+    public static void initialize(ConfigMgr configMgr) {
+        Operation.configMgr = configMgr;
+        schemaManager = configMgr.getSchemaManager();
+        backendHandler = configMgr.getBackendHandler();
+        pluginHandler = configMgr.getPluginHandler();
+    }
+
     /**
      * Constructor for a SCIM operation. Typically used in bulk requests.
      * @param ctx        The RequestCtx
@@ -104,7 +113,7 @@ public abstract class Operation extends RecursiveAction {
      */
     public Operation(RequestCtx ctx, int requestNum) {
         this.stats = new OpStat(requestNum); // Start collecting stats as part of a bulk request.
-        this.state = OpState.pending;
+        this.opState = OpState.pending;
         this.ctx = ctx;
         this.req = null;
         this.resp = null;
@@ -116,7 +125,7 @@ public abstract class Operation extends RecursiveAction {
 
     public Operation() {
         this.stats = new OpStat(); // Collect stats as part of a normal single request operation
-        this.state = OpState.pending;
+        this.opState = OpState.pending;
 
         this.predicateOps = new ArrayList<>();
 
@@ -129,7 +138,7 @@ public abstract class Operation extends RecursiveAction {
      */
     public Operation(HttpServletRequest req, HttpServletResponse resp) {
         this.stats = new OpStat(); // Collect stats as part of a normal single request operation
-        this.state = OpState.pending;
+        this.opState = OpState.pending;
 
         this.req = req;
         this.resp = resp;
@@ -147,12 +156,12 @@ public abstract class Operation extends RecursiveAction {
             // CHeck if RequestCtx is already defined
             this.ctx = (RequestCtx) req.getAttribute(RequestCtx.REQUEST_ATTRIBUTE);
             if (this.ctx == null)  // If RequestCtx wasn't created by the filter, do it now
-                this.ctx = new RequestCtx(req, resp, smgr);
+                this.ctx = new RequestCtx(req, resp, schemaManager);
         } catch (ScimException e) {
             setCompletionError(new InternalException("Error parsing request URL: " + e.getMessage(), e));
-            this.state = OpState.invalid;
+            this.opState = OpState.invalid;
         }
-        if (this.state != OpState.invalid &&
+        if (this.opState != OpState.invalid &&
                 ctx.getResourceContainer() == null)
             ctx.setResourceContainer("/");
         req.setAttribute(SCIM_OP_ATTR, this);
@@ -163,8 +172,6 @@ public abstract class Operation extends RecursiveAction {
      * successful completion, the attribute Operation#node contains the JsonNode representation of the request body.
      */
     protected void parseRequestBody() {
-
-        this.handler = this.cfgMgr.getBackendHandler();
 
         if (node == null) { // This request began with the {HttpServletRequest constructor
             try {
@@ -190,20 +197,20 @@ public abstract class Operation extends RecursiveAction {
      * @param node The HTTP request payload that has been parsed as JsonNode
      *
      */
-    protected abstract void parseJson(JsonNode node);
+    protected void parseJson(JsonNode node) {}
 
     /**
      * @return The current runnable execution state. Valid states are 'pending', 'preOp', 'executing', 'postOp', 'done',
      * 'invalid', 'fatal'
      */
     public OpState getStatus() {
-        return this.state;
+        return this.opState;
     }
 
     public boolean isRunning() {
-        return (this.state == OpState.preOp ||
-                this.state == OpState.executing ||
-                this.state == OpState.postOp);
+        return (this.opState == OpState.preOp ||
+                this.opState == OpState.executing ||
+                this.opState == OpState.postOp);
     }
 
     /**
@@ -233,11 +240,8 @@ public abstract class Operation extends RecursiveAction {
         return this.resp;
     }
 
-    /**
-     * @return The ConfigMgr of the SCIM server that is handling this request.
-     */
-    public ConfigMgr getConfigMgr() {
-        return this.cfgMgr;
+    public boolean opDone() {
+        return (isError() || opState.equals(OpState.done) || opState.equals(OpState.fatal));
     }
 
     /**
@@ -263,7 +267,7 @@ public abstract class Operation extends RecursiveAction {
      * @return Returns the request ResourceType based on the endpoint of the request or null.
      */
     public ResourceType getResourceType() {
-        return smgr.getResourceTypeByPath(ctx.getResourceContainer());
+        return schemaManager.getResourceTypeByPath(ctx.getResourceContainer());
     }
 
     /**
@@ -320,13 +324,7 @@ public abstract class Operation extends RecursiveAction {
         }
     }
 
-    protected BackendHandler getHandler() {
-        if (this.handler == null && this.cfgMgr != null)
-            this.handler = this.cfgMgr.getBackendHandler();
-        return this.handler;
-    }
-
-    protected abstract void doOperation() throws ScimException;
+    protected void doOperation() throws ScimException {}
 
     /**
      * doPreOperation can be called to prepare the transaction. It can be used to parse the request using injected beans
@@ -334,11 +332,25 @@ public abstract class Operation extends RecursiveAction {
      * thread processor rather than the servlet thread.
      */
     protected void doPreOperation() {
-       parseRequestUrl();
+        parseRequestUrl();
+        if (pluginHandler != null) {
+            try {
+                pluginHandler.doPreOperations(this);
+            } catch (ScimException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
     protected void doPostOperation() {
-        // do nothing
+        if (pluginHandler != null) {
+            try {
+                pluginHandler.doPostOperations(this);
+            } catch (ScimException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     /**
@@ -350,7 +362,7 @@ public abstract class Operation extends RecursiveAction {
 
     protected void setCompletionError(Exception e) {
         this.err = e;
-        this.state = OpState.fatal;
+        this.opState = OpState.fatal;
     }
 
     public Exception getCompletionException() {
@@ -398,7 +410,7 @@ public abstract class Operation extends RecursiveAction {
             if (this.isError())
                 return; // Nothing to do, parsing error
 
-            this.state = OpState.preOp;
+            this.opState = OpState.preOp;
 
             // Check that predicate oeprations have completed. If not, wait.
 			/*
@@ -433,18 +445,18 @@ public abstract class Operation extends RecursiveAction {
                         + getClass().getSimpleName() + "]");
             doPreOperation();
 
-            this.finalState = this.state;
+            this.finalState = this.opState;
             if (!this.isError()) {
 
-                this.state = OpState.executing;
+                this.opState = OpState.executing;
                 if (logger.isTraceEnabled())
                     logger.trace("Starting operation ["
                             + getClass().getSimpleName() + "]");
                 doOperation();
 
-                this.finalState = this.state;
+                this.finalState = this.opState;
 
-                this.state = OpState.postOp;
+                this.opState = OpState.postOp;
                 if (logger.isTraceEnabled())
                     logger.trace("Start operation post-proccesing ["
                             + getClass().getSimpleName() + "]");
@@ -452,8 +464,8 @@ public abstract class Operation extends RecursiveAction {
 
             }
         } catch (ScimException e) {
-            this.finalState = this.state;
-            this.state = OpState.fatal;
+            this.finalState = this.opState;
+            this.opState = OpState.fatal;
             this.err = e;
         }
         // Mark the request completed.
@@ -466,7 +478,7 @@ public abstract class Operation extends RecursiveAction {
 
     public String toString() {
         return "Op: " + this.getClass().getSimpleName() +
-                ", State: " + this.state + ", " + this.start.toString();
+                ", State: " + this.opState + ", " + this.start.toString();
     }
 
     public String getResourceId() {

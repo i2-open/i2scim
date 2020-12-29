@@ -15,7 +15,6 @@
 package com.independentid.scim.op;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.core.err.TooLargeException;
@@ -60,19 +59,16 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	protected int opCompleted = 0, opFailed = 0, opRequested = 0;
 	protected int failOnErrors = 0;
 
-	public BulkOps(HttpServletRequest req, HttpServletResponse resp, ConfigMgr configMgr) {
+	public BulkOps(HttpServletRequest req, HttpServletResponse resp) {
 		super (req,resp);
-		this.cfgMgr = configMgr;
-		this.smgr = configMgr.getSchemaManager();
 		this.ops = new ArrayList<>();
 		this.bulkMap = new HashMap<>();
 		this.bulkValMap = new HashMap<>();
 	}
 
-	public BulkOps(JsonNode node, RequestCtx ctx, ConfigMgr configMgr) {
+	public BulkOps(JsonNode node, RequestCtx ctx) {
 		super(ctx, 0);
-		this.cfgMgr = configMgr;
-		this.smgr = configMgr.getSchemaManager();
+
 		this.node = node;
 		this.ops = new ArrayList<>();
 		this.bulkMap = new HashMap<>();
@@ -83,10 +79,10 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	@Override
 	protected void doPreOperation() {
 		parseRequestUrl();
-		if (state == OpState.invalid)
+		if (opState == OpState.invalid)
 			return;
 		parseRequestBody();
-		if (state == OpState.invalid)
+		if (opState == OpState.invalid)
 			return;
 		parseJson(node);
 
@@ -119,7 +115,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 			return;
 		}
 
-		this.failOnErrors = this.cfgMgr.getBulkMaxErrors();
+		this.failOnErrors = configMgr.getBulkMaxErrors();
 		JsonNode fnode = node.get("failOnErrors");
 		if (fnode != null) {
 			this.failOnErrors = fnode.asInt();
@@ -136,7 +132,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 		}
 	
 		int requestNum = 0;
-		int maxOps = this.cfgMgr.getBulkMaxOps();
+		int maxOps = configMgr.getBulkMaxOps();
 		Iterator<JsonNode> oiter = opsnode.elements();
 		while (oiter.hasNext()) {
 			JsonNode oper = oiter.next();
@@ -270,7 +266,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 
 	protected Operation parseOperation(
 			JsonNode bulkOpNode, int requestNum) throws ScimException {
-		RequestCtx octx = new RequestCtx(bulkOpNode,smgr);
+		RequestCtx octx = new RequestCtx(bulkOpNode, schemaManager);
 
 		JsonNode item = bulkOpNode.get("data");
 		if (item == null) {
@@ -281,16 +277,16 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 
 		switch (octx.getBulkMethod()) {
 		case Operation.Bulk_Method_POST:
-			return new CreateOp(item, octx, this, requestNum, cfgMgr);
+			return new CreateOp(item, octx, this, requestNum);
 
 		case Operation.Bulk_Method_PUT:
-			return new PutOp(item, octx, this, requestNum, cfgMgr);
+			return new PutOp(item, octx, this, requestNum);
 
 		case Operation.Bulk_Method_PATCH:
-			return new PatchOp(item, octx, this, requestNum, cfgMgr);
+			return new PatchOp(item, octx, this, requestNum);
 
 		case Operation.Bulk_Method_DELETE:
-			return new DeleteOp(octx, this, requestNum, cfgMgr);
+			return new DeleteOp(octx, this, requestNum);
 
 		}
 		return null;

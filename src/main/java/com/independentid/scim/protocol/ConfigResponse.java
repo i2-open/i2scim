@@ -70,7 +70,7 @@ public class ConfigResponse extends ListResponse {
                         isResourceResponse = true;
                     StringWriter writer = new StringWriter();
                     JsonGenerator gen = JsonUtil.getGenerator(writer, true);
-                    cmgr.serializeServiceProviderConfig(ctx, gen);
+                    serializeServiceProviderConfig(ctx, gen);
                     gen.close();
                     writer.close();
                     JsonNode jCfg = JsonUtil.getJsonTree(writer.toString());
@@ -217,6 +217,95 @@ public class ConfigResponse extends ListResponse {
             default:
                 return false;
         }
+
+
     }
+
+    public void serializeServiceProviderConfig(RequestCtx ctx, JsonGenerator gen) throws IOException {
+
+        gen.writeStartObject();
+
+        gen.writeArrayFieldStart("schemas");
+        gen.writeString(ScimParams.SCHEMA_SCHEMA_ServiceProviderConfig);
+        gen.writeEndArray();
+
+        // Identify the server
+        gen.writeStringField("ProductName", "IndependentId SCIM Test Directory");
+        //gen.writeStringField("ProductId", "BigDirectory");
+        gen.writeStringField("ProductVersion", "V1.0");
+
+        /* Not defined in standard schema.
+        gen.writeArrayFieldStart("ScimVersionSupport");
+        gen.writeString("2.0");
+        gen.writeEndArray();
+        */
+
+        // Documentation
+        // TODO set up web documentation URL
+
+        gen.writeStringField("documentationUri", "https://independentid.com/scim");
+
+
+        // Indicate Patch supported
+        gen.writeFieldName("patch");
+        gen.writeStartObject();
+        gen.writeBooleanField("supported", false);
+        gen.writeEndObject();
+
+        // Indicate Bulk support
+        gen.writeFieldName("bulk");
+        gen.writeStartObject();
+        gen.writeBooleanField("supported", false);
+        gen.writeNumberField("maxOperations", 0);
+        gen.writeNumberField("maxPayloadSize", 0);
+        gen.writeEndObject();
+
+        // Indicate Filter support
+        gen.writeFieldName("filter");
+        gen.writeStartObject();
+        gen.writeBooleanField("supported", true);
+        gen.writeNumberField("maxResults", 0);
+        gen.writeEndObject();
+
+        // Change Password support
+        gen.writeFieldName("changePassword");
+        gen.writeStartObject();
+        gen.writeBooleanField("supported", true);
+        gen.writeEndObject();
+
+        // Sorting
+        gen.writeFieldName("sort");
+        gen.writeStartObject();
+        gen.writeBooleanField("supported", false);
+        gen.writeEndObject();
+
+
+        // ETag
+        gen.writeFieldName("etag");
+        gen.writeStartObject();
+        gen.writeBooleanField("supported", true);
+        gen.writeEndObject();
+
+        // Authentication Schemes
+        gen.writeArrayFieldStart("authenticationSchemes");
+        if (this.cmgr.isAuthBasic()) {
+            gen.writeStartObject();
+            gen.writeStringField("name", "httpbasic");
+            gen.writeStringField("description", "HTTP Basic Authentication");
+            gen.writeStringField("specUri", "https://www.ietf.org/rfc/rfc2617.txt");
+            gen.writeEndObject();
+
+        }
+        if (this.cmgr.isAuthJwt()) {
+            gen.writeStartObject();
+            gen.writeStringField("name", "oauthbearertoken");
+            gen.writeStringField("description", "OAuth JWT Bearer Token");
+            gen.writeStringField("specUri", "https://tools.ietf.org/html/rfc7523");
+            gen.writeEndObject();
+        }
+        gen.writeEndArray();
+
+    }
+
 
 }
