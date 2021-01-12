@@ -20,6 +20,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.resource.AccessControl;
+import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
@@ -27,6 +30,8 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Set;
 
 /**
  * @author pjdhunt
@@ -252,6 +257,44 @@ public class ScimResponse implements ScimSerializer {
 		setStatus(e.getStatus());
 		setScimErrorType(e.getScimType());
 		setDetail(e.getDetail());
+	}
+
+	/**
+	 * Applies a given ACI to the results. It looks at the rights and targetAttr specifications
+	 * and removes attributes which are not returnable.
+	 * @param aci The AccessControl to be applied.
+	 * @return false if the result is not returnable with the provided aci
+	 */
+	public boolean applyAci(AccessControl aci) {
+		Collection<AccessControl.Rights> rights = aci.getRights();
+		if (rights.contains(AccessControl.Rights.all)
+				|| rights.contains(AccessControl.Rights.read)
+				|| rights.contains(AccessControl.Rights.search)) {
+			processReadableResult(aci);
+			return true;
+		}
+		if (rights.contains(AccessControl.Rights.compare)) {
+			processCompareResult();
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * When a client is only allowed to do comparison then only id and meta may be returned.
+	 * Eliminate all attributes except for id and meta.
+	 */
+	protected void processCompareResult() {
+		// for ScimResposne there is nothing to process!
+	}
+
+	/**
+	 * Process the targetAttrs list if provided
+	 * @param aci The access control specifying the targetAttr to return if any.
+	 */
+	protected void processReadableResult(AccessControl aci) {
+
+		// for ScimResposne there is nothing to process!
 	}
 	
 }

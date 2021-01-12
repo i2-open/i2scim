@@ -18,10 +18,14 @@ package com.independentid.scim.protocol;
 import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
+import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 
 import javax.transaction.Transactional;
+import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 
 @Transactional
 public abstract class Filter {
@@ -72,6 +76,19 @@ public abstract class Filter {
 	public static Filter parseFilter(String filterStr, RequestCtx ctx, SchemaManager schemaManager) throws BadFilterException {
 		return parseFilter(filterStr, null, ctx, schemaManager);
 	}
+
+	/**
+	 * For the given filter, returns the set of attributes used in the filter.
+	 * @param filter The Filter object to be evaluated
+	 * @return The set of {@link Attribute} used in the filter.
+	 */
+	public static Set<Attribute> getFilterAttributes(@NotNull Filter filter) {
+		HashSet<Attribute> attrSet = new HashSet<>();
+		filter.getFilterAttributes(attrSet);
+		return attrSet;
+	}
+
+	protected abstract void getFilterAttributes(@NotNull Set<Attribute> attrSet);
 
 	/**
 	 * Parses the provided filterStr and returns a Filter object

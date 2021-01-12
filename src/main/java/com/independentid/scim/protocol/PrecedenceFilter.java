@@ -18,6 +18,10 @@ package com.independentid.scim.protocol;
 import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
+import com.independentid.scim.schema.Attribute;
+
+import javax.validation.constraints.NotNull;
+import java.util.Set;
 
 public class PrecedenceFilter extends Filter {
 
@@ -27,7 +31,7 @@ public class PrecedenceFilter extends Filter {
 	public PrecedenceFilter(String filterStr) {
 		super(filterStr);
 	}
-	
+
 	public PrecedenceFilter(Filter subfilter, boolean isNot) {
 		super(null);
 		this.isNot = isNot;
@@ -82,5 +86,12 @@ public class PrecedenceFilter extends Filter {
 			return !filter.isMatch(value);
 		return filter.isMatch(value);
 	}
+
+	@Override
+	protected void getFilterAttributes(@NotNull Set<Attribute> attrSet) {
+		filter.getFilterAttributes(attrSet);
+	}
+
+
 
 }

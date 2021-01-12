@@ -23,6 +23,9 @@ import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 
+import javax.validation.constraints.NotNull;
+import java.util.Set;
+
 public class ValuePathFilter extends Filter {
 
 	private final Attribute attr;
@@ -91,6 +94,9 @@ public class ValuePathFilter extends Filter {
 		return filter.isMatch(val);
 	}
 
-
-
+	@Override
+	protected void getFilterAttributes(@NotNull Set<Attribute> attrSet) {
+		attrSet.add(this.attr);
+		filter.getFilterAttributes(attrSet);
+	}
 }

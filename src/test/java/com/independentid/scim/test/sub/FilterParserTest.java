@@ -38,9 +38,9 @@ import static org.assertj.core.api.Assertions.fail;
 @QuarkusTest
 @TestProfile(ScimSubComponentTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
-public class FilterTest {
+public class FilterParserTest {
 
-	private final Logger logger = LoggerFactory.getLogger(FilterTest.class);
+	private final Logger logger = LoggerFactory.getLogger(FilterParserTest.class);
 
 	@Inject
 	@Resource(name="SchemaMgr")

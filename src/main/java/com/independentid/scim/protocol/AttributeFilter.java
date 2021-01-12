@@ -19,10 +19,11 @@ import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
+import io.smallrye.mutiny.Multi;
 
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import javax.validation.constraints.NotNull;
+import java.util.*;
+import java.util.regex.Pattern;
 
 public class AttributeFilter extends Filter {
     public final static String FILTEROP_EQ = "eq";
@@ -56,7 +57,7 @@ public class AttributeFilter extends Filter {
         this(attr, cond, value, null,ctx , schemaManager);
     }
 
-    public AttributeFilter(String aname, String cond, String value, String parentAttr, RequestCtx ctx, SchemaManager schemaManager) throws BadFilterException {
+    public AttributeFilter(String aname, @NotNull String cond, String value, String parentAttr, RequestCtx ctx, SchemaManager schemaManager) throws BadFilterException {
         super();
         smgr = schemaManager;
         if (parentAttr == null)
@@ -98,9 +99,9 @@ public class AttributeFilter extends Filter {
         if (this.attr == null)
             throw new BadFilterException("Unable to parse a valid attribute or attribute was null.");
 
-        this.compOp = cond;
+        this.compOp = cond.toLowerCase();
 
-        if (!valid_ops.contains(cond.toLowerCase()))
+        if (!valid_ops.contains(this.compOp))
             throw new BadFilterException("Invalid comparison operator detected: "+cond);
 
         //this.val = value;
@@ -155,6 +156,11 @@ public class AttributeFilter extends Filter {
 
     public Object getValue() {
         return this.val;
+    }
+
+    @Override
+    protected void getFilterAttributes(Set<Attribute> attrSet) {
+        attrSet.add(attr);
     }
 
     public byte[] getBinary() {
@@ -242,10 +248,19 @@ public class AttributeFilter extends Filter {
         return this.valString;
     }
 
+    /**
+     * @return Escapes the string to ensure regex characters are not interpreted
+     */
+    public String asQuotedString() {
+        return Pattern.quote(this.valString);
+    }
+
     public boolean isMatch(Value matchVal) throws BadFilterException {
         Value value = matchVal;
-        if (value == null && compOp.equals(AttributeFilter.FILTEROP_PRESENCE))
-            return false;
+
+        if (compOp.equals(AttributeFilter.FILTEROP_PRESENCE))
+            return value != null;
+
         if (value instanceof ComplexValue) {
             // locate the sub-attribute value that is to be matched.
             ComplexValue cval = (ComplexValue) value;
@@ -256,7 +271,16 @@ public class AttributeFilter extends Filter {
         switch (attr.getType().toLowerCase()) {
 
             case Attribute.TYPE_String: {
-                assert value != null;
+                if (value == null)
+                    value = new StringValue(attr,"");
+                if (value instanceof MultiValue) {
+                    MultiValue mval = (MultiValue) value;
+                    for (Value aval : mval.getValueArray()) {
+                        if (isMatch(aval))
+                            return true;
+                    }
+                    return false;
+                }
                 String val = ((StringValue) value).getValueArray();
                 switch (compOp) {
 

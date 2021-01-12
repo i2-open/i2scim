@@ -148,9 +148,10 @@ public class ValueUtil {
 				new URL(value);
 			return TYPE_REF;
 		} catch (MalformedURLException e) {
-			e.printStackTrace();
+			// Not a URL
 		}
-		
+
+		// Default to String
 		return TYPE_STRING;
 	}
 	

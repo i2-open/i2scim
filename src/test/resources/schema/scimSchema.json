@@ -857,7 +857,7 @@
         "multiValued" : false,
         "description" : "The User's clear text password.  This attribute is intended to be used as a means to specify an initial password when creating a new User or to reset an existing User's password.",
         "required" : false,
-        "caseExact" : false,
+        "caseExact" : true,
         "mutability" : "writeOnly",
         "returned" : "never",
         "uniqueness" : "none"

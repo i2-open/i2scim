@@ -286,6 +286,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
     /**
      * @return The relative path (without schema) of the attribute
      */
+
     public String getRelativePath() {
     	return this.path;
     }

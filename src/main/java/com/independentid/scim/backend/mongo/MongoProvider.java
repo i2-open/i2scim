@@ -33,15 +33,13 @@ import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.ReplaceOptions;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
 import javax.ejb.Singleton;
-import javax.inject.Inject;
-import javax.ws.rs.ext.Provider;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -317,6 +315,8 @@ public class MongoProvider implements IScimProvider {
 		FindIterable<Document> iter = col.find(query);
 		Document res = iter.first();
 
+
+
 		if (res == null) {
 			return null;
 		}
@@ -324,7 +324,10 @@ public class MongoProvider implements IScimProvider {
 		//String json = JSON.serialize(res);
 		
 		try {
-			return new MongoScimResource(smgr, res, type);
+			ScimResource sres = new MongoScimResource(smgr, res, type);
+			if (Filter.checkMatch(sres,ctx))
+				return sres;
+			return null;
 			
 		} catch (SchemaException | ParseException e) {
 			throw new BackendException(
@@ -344,18 +347,18 @@ public class MongoProvider implements IScimProvider {
 			// Query for 1 object
 
 			ScimResource res = getResource(ctx);
-			if (res == null) {
+			if (res == null && ctx.hasNoClientFilter()) {
 				return new ScimResponse(ScimResponse.ST_NOTFOUND,null,null);
 			}
 
 			//String json = JSON.serialize(res);
 			
 			// if this is a get of a specific resource return the object
-			if (ctx.getFilter() == null)
+			if (res != null && ctx.hasNoClientFilter())
 				return new ResourceResponse(res,ctx,cfgMgr);
 			
 			// if this is a filtered request, must return a list response per RFC7644 Sec 3.4.2
-			if (Filter.checkMatch(res, ctx)) 
+			if (res != null)
 				return new ListResponse(res, ctx, cfgMgr);  // return the single item
 			else
 				return new ListResponse(ctx, cfgMgr);  // return an empty response
@@ -367,22 +370,19 @@ public class MongoProvider implements IScimProvider {
 		
 		MongoCollection<Document> col = this.scimDb.getCollection(type);
 
-		if (logger.isDebugEnabled())
-			logger.debug(type + " record count: " + col.countDocuments());
-
-		Document query;
+		Bson query;
 		Filter filt = ctx.getFilter();
 		
 		if (filt == null)
 			query = new Document();
 		else
-			query = FilterMapper.mapFilter(ctx.getFilter(), false);
+			query = MongoFilterMapper.mapFilter(filt, false, false);
 		
 		if (logger.isDebugEnabled())
-			logger.debug("Query: "+query.toJson());
+			logger.debug("Query: "+query.toString());
 		// TODO mapFilter could do imprecise mapping to handle unindexed
 		// data since filter is checked after
-		
+
 		FindIterable<Document> fiter = col.find(query);
 		MongoCursor<Document> iter = fiter.iterator();
 		// If there are no results return empty set.
@@ -417,7 +417,7 @@ public class MongoProvider implements IScimProvider {
 	@Override
 	public ScimResponse replace(RequestCtx ctx, final ScimResource replaceResource)
 			throws ScimException, BackendException {
-		MongoScimResource origRes = (MongoScimResource) this.getResource(ctx);
+		MongoScimResource origRes = (MongoScimResource) getResource(ctx);
 		if (!origRes.checkPreCondition(ctx))
 			return new ScimResponse(new PreconditionFailException(
 					"ETag predcondition does not match"));
@@ -429,7 +429,7 @@ public class MongoProvider implements IScimProvider {
 	public ScimResponse patch(RequestCtx ctx, final JsonPatchRequest req)
 			throws ScimException, BackendException {
 		ctx.setEncodeExtensions(true);
-		MongoScimResource mres = (MongoScimResource) this.getResource(ctx);
+		MongoScimResource mres = (MongoScimResource) getResource(ctx);
 		mres.modifyResource(req, ctx);
 		return this.putResource(mres, ctx);
 	}
@@ -452,11 +452,22 @@ public class MongoProvider implements IScimProvider {
 			throw new NotImplementedException("Root searching not implemented");
 
 		MongoCollection<Document> col = this.scimDb.getCollection(type);
-		
 
+		// First, if a filter specified (by user or by acis) check for a match.
+		if (ctx.getFilter() != null)
+			try {
+				ScimResource original = getResource(ctx);
+				if (original == null )
+					return new ScimResponse(ScimResponse.ST_NOTFOUND, null, null);
+
+			} catch (BackendException e) {
+				e.printStackTrace();
+			}
+
+		// Given the match and aci filters succeeded, delete the original record.
 		Document query = new Document();
-
 		query.put("_id", new ObjectId(id));
+
 		Document res = col.findOneAndDelete(query);
 				//col.findOne(query);
 		if (res == null) {
