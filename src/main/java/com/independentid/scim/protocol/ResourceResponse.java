@@ -18,7 +18,9 @@ package com.independentid.scim.protocol;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.resource.AccessControl;
 import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.schema.Attribute;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +30,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Set;
 
 /**
  * ResourceResponse is used to generate a SCIM response per RFC7644. This response
@@ -123,5 +126,24 @@ public class ResourceResponse extends ScimResponse {
 		}
 		
 	}
-	
+
+	@Override
+	protected void processCompareResult() {
+		for (ScimResource res : this.entries) {
+			Set<Attribute> attrs = res.getAttributesPresent();
+			for (Attribute attr: attrs)
+				res.removeValue(attr);
+		}
+	}
+
+	@Override
+	protected void processReadableResult(AccessControl aci) {
+		for (ScimResource res : this.entries) {
+			Set<Attribute> attrs = res.getAttributesPresent();
+			for (Attribute attr: attrs) {
+				if (aci.isAttributeNotAllowed(attr))
+					res.removeValue(attr);
+			}
+		}
+	}
 }

@@ -157,8 +157,9 @@ public class MongoProvider implements IScimProvider {
 		res.setId((new ObjectId()).toString());
 		Meta meta = res.getMeta();
 		Date created = new Date(System.currentTimeMillis());
-		meta.setCreatedDate(created);
-		meta.setLastModifiedDate(created);
+		if (meta.getCreatedDate() == null) // only set the created date if it does not already exist.
+			meta.setCreatedDate(created);
+		meta.setLastModifiedDate(created); // always set the modify date upon create.
 		meta.setLocation('/' + type + '/' + res.getId());
 		
 		String etag = res.calcVersionHash();
@@ -291,6 +292,15 @@ public class MongoProvider implements IScimProvider {
 		return stateResource;
 	}
 
+	/**
+	 * The Mongo Provider implementation processes filter matching *after* the resource is returned.
+	 * @param ctx The SCIM request context (includes HTTP Context). Defines the search filter (if any) along with other
+	 *            search parameters like attributes requested. Filter matching is done after the resource is located and
+	 *            converted.  Use get(ResourceCtx) to apply filter at the database level.
+	 * @return
+	 * @throws ScimException
+	 * @throws BackendException
+	 */
 	@Override
 	public ScimResource getResource(RequestCtx ctx) throws ScimException,
 			BackendException {

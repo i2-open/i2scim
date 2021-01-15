@@ -674,6 +674,26 @@
         "uniqueness" : "server"
       },
       {
+        "name" : "loginCnt",
+        "type" : "integer",
+        "multiValued" : false,
+        "description" : "Login counter. Used for filter test purposes for an Integer value",
+        "required" : false,
+        "mutability" : "readWrite",
+        "returned" : "default",
+        "uniqueness" : "none"
+      },
+      {
+        "name" : "loginStrength",
+        "type" : "decimal",
+        "multiValued" : false,
+        "description" : "Login stength required. Used for filter test purposes for an Decimal value",
+        "required" : false,
+        "mutability" : "readWrite",
+        "returned" : "default",
+        "uniqueness" : "none"
+      },
+      {
         "name" : "name",
         "type" : "complex",
         "multiValued" : false,

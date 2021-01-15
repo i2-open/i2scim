@@ -255,7 +255,7 @@ public class Schema implements ScimSerializer  {
 		
 		item = node.get("meta");
 		if (item != null)
-			this.meta = new Meta(item);
+			this.meta = new Meta(null, item);
 		else {
 			this.meta = new Meta();
 			// Set default location and type

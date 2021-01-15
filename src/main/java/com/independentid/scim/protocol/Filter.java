@@ -82,13 +82,13 @@ public abstract class Filter {
 	 * @param filter The Filter object to be evaluated
 	 * @return The set of {@link Attribute} used in the filter.
 	 */
-	public static Set<Attribute> getFilterAttributes(@NotNull Filter filter) {
+	public static Set<Attribute> filterAttributes(@NotNull Filter filter) {
 		HashSet<Attribute> attrSet = new HashSet<>();
-		filter.getFilterAttributes(attrSet);
+		filter.filterAttributes(attrSet);
 		return attrSet;
 	}
 
-	protected abstract void getFilterAttributes(@NotNull Set<Attribute> attrSet);
+	protected abstract void filterAttributes(@NotNull Set<Attribute> attrSet);
 
 	/**
 	 * Parses the provided filterStr and returns a Filter object

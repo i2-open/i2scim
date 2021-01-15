@@ -18,13 +18,16 @@ package com.independentid.scim.test.backend;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
-import com.independentid.scim.backend.mongo.MongoFilterMapper;
 import com.independentid.scim.backend.mongo.MongoProvider;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.protocol.*;
+import com.independentid.scim.protocol.ListResponse;
+import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.protocol.ScimResponse;
+import com.independentid.scim.resource.DecimalValue;
+import com.independentid.scim.resource.IntegerValue;
 import com.independentid.scim.resource.ScimResource;
-import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import com.mongodb.client.MongoClient;
@@ -32,7 +35,6 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import org.bson.conversions.Bson;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
@@ -43,11 +45,11 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.text.ParseException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -87,8 +89,21 @@ public class MongoFilterMapTest {
             {"Users", "userType eq \"Employee\" and emails[type eq \"work\" and value co \"@example.com\"]"},
 
             {"Users", "emails[type eq \"home\" and value co \"@jensen.org\"] or ims[type eq \"aim\" and value co \"jsmith345\"]"},
+            {"Users", "userName eq bjensen@example.com and password eq t1meMa$heen"},
+            {"Users", "meta.created lt 2020-01-01T00:00:00Z"},
+            {"Users", "meta.resourceType eq User and meta.created eq 2010-01-23T04:56:22Z"},
+            {"Users", "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:manager.$ref eq /Users/26118915-6090-4610-87e4-49d8ca9f808d"},
 
-            {"Users", "userName eq bjensen@example.com and password eq t1meMa$heen"}
+            {"Users", "x509certificates eq \"MIIDQzCCAqygAwIBAgICEAAwDQYJKoZIhvcNAQEFBQAwTjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFDASBgNVBAoMC2V4YW1wbGUuY29tMRQwEgYDVQQDDAtleGFtcGxlLmNvbTAeFw0xMTEwMjIwNjI0MzFaFw0xMjEwMDQwNjI0MzFaMH8xCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRQwEgYDVQQKDAtleGFtcGxlLmNvbTEhMB8GA1UEAwwYTXMuIEJhcmJhcmEgSiBKZW5zZW4gSUlJMSIwIAYJKoZIhvcNAQkBFhNiamVuc2VuQGV4YW1wbGUuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7Kr+Dcds/JQ5GwejJFcBIP682X3xpjis56AK02bc1FLgzdLI8auoR+cC9/Vrh5t66HkQIOdA4unHh0AaZ4xL5PhVbXIPMB5vAPKpzz5iPSi8xO8SL7I7SDhcBVJhqVqr3HgllEG6UClDdHO7nkLuwXq8HcISKkbT5WFTVfFZzidPl8HZ7DhXkZIRtJwBweq4bvm3hM1Os7UQH05ZS6cVDgweKNwdLLrT51ikSQG3DYrl+ft781UQRIqxgwqCfXEuDiinPh0kkvIi5jivVu1Z9QiwlYEdRbLJ4zJQBmDrSGTMYn4lRc2HgHO4DqB/bnMVorHB0CC6AV1QoFK4GPe1LwIDAQABo3sweTAJBgNVHRMEAjAAMCwGCWCGSAGG+EIBDQQfFh1PcGVuU1NMIEdlbmVyYXRlZCBDZXJ0aWZpY2F0ZTAdBgNVHQ4EFgQU8pD0U0vsZIsaA16lL8En8bx0F/gwHwYDVR0jBBgwFoAUdGeKitcaF7gnzsNwDx708kqaVt0wDQYJKoZIhvcNAQEFBQADgYEAA81SsFnOdYJtNg5Tcq+/ByEDrBgnusx0jloUhByPMEVkoMZ3J7j1ZgI8rAbOkNngX8+pKfTiDz1RC4+dx8oU6Za+4NJXUjlL5CvV6BEYb1+QAEJwitTVvxB/A67g42/vzgAtoRUeDov1+GFiBZ+GNF/cAYKcMtGcrs2i97ZkJMo=\""},
+            {"Users", "active eq true and username eq bjensen@example.com"},
+            {"Users", "active pr"},
+            {"Users", "ims eq someaimhandle"},
+            {"Users", "loginCnt eq 1234"},
+
+            {"Users", "loginCnt gt 0 and loginCnt lt 1000"},
+            {"Users", "loginStrength gt 3.1"},
+            {"Users", "loginStrength eq 1.0"},
+            {"Users", "meta.lastModified gt 2020-01-01T00:00:00Z"}
 
     };
 
@@ -112,11 +127,25 @@ public class MongoFilterMapTest {
             {true, true},
 
             {true, true},
-            {true, false}
+            {true, false},
+            {true, true},
+            {true, true},
+            {true, false},
+
+            {true, true},
+            {true, false},
+            {true, true},
+            {true, false},
+            {true, false},
+
+            {false, true},
+            {true, false},
+            {false, true},
+            {true, true}
 
     };
 
-    int[] resCnt = new int[] {
+    int[] searchResultCnt = new int[] {
             1,
             1,
             1,
@@ -136,19 +165,25 @@ public class MongoFilterMapTest {
             2,
 
             2,
-            1
+            1,
+            2,
+            2,
+            1,
+
+            2,
+            1,
+            2,
+            1,
+            1,
+
+            1,1,1,2
     };
 
 
     private static final String testUserFile1 = "classpath:/schema/TestUser-bjensen.json";
     private static final String testUserFile2 = "classpath:/schema/TestUser-jsmith.json";
-    private static final String testPass = "t1meMa$heen";
 
     private static MongoClient mclient = null;
-
-    @Inject
-    @Resource(name = "ConfigMgr")
-    ConfigMgr cmgr;
 
     @Inject
     BackendHandler handler;
@@ -164,7 +199,7 @@ public class MongoFilterMapTest {
     static String user1loc, user2loc;
 
     @Test
-    public void a_mongoProviderInit() throws ScimException, IOException, SchemaException, ParseException {
+    public void a_mongoProviderInit() throws ScimException, IOException, ParseException {
         logger.info("========== MongoProvider Filter Test ==========");
 
         if (mclient == null)
@@ -185,8 +220,7 @@ public class MongoFilterMapTest {
         } catch (InstantiationException | ClassNotFoundException e) {
             Assertions.fail("Exception occured getting MongoProvider: " + e.getLocalizedMessage());
         }
-        //ConfigMgr mgr = (ConfigMgr) ctx.getBean("Configmgr");
-        //MongoProvider mp = (MongoProvider) MongoProvider.getProvider();
+
         assertThat(mp).isNotNull();
 
         assertThat(mp.ready()).isTrue();
@@ -194,12 +228,27 @@ public class MongoFilterMapTest {
 
         logger.debug("\tLoading sample data.");
 
+        Attribute loginCnt = smgr.findAttribute("loginCnt",null);
+        Attribute loginStrength = smgr.findAttribute("loginStrength",null);
+
+        assertThat(loginCnt)
+                .as("Check test schema loaded")
+                .isNotNull();
+        assertThat(loginStrength)
+                .as("Check test schema loaded")
+                .isNotNull();
+
         File user1File = ConfigMgr.findClassLoaderResource(testUserFile1);
 
         assert user1File != null;
         InputStream userStream = new FileInputStream(user1File);
         JsonNode node = JsonUtil.getJsonTree(userStream);
         user1 = new ScimResource(smgr, node, "Users");
+        IntegerValue lcnt = new IntegerValue(loginCnt,1234);
+        DecimalValue lstr = new DecimalValue(loginStrength,BigDecimal.valueOf(3.4));
+        user1.addValue(loginCnt,lcnt);
+        user1.addValue(loginStrength,lstr);
+
         userStream.close();
 
         File user2File = ConfigMgr.findClassLoaderResource(testUserFile2);
@@ -207,7 +256,10 @@ public class MongoFilterMapTest {
         userStream = new FileInputStream(user2File);
         node = JsonUtil.getJsonTree(userStream);
         user2 = new ScimResource(smgr, node, "Users");
-
+        lcnt = new IntegerValue(loginCnt,1);
+        lstr = new DecimalValue(loginStrength,BigDecimal.valueOf(1.00));
+        user2.addValue(loginCnt,lcnt);
+        user2.addValue(loginStrength,lstr);
         RequestCtx ctx = new RequestCtx("/Users", null, null, smgr);
         ScimResponse resp = mp.create(ctx, user1);
         assertThat(resp.getStatus())
@@ -224,16 +276,14 @@ public class MongoFilterMapTest {
     /**
      * This filter test applies the filter directly against a specific scim resource (after it is retrieved). This is
      * usually resolved at the SCIM layer rather than within Mongo.
-     * @throws ScimException
-     * @throws BackendException
      */
     @Test
-    public void b_testFilterResource() throws ScimException, BackendException {
+    public void b_testFilterResource() throws BackendException {
         logger.info("Testing filter match against specific resources");
         for (int i = 0; i < testArray.length; i++) {
             logger.debug("");
             logger.info("Filter (" + i + "):\t" + testArray[i][1]);
-            RequestCtx ctx1, ctx2 = null;
+            RequestCtx ctx1, ctx2;
             try {
                 ctx1 = new RequestCtx(user1loc, null, testArray[i][1], smgr);
                 logger.debug("Parsed filt:\t"+ctx1.getFilter().toString());
@@ -269,16 +319,14 @@ public class MongoFilterMapTest {
     /**
      * This test searches for multiple results at the container level. This means all filters are mapped to mongo and
      * appiled by Mongo
-     * @throws ScimException
-     * @throws BackendException
      */
     @Test
-    public void c_testFilterContainer() throws ScimException, BackendException {
+    public void c_testFilterMongoDb() throws BackendException {
         logger.info("Testing filter matches against all Users");
         for (int i = 0; i < testArray.length; i++) {
             logger.debug("");
             logger.info("Filter (" + i + "):\t" + testArray[i][1]);
-            RequestCtx ctx = null;
+            RequestCtx ctx;
             try {
                 ctx = new RequestCtx("Users", null, testArray[i][1], smgr);
                 logger.debug("Parsed filt:\t"+ctx.getFilter().toString());
@@ -289,8 +337,8 @@ public class MongoFilterMapTest {
                         .isInstanceOf(ListResponse.class);
                 ListResponse lr = (ListResponse) resp;
                 assertThat(lr.getSize())
-                        .as("Filter#"+i+" has "+resCnt[i]+" matches.")
-                        .isEqualTo(resCnt[i]);
+                        .as("Filter#"+i+" has "+ searchResultCnt[i]+" matches.")
+                        .isEqualTo(searchResultCnt[i]);
 
             } catch (ScimException e) {
                 fail("Failed while generating RequestCtx and Filter: " + e.getMessage(), e);
@@ -299,6 +347,5 @@ public class MongoFilterMapTest {
         }
 
     }
-
 
 }

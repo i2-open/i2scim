@@ -19,12 +19,16 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.security.AccessManager;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.ServletContext;
 import java.io.IOException;
@@ -32,15 +36,16 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Meta defines the set of meta attributes for a SCIM resource.
  * @author pjdhunt
  *
  */
-public class Meta implements ScimSerializer {
-	//private final static Logger logger = LoggerFactory
-	//		.getLogger(Meta.class);
+public class Meta extends ComplexValue implements ScimSerializer {
+	private final static Logger logger = LoggerFactory.getLogger(Meta.class);
 
     private String location = null;
 	
@@ -51,6 +56,8 @@ public class Meta implements ScimSerializer {
     
     private String version = null;
 
+    private Attribute attr = null;
+
     public final static DateFormat ScimDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
 	public Meta () {
@@ -58,7 +65,8 @@ public class Meta implements ScimSerializer {
 		this.lastModified = this.created;
 	}	
 	
-	public Meta (JsonNode node) throws SchemaException {
+	public Meta(Attribute attribute, JsonNode node) throws SchemaException {
+		this.attr = attribute;  // This is always the common attribute Meta
 		this.parseJson(node);
 		
 	}
@@ -116,6 +124,14 @@ public class Meta implements ScimSerializer {
 		serialize(gen, ctx, false);
 	}
 
+	public JsonNode toJsonNode(ObjectNode parent, String aname) {
+		if (parent != null) {
+			parent.set(aname, toJsonNode());
+			return parent;
+		}
+		return toJsonNode();
+	}
+
 	public JsonNode toJsonNode() {
 		return toJsonNode(null);
 	}
@@ -147,7 +163,44 @@ public class Meta implements ScimSerializer {
 		return node;
 	}
 
+	public Value getValue(String subattrname) {
+			Attribute sattr = attr.getSubAttribute(subattrname);
 
+			return getValue(sattr);
+
+	}
+
+	public Value getValue(Attribute attr) {
+		if (attr.isChild()) {
+			switch (attr.getName()) {
+				case "created":
+					return new DateValue(attr,getCreatedDate());
+				case "lastModified":
+					return new DateValue(attr,getLastModifiedDate());
+				case "resourceType":
+					return new StringValue(attr,getResourceType());
+				case "version":
+					return new StringValue(attr,getVersion());
+				case "location":
+					try {
+						return new ReferenceValue(attr,getLocation());
+					} catch (SchemaException e) {
+						e.printStackTrace();
+					}
+			}
+			return null;
+		}
+		return toValue();
+	}
+
+	public Value toValue() {
+		try {
+			return new ComplexValue(attr,this.toJsonNode());
+		} catch (ConflictException | ParseException | SchemaException e) {
+			logger.error("Unexpected exception converting Meta to ComplexValue: "+e.getLocalizedMessage(),e);
+		}
+		return null;
+	}
 
 	public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException {
 				
@@ -198,6 +251,20 @@ public class Meta implements ScimSerializer {
 
 
 		gen.writeEndObject();
+	}
+
+	public void parseJson(Attribute attr, JsonNode node) throws SchemaException {
+		this.attr = attr;
+		parseJson(node);
+	}
+
+	public HashMap<Attribute, Value> getValueArray() {
+		HashMap<Attribute,Value> map = new HashMap<>();
+		Map<String,Attribute> amap = attr.getSubAttributesMap();
+		for(Attribute sattr: amap.values()) {
+			map.put(sattr,getValue(sattr));
+		}
+		return map;
 	}
 
 	@Override

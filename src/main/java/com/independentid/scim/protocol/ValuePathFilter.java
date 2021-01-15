@@ -95,8 +95,8 @@ public class ValuePathFilter extends Filter {
 	}
 
 	@Override
-	protected void getFilterAttributes(@NotNull Set<Attribute> attrSet) {
+	protected void filterAttributes(@NotNull Set<Attribute> attrSet) {
 		attrSet.add(this.attr);
-		filter.getFilterAttributes(attrSet);
+		filter.filterAttributes(attrSet);
 	}
 }

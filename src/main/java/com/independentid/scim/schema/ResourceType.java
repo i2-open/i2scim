@@ -181,7 +181,7 @@ public class ResourceType implements ScimSerializer {
 	
 	public void setMeta(JsonNode metaNode) throws SchemaException  {
 		if (metaNode != null) {
-			this.meta = new Meta(metaNode);
+			this.meta = new Meta(null, metaNode);
 		} else {
 			this.meta = new Meta();
 			// Set proper defaults

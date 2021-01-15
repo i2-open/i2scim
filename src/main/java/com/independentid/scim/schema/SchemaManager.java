@@ -108,31 +108,6 @@ public class SchemaManager {
         loadDefaultResourceTypes();
         loadCoreSchema();
         initialized = true;
-
-        /*
-        //If the server will not persist its schema in the database, then load directly into config.
-        if (!this.persistSchemaMode()) {
-            // Nothing to do, SchemaManager should have initialized itself
-            logger.info("\tLoading default schema. Persisted schema disabled.");
-            loadDefaultSchema();
-            loadDefaultResourceTypes();
-            loadCoreSchema();
-            initialized = true;
-            return;
-        }
-
-        if(!checkAndLoadStoredSchema()) { // if not previously sync'd, sync now.'
-            logger.info("\tLoading default schema and resource types and persisting to database.");
-            resetSchema();
-            loadDefaultSchema();
-            loadDefaultResourceTypes();
-            loadCoreSchema();
-
-            persistSchema();
-        }
-
-         */
-
     }
 
     @PreDestroy

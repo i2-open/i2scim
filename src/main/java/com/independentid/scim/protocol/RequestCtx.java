@@ -24,12 +24,14 @@ import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.security.AccessManager;
+import com.independentid.scim.security.ScimBasicIdentityProvider;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.security.identity.SecurityIdentity;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.validation.constraints.NotNull;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -72,6 +74,7 @@ public class RequestCtx {
 	protected TreeMap<String,Attribute> excluded = new TreeMap<>(String.CASE_INSENSITIVE_ORDER); // attributes to be excluded
 	
 	protected Filter filter = null; // request filter
+	protected boolean clientNoFilterSpecd = true;
 
 	protected String sortBy = null; // sort order attribute
 
@@ -99,6 +102,8 @@ public class RequestCtx {
 	private SecurityIdentity identity = null;
 	private ArrayList<String> secRoles = null;
 	private AccessManager.AciSet acis = null;
+
+	boolean isMe = false;
 
 
 	/**
@@ -191,8 +196,10 @@ public class RequestCtx {
 		}
 		this.path = buf.toString();
 		parsePath();
-		if (filter != null)
+		if (filter != null) {
 			this.filter = Filter.parseFilter(filter, this, this.smgr);
+			clientNoFilterSpecd = false;
+		}
 		this.sctx = null;
 	}
 	
@@ -236,6 +243,7 @@ public class RequestCtx {
 		
 		if (param != null) {
 			this.filter = Filter.parseFilter(param, this, smgr);
+			clientNoFilterSpecd = false;
 		}
 		
 		this.sortBy = allParams.get(ScimParams.QUERY_sortby);
@@ -315,8 +323,10 @@ public class RequestCtx {
 		
 		String filt = req.getParameter(ScimParams.QUERY_filter);
 		if (filt == null) filter=null;
-		else
+		else {
 			filter = Filter.parseFilter(filt, this, smgr);
+			clientNoFilterSpecd = false;
+		}
 		
 		this.sortBy = req.getParameter(ScimParams.QUERY_sortby);
 		
@@ -454,6 +464,7 @@ public class RequestCtx {
 		vnode = node.get("filter");
 		if (vnode != null) {
 			this.filter = Filter.parseFilter(vnode.asText(), this, smgr);
+			this.clientNoFilterSpecd = false;
 		}
 		
 		vnode = node.get("sortBy");
@@ -546,7 +557,19 @@ public class RequestCtx {
 				child = elems[3];
 		}
 
+		if (endpoint.equals(ScimParams.PATH_TYPE_ME)) {
+			this.isMe = true;
+			SecurityIdentity identity = getSecSubject();
+			if (identity != null) {
+				id = identity.getAttribute(ScimBasicIdentityProvider.ATTR_SELF_ID);
+				if (id != null) endpoint = "Users";
+			}
+		}
+
 	}
+
+	public boolean isMe() { return isMe; }
+
 	
 	/**
 	 * @return The first level path within the Scim server.  E.g. "Users" or "Groups". For root level, a "/" is returned.
@@ -656,6 +679,13 @@ public class RequestCtx {
 	public Filter getFilter() {
 		return this.filter;
 	}
+
+	/**
+	 * Because ACIs can modify a request filter (tartgetFilter param), it is important to track whether client
+	 * originally requested a filter as the presence of a client filter is used to determine output format per RFC7644 Sec 3.4.2.
+	 * @return True if no filter was originally requested.
+	 */
+	public boolean hasNoClientFilter() { return this.clientNoFilterSpecd; }
 	
 	/*
 	public HttpServletRequest getHttpRequest() {
@@ -730,5 +760,42 @@ public class RequestCtx {
 
 	public void setAcis(AccessManager.AciSet acis) {
 		this.acis = acis;
+	}
+
+	/**
+	 * Takes the provided filter and adds it to an existing filter using an "and" clause. If there is no existing
+	 * filter, the provided filter becomes the filter. For example for many SCIM requests, the accesscontrol system
+	 * may wish to append the request with a targetFilter requirement.
+	 * @param appendfilter The filter to be added to the requested filter.
+	 * @return Returns a copy of the combined Filter.
+	 */
+	public Filter appendFilter(@NotNull Filter appendfilter) {
+		if (this.filter == null)
+			this.filter = appendfilter;
+		else
+			this.filter = new LogicFilter(true,this.filter,appendfilter);
+		return this.filter;
+	}
+
+	/**
+	 * The existing filter is combined with an and clause with a list of filters provided which are combined in an OR clause.
+	 * This is done when more than one ACI is active with a targetFilter expression. E.g. ((targetFilter1 OR targetFilter2) and (requestFilter))
+	 * @param filters A List of filters to be combined with OR and then appended with the original requestFilter.
+	 * @return The combined Filter.
+	 */
+	public Filter combineFilters(@NotNull List<Filter> filters) {
+		if (filters.size() == 1)
+			return appendFilter(filters.get(0));
+		if (filters.isEmpty())
+			return this.filter;
+
+		Filter orclause;
+		Iterator<Filter> iter = filters.iterator();
+		orclause = iter.next();
+		while (iter.hasNext())
+			orclause = new LogicFilter(false,orclause,iter.next());
+
+		// Take the "or" filter terms and combine with an and to the original filter.
+		return appendFilter(orclause);
 	}
 }

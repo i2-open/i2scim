@@ -262,7 +262,7 @@ public class ConfigMgr {
 		return this.scimHost;
 	}
 	
-	public String getRoot() {
+	public String getServerRootPath() {
 		return this.scimRoot;
 	}
 

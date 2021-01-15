@@ -28,7 +28,6 @@ import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
-import org.mvel2.optimizers.impl.refl.nodes.ArrayAccessorNest;
 
 import javax.validation.constraints.NotNull;
 import java.io.IOException;
@@ -84,40 +83,40 @@ public class MultiValue extends Value {
 
 	@Override
 	public JsonNode toJsonNode(ObjectNode parent, String aname) {
-		ArrayNode anode = null;
 		if (parent == null)
 			parent = JsonUtil.getMapper().createObjectNode();
-		anode = parent.putArray(aname);
+		ArrayNode anode = parent.putArray(aname);
 		switch (attr.getType()) {
-			case ValueUtil.TYPE_BOOLEAN:
-				for(Value val: values)
-					anode.add((Boolean) val.getValueArray());
-				break;
-
-			case ValueUtil.TYPE_BINARY:
-			case ValueUtil.TYPE_DATETIME:
-			case ValueUtil.TYPE_REF:
-				for(Value val: values)
-					anode.add(val.toString());
-				break;
-
-			case ValueUtil.TYPE_STRING:
+			case Attribute.TYPE_String:
 				for(Value val: values)
 					anode.add((String) val.getValueArray());
 				break;
 
-			case ValueUtil.TYPE_DECIMAL:
-				for(Value val: values)
-					anode.add((BigDecimal) val.getValueArray());
-				break;
-			case ValueUtil.TYPE_INTEGER:
-				for(Value val: values)
-					anode.add((Integer) val.getValueArray());
-				break;
-			case ValueUtil.TYPE_COMPLEX:
+			case Attribute.TYPE_Complex:
 				for(Value val: values) {
 					anode.add(val.toJsonNode(null,aname).get(aname));
 				}
+				break;
+
+			case Attribute.TYPE_Boolean:
+				for(Value val: values)
+					anode.add((Boolean) val.getValueArray());
+				break;
+
+			case Attribute.TYPE_Binary:
+			case Attribute.TYPE_Date:
+			case Attribute.TYPE_Reference:
+				for(Value val: values)
+					anode.add(val.toString());
+				break;
+
+			case Attribute.TYPE_Decimal:
+				for(Value val: values)
+					anode.add((BigDecimal) val.getValueArray());
+				break;
+			case Attribute.TYPE_Integer:
+				for(Value val: values)
+					anode.add((Integer) val.getValueArray());
 				break;
 		}
 

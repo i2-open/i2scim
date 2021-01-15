@@ -31,12 +31,13 @@ import java.util.*;
 public class Attribute implements ScimSerializer,Comparable<Attribute> {
 	
 	public final static String TYPE_String = "string";
-	public final static String TYPE_Date = "dateTime";
+	public final static String TYPE_Date = "datetime";
 	public final static String TYPE_Boolean = "boolean";
 	public final static String TYPE_Decimal = "decimal";
-	public final static String TYPE_Number = "number";
+	public final static String TYPE_Integer = "integer";
 	public final static String TYPE_Complex = "complex";
 	public final static String TYPE_Reference = "reference";
+	public final static String TYPE_Binary = "binary";
 	
 	public final static String MUTABILITY_readWrite = "readWrite";
 	public final static String MUTABILITY_writeOnly = "writeOnly";
@@ -415,7 +416,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 		if (item == null)
 			throw new SchemaException("Attribute " + this.name
 					+ " has no type defined.");
-		this.type = item.asText();
+		this.type = item.asText().toLowerCase();
 
 		item = node.get("description");
 		if (item != null)

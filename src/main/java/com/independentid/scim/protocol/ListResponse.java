@@ -20,7 +20,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.core.err.TooManyException;
+import com.independentid.scim.resource.AccessControl;
 import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.schema.Attribute;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,10 +30,7 @@ import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 /**
  * ListResponse is used to generate a SCIM response per RFC7644. Note:
@@ -225,5 +224,25 @@ public class ListResponse extends ScimResponse {
 	@Override
 	public JsonNode toJsonNode() {
 		return super.toJsonNode();
+	}
+
+	@Override
+	protected void processCompareResult() {
+		for (ScimResource res : this.entries) {
+			Set<Attribute> attrs = res.getAttributesPresent();
+			for (Attribute attr: attrs)
+				res.removeValue(attr);
+		}
+	}
+
+	@Override
+	protected void processReadableResult(AccessControl aci) {
+		for (ScimResource res : this.entries) {
+			Set<Attribute> attrs = res.getAttributesPresent();
+			for (Attribute attr: attrs) {
+				if (aci.isAttributeNotAllowed(attr))
+					res.removeValue(attr);
+			}
+		}
 	}
 }

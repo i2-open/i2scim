@@ -18,11 +18,17 @@ package com.independentid.scim.protocol;
 import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.ResourceType;
+import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
-import io.smallrye.mutiny.Multi;
 
 import javax.validation.constraints.NotNull;
-import java.util.*;
+import java.math.BigDecimal;
+import java.text.ParseException;
+import java.util.Arrays;
+import java.util.Date;
+import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public class AttributeFilter extends Filter {
@@ -51,7 +57,11 @@ public class AttributeFilter extends Filter {
 
     private String valString;
 
+    public Value value;
+
     private Object val;
+
+    private boolean isExtension;
 
     public AttributeFilter(String attr, String cond, String value, RequestCtx ctx, SchemaManager schemaManager) throws BadFilterException {
         this(attr, cond, value, null,ctx , schemaManager);
@@ -59,6 +69,7 @@ public class AttributeFilter extends Filter {
 
     public AttributeFilter(String aname, @NotNull String cond, String value, String parentAttr, RequestCtx ctx, SchemaManager schemaManager) throws BadFilterException {
         super();
+
         smgr = schemaManager;
         if (parentAttr == null)
             this.parentAttr = null;
@@ -99,6 +110,14 @@ public class AttributeFilter extends Filter {
         if (this.attr == null)
             throw new BadFilterException("Unable to parse a valid attribute or attribute was null.");
 
+        if (ctx != null) {
+            String container = ctx.getResourceContainer();
+            if (container != null) {
+                ResourceType type = smgr.getResourceTypeByPath(container);
+                isExtension = type.getSchemaExtensions().containsKey(attr.getSchema());
+            }
+
+        }
         this.compOp = cond.toLowerCase();
 
         if (!valid_ops.contains(this.compOp))
@@ -114,22 +133,67 @@ public class AttributeFilter extends Filter {
                     !(this.attr.isMultiValued() || this.attr.getType().equals(Attribute.TYPE_Complex)))
                 throw new BadFilterException("Invalid attribute filter; missing comparison value");
         } else {
-            String type = this.attr.getType();
-            switch (type.toLowerCase()) {
-                case ValueUtil.TYPE_BINARY:
-                    this.val = value.getBytes();
+
+            switch (attr.getType()) {
+                case Attribute.TYPE_Binary:
+                    BinaryValue bval = new BinaryValue(attr,value);
+                    this.val = bval.getValueArray();
                     break;
 
-                case ValueUtil.TYPE_BOOLEAN:
+                case Attribute.TYPE_Boolean:
                     this.val = Boolean.parseBoolean(value);
                     break;
 
-                case ValueUtil.TYPE_DATETIME:
-                    this.val = value;
-
+                case Attribute.TYPE_Date:
+                    try {
+                        this.val = Meta.ScimDateFormat.parse(value);
+                    } catch (ParseException e) {
+                        //Ignore - throw out bad data.
+                    }
                     break;
 
-                case ValueUtil.TYPE_STRING:
+                case Attribute.TYPE_Integer:
+                    try {
+                        this.val = Integer.parseInt(value);
+                    } catch (NumberFormatException e) {
+                        // was not integer.
+                    }
+                    break;
+
+                case Attribute.TYPE_Decimal:
+                    try {
+                        this.val = new BigDecimal(value);
+                    } catch (NumberFormatException e) {
+                        // was not a decimal.
+                    }
+                    break;
+
+
+                case Attribute.TYPE_Reference:
+                    try {
+                        ReferenceValue rval;
+                        // This is done to normalize the URI
+                        if (value.startsWith("\"") &&
+                            value.endsWith("\"")) {
+                            rval = new ReferenceValue(attr,value.substring(1, value.length() - 1));
+                        }
+                        else
+                            rval = new ReferenceValue(attr,value);
+                        this.valString = rval.toString();
+                        this.val = this.valString;
+                    } catch (SchemaException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+
+                case Attribute.TYPE_Complex:
+                    // when searching for a complex attribute parent, the "value" sub-attribute is assumed.
+                    Attribute vattr = this.attr.getSubAttribute("value");
+                    if (vattr != null)
+                        this.attr = vattr;
+                    // treat the filter as a string...
+
+                case Attribute.TYPE_String:
                     if (value.startsWith("\"") &&
                             value.endsWith("\""))
                         this.val = value.substring(1, value.length() - 1);
@@ -142,6 +206,13 @@ public class AttributeFilter extends Filter {
         }
     }
 
+    /**
+     * @return true if the filter is for an attribute contained within an extension schema.
+     */
+    public boolean isExtensionAttribute() {
+        return isExtension;
+    }
+
     public Attribute getAttribute() {
         return this.attr;
     }
@@ -151,7 +222,7 @@ public class AttributeFilter extends Filter {
     }
 
     public String getValueType() {
-        return this.attr.getType();
+        return attr.getType();
     }
 
     public Object getValue() {
@@ -159,7 +230,7 @@ public class AttributeFilter extends Filter {
     }
 
     @Override
-    protected void getFilterAttributes(Set<Attribute> attrSet) {
+    protected void filterAttributes(Set<Attribute> attrSet) {
         attrSet.add(attr);
     }
 
@@ -195,6 +266,12 @@ public class AttributeFilter extends Filter {
         return null;
     }
 
+    public BigDecimal getDecimal() {
+        if (this.val instanceof BigDecimal)
+            return (BigDecimal) this.val;
+        return null;
+    }
+
     /**
      * @return The filter excluding the parent attribute as it is not needed in ValuePath filters
      */
@@ -207,7 +284,7 @@ public class AttributeFilter extends Filter {
     private String addFilterExpr(StringBuilder buf) {
         buf.append(' ').append(this.compOp);
         if (!this.compOp.equals(FILTEROP_PRESENCE)) {
-            String sval = this.val.toString();
+            String sval = this.valString;
             if (sval.contains(" "))
                 buf.append(" \"").append(sval).append("\"");
             else
@@ -229,13 +306,7 @@ public class AttributeFilter extends Filter {
 
     public String toPathString() {
         StringBuilder buf = new StringBuilder();
-		
-		/*
-		if (this.parentAttr == null)
-			buf.append(this.attr.getPath());
-		else
-			buf.append(this.attr.getName());
-			*/
+
         buf.append(this.attr.getPath());
         return addFilterExpr(buf);
     }
@@ -268,7 +339,28 @@ public class AttributeFilter extends Filter {
             value = cval.getValue(attr);
         }
 
-        switch (attr.getType().toLowerCase()) {
+        switch (attr.getType()) {
+
+            case Attribute.TYPE_Reference:
+
+                if (value instanceof MultiValue) {
+                    MultiValue mval = (MultiValue) value;
+                    for (Value aval : mval.getValueArray()) {
+                        if (isMatch(aval))
+                            return true;
+                    }
+                }
+                if (value instanceof StringValue) {
+                    try {  // normalize the value by passing through referencevalue
+                        ReferenceValue rval = new ReferenceValue(attr,((StringValue) value).value);
+                        value = new StringValue(attr,rval.toString());
+                    } catch (SchemaException e) {
+                        e.printStackTrace();
+                    }
+                }
+                if (value instanceof ReferenceValue)
+                    value = new StringValue(attr,value.toString());  // convert to string value
+                // Continue processing reference value as a string compare
 
             case Attribute.TYPE_String: {
                 if (value == null)
@@ -281,6 +373,7 @@ public class AttributeFilter extends Filter {
                     }
                     return false;
                 }
+                assert value instanceof StringValue;
                 String val = ((StringValue) value).getValueArray();
                 switch (compOp) {
 
@@ -344,6 +437,7 @@ public class AttributeFilter extends Filter {
 
             case Attribute.TYPE_Boolean: {
                 assert value != null;
+                assert value instanceof BooleanValue;
                 Boolean val = ((BooleanValue) value).getValueArray();
                 switch (getOperator()) {
 
@@ -367,6 +461,7 @@ public class AttributeFilter extends Filter {
             }
 
             case Attribute.TYPE_Complex: {
+
                 throw new BadFilterException("Complex attributes may not be used in a comparison filter without a sub-attribute");
             }
 
@@ -404,17 +499,17 @@ public class AttributeFilter extends Filter {
 
             }
 
-            case Attribute.TYPE_Number: {
+            case Attribute.TYPE_Integer: {
                 assert value != null;
-                Integer val = ((IntegerValue) value).getValueArray();
+                Integer ival = ((IntegerValue) value).getValueArray();
                 switch (getOperator()) {
 
                     case AttributeFilter.FILTEROP_EQ: {
-                        return val.equals(getInt());
+                        return ival.equals(getInt());
                     }
 
                     case AttributeFilter.FILTEROP_NE:
-                        return !val.equals(getInt());
+                        return !ival.equals(getInt());
 
                     case AttributeFilter.FILTEROP_CONTAINS:
                     case AttributeFilter.FILTEROP_STARTSWITH:
@@ -422,16 +517,49 @@ public class AttributeFilter extends Filter {
                         throw new BadFilterException("Filter operator not supported with number attributes.");
 
                     case AttributeFilter.FILTEROP_GREATER:
-                        return val.compareTo(getInt()) > 0;
+                        return ival.compareTo(getInt()) > 0;
 
                     case AttributeFilter.FILTEROP_LESS:
-                        return val.compareTo(getInt()) < 0;
+                        return ival.compareTo(getInt()) < 0;
 
                     case AttributeFilter.FILTEROP_GREATEROREQUAL:
-                        return val.compareTo(getInt()) >= 0;
+                        return ival.compareTo(getInt()) >= 0;
 
                     case AttributeFilter.FILTEROP_LESSOREQUAL:
-                        return val.compareTo(getInt()) < 1;
+                        return ival.compareTo(getInt()) < 1;
+
+                }
+
+            }
+
+            case Attribute.TYPE_Decimal: {
+                assert value != null;
+                BigDecimal bval = ((DecimalValue) value).getValueArray();
+                switch (getOperator()) {
+
+                    case AttributeFilter.FILTEROP_EQ: {
+                        return bval.equals(getDecimal());
+                    }
+
+                    case AttributeFilter.FILTEROP_NE:
+                        return !bval.equals(getDecimal());
+
+                    case AttributeFilter.FILTEROP_CONTAINS:
+                    case AttributeFilter.FILTEROP_STARTSWITH:
+                    case AttributeFilter.FILTEROP_ENDSWITH:
+                        throw new BadFilterException("Filter operator not supported with number attributes.");
+
+                    case AttributeFilter.FILTEROP_GREATER:
+                        return bval.compareTo(getDecimal()) > 0;
+
+                    case AttributeFilter.FILTEROP_LESS:
+                        return bval.compareTo(getDecimal()) < 0;
+
+                    case AttributeFilter.FILTEROP_GREATEROREQUAL:
+                        return bval.compareTo(getDecimal()) >= 0;
+
+                    case AttributeFilter.FILTEROP_LESSOREQUAL:
+                        return bval.compareTo(getDecimal()) < 1;
 
                 }
 

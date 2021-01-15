@@ -27,6 +27,7 @@ import org.bson.Document;
 import org.bson.internal.Base64;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.Binary;
+import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,13 +127,17 @@ public class MongoMapUtil {
         Map<String, Document> map = new LinkedHashMap<>();
         Map<String, ExtensionValues> cmap = res.getExtensions();
         cmap.forEach((aname, ext) -> {
-            String mname = ScimResource.SCHEMA_EXT_PREFIX + Base64.encode(aname.getBytes());
+            String mname = mapExtensionId(aname);
             // $ref is special in Mongo, rename the field to href
 
             map.put(mname, MongoMapUtil.mapValue(ext));
         });
 
         return map;
+    }
+
+    public static String mapExtensionId(String extensionId) {
+        return ScimResource.SCHEMA_EXT_PREFIX + Base64.encode(extensionId.getBytes());
     }
 
     /**
@@ -216,7 +221,7 @@ public class MongoMapUtil {
     }
 
     public static Object mapValue(ReferenceValue val) {
-        String out = val.getValueArray().toString();
+        String out = val.toString();
         if (out.startsWith("http:/") && !out.startsWith("http://"))
             //if no explicit host, just get rid of protocol as it is assumed relative.
             return out.substring(5);
@@ -285,7 +290,7 @@ public class MongoMapUtil {
         if (value instanceof Binary) {
             return mapBson(attr, (Binary) value);
         }
-        if (value instanceof Document && attr.getType().equalsIgnoreCase(ValueUtil.TYPE_COMPLEX))
+        if (value instanceof Document && attr.getType().equals(Attribute.TYPE_Complex))
             return mapBsonComplex(attr, (Document) value);
 
         if (value instanceof byte[])
@@ -313,26 +318,26 @@ public class MongoMapUtil {
         if (attr.isMultiValued())
             return mapBson(attr, containerDoc.getList(name, Object.class));
 
-        switch (attr.getType().toLowerCase()) {
-            case ValueUtil.TYPE_STRING:
+        switch (attr.getType()) {
+            case Attribute.TYPE_String:
                 val = mapBson(attr, containerDoc.getString(name));
                 break;
-            case ValueUtil.TYPE_COMPLEX:
+            case Attribute.TYPE_Complex:
                 val = mapBsonComplex(attr, containerDoc.get(name, Document.class));
                 break;
-            case ValueUtil.TYPE_BOOLEAN:
+            case Attribute.TYPE_Boolean:
                 val = mapBson(attr, containerDoc.getBoolean(name));
                 break;
-            case ValueUtil.TYPE_DATETIME:
+            case Attribute.TYPE_Date:
                 val = new DateValue(attr, containerDoc.getDate(name));
                 break;
-            case ValueUtil.TYPE_BINARY:
+            case Attribute.TYPE_Binary:
                 val = mapBson(attr, Base64.decode(containerDoc.getString(name)));
                 break;
-            case ValueUtil.TYPE_INTEGER:
+            case Attribute.TYPE_Integer:
                 val = mapBson(attr, containerDoc.getInteger(name));
                 break;
-            case ValueUtil.TYPE_REF:
+            case Attribute.TYPE_Reference:
                 String newUri = containerDoc.getString(name);
                 URI uri;
                 try {
@@ -353,8 +358,12 @@ public class MongoMapUtil {
                 }
                 val = mapBson(attr, uri);
                 break;
-            case ValueUtil.TYPE_DECIMAL:
-                val = mapBson(attr, new BigDecimal(containerDoc.getInteger(name)));
+            case Attribute.TYPE_Decimal:
+                Object bval = containerDoc.get(name);
+                if (bval instanceof Decimal128)
+                    val = mapBson(attr, ((Decimal128)bval).bigDecimalValue());
+                else  // try string parse
+                    val = mapBson(attr,new BigDecimal(containerDoc.getString(name)));
 
         }
 

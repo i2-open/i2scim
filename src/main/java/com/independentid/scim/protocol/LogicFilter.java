@@ -18,6 +18,10 @@ package com.independentid.scim.protocol;
 import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
+import com.independentid.scim.schema.Attribute;
+
+import javax.validation.constraints.NotNull;
+import java.util.Set;
 
 public class LogicFilter extends Filter {
 
@@ -85,4 +89,9 @@ public class LogicFilter extends Filter {
 		return value1.isMatch(value) || value2.isMatch(value);
 	}
 
+	@Override
+	protected void filterAttributes(@NotNull Set<Attribute> attrSet) {
+		value1.filterAttributes(attrSet);
+		value2.filterAttributes(attrSet);
+	}
 }

@@ -15,8 +15,8 @@
 
 package com.independentid.scim.backend.mongo;
 
+import com.fasterxml.jackson.databind.util.StdDateFormat;
 import com.mongodb.client.model.Filters;
-import org.bson.Document;
 
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.core.err.BadFilterException;
@@ -28,6 +28,9 @@ import com.independentid.scim.protocol.PrecedenceFilter;
 import com.independentid.scim.protocol.ValuePathFilter;
 import com.independentid.scim.schema.Attribute;
 import org.bson.conversions.Bson;
+import org.bson.types.Decimal128;
+
+import java.math.BigDecimal;
 
 
 public class MongoFilterMapper {
@@ -51,6 +54,102 @@ public class MongoFilterMapper {
                 + filter.getClass().getCanonicalName());
     }
 
+    private static Bson mapStringType(String aname, AttributeFilter filter,boolean negate) {
+        Bson obj = null;
+        switch (filter.getOperator()) {
+
+            case AttributeFilter.FILTEROP_EQ:
+                if (filter.getAttribute().getCaseExact())
+                    obj = Filters.eq(aname, filter.asString());
+                else
+                    obj = Filters.regex(aname,"^" + filter.asQuotedString() + "$","i");
+
+                if (negate)
+                    obj = Filters.not(obj);
+                break;
+
+            case AttributeFilter.FILTEROP_NE:
+                if (filter.getAttribute().getCaseExact())
+                    obj = Filters.eq(aname, filter.asString());
+                else
+                    obj = Filters.regex(aname,"^" + filter.asQuotedString() + "$","i");
+
+                if (!negate)
+                    obj = Filters.not(obj);
+                break;
+
+            case AttributeFilter.FILTEROP_CONTAINS:
+
+                if (filter.getAttribute().getCaseExact())
+                    obj = Filters.regex(aname,".*"+filter.asQuotedString()+".*");
+                else
+                    obj = Filters.regex(aname,".*"+filter.asQuotedString()+".*","i");
+                if (negate)
+                    obj = Filters.not(obj);
+                break;
+
+            case AttributeFilter.FILTEROP_STARTSWITH:
+
+                if (filter.getAttribute().getCaseExact())
+                    obj = Filters.regex(aname,"^" + filter.asQuotedString()+".*");
+                else
+                    obj = Filters.regex(aname,"^" + filter.asQuotedString()+".*","i");
+
+                if (negate)
+                    obj = Filters.not(obj);
+                break;
+
+
+            case AttributeFilter.FILTEROP_ENDSWITH:
+
+                if (filter.getAttribute().getCaseExact())
+                    obj = Filters.regex(aname,".*"+filter.asQuotedString()+"$");
+                else
+                    obj = Filters.regex(aname,".*"+filter.asQuotedString()+"$","i");
+
+                if (negate)
+                    obj = Filters.not(obj);
+                break;
+
+
+            case AttributeFilter.FILTEROP_PRESENCE:
+                obj = Filters.exists(aname);
+                if (negate)
+                    obj = Filters.not(obj);
+                break;
+
+            case AttributeFilter.FILTEROP_GREATER:
+
+                if (negate)
+                    obj = Filters.lte(aname, filter.asString());
+                else
+                    obj = Filters.gt(aname,filter.asString());
+                break;
+
+            case AttributeFilter.FILTEROP_LESS:
+                if (negate)
+                    obj = Filters.gte(aname,filter.asString());
+                else
+                    obj = Filters.lt(aname,filter.asString());
+                break;
+
+            case AttributeFilter.FILTEROP_GREATEROREQUAL:
+                if (negate)
+                    obj = Filters.lt(aname,filter.asString());
+                else
+                    obj = Filters.gte(aname,filter.asString());
+                break;
+
+            case AttributeFilter.FILTEROP_LESSOREQUAL:
+                if (negate)
+                    obj = Filters.gt(aname,filter.asString());
+                else
+                    obj = Filters.lte(aname,filter.asString());
+                break;
+        }
+        return obj;
+    }
+
     public static Bson mapFilter(AttributeFilter filter, boolean negate, boolean isValPath)
             throws BadFilterException {
         Bson obj = null;
@@ -60,112 +159,59 @@ public class MongoFilterMapper {
             aname = attr.getName();
         else
             aname = attr.getRelativePath();
-        if (aname.equalsIgnoreCase("$ref"))
-            aname = "href";
+        if (aname.contains("$ref"))
+            aname = aname.replace("$ref","href");
+
+        if (filter.isExtensionAttribute()) {
+            // In order for the mongo query to work, the extensionId object has to be added to the path.
+            String extensionIdPrefix = MongoMapUtil.mapExtensionId(attr.getSchema());
+            aname = extensionIdPrefix + "." + aname;
+        }
+
         //String aname = attr.getRelativePath();
 
-        switch (attr.getType().toLowerCase()) {
+        switch (attr.getType()) {
 
-            case Attribute.TYPE_String: {
+            case Attribute.TYPE_Reference:
+            case Attribute.TYPE_String:
+                return mapStringType(aname,filter,negate);
+
+
+            case Attribute.TYPE_Binary:
+               // Because we can only compare the encoded value, we can treat a filter as string
                 switch (filter.getOperator()) {
 
                     case AttributeFilter.FILTEROP_EQ:
-                        if (filter.getAttribute().getCaseExact())
-                            obj = Filters.eq(aname, filter.asString());
-                        else
-                            obj = Filters.regex(aname,"^" + filter.asQuotedString() + "$","i");
-
+                        obj = Filters.eq(aname, filter.getBinary());
                         if (negate)
                             obj = Filters.not(obj);
                         break;
 
                     case AttributeFilter.FILTEROP_NE:
-                        if (filter.getAttribute().getCaseExact())
-                            obj = Filters.eq(aname, filter.asString());
-                        else
-                            obj = Filters.regex(aname,"^" + filter.asQuotedString() + "$","i");
+
+                            obj = Filters.eq(aname, filter.getBinary());
 
                         if (!negate)
                             obj = Filters.not(obj);
                         break;
 
-                    case AttributeFilter.FILTEROP_CONTAINS:
-
-                        if (filter.getAttribute().getCaseExact())
-                            obj = Filters.regex(aname,".*"+filter.asQuotedString()+".*");
-                        else
-                            obj = Filters.regex(aname,".*"+filter.asQuotedString()+".*","i");
-
-                        if (negate)
-                            obj = Filters.not(obj);
-
-                        break;
-
-                    case AttributeFilter.FILTEROP_STARTSWITH:
-
-                        if (filter.getAttribute().getCaseExact())
-                            obj = Filters.regex(aname,"^" + filter.asQuotedString()+".*");
-                        else
-                            obj = Filters.regex(aname,"^" + filter.asQuotedString()+".*","i");
-
-                        if (negate)
-                            obj = Filters.not(obj);
-
-                        break;
-
-
-                    case AttributeFilter.FILTEROP_ENDSWITH:
-
-                        if (filter.getAttribute().getCaseExact())
-                            obj = Filters.regex(aname,".*"+filter.asQuotedString()+"$");
-                        else
-                            obj = Filters.regex(aname,".*"+filter.asQuotedString()+"$","i");
-
-                        if (negate)
-                            obj = Filters.not(obj);
-
-                        break;
-
-
                     case AttributeFilter.FILTEROP_PRESENCE:
                         obj = Filters.exists(aname);
                         if (negate)
                             obj = Filters.not(obj);
-
                         break;
 
+                    case AttributeFilter.FILTEROP_CONTAINS:
+                    case AttributeFilter.FILTEROP_STARTSWITH:
+                    case AttributeFilter.FILTEROP_ENDSWITH:
                     case AttributeFilter.FILTEROP_GREATER:
-
-                        if (negate)
-                            obj = Filters.lte(aname, filter.asString());
-                        else
-                            obj = Filters.gt(aname,filter.asString());
-                        break;
-
                     case AttributeFilter.FILTEROP_LESS:
-                        if (negate)
-                            obj = Filters.gte(aname,filter.asString());
-                        else
-                            obj = Filters.lt(aname,filter.asString());
-                        break;
-
                     case AttributeFilter.FILTEROP_GREATEROREQUAL:
-                        if (negate)
-                            obj = Filters.lt(aname,filter.asString());
-                        else
-                            obj = Filters.gte(aname,filter.asString());
-                        break;
-
                     case AttributeFilter.FILTEROP_LESSOREQUAL:
-                        if (negate)
-                            obj = Filters.gt(aname,filter.asString());
-                        else
-                            obj = Filters.lte(aname,filter.asString());
-                        break;
-
+                        throw new BadFilterException(
+                                Messages.getString("FilterMapper.1")); //$NON-NLS-1$
                 }
                 return obj;
-            }
 
             case Attribute.TYPE_Boolean: {
                 switch (filter.getOperator()) {
@@ -187,42 +233,36 @@ public class MongoFilterMapper {
                         break;
 
                     case AttributeFilter.FILTEROP_CONTAINS:
-
                     case AttributeFilter.FILTEROP_STARTSWITH:
-
                     case AttributeFilter.FILTEROP_ENDSWITH: {
                         throw new BadFilterException(
                                 Messages.getString("FilterMapper.1")); //$NON-NLS-1$
-
                     }
 
                     case AttributeFilter.FILTEROP_PRESENCE:
                         obj = Filters.exists(aname);
                         if (negate)
                             obj = Filters.not(obj);
-
                         break;
 
                     case AttributeFilter.FILTEROP_GREATER:
-
                     case AttributeFilter.FILTEROP_LESS:
-
                     case AttributeFilter.FILTEROP_GREATEROREQUAL:
-
                     case AttributeFilter.FILTEROP_LESSOREQUAL:
                         throw new BadFilterException(
                                 Messages.getString("FilterMapper.31")); //$NON-NLS-1$
-
                 }
                 return obj;
             }
 
             case Attribute.TYPE_Complex: {
-                throw new BadFilterException(
-                        Messages.getString("FilterMapper.35")); //$NON-NLS-1$
+                // without a sub attribute specified, use the default "value" sub-attribute
+                aname = aname + ".value";
+                return mapStringType(aname,filter,negate);
             }
 
             case Attribute.TYPE_Date: {
+
                 switch (filter.getOperator()) {
 
                     case AttributeFilter.FILTEROP_EQ: {
@@ -282,23 +322,94 @@ public class MongoFilterMapper {
                         else
                             obj = Filters.lte(aname,filter.getDate());
                         break;
-
-
                 }
                 return obj;
             }
 
-            case Attribute.TYPE_Number: {
+            case Attribute.TYPE_Decimal:
+                switch (filter.getOperator()) {
+                    case AttributeFilter.FILTEROP_EQ:
+                        try {
+                            if (negate)
+                                obj = Filters.ne(aname, new Decimal128(filter.getDecimal()));
+                            else
+                                obj = Filters.eq(aname, new Decimal128(filter.getDecimal()));
+                        } catch (NumberFormatException e) {
+                            throw new BadFilterException("Invalid decimal filter detected: " + e.getLocalizedMessage());
+                        }
+                        return obj;
+                    case AttributeFilter.FILTEROP_NE:
+                        try {
+                            if (negate)
+                                obj = Filters.eq(aname, new Decimal128(filter.getDecimal()));
+                            else
+                                obj = Filters.ne(aname, new Decimal128(filter.getDecimal()));
+                        } catch (NumberFormatException e) {
+                            throw new BadFilterException("Invalid decimal filter detected: " + e.getLocalizedMessage());
+                        }
+                        return obj;
+
+                    case AttributeFilter.FILTEROP_CONTAINS:
+                    case AttributeFilter.FILTEROP_STARTSWITH:
+                    case AttributeFilter.FILTEROP_ENDSWITH: {
+                        throw new BadFilterException(
+                                Messages.getString("FilterMapper.48")); //$NON-NLS-1$
+                    }
+                    case AttributeFilter.FILTEROP_PRESENCE:
+                        if (negate)
+                            obj = Filters.not(Filters.exists(aname));
+                        else
+                            obj = Filters.exists(aname);
+                        break;
+
+                    case AttributeFilter.FILTEROP_GREATER:
+                        if (negate)
+                            obj = Filters.lte(aname, new Decimal128(filter.getDecimal()));
+                        else
+                            obj = Filters.gt(aname, new Decimal128(filter.getDecimal()));
+                        break;
+
+                    case AttributeFilter.FILTEROP_LESS:
+                        if (negate)
+                            obj = Filters.gte(aname, new Decimal128(filter.getDecimal()));
+                        else
+                            obj = Filters.lt(aname, new Decimal128(filter.getDecimal()));
+                        break;
+
+                    case AttributeFilter.FILTEROP_GREATEROREQUAL:
+                        if (negate)
+                            obj = Filters.lt(aname, new Decimal128(filter.getDecimal()));
+                        else
+                            obj = Filters.gte(aname, new Decimal128(filter.getDecimal()));
+                        break;
+
+                    case AttributeFilter.FILTEROP_LESSOREQUAL:
+                        if (negate)
+                            obj = Filters.gt(aname, new Decimal128(filter.getDecimal()));
+                        else
+                            obj = Filters.lte(aname, new Decimal128(filter.getDecimal()));
+                        break;
+                }
+                return obj;
+
+
+            case Attribute.TYPE_Integer: {
 
                 switch (filter.getOperator()) {
 
                     case AttributeFilter.FILTEROP_EQ: {
-                        obj = Filters.eq(aname,filter.getInt());
+                        if (negate)
+                            obj = Filters.ne(aname,filter.getInt());
+                        else
+                            obj = Filters.eq(aname,filter.getInt());
                         break;
                     }
 
                     case AttributeFilter.FILTEROP_NE:
-                        obj = Filters.ne(aname,filter.getInt());
+                        if (negate)
+                            obj = Filters.eq(aname,filter.getInt());
+                        else
+                            obj = Filters.ne(aname,filter.getInt());
                         break;
 
                     case AttributeFilter.FILTEROP_CONTAINS:
