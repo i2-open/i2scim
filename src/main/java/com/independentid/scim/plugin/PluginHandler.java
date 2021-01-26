@@ -65,10 +65,10 @@ public class PluginHandler {
                 if (iter.hasNext())
                     plist.append(", ");
                 try {
-                    plugin.init(schemaManager);
+                    plugin.init();
                 } catch (ServletException e) {
                     logger.error("Error initializing plugin: "+plugin.getClass().getName()+": "+e.getLocalizedMessage(),e);
-                    iter.remove();;
+                    iter.remove();
                 }
 
             }

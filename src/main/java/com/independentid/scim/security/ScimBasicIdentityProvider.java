@@ -19,6 +19,7 @@ import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.protocol.Filter;
 import com.independentid.scim.protocol.ListResponse;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
@@ -56,7 +57,7 @@ import java.util.Iterator;
 @ApplicationScoped
 public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePasswordAuthenticationRequest> {
     public static final String ATTR_SELF_ID = "id";
-    public static final String ATTR_ACTOR_RES = "scimActor";
+    public static final String ATTR_ACTOR_RES = "scimActorResource";
 
     private static final Logger logger = LoggerFactory.getLogger(ScimBasicIdentityProvider.class);
 
@@ -113,7 +114,8 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
         if (pwd.contains("\"")) // check for embedded quotes for injection attack
             return Uni.createFrom().failure(new AuthenticationFailedException("Invalid password detected"));
 
-        String filter = URLEncoder.encode("UserName eq \"" + user + "\" and password eq \"" + pwd + "\"", StandardCharsets.UTF_8);
+        String filter  //URLEncoder.encode("UserName eq \"" + user + "\" and password eq \"" + pwd + "\"", StandardCharsets.UTF_8);
+                = "userName eq \""+user+"\" and password eq \""+pwd+"\"";
         RequestCtx ctx;
         try {
             ctx = new RequestCtx("/Users", null, filter, smgr);
@@ -140,6 +142,9 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
                 Iterator<ScimResource> entries = lresp.entries();
                 // Since username is unique, there should only be one entry.
                 ScimResource resource = entries.next();
+                Filter pfilt = Filter.parseFilter("password eq "+pwd,null,null,smgr);
+                if (!pfilt.isMatch(resource))
+                    return Uni.createFrom().failure(new AuthenticationFailedException());
 
                 //Get the roles from the matched user resource
                 Attribute role = resource.getAttribute("roles", ctx);

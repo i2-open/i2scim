@@ -76,8 +76,6 @@ public class Operation extends RecursiveAction {
 
     HttpServletResponse resp;
 
-
-
     static ConfigMgr configMgr;
 
     static SchemaManager schemaManager;
@@ -165,6 +163,7 @@ public class Operation extends RecursiveAction {
                 ctx.getResourceContainer() == null)
             ctx.setResourceContainer("/");
         req.setAttribute(SCIM_OP_ATTR, this);
+
     }
 
     /**
@@ -239,6 +238,8 @@ public class Operation extends RecursiveAction {
     public HttpServletResponse getResponse() {
         return this.resp;
     }
+
+    public ScimResponse getScimResponse() { return this.isError()?null:this.scimresp; }
 
     public boolean opDone() {
         return (isError() || opState.equals(OpState.done) || opState.equals(OpState.fatal));
@@ -333,24 +334,12 @@ public class Operation extends RecursiveAction {
      */
     protected void doPreOperation() {
         parseRequestUrl();
-        if (pluginHandler != null) {
-            try {
-                pluginHandler.doPreOperations(this);
-            } catch (ScimException e) {
-                e.printStackTrace();
-            }
-        }
+
 
     }
 
     protected void doPostOperation() {
-        if (pluginHandler != null) {
-            try {
-                pluginHandler.doPostOperations(this);
-            } catch (ScimException e) {
-                e.printStackTrace();
-            }
-        }
+
     }
 
     /**
@@ -360,7 +349,7 @@ public class Operation extends RecursiveAction {
         return (this.err != null);
     }
 
-    protected void setCompletionError(Exception e) {
+    public void setCompletionError(Exception e) {
         this.err = e;
         this.opState = OpState.fatal;
     }
@@ -445,6 +434,15 @@ public class Operation extends RecursiveAction {
                         + getClass().getSimpleName() + "]");
             doPreOperation();
 
+            //Now that operation should be fully parsed, run the plugins.
+            if (pluginHandler != null) {
+                try {
+                    pluginHandler.doPreOperations(this);
+                } catch (ScimException e) {
+                    e.printStackTrace();
+                }
+            }
+
             this.finalState = this.opState;
             if (!this.isError()) {
 
@@ -460,7 +458,16 @@ public class Operation extends RecursiveAction {
                 if (logger.isTraceEnabled())
                     logger.trace("Start operation post-proccesing ["
                             + getClass().getSimpleName() + "]");
+
+                if (pluginHandler != null) {
+                    try {
+                        pluginHandler.doPostOperations(this);
+                    } catch (ScimException e) {
+                        e.printStackTrace();
+                    }
+                }
                 doPostOperation();
+
 
             }
         } catch (ScimException e) {

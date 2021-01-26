@@ -72,8 +72,8 @@ public class ScimRoleAugmentor implements SecurityIdentityAugmentor {
             if (pal.getName().equalsIgnoreCase(cmgr.getRootUser()))
                 builder.addRole("root");
 
-            // add default role "user"
-            builder.addRole("user");
+            // add role indicating bearer assertion
+            builder.addRole("bearer");
             return builder::build;
         }
     }

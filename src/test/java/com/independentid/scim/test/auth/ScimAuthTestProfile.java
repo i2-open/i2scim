@@ -25,9 +25,8 @@ public class ScimAuthTestProfile implements QuarkusTestProfile {
     public Map<String, String> getConfigOverrides() {
         Map<String, String> cmap = new HashMap<>(Map.of(
                 "scim.mongodb.test", "true",
-                "scim.mongodb.dbname", "testHttpSCIM",
+                "scim.mongodb.dbname", "secTestSCIM",
                 "scim.mongodb.uri", "mongodb://localhost:27017",
-                "scim.provider.bean", "com.independentid.scim.backend.mongo.MongoProvider",
 
                 "scim.security.enable", "true",
 
@@ -35,7 +34,9 @@ public class ScimAuthTestProfile implements QuarkusTestProfile {
                 "quarkus.log.category.\"com.independentid.scim\".level", "DEBUG",
                 "quarkus.http.auth.basic", "true",
                 "scim.security.authen.basic", "true",
-                "scim.security.authen.jwt", "true"));
+                "scim.security.authen.jwt", "true",
+                "scim.security.acis.path","classpath:/schema/aciSecurityTest.json"
+        ));
         cmap.putAll(Map.of(
 
 

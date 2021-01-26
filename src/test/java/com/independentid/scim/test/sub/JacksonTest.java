@@ -15,7 +15,6 @@
 
 package com.independentid.scim.test.sub;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.schema.Schema;
@@ -35,7 +34,7 @@ public class JacksonTest {
        String nstring = node.toString();
        System.out.println("Compare string:\n"+nstring);
 
-       node.put("objtest",getObj(1));
+       node.set("objtest",getObj(1));
 
        System.out.println("Nested obj:\n"+node.toPrettyString());
 

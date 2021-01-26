@@ -20,18 +20,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.resource.AccessControl;
-import com.independentid.scim.resource.ScimResource;
-import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.security.AciSet;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Collection;
-import java.util.Set;
 
 /**
  * @author pjdhunt
@@ -134,7 +130,7 @@ public class ScimResponse implements ScimSerializer {
 	 * generating a JSON body response if required (e.g. for SCIM Errors HTTP Status 400).
 	 * @param gen A <JsonGenerator> object usually bound to an <HttpResponse> object writer.
 	 * @param ctx A <RequestCtx> object containing the original request/response.
-	 * @throws IOException
+	 * @throws IOException may be thrown when attempting to write to generator
 	 */
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
 		ctx.getHttpServletResponse().setStatus(getStatus());
@@ -150,8 +146,7 @@ public class ScimResponse implements ScimSerializer {
 				gen.writeStringField("detail",this.detail);
 			gen.writeNumberField("status", this.status);
 			gen.writeEndObject();
-		
-			return;
+
 		}
 	}
 
@@ -178,8 +173,6 @@ public class ScimResponse implements ScimSerializer {
 		
 		if (this.status >= 400) {
 			serialize(gen,ctx);
-			//resp.setStatus(this.status);
-			return;
 		}
 	}
 
@@ -262,39 +255,18 @@ public class ScimResponse implements ScimSerializer {
 	/**
 	 * Applies a given ACI to the results. It looks at the rights and targetAttr specifications
 	 * and removes attributes which are not returnable.
-	 * @param aci The AccessControl to be applied.
-	 * @return false if the result is not returnable with the provided aci
+	 * @param set The {@link AciSet} to be applied.
 	 */
-	public boolean applyAci(AccessControl aci) {
-		Collection<AccessControl.Rights> rights = aci.getRights();
-		if (rights.contains(AccessControl.Rights.all)
-				|| rights.contains(AccessControl.Rights.read)
-				|| rights.contains(AccessControl.Rights.search)) {
-			processReadableResult(aci);
-			return true;
-		}
-		if (rights.contains(AccessControl.Rights.compare)) {
-			processCompareResult();
-			return true;
-		}
-		return false;
-	}
-
-	/**
-	 * When a client is only allowed to do comparison then only id and meta may be returned.
-	 * Eliminate all attributes except for id and meta.
-	 */
-	protected void processCompareResult() {
-		// for ScimResposne there is nothing to process!
+	public void applyAciSet(AciSet set) {
+		processReadableResult(set);
 	}
 
 	/**
 	 * Process the targetAttrs list if provided
-	 * @param aci The access control specifying the targetAttr to return if any.
+	 * @param set The access control set specifying the targetAttr to return if any.
 	 */
-	protected void processReadableResult(AccessControl aci) {
-
-		// for ScimResposne there is nothing to process!
+	protected void processReadableResult(AciSet set) {
+		// for ScimResponse there is nothing to process!
 	}
 	
 }

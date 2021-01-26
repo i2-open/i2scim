@@ -18,10 +18,9 @@ package com.independentid.scim.protocol;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.resource.AccessControl;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.Attribute;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import com.independentid.scim.security.AciSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,34 +114,26 @@ public class ResourceResponse extends ScimResponse {
 			//TODO This should not happen
 			logger.error("Unexpected exception serializing a response value: "+e.getMessage(),e);
 		}
-		
-		resp.setStatus(getStatus());
-		if (this.lastMod != null)
-			resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
-		if (this.getLocation() != null)	
-			resp.setHeader("Location", this.getLocation());
-		if (this.etag != null) {
-			resp.setHeader("ETag", "\""+this.etag+"\"");
+		if (resp != null) {
+			resp.setStatus(getStatus());
+			if (this.lastMod != null)
+				resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
+			if (this.getLocation() != null)
+				resp.setHeader("Location", this.getLocation());
+			if (this.etag != null) {
+				resp.setHeader("ETag", "\"" + this.etag + "\"");
+			}
 		}
 		
 	}
 
 	@Override
-	protected void processCompareResult() {
-		for (ScimResource res : this.entries) {
-			Set<Attribute> attrs = res.getAttributesPresent();
-			for (Attribute attr: attrs)
-				res.removeValue(attr);
-		}
-	}
-
-	@Override
-	protected void processReadableResult(AccessControl aci) {
+	protected void processReadableResult(AciSet set) {
 		for (ScimResource res : this.entries) {
 			Set<Attribute> attrs = res.getAttributesPresent();
 			for (Attribute attr: attrs) {
-				if (aci.isAttributeNotAllowed(attr))
-					res.removeValue(attr);
+				if (set.isAttrNotReturnable(attr))
+					res.blockAttribute(attr);
 			}
 		}
 	}

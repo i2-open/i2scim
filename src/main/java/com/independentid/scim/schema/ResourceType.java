@@ -119,7 +119,7 @@ public class ResourceType implements ScimSerializer {
 	
 	/**
 	 * Sets the server relative endpoint of the resource type expressed as a URI (e.g. /Users).
-	 * @param endpoint
+	 * @param endpoint The requested URI endpoint path (e.g. /Users)
 	 */
 	public void setEndpoint(URI endpoint) {
 		this.endpoint = endpoint;
@@ -367,5 +367,4 @@ public class ResourceType implements ScimSerializer {
 		item = node.get("meta");
 		setMeta(item);
 	}
-	
 }

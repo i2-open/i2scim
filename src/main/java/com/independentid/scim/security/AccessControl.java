@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * Confidential and Proprietary
  *
@@ -13,7 +13,7 @@
  * subject to the terms of such agreement.
  */
 
-package com.independentid.scim.resource;
+package com.independentid.scim.security;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -23,15 +23,18 @@ import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.Filter;
 import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.resource.ReferenceValue;
+import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
-import com.independentid.scim.security.ScimBasicIdentityProvider;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.jwt.auth.principal.JWTCallerPrincipal;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.security.Principal;
@@ -49,12 +52,15 @@ import java.util.*;
  * This class represents a single ACI and is invoked {@link com.independentid.scim.security.AccessManager}
  */
 public class AccessControl implements ScimSerializer {
+    private final static Logger logger = LoggerFactory
+            .getLogger(AccessControl.class);
 
-    public enum Rights {all, add, modify, delete, read, search, compare}
+    public enum Rights {all, add, modify, delete, read, search}
 
     public enum ActorType {any, self, role, group, ref, filter}
 
     private final SchemaManager smgr;
+
     private String path;
     private String targetAttrs = null;
     private Filter targetFilter = null;
@@ -63,10 +69,15 @@ public class AccessControl implements ScimSerializer {
     private boolean isClientSelf = false;
     private boolean isAnyClient = false;
 
+    private final HashSet<Attribute> allowedAttrs = new HashSet<>();
+    private final HashSet<Attribute> excludedAttrs = new HashSet<>();
+    private boolean isAllAttrs = false;
+
     private ArrayList<String> clientRoles = new ArrayList<>();
     //private ArrayList<ReferenceValue> actorGroups = new ArrayList<>( );
     private ArrayList<ReferenceValue> clientRefs = new ArrayList<>();
     private ArrayList<Filter> clientFilters = new ArrayList<>();
+    private RequestCtx aclCtx;
 
     public AccessControl(SchemaManager schemaManager, JsonNode aciNode) throws SchemaException {
         smgr = schemaManager;
@@ -145,6 +156,10 @@ public class AccessControl implements ScimSerializer {
         return targetAttrs;
     }
 
+    public Collection<Attribute> getAttrsAllowed() { return allowedAttrs; }
+    public Collection<Attribute> getAttrsExcluded() { return excludedAttrs; }
+    public boolean isAllAttrs() { return isAllAttrs; }
+
     public void setTargetAttrs(String targetAttrs) {
         this.targetAttrs = targetAttrs;
     }
@@ -187,18 +202,30 @@ public class AccessControl implements ScimSerializer {
         else
             this.path = item.asText();
 
-        item = node.get("targetattrs");
-        if (item != null)
-            this.targetAttrs = item.asText();
+        try {
+            aclCtx = new RequestCtx(path,null,null,smgr);
+        } catch (ScimException e) {
+            //should not happen
+            e.printStackTrace();
+        }
 
-        item = node.get("targetfilter");
+        item = node.get("targetAttrs");
+        if (item != null) {
+            this.targetAttrs = item.asText();
+            parseTargetAttrs();
+        }
+
+        item = node.get("targetFilter");
         if (item != null) {
             try {
                 this.targetFilter = Filter.parseFilter(item.asText(), null, smgr);
             } catch (BadFilterException e) {
-                throw new SchemaException("Invalid filter specified for targetFilter: " + e.getLocalizedMessage());
+                throw new SchemaException("Invalid aci: invalid filter specified for targetFilter: " + e.getLocalizedMessage());
             }
         }
+
+        if (this.targetAttrs == null && this.targetFilter == null)
+            throw new SchemaException("Invalid aci: no target specified: \n"+node.toString());
 
         item = node.get("rights");
         if (item == null)
@@ -223,9 +250,6 @@ public class AccessControl implements ScimSerializer {
                     continue;
                 case "search":
                     privs.add(Rights.search);
-                    continue;
-                case "compare":
-                    privs.add(Rights.compare);
             }
         }
 
@@ -245,16 +269,9 @@ public class AccessControl implements ScimSerializer {
                     case "rol":
                         if (parts.length < 2)
                             throw new SchemaException("Invalid actor role specified: " + aline);
-                        this.clientRoles.add(parts[1].trim());
-                        continue;
-                        /*
-                    case "gro":
-                        if(parts.length < 2)
-                            throw new SchemaException("Invalid actor group specified: "+aline);
-                        this.actorGroups.add(new ReferenceValue(null,parts[1]));
+                        this.clientRoles.addAll(parseRoles(parts[1].trim()));
                         continue;
 
-                         */
                     case "ref":
                         if (parts.length < 2)
                             throw new SchemaException("Invalid actor reference specified: " + aline);
@@ -272,6 +289,38 @@ public class AccessControl implements ScimSerializer {
             }
         }
 
+    }
+
+    private List<String> parseRoles(String val) {
+        String[] vals = val.split("[, ]+");
+        return Arrays.asList(vals);
+    }
+
+    private void parseTargetAttrs() {
+        if (targetAttrs == null)
+            return;
+
+        String[] elems = targetAttrs.split("[, ]+");
+        for(String aname : elems) {
+            if (aname.equals("*")) {
+                this.isAllAttrs = true;
+                continue;
+            }
+            boolean exclude = false;
+            if (aname.startsWith("-")) {
+                exclude = true;
+                aname = aname.substring(1).trim();  // trim in case a space between - and attr
+            }
+            Attribute attr = smgr.findAttribute(aname,aclCtx);
+            if (attr == null) {
+                if (logger.isDebugEnabled())
+                    logger.debug("Unable to locate ACL attribute: "+aname);
+            }
+            if (exclude)
+                excludedAttrs.add(attr);
+            else
+                allowedAttrs.add(attr);
+        }
     }
 
     @Override
@@ -316,9 +365,6 @@ public class AccessControl implements ScimSerializer {
                         break;
                     case search:
                         builder.append("search");
-                        break;
-                    case compare:
-                        builder.append("compare");
                 }
                 if (riter.hasNext())
                     builder.append(",");
@@ -401,9 +447,6 @@ public class AccessControl implements ScimSerializer {
                         break;
                     case search:
                         builder.append("search");
-                        break;
-                    case compare:
-                        builder.append("compare");
                 }
                 if (riter.hasNext())
                     builder.append(",");
@@ -428,10 +471,16 @@ public class AccessControl implements ScimSerializer {
         return node;
     }
 
+    /**
+     * Check's to see if the identity provided matches the "actors" requirements of the current rule.
+     * @param ctx A {@link RequestCtx} object containing the parsed SCIM request made by the client.
+     * @param identity The {@link SecurityIdentity} provided by Quarkus and the login filters.
+     * @return True if the client matches the ACI's actor clause
+     */
     public boolean isClientMatch(RequestCtx ctx, SecurityIdentity identity) {
-        if (isAnyClient)
+        if (isAnyClient())
             return true;
-        if (isClientSelf) {
+        if (isClientSelf()) {
             Principal pal = identity.getPrincipal();
             String pathId = ctx.getPathId();
             if (pathId != null) {
@@ -440,7 +489,7 @@ public class AccessControl implements ScimSerializer {
                     if (jpal.getSubject().equals(pathId))
                         return true;
                 } else {
-                    String authId = (String) identity.getAttribute(ScimBasicIdentityProvider.ATTR_SELF_ID);
+                    String authId = identity.getAttribute(ScimBasicIdentityProvider.ATTR_SELF_ID);
                     if (authId != null && authId.equals(pathId))
                         return true;
                 }
@@ -458,7 +507,7 @@ public class AccessControl implements ScimSerializer {
         }
 
         // Try seting if there is a filter match
-        ScimResource actor = (ScimResource) identity.getAttribute(ScimBasicIdentityProvider.ATTR_ACTOR_RES);
+        ScimResource actor = identity.getAttribute(ScimBasicIdentityProvider.ATTR_ACTOR_RES);
         if (actor != null) {
             for (Filter fval : this.clientFilters) {
                 try {
@@ -475,43 +524,18 @@ public class AccessControl implements ScimSerializer {
     }
 
     /**
-     * Checks to see if the requestor client can perform the operation requested. Note: targetFilter and targetAttrs are within
-     * the Scim Operation. This method is normally called by {@link com.independentid.scim.security.ScimSecurityFilter}
-     * @param method The {@link HttpMethod} type for the operation
-     * @param ctx    The {@link RequestCtx} containing the Scim Request Context
-     * @return true if this ACI permits the operation
+     * if a targetFilter value is specified checks that the resource matfches correctly. If unspecified
+     * returns true (as condition is silent).
+     * @param res The ScimResource to be evaluated for a match
+     * @return true if matched or unspecified
      */
-    public boolean isOpPermitted(String method, RequestCtx ctx, SecurityIdentity identity) {
-        if (isClientMatch(ctx, identity)) {
-            if (this.privs.contains(Rights.all))
-                return true;
-            switch (method) {
-                case HttpMethod
-                        .GET:
-                    if (privs.contains(Rights.read) && ctx.getFilter() == null)
-                        return true;
-                    if (privs.contains(Rights.search) && ctx.getAcis() != null)
-                        return true;
-                    if (privs.contains(Rights.compare) && ctx.getFilter() != null)
-                        return true;
-                    break;
-                case HttpMethod.DELETE:
-                    if (privs.contains(Rights.delete))
-                        return true;
-                    break;
-                case HttpMethod.PUT:
-                case HttpMethod.PATCH:
-                    if (privs.contains(Rights.modify))
-                        return true;
-                    break;
-                case HttpMethod.POST:
-                    if (ctx.getFilter() != null) {
-                        if (privs.contains(Rights.search) || privs.contains(Rights.compare))
-                            return true;
-                        return false;
-                    }
-                    return (privs.contains(Rights.add));
-            }
+    public boolean isTargetFilterOk(ScimResource res ) {
+        if (this.targetFilter == null)
+            return true;
+        try {
+            return targetFilter.isMatch(res);
+        } catch (BadFilterException e) {
+            //e.printStackTrace();
         }
         return false;
     }

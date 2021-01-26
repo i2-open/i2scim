@@ -60,7 +60,7 @@ public class ScimParams {
 	public final static String PATH_SERV_PROV_CFG = "ServiceProviderConfig";
 	public final static String TYPE_SERV_PROV_CFG = "ServiceProviderConfig";
 	
-	public final static String PATH_SEARCH = "/.search";
+	public final static String PATH_GLOBAL_SEARCH = "/.search";
 	public final static String PATH_SUBSEARCH = ".search";
 	public final static String PATH_BULK = "/Bulk";
 	

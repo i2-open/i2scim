@@ -20,10 +20,11 @@ import com.independentid.scim.core.err.InvalidSyntaxException;
 import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.Operation;
+import com.independentid.scim.security.AccessControl;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
-import com.independentid.scim.security.AccessManager;
+import com.independentid.scim.security.AciSet;
 import com.independentid.scim.security.ScimBasicIdentityProvider;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.security.identity.SecurityIdentity;
@@ -89,6 +90,8 @@ public class RequestCtx {
 	protected String match = null;
 	protected String nmatch = null;
 	protected String since = null;
+
+	protected AccessControl.Rights right;
 		
 	// This can be used by a provider to request URL encoded extension names be used
 	// Used to address field name and length restrictions in some dbs
@@ -101,10 +104,11 @@ public class RequestCtx {
 	private boolean hasSecAuth = false;
 	private SecurityIdentity identity = null;
 	private ArrayList<String> secRoles = null;
-	private AccessManager.AciSet acis = null;
+	private AciSet acis = null;
 
 	boolean isMe = false;
 
+	private boolean postSearch = false;
 
 	/**
 	 * Used to create a request context that exists within a single SCIM Bulk operation
@@ -389,6 +393,10 @@ public class RequestCtx {
 	}
 	*/
 
+	public boolean isPostSearch() {
+		return this.postSearch;
+	}
+
 	public void parseSearchBody(Object body) throws ScimException {
 		
 		JsonNode node;
@@ -483,9 +491,10 @@ public class RequestCtx {
 		vnode = node.get("count");
 		if (vnode != null)
 			this.count = vnode.asInt();
-		
-	}	
-	
+
+		this.postSearch = true;
+	}
+
 	public void setAttributes(String attrList) {
 		this.attrs.clear();
 		if (attrList == null) return;
@@ -498,7 +507,14 @@ public class RequestCtx {
 				this.attrs.put(attr.getPath(),attr);
 		}
 	}
-	
+
+	public void addExcludeAttribute(Set<Attribute> excludedAttrs) {
+		for (Attribute attr : excludedAttrs ) {
+			excluded.put(attr.getPath(),attr);
+		}
+
+	}
+
 	public void setExcludedAttrs(String exclList) {
 		this.excluded.clear();
 		if (exclList == null) return;
@@ -535,26 +551,42 @@ public class RequestCtx {
 			endpoint = path;
 			return;
 		}
-		if (path.equals(ScimParams.PATH_SEARCH))
+		if (path.equals(ScimParams.PATH_GLOBAL_SEARCH)) {
+			this.postSearch = true;
 			return;
+		}
 		String[] elems = path.split("/");
 		//System.out.println("\nPath=["+path+"]\n");
-		if (elems.length == 1)
-			endpoint = elems[0];
-		else
-			endpoint = elems[1];
-		
-		if (elems.length > 2) {
-			if (elems[2].equals(ScimParams.PATH_SUBSEARCH))
-				id = null;
-			else
-				id = elems[2];
-		}
-		if (elems.length > 3) {
-			if (elems[3].equals(ScimParams.PATH_SUBSEARCH))
-				child= null;
-			else
-				child = elems[3];
+		switch (elems.length) {
+			case 0:
+				endpoint = "/";
+				break;
+
+			case 1:
+				endpoint = elems[0];
+				break;
+
+			case 2:
+				endpoint = elems[1];
+				break;
+
+			case 3:
+				endpoint = elems[1];
+				if (elems[2].equals(ScimParams.PATH_SUBSEARCH)) {
+					id = null;
+					postSearch = true;
+				} else
+					id = elems[2];
+				break;
+
+			default: //3 or more
+				endpoint = elems[1];
+				if (elems[3].equals(ScimParams.PATH_SUBSEARCH)) {
+					child = null;
+					postSearch = true;
+				} else
+					child = elems[3];
+				break;
 		}
 
 		if (endpoint.equals(ScimParams.PATH_TYPE_ME)) {
@@ -745,7 +777,18 @@ public class RequestCtx {
 		return secRoles.contains(role.toLowerCase());
 	}
 
-	public void setAccessContext(SecurityIdentity identity, AccessManager.AciSet acis) {
+	public void setSecSubject(SecurityIdentity identity) {
+		this.identity = identity;
+		this.secRoles = new ArrayList<>();
+		this.secRoles.addAll(
+				identity.getRoles());
+	}
+
+	public void setAciSet(AciSet acis) {
+		this.acis = acis;
+	}
+
+	public void setAccessContext(SecurityIdentity identity, AciSet acis) {
 		this.identity = identity;
 		this.secRoles = new ArrayList<>();
 		this.secRoles.addAll(
@@ -754,11 +797,11 @@ public class RequestCtx {
 
 	}
 
-	public AccessManager.AciSet getAcis() {
+	public AciSet getAcis() {
 		return this.acis;
 	}
 
-	public void setAcis(AccessManager.AciSet acis) {
+	public void setAcis(AciSet acis) {
 		this.acis = acis;
 	}
 
@@ -767,35 +810,44 @@ public class RequestCtx {
 	 * filter, the provided filter becomes the filter. For example for many SCIM requests, the accesscontrol system
 	 * may wish to append the request with a targetFilter requirement.
 	 * @param appendfilter The filter to be added to the requested filter.
-	 * @return Returns a copy of the combined Filter.
 	 */
-	public Filter appendFilter(@NotNull Filter appendfilter) {
+	public void appendFilter(@NotNull Filter appendfilter) {
 		if (this.filter == null)
 			this.filter = appendfilter;
 		else
 			this.filter = new LogicFilter(true,this.filter,appendfilter);
-		return this.filter;
+
 	}
 
 	/**
 	 * The existing filter is combined with an and clause with a list of filters provided which are combined in an OR clause.
 	 * This is done when more than one ACI is active with a targetFilter expression. E.g. ((targetFilter1 OR targetFilter2) and (requestFilter))
 	 * @param filters A List of filters to be combined with OR and then appended with the original requestFilter.
-	 * @return The combined Filter.
 	 */
-	public Filter combineFilters(@NotNull List<Filter> filters) {
-		if (filters.size() == 1)
-			return appendFilter(filters.get(0));
+	public void combineFilters(@NotNull List<Filter> filters) {
 		if (filters.isEmpty())
-			return this.filter;
+			return;
 
-		Filter orclause;
+		if (filters.size() == 1) {
+			appendFilter(filters.get(0));
+			return;
+		}
+
+		Filter orClause;
 		Iterator<Filter> iter = filters.iterator();
-		orclause = iter.next();
+		orClause = iter.next();
 		while (iter.hasNext())
-			orclause = new LogicFilter(false,orclause,iter.next());
+			orClause = new LogicFilter(false,orClause,iter.next());
 
 		// Take the "or" filter terms and combine with an and to the original filter.
-		return appendFilter(orclause);
+		appendFilter(orClause);
+	}
+
+	public AccessControl.Rights getRight() {
+		return this.right;
+	}
+
+	public void setRight(AccessControl.Rights right) {
+		this.right = right;
 	}
 }

@@ -20,9 +20,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.core.err.TooManyException;
-import com.independentid.scim.resource.AccessControl;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.security.AciSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -210,15 +210,17 @@ public class ListResponse extends ScimResponse {
 		gen.writeEndArray();
 		gen.writeEndObject();
 		// Set Last Modified based on the most recently modified result in the set.
-		if (this.lastMod != null)
-			resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
-		
-		resp.setStatus(this.getStatus());
-		String loc = getLocation();
-		
-		if (loc != null)
-			resp.setHeader("Location", loc);
-		// TODO should we check for response size of 0 for not found?
+		if (resp != null) {
+			if (this.lastMod != null)
+				resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
+
+			resp.setStatus(this.getStatus());
+			String loc = getLocation();
+
+			if (loc != null)
+				resp.setHeader("Location", loc);
+			// TODO should we check for response size of 0 for not found?
+		}
 	}
 
 	@Override
@@ -227,20 +229,11 @@ public class ListResponse extends ScimResponse {
 	}
 
 	@Override
-	protected void processCompareResult() {
-		for (ScimResource res : this.entries) {
-			Set<Attribute> attrs = res.getAttributesPresent();
-			for (Attribute attr: attrs)
-				res.removeValue(attr);
-		}
-	}
-
-	@Override
-	protected void processReadableResult(AccessControl aci) {
+	protected void processReadableResult(AciSet set) {
 		for (ScimResource res : this.entries) {
 			Set<Attribute> attrs = res.getAttributesPresent();
 			for (Attribute attr: attrs) {
-				if (aci.isAttributeNotAllowed(attr))
+				if (set.isAttrNotReturnable(attr))
 					res.removeValue(attr);
 			}
 		}

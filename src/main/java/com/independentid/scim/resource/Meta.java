@@ -24,7 +24,9 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.security.AccessControl;
 import com.independentid.scim.security.AccessManager;
+import com.independentid.scim.security.AciSet;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
 import org.slf4j.Logger;
@@ -37,6 +39,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -149,13 +152,16 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		if (location != null)
 			node.put("location",location);
 
-		AccessManager amgr = ConfigMgr.getConfig().getAccessManager();
+		ConfigMgr cmgr = ConfigMgr.getConfig();
+		AccessManager amgr = null;
+		if (cmgr != null)
+			amgr = ConfigMgr.getConfig().getAccessManager();
 		if (amgr != null) {
-			AccessManager.AciSet set = amgr.getAcisByPath(this.location);
-			if (set != null && set.acis.size() > 0) {
+			List<AccessControl> set = amgr.getResourceAcis(this.location);
+			if (set.size()>0) {
 				ArrayNode anode = node.putArray("acis");
-				for (AccessControl aci : set.acis) {
-						anode.add(aci.toJsonNode());
+				for (AccessControl aci : set) {
+					anode.add(aci.toJsonNode());
 				}
 			}
 		}
@@ -230,21 +236,27 @@ public class Meta extends ComplexValue implements ScimSerializer {
 				url = this.location;
 			gen.writeStringField("location", url);
 
-			AccessManager amgr = ConfigMgr.getConfig().getAccessManager();
+			ConfigMgr cmgr = ConfigMgr.getConfig();
+			AccessManager amgr = null;
+			if (cmgr != null)
+				amgr = ConfigMgr.getConfig().getAccessManager();
 			if (amgr != null && !forHash) {
-				AccessManager.AciSet set = amgr.getAcisByPath(this.location);
-				if (set != null && set.acis.size() > 0) {
-					gen.writeFieldName("acis");
-					gen.writeStartArray();
-					for (AccessControl aci : set.acis) {
-						try {
-							aci.serialize(gen, ctx);
-						} catch (ScimException e) {
-							e.printStackTrace();
+				List<AccessControl> set = amgr.getResourceAcis(this.location);
+				if (set.size()>0) {
+					if (ValueUtil.isReturnable("meta.acis", ctx)) {
+						gen.writeFieldName("acis");
+						gen.writeStartArray();
+						for (AccessControl aci : set) {
+							try {
+								aci.serialize(gen, ctx);
+							} catch (ScimException e) {
+								e.printStackTrace();
+							}
 						}
+						gen.writeEndArray();
 					}
-					gen.writeEndArray();
 				}
+
 			}
 
 		}
@@ -279,12 +291,6 @@ public class Meta extends ComplexValue implements ScimSerializer {
 			this.resourceType = item.asText();
 		
 		item = node.get("created");
-		/*
-		if (logger.isDebugEnabled() && item != null) {
-			logger.debug("node type:\t"+node.getNodeType()); 
-			logger.debug("create date:\t"+item.asText());
-		}
-		*/
 		
 		if (item != null && !item.asText().equals("")) {
 			try {
@@ -297,14 +303,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		}
 		
 		item = node.get("lastModified");
-		
-		/*
-		if (logger.isDebugEnabled() && item != null) {
-			logger.debug("node type:\t"+node.getNodeType()); 
-			logger.debug("mod date:\t"+item.asText());
-		}
-		*/
-		
+
 		if (item != null) {
 			try {
 				this.lastModified = ScimDateFormat.parse(item.asText());

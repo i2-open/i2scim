@@ -15,15 +15,15 @@
 
 package com.independentid.scim.plugin;
 
+import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.Operation;
-import com.independentid.scim.schema.SchemaManager;
 
 import javax.servlet.ServletException;
 
 public interface IScimPlugin {
 
-    default void init(SchemaManager schemaManager) throws ServletException {}
+    default void init() throws ServletException {}
 
     void doPreOperation(Operation op) throws ScimException;
 

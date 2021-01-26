@@ -82,9 +82,10 @@ public abstract class Filter {
 	 * @param filter The Filter object to be evaluated
 	 * @return The set of {@link Attribute} used in the filter.
 	 */
-	public static Set<Attribute> filterAttributes(@NotNull Filter filter) {
+	public static Set<Attribute> filterAttributes(Filter filter) {
 		HashSet<Attribute> attrSet = new HashSet<>();
-		filter.filterAttributes(attrSet);
+		if (filter != null)
+			filter.filterAttributes(attrSet);
 		return attrSet;
 	}
 
@@ -94,7 +95,7 @@ public abstract class Filter {
 	 * Parses the provided filterStr and returns a Filter object
 	 * @param filterStr A SCIM filter expressed in string form
 	 * @param parentAttr Optional parent attribute, used when parsing Value Filters.
-	 * @param ctx
+	 * @param ctx The RequestCtx which may be used for detecting attribute names using request Path
 	 * @param schemaManager Optional RequestCtx that provides additional context for matching
 	 * short attribute names. For example, ambiguous attribute "name" can be matched to User schema if
 	 * searching within the Users container.

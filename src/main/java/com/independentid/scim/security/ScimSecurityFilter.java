@@ -28,10 +28,11 @@ import javax.servlet.*;
 import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 import java.util.Set;
 
-@WebFilter(filterName = "ScimSecurity",urlPatterns = "/*")
+@WebFilter(filterName = "ScimSecurity", urlPatterns = "/*")
 public class ScimSecurityFilter implements Filter {
     private final static Logger logger = LoggerFactory.getLogger(ScimSecurityFilter.class);
 
@@ -54,21 +55,58 @@ public class ScimSecurityFilter implements Filter {
 
     }
 
+    /**
+     * Detects the requested SCIM operation and assigns the correct SCIM Right to the context.
+     * @param req The HttpServletRequest for the operation
+     * @param ctx The SCIM RequestCtx which holds the requested rights (to be assigned by this method).
+     */
+    public void assignOperationRights(HttpServletRequest req, RequestCtx ctx) {
+        String method = req.getMethod();
+        switch (method) {
+            case HttpMethod
+                    .DELETE:
+                ctx.setRight(AccessControl.Rights.delete);
+                return;
+
+            case HttpMethod.PATCH:
+            case HttpMethod.PUT:
+                ctx.setRight(AccessControl.Rights.modify);
+                return;
+
+            case HttpMethod.POST:
+                if (ctx.isPostSearch()) {
+                    ctx.setRight(AccessControl.Rights.search);
+
+                } else
+                    ctx.setRight(AccessControl.Rights.add);
+                return;
+
+            case HttpMethod.GET:
+            case HttpMethod.HEAD:   // note, HEAD not yet supported!
+                if (ctx.getFilter() != null) {
+                    ctx.setRight(AccessControl.Rights.search);
+                } else
+                    ctx.setRight(AccessControl.Rights.read);
+
+        }
+    }
+
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         if (logger.isDebugEnabled())
-            logger.debug("\tEvaluating request for: User="+identity.getPrincipal().getName()+", Type="+identity.getPrincipal().getClass().toString());
+            logger.debug("\tEvaluating request for: User=" + identity.getPrincipal().getName() + ", Type=" + identity.getPrincipal().getClass().toString());
         if (cmgr.isSecurityEnabled()) {
             RequestCtx ctx = (RequestCtx) request.getAttribute(RequestCtx.REQUEST_ATTRIBUTE);
             if (ctx == null) {
                 try {
-                    ctx = new RequestCtx((HttpServletRequest) request,(HttpServletResponse) response, cmgr.getSchemaManager());
-                    request.setAttribute(RequestCtx.REQUEST_ATTRIBUTE,ctx);
+                    ctx = new RequestCtx((HttpServletRequest) request, (HttpServletResponse) response, cmgr.getSchemaManager());
+                    request.setAttribute(RequestCtx.REQUEST_ATTRIBUTE, ctx);
                 } catch (ScimException e) {
                     e.printStackTrace();
                 }
             }
             assert ctx != null;
-            if (amgr.isOperationValid(ctx,identity,(HttpServletRequest) request)) {
+            assignOperationRights((HttpServletRequest) request, ctx);
+            if (amgr.filterRequestandInitAcis(ctx, identity)) {
                 chain.doFilter(request, response);
                 return;
             }
@@ -78,21 +116,21 @@ public class ScimSecurityFilter implements Filter {
 
             if (roles.contains("root")) {
                 if (logger.isDebugEnabled())
-                    logger.debug("Allowing request for "+identity.getPrincipal().getName()+" based on root access rights");
+                    logger.debug("Allowing request for " + identity.getPrincipal().getName() + " based on root access rights");
                 chain.doFilter(request, response);
                 return;
             }
 
-            if(roles.contains("full")) {
+            if (roles.contains("full")) {
                 if (logger.isDebugEnabled())
-                    logger.debug("Allowing request for "+identity.getPrincipal().getName()+" based on \"full\" role.");
+                    logger.debug("Allowing request for " + identity.getPrincipal().getName() + " based on \"full\" role.");
                 chain.doFilter(request, response);
                 return;
             }
 
             if (response instanceof HttpServletResponse) {
                 if (logger.isDebugEnabled())
-                    logger.debug("No acis/roles matched for user: "+identity.getPrincipal().getName()+", Scopes Provided: "+roles.toString());
+                    logger.debug("No acis/roles matched for user: " + identity.getPrincipal().getName() + ", Scopes Provided: " + roles.toString());
                 //No further chain processing
                 HttpServletResponse resp = (HttpServletResponse) response;
                 if (identity.isAnonymous())
@@ -104,6 +142,6 @@ public class ScimSecurityFilter implements Filter {
         }
         // Security disabled, pass the request on.
 
-        chain.doFilter(request,response);
+        chain.doFilter(request, response);
     }
 }

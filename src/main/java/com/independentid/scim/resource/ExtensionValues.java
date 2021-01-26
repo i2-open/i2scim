@@ -41,6 +41,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 	private final IBulkIdResolver resolver;
 	
 	private final LinkedHashMap<Attribute,Value> attrs = new LinkedHashMap<>();
+	protected HashSet<Attribute> blockedAttrs = new HashSet<>();
 	
 	/**
 	 * Creates a value container for Extension Schema Attributes
@@ -100,7 +101,8 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 		gen.writeStartObject();
 		
 		for (Attribute attr: attrs.keySet()) {
-
+			if (blockedAttrs.contains(attr))
+				continue;
 			if (ValueUtil.isReturnable(attr, ctx)) {
 				gen.writeFieldName(attr.getName());
 				Value val = attrs.get(attr);
@@ -298,6 +300,10 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 			}
 		}
 		
+	}
+
+	public void setBlockedAttrs(HashSet<Attribute> blocked) {
+		this.blockedAttrs = blocked;
 	}
 
 }

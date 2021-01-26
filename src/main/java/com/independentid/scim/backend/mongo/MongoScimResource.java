@@ -28,7 +28,9 @@ import com.independentid.scim.schema.SchemaManager;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 
+import javax.validation.constraints.NotNull;
 import java.text.ParseException;
+import java.util.Set;
 
 /**
  * @author pjdhunt
@@ -44,9 +46,11 @@ public class MongoScimResource extends ScimResource {
 
 	/**
 	 * MongoScimResource wraps ScimResource in order to provide direct Mongo BSON Document mapping.
+	 * @param schemaManager Handle to the SCIM server SchemaManager instance
 	 */
-	protected MongoScimResource() {
-		
+	protected MongoScimResource(@NotNull SchemaManager schemaManager) {
+
+		super(schemaManager);
 	}
 
 	/**
@@ -60,7 +64,7 @@ public class MongoScimResource extends ScimResource {
 	 */
 	public MongoScimResource(SchemaManager schemaManager, Document dbResource, String container)
 			throws SchemaException, ParseException, ScimException {
-		super();
+		super(schemaManager);
 		this.smgr = schemaManager;
 		//super(cfg, MongoMapUtil.toScimJsonNode(dbResource), null);
 		
@@ -70,7 +74,7 @@ public class MongoScimResource extends ScimResource {
 		
 	}
 	
-	protected void parseDocument(Document doc) throws ParseException, SchemaException, ScimException {
+	protected void parseDocument(Document doc) throws ParseException, ScimException {
 		
 
 		this.schemas = doc.getList("schemas", String.class);
@@ -102,7 +106,7 @@ public class MongoScimResource extends ScimResource {
 		
 	}
 	
-	protected void parseAttributes(Document doc) throws ScimException, SchemaException, ParseException {
+	protected void parseAttributes(Document doc) throws ScimException, ParseException {
 		//ResourceType type = cfg.getResourceType(getResourceType());
 		//String coreSchemaId = type.getSchema();
 
@@ -112,7 +116,7 @@ public class MongoScimResource extends ScimResource {
 		Attribute[] attrs = coreSchema.getAttributes();
 		for (Attribute attr : attrs) {
 			Value val = MongoMapUtil.mapBsonDocument(attr, doc);
-
+			attrsInUse.add(attr);
 			if (val != null)
 				this.coreAttrVals.put(attr, val);
 		}
@@ -121,8 +125,12 @@ public class MongoScimResource extends ScimResource {
 		for (String eid : eids) {
 			Schema schema = smgr.getSchemaById(eid);
 			ExtensionValues val = MongoMapUtil.mapBsonExtension(schema, doc);
-			if (val != null)
+			if (val != null) {
 				this.extAttrVals.put(eid, val);
+				Set<Attribute> eattrs = val.getAttributeSet();
+				if (eattrs != null && !eattrs.isEmpty())
+					this.attrsInUse.addAll(eattrs);
+			}
 		}
 		
 	}
@@ -134,7 +142,7 @@ public class MongoScimResource extends ScimResource {
 		return this.originalResource;
 	}
 	
-	public Document toMongoDocument(RequestCtx ctx) throws ScimException {
+	public Document toMongoDocument(RequestCtx ctx) {
 		return toMongoDocument(this,ctx);
 	}
 	
@@ -144,9 +152,8 @@ public class MongoScimResource extends ScimResource {
 	 * @param res The <ScimResource> object to be converted
 	 * @param ctx The <RequestCtx> indicating the container associated with the resource (usually contains original query).
 	 * @return A <Document> representing the mapped <ScimResource>
-	 * @throws ScimException
 	 */
-	public static Document toMongoDocument(ScimResource res,RequestCtx ctx) throws ScimException {
+	public static Document toMongoDocument(ScimResource res,RequestCtx ctx) {
 
 		return MongoMapUtil.mapResource(res);
 	}

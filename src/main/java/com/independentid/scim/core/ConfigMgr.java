@@ -14,16 +14,12 @@
  */
 package com.independentid.scim.core;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.plugin.PluginHandler;
-import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.security.AccessManager;
-import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.runtime.Startup;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
@@ -36,7 +32,9 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 import javax.servlet.ServletContext;
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Arrays;
@@ -198,6 +196,7 @@ public class ConfigMgr {
 				self = this;
 	}
 	
+	@SuppressWarnings("BusyWait")
 	public static ConfigMgr getConfig()  {
 		if (self == null) {
 			int i=0;

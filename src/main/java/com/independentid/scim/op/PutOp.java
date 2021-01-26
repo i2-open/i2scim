@@ -41,8 +41,6 @@ public class PutOp extends Operation implements IBulkOp {
 
     private final BulkOps parent;
 
-    private ScimResource newResource;
-
     /**
      * Used in bulk requests for put requests. Provide the JsonNode of the data element of a bulk operation
      * @param data       The JsonNode of a data element of a SCIM Bulk operation
@@ -101,11 +99,6 @@ public class PutOp extends Operation implements IBulkOp {
         if (opState == OpState.invalid)
             return;
         parseJson(node);
-        try {
-            pluginHandler.doPreOperations(this);
-        } catch (ScimException e) {
-            e.printStackTrace();
-        }
     }
 
     public BulkOps getParentBulkRequest() {

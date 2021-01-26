@@ -29,7 +29,6 @@ import com.independentid.scim.resource.StringValue;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
-import com.independentid.scim.test.http.ScimHttpTestProfile;
 import com.independentid.scim.test.misc.TestUtils;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -49,10 +48,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,23 +60,27 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
+import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 
 @QuarkusTest
-@TestProfile(ScimHttpTestProfile.class)
+@TestProfile(ScimAuthTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
-public class ScimSecCRUDTest {
+public class ScimAuthZCRUDTest {
 	
-	private final static Logger logger = LoggerFactory.getLogger(ScimSecCRUDTest.class);
+	private final static Logger logger = LoggerFactory.getLogger(ScimAuthZCRUDTest.class);
 
 	public static String bearer = "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJSLURla2xmOU5XSXpRMVVmRTVRNnY5UXRnVnNDQ1ROdE5iRUxnNXZjZ1J3In0.eyJleHAiOjE2MzQ0OTIzMDcsImlhdCI6MTYwMjk1NjMwNywianRpIjoiNWYyNDQ0ZGUtMDVlNi00MDFjLWIzMjYtZjc5YjJiMmZhNmZiIiwiaXNzIjoiaHR0cDovLzEwLjEuMTAuMTA5OjgxODAvYXV0aC9yZWFsbXMvZGV2Iiwic3ViIjoiNDA2MDQ0OWYtNDkxMy00MWM1LTkxYjAtYTRlZjY5MjYxZTY0IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoic2NpbS1zZXJ2ZXItY2xpZW50Iiwic2Vzc2lvbl9zdGF0ZSI6ImE2NGZkNjA3LWU1MzItNGQ0Ni04MGQ2LWE0NTUzYzRjZWQ1OCIsImFjciI6IjEiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsibWFuYWdlciIsIm9mZmxpbmVfYWNjZXNzIl19LCJzY29wZSI6ImZ1bGwgbWFuYWdlciIsImNsaWVudElkIjoic2NpbS1zZXJ2ZXItY2xpZW50IiwiY2xpZW50SG9zdCI6IjEwLjEuMTAuMTE4IiwidXNlcl9uYW1lIjoic2VydmljZS1hY2NvdW50LXNjaW0tc2VydmVyLWNsaWVudCIsImNsaWVudEFkZHJlc3MiOiIxMC4xLjEwLjExOCJ9.Wouztkr7APb2_juPBhMtPbAqmFwQqsDQXYIQBeDpMuWnKGXZZMs17Rpzq8YnVSGfbfyrAduMAK2PAWnw8hxC4cGc0xEVS3lf-KcA5bUr4EnLcPVeQdEPsQ5eLrt_-BSPCQ8ere2fw6-Obv7FJ6aofAlT8LttWvEvkPzo2R0T0aZX8Oh7b15-icAVZ8ER0j7aFQ2k34dAq0Uwn58wakT6MA4qEFxze6GLeBuC4cAqNPYoOkUWTJxu1J_zLFDkpomt_zzx9u0Ig4asaErRyPj-ettElaGXMELZrNsaVbikCHgK7ujwMJDlEhUf8jxM8qwhCuf50-9ZydPAFA8Phj6FkQ";
 
 	@Inject
 	@Resource(name="SchemaMgr")
 	SchemaManager smgr;
+
+	@Inject
+	ConfigMgr cmgr;
 
 	@Inject
 	BackendHandler handler;
@@ -96,18 +96,30 @@ public class ScimSecCRUDTest {
 	@TestHTTPResource("/")
 	URL baseUrl;
 	
-	private static String user1url = "";
+	//private static String user1url = "";
 	
 	private static final String testUserFile1 = "classpath:/schema/TestUser-bjensen.json";
-	//private String testUserFile2 = "classpath:/schema/TestUser-jsmith.json";
-	
-	//private String user1compare = "{\"schemas\":[\"urn:ietf:params:scim:schemas:core:2.0:User\",\"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User\"],\"id\":\"2819c223-7f76-453a-919d-413861904646\",\"externalId\":\"701984\",\"userName\":\"bjensen@example.com\",\"name\":{\"formatted\":\"Ms. Barbara J Jensen III\",\"familyName\":\"Jensen\",\"givenName\":\"Barbara\",\"middleName\":\"Jane\",\"honorificPrefix\":\"Ms.\",\"honorificSuffix\":\"III\"},\"displayName\":\"Babs Jensen\",\"nickName\":\"Babs\",\"profileUrl\":\"https://login.example.com/bjensen\",\"emails\":[{\"value\":\"bjensen@example.com\",\"type\":\"work\",\"primary\":true},{\"value\":\"babs@jensen.org\",\"type\":\"home\"}],\"addresses\":[{\"streetAddress\":\"100 Universal City Plaza\",\"locality\":\"Hollywood\",\"region\":\"CA\",\"postalCode\":\"91608\",\"country\":\"USA\",\"formatted\":\"100 Universal City Plaza\\nHollywood, CA 91608 USA\",\"type\":\"work\"},{\"streetAddress\":\"456 Hollywood Blvd\",\"locality\":\"Hollywood\",\"region\":\"CA\",\"postalCode\":\"91608\",\"country\":\"USA\",\"formatted\":\"456 Hollywood Blvd\\nHollywood, CA 91608 USA\",\"type\":\"home\"}],\"phoneNumbers\":[{\"value\":\"555-555-5555\",\"type\":\"work\"},{\"value\":\"555-555-4444\",\"type\":\"mobile\"}],\"ims\":[{\"value\":\"someaimhandle\",\"type\":\"aim\"}],\"photos\":[{\"value\":\"https://photos.example.com/profilephoto/72930000000Ccne/F\",\"type\":\"photo\"},{\"value\":\"https://photos.example.com/profilephoto/72930000000Ccne/T\",\"type\":\"thumbnail\"}],\"userType\":\"Employee\",\"title\":\"Tour Guide\",\"preferredLanguage\":\"en-US\",\"locale\":\"en-US\",\"timezone\":\"America/Los_Angeles\",\"active\":true,\"password\":\"t1meMa$heen\",\"groups\":[{\"value\":\"e9e30dba-f08f-4109-8486-d5c6a331660a\",\"$ref\":\"/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a\",\"display\":\"Tour Guides\"},{\"value\":\"fc348aa8-3835-40eb-a20b-c726e15c55b5\",\"$ref\":\"/Groups/fc348aa8-3835-40eb-a20b-c726e15c55b5\",\"display\":\"Employees\"},{\"value\":\"71ddacd2-a8e7-49b8-a5db-ae50d0a5bfd7\",\"$ref\":\"/Groups/71ddacd2-a8e7-49b8-a5db-ae50d0a5bfd7\",\"display\":\"US Employees\"}],\"x509Certificates\":[{\"value\":\"MIIDQzCCAqygAwIBAgICEAAwDQYJKoZIhvcNAQEFBQAwTjELMAkGA1UEBhMCVVMxEzARBgNVBAgMCkNhbGlmb3JuaWExFDASBgNVBAoMC2V4YW1wbGUuY29tMRQwEgYDVQQDDAtleGFtcGxlLmNvbTAeFw0xMTEwMjIwNjI0MzFaFw0xMjEwMDQwNjI0MzFaMH8xCzAJBgNVBAYTAlVTMRMwEQYDVQQIDApDYWxpZm9ybmlhMRQwEgYDVQQKDAtleGFtcGxlLmNvbTEhMB8GA1UEAwwYTXMuIEJhcmJhcmEgSiBKZW5zZW4gSUlJMSIwIAYJKoZIhvcNAQkBFhNiamVuc2VuQGV4YW1wbGUuY29tMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7Kr+Dcds/JQ5GwejJFcBIP682X3xpjis56AK02bc1FLgzdLI8auoR+cC9/Vrh5t66HkQIOdA4unHh0AaZ4xL5PhVbXIPMB5vAPKpzz5iPSi8xO8SL7I7SDhcBVJhqVqr3HgllEG6UClDdHO7nkLuwXq8HcISKkbT5WFTVfFZzidPl8HZ7DhXkZIRtJwBweq4bvm3hM1Os7UQH05ZS6cVDgweKNwdLLrT51ikSQG3DYrl+ft781UQRIqxgwqCfXEuDiinPh0kkvIi5jivVu1Z9QiwlYEdRbLJ4zJQBmDrSGTMYn4lRc2HgHO4DqB/bnMVorHB0CC6AV1QoFK4GPe1LwIDAQABo3sweTAJBgNVHRMEAjAAMCwGCWCGSAGG+EIBDQQfFh1PcGVuU1NMIEdlbmVyYXRlZCBDZXJ0aWZpY2F0ZTAdBgNVHQ4EFgQU8pD0U0vsZIsaA16lL8En8bx0F/gwHwYDVR0jBBgwFoAUdGeKitcaF7gnzsNwDx708kqaVt0wDQYJKoZIhvcNAQEFBQADgYEAA81SsFnOdYJtNg5Tcq+/ByEDrBgnusx0jloUhByPMEVkoMZ3J7j1ZgI8rAbOkNngX8+pKfTiDz1RC4+dx8oU6Za+4NJXUjlL5CvV6BEYb1+QAEJwitTVvxB/A67g42/vzgAtoRUeDov1+GFiBZ+GNF/cAYKcMtGcrs2i97ZkJMo=\"}],\"urn:ietf:params:scim:schemas:extension:enterprise:2.0:User\":{\"division\":\"Theme Park\",\"manager\":[{\"value\":\"26118915-6090-4610-87e4-49d8ca9f808d\",\"$ref\":\"/Users/26118915-6090-4610-87e4-49d8ca9f808d\",\"displayName\":\"John Smith\"}],\"costCenter\":\"4130\",\"organization\":\"Universal Studios\",\"department\":\"Tour Operations\",\"employeeNumber\":\"701984\"}}"; 
-		
-	
-	//private static ScimResource user1,user2 = null;
-	
+	private static final String testUserFile2 = "classpath:/schema/TestUser-jsmith.json";
+	private static final String testPass = "t1meMa$heen";
 
+	private static String bJensonUrl = null;
+	private static String jSmithUrl = null;
 
+	static CloseableHttpClient htclient ;
+	
+	private synchronized CloseableHttpResponse execute(HttpUriRequest req) throws IOException {
+		return htclient.execute(req);
+	}
+
+	@BeforeAll
+	public static void init() {
+		htclient = HttpClients.createDefault();
+	}
+
+	@AfterAll
+	public static void shutdown() throws IOException {
+		htclient.close();
+	}
 	/**
 	 * This test actually resets and re-initializes the SCIM Mongo test database.
 	 */
@@ -136,14 +148,13 @@ public class ScimSecCRUDTest {
 	 * This test checks that a JSON user can be parsed into a SCIM Resource
 	 */
 	@Test
-	public void b_ScimAddUserTest() {
-		
-		logger.info("\tB1. Add User BJensen...");
-		CloseableHttpClient client = HttpClients.createDefault();
+	public void b1_AddUserByAnonymous() {
 
 		try {
+			logger.info("B1. Attempting add BJensen as anonymous (SHOULD FAIL)");
 			File user1File = ConfigMgr.findClassLoaderResource(testUserFile1);
 
+			assert user1File != null;
 			InputStream userStream = new FileInputStream(user1File);
 
 			URL rUrl = new URL(baseUrl,"/Users");
@@ -162,111 +173,206 @@ public class ScimSecCRUDTest {
 			logger.debug("Executing test add for bjensen: "+post.getRequestLine());
 			//logger.debug(EntityUtils.toString(reqEntity));
 		
-			CloseableHttpResponse resp = client.execute(post);
+			CloseableHttpResponse resp = execute(post);
 			int statcode = resp.getStatusLine().getStatusCode();
 			assertThat(statcode)
 					.as("Anonymous request should be unauthorized")
 					.isEqualTo(HttpStatus.SC_UNAUTHORIZED);
+			userStream.close();
+			resp.close();
 
-			// Try that again with authorization
-			post = new HttpPost(req);
-			post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
-			post.setEntity(reqEntity);
-			resp = client.execute(post);
 
-			logger.debug("Response is: "+resp.getStatusLine());
-			String body = EntityUtils.toString(resp.getEntity());
-			logger.debug("Body:\n"+body);
-			
-			Header[] heads = resp.getAllHeaders();
-			for (Header head : heads) {
-				logger.debug(head.getName() + "\t" + head.getValue());
-			}
-			
-			Header[] hloc = resp.getHeaders(HttpHeaders.LOCATION);
-			if (hloc == null || hloc.length == 0)
-				fail("No HTTP Location header in create response");
-			else {
-				Header loc = hloc[0];
-				assertThat(loc).isNotNull();
-				assertThat(loc.getValue())
-						.as("Created object URL created in users endpoint")
-						.contains("/Users/");
-				user1url = loc.getValue();  // This will be used to retrieve the user later
-			}
 
-			
-			assertThat(resp.getStatusLine().getStatusCode())
-			.as("Create user response status of 201")
-			.isEqualTo(ScimResponse.ST_CREATED);
-			
-			assertThat(body)
+		} catch (IOException e) {
+			logger.error("Unexpected error: "+e.getLocalizedMessage(),e);
+			Assertions.fail("Exception occured creating bjenson. "+e.getMessage(),e);
+		}
+	}
+
+	@Test
+	public void b2_addUserTest_JWTadmin() throws IOException {
+
+		// Perform add with JWT bearer authorization
+		logger.info("B2. Attempting add bjensen as with JWT Bearer with role admin (SHOULD SUCCEED)");
+
+		File user1File = ConfigMgr.findClassLoaderResource(testUserFile1);
+
+		assert user1File != null;
+
+		InputStream userStream ;
+
+		URL rUrl = new URL(baseUrl,"/Users");
+		String req = rUrl.toString();
+
+		HttpPost post = new HttpPost(req);
+		userStream = new FileInputStream(user1File);
+		InputStreamEntity reqEntity = new InputStreamEntity(
+				userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
+		reqEntity.setChunked(false);
+		post.setEntity(reqEntity);
+		post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+
+		CloseableHttpResponse resp = execute(post);
+
+		logger.debug("Response is: "+resp.getStatusLine());
+		String body = EntityUtils.toString(resp.getEntity());
+		logger.debug("Body:\n"+body);
+
+		Header[] heads = resp.getAllHeaders();
+		for (Header head : heads) {
+			logger.debug(head.getName() + "\t" + head.getValue());
+		}
+
+		Header[] hloc = resp.getHeaders(HttpHeaders.LOCATION);
+		if (hloc == null || hloc.length == 0)
+			fail("No HTTP Location header in create response");
+		else {
+			Header loc = hloc[0];
+			assertThat(loc).isNotNull();
+			assertThat(loc.getValue())
+					.as("Created object URL created in users endpoint")
+					.contains("/Users/");
+			bJensonUrl = loc.getValue();  // This will be used to retrieve the user later
+		}
+
+
+		assertThat(resp.getStatusLine().getStatusCode())
+				.as("Create user response status of 201")
+				.isEqualTo(ScimResponse.ST_CREATED);
+
+		assertThat(body)
 				.as("Check that it is not a ListResponse")
 				.doesNotContain(ScimParams.SCHEMA_API_ListResponse);
-			
-			assertThat(body)
+
+		assertThat(body)
 				.as("Is user bjensen")
 				.contains("bjensen@example.com");
-			
-			// Check that the extension attributes were parsed and returned
-			assertThat(body)
+
+		// Check that the extension attributes were parsed and returned
+		assertThat(body)
 				.as("Contains the correct extension")
 				.contains("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User");
-			assertThat(body)
+		assertThat(body)
 				.as("Contains an extension value Tour Operations")
 				.contains("Tour Operations");
-			
-			resp.close();
-			
-			logger.info("\tB2. Attempt to add User BJensen again (uniquenes test)...");
-			// Attempt to repeat the operation. It should fail due to non-unique username match
-			post = new HttpPost(req);
-			userStream = new FileInputStream(user1File);
-			reqEntity = new InputStreamEntity(
-	        userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
-			reqEntity.setChunked(false);
-			post.setEntity(reqEntity);
-			resp = client.execute(post);
-			
-			assertThat(resp.getStatusLine().getStatusCode())
+
+		resp.close();
+
+	}
+
+	@Test
+	public void b3_addDuplicateUserTest_JWTadmin() throws IOException {
+
+		logger.info("B3. Attempt to add User BJensen again (uniquenes test)...");
+
+		File user1File = ConfigMgr.findClassLoaderResource(testUserFile1);
+
+		assert user1File != null;
+
+		InputStream userStream ;
+
+		URL rUrl = new URL(baseUrl,"/Users");
+		String req = rUrl.toString();
+
+		HttpPost post = new HttpPost(req);
+		userStream = new FileInputStream(user1File);
+		InputStreamEntity reqEntity = new InputStreamEntity(
+				userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
+		reqEntity.setChunked(false);
+		post.setEntity(reqEntity);
+		post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+		/* Repeat add test
+		 */
+
+		// Attempt to repeat the operation. It should fail due to non-unique username match
+		post = new HttpPost(req);
+		post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+		userStream = new FileInputStream(user1File);
+		reqEntity = new InputStreamEntity(
+				userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
+		reqEntity.setChunked(false);
+		post.setEntity(reqEntity);
+
+		CloseableHttpResponse resp = execute(post);
+
+		assertThat(resp.getStatusLine().getStatusCode())
 				.as("Confirm error 400 occurred (uniqueness)")
 				.isEqualTo(ScimResponse.ST_BAD_REQUEST);
-			body = EntityUtils.toString(resp.getEntity());
-			assertThat(body)
+		String body = EntityUtils.toString(resp.getEntity());
+		assertThat(body)
 				.as("Is a uniqueness error")
 				.contains(ScimResponse.ERR_TYPE_UNIQUENESS);
 
+		userStream.close();
+		resp.close();
+	}
+
+	@Test
+	public void b4_addJSmith_JWTadmin() throws IOException {
+		/*  Add User JSmith */
+		logger.info("B4. Add another User JSmith");
+
+		InputStream userStream;
+
+		URL rUrl = new URL(baseUrl,"/Users");
+		String req = rUrl.toString();
+		File user2File = ConfigMgr.findClassLoaderResource(testUserFile2);
+
+		assert user2File != null;
+		userStream = new FileInputStream(user2File);
+		HttpPost post = new HttpPost(req);
+		post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+		InputStreamEntity reqEntity = new InputStreamEntity(
+				userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
+		reqEntity.setChunked(false);
+		post.setEntity(reqEntity);
+		CloseableHttpResponse resp = execute(post);
+		assertThat(resp.getStatusLine().getStatusCode())
+				.as("Check JSmith added")
+				.isEqualTo(ScimResponse.ST_CREATED);
+		Header[] headers = resp.getHeaders(HttpHeaders.LOCATION);
+		if (headers.length > 0)
+			jSmithUrl = headers[0].getValue();
+		else
+			fail("Missing location in creation response for JSmith");
+	}
+
+	@Test
+	public void c1_ScimGetUserAnonymous() throws MalformedURLException {
+		String req = TestUtils.mapPathToReqUrl(baseUrl, bJensonUrl);
+
+		logger.info("\tC1. Retrieving user (anonymous) from backend using: "+req);
+
+		HttpUriRequest request = new HttpGet(req);
+		//request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+
+		try {
+			CloseableHttpResponse resp = execute(request);
+
+			assertThat(resp.getStatusLine().getStatusCode())
+					.as("GET User - Check for status unauthorized.")
+					.isEqualTo(ScimResponse.ST_UNAUTHORIZED);
 			resp.close();
-			
-			
+
 		} catch (IOException e) {
-			Assertions.fail("Exception occured creating bjenson. "+e.getMessage(),e);
-		} finally {
-			try {
-				client.close();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}				
+			fail("Exception occured making GET request for bjensen",e);
+		}
 	}
 
 	/**
 	 * This test attempts to retrieve the previously created user using the returned location.
 	 */
 	@Test
-	public void c_ScimGetUserTest() throws MalformedURLException {
-		String req = TestUtils.mapPathToReqUrl(baseUrl, user1url);
+	public void c2_ScimGetUser_JWTadmin() throws MalformedURLException {
+		String req = TestUtils.mapPathToReqUrl(baseUrl, bJensonUrl);
 		
-		logger.info("\tC. Retrieving user from backend using: "+req);
-		
-		CloseableHttpClient client = HttpClients.createDefault();
+		logger.info("C2. Retrieving user from backend (Bearer JWTadmin) using: "+req);
 		
 		HttpUriRequest request = new HttpGet(req);
 		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		
 		try {
-			CloseableHttpResponse resp = client.execute(request);
+			CloseableHttpResponse resp = execute(request);
 			HttpEntity entity = resp.getEntity();
 			
 			assertThat(resp.getStatusLine().getStatusCode())
@@ -283,10 +389,7 @@ public class ScimSecCRUDTest {
 				.as("Is user bjensen")
 				.contains("bjensen@example.com");
 			
-			// Check that the extension attributes were parsed and returned
-			assertThat(body)
-				.as("Contains the correct extension")
-				.contains("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User");
+			// Check that the extension attributes were blocked
 			assertThat(body)
 				.as("Contains an extension value Tour Operations")
 				.contains("Tour Operations");
@@ -305,11 +408,178 @@ public class ScimSecCRUDTest {
 			String value = val.toString();
 			assertThat(value)
 				.as("Check value of division is 'Theme Park'.")
-				.isEqualTo("Theme Park");		
+				.isEqualTo("Theme Park");
 			
 			resp.close();
 			
 		} catch (IOException | ParseException | ScimException e) {
+			fail("Exception occured making GET request for bjensen",e);
+		}
+	}
+
+	/**
+	 * This test attempts to retrieve the previously created user using the returned location.
+	 */
+	@Test
+	public void c3_ScimGetUser_RootBasic() throws MalformedURLException {
+		String req = TestUtils.mapPathToReqUrl(baseUrl, bJensonUrl);
+
+		logger.info("C3. Retrieving user from backend (with root basic auth) using: "+req);
+
+		HttpUriRequest request = new HttpGet(req);
+
+		String username = cmgr.getRootUser();
+		String pass = cmgr.getRootPassword();
+
+		String auth = "Basic " + Base64.getEncoder().encodeToString((username + ":" + pass).getBytes());
+
+		request.addHeader(HttpHeaders.AUTHORIZATION, auth);
+
+		try {
+			CloseableHttpResponse resp = execute(request);
+			HttpEntity entity = resp.getEntity();
+
+			assertThat(resp.getStatusLine().getStatusCode())
+					.as("GET User - Check for status response 200 OK")
+					.isEqualTo(ScimResponse.ST_OK);
+
+			String body = EntityUtils.toString(entity);
+
+			assertThat(body)
+					.as("Check that it is not a ListResponse")
+					.doesNotContain(ScimParams.SCHEMA_API_ListResponse);
+
+			assertThat(body)
+					.as("Is user bjensen")
+					.contains("bjensen@example.com");
+
+			// Check that the extension attributes were parsed and returned
+			assertThat(body)
+					.as("Contains the correct extension")
+					.contains("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User");
+			assertThat(body)
+					.as("Contains an extension value Tour Operations")
+					.contains("Tour Operations");
+
+			resp.close();
+			logger.debug("Entry retrieved:\n"+body);
+
+			// Check that the result can be parsed as a SCIM object
+			JsonNode jres = JsonUtil.getJsonTree(body);
+			ScimResource res = new ScimResource(smgr,jres, "Users");
+			ExtensionValues ext = res.getExtensionValues("urn:ietf:params:scim:schemas:extension:enterprise:2.0:User");
+			assertThat(ext)
+					.as("Check the enterprise user extension present")
+					.isNotNull();
+			StringValue val = (StringValue) ext.getValue("division");
+			String value = val.toString();
+			assertThat(value)
+					.as("Check value of division is 'Theme Park'.")
+					.isEqualTo("Theme Park");
+
+			resp.close();
+
+		} catch (IOException | ParseException | ScimException e) {
+			fail("Exception occured making GET request for bjensen",e);
+		}
+	}
+
+	@Test
+	public void c4_ScimGetUsersAsBJensen() throws MalformedURLException {
+		String req = TestUtils.mapPathToReqUrl(baseUrl, bJensonUrl);
+
+		logger.info("C4a. Retrieving self (as bjensent@example.com BASIC auth) from backend using: "+req);
+
+		HttpUriRequest request = new HttpGet(req);
+		String username = "bjensen@example.com";
+
+		String auth = "Basic " + Base64.getEncoder().encodeToString((username + ":" + testPass).getBytes());
+
+		request.addHeader(HttpHeaders.AUTHORIZATION, auth);
+
+		try {
+			CloseableHttpResponse resp = execute(request);
+			HttpEntity entity = resp.getEntity();
+
+			assertThat(resp.getStatusLine().getStatusCode())
+					.as("GET User - Check for status response 200 OK")
+					.isEqualTo(ScimResponse.ST_OK);
+
+			String body = EntityUtils.toString(entity);
+
+			assertThat(body)
+					.as("Check that it is not a ListResponse")
+					.doesNotContain(ScimParams.SCHEMA_API_ListResponse);
+
+			assertThat(body)
+					.as("Is user bjensen")
+					.contains("bjensen@example.com");
+			assertThat(body)
+					.as("Contains userName value as permitted by aci")
+					.contains("\"userName\"");
+			assertThat(body)
+					.as("Check that unauthorized attributes not returned (e.g. \"ims\"")
+					.doesNotContain("\"ims\"");
+
+			resp.close();
+			logger.debug("Entry retrieved:\n"+body);
+
+			resp.close();
+
+			//try without authorization (should fail)
+			req = TestUtils.mapPathToReqUrl(baseUrl, jSmithUrl);
+
+			logger.info("C4b. Retrieving jsmith (as anonymous) from backend using: "+req);
+
+			request = new HttpGet(req);
+
+
+			resp = execute(request);
+
+			assertThat(resp.getStatusLine().getStatusCode())
+					.as("GET User - Check for status response 401 unauthorized")
+					.isEqualTo(ScimResponse.ST_UNAUTHORIZED);
+			resp.close();
+
+			req = TestUtils.mapPathToReqUrl(baseUrl, jSmithUrl);
+
+			logger.info("C4c. Retrieving jsmith (as bjensen@example.com BASIC auth) from backend using: "+req);
+
+			request = new HttpGet(req);
+			request.addHeader(HttpHeaders.AUTHORIZATION, auth);
+
+			resp = execute(request);
+			entity = resp.getEntity();
+
+			assertThat(resp.getStatusLine().getStatusCode())
+					.as("GET User - Check for status response 200 OK")
+					.isEqualTo(ScimResponse.ST_OK);
+
+			body = EntityUtils.toString(entity);
+
+			assertThat(body)
+					.as("Check that it is not a ListResponse")
+					.doesNotContain(ScimParams.SCHEMA_API_ListResponse);
+
+			assertThat(body)
+					.as("Is user jsmith")
+					.contains("jsmith@example.com");
+
+			assertThat(body)
+					.as("Check that unauthorized attributes not returned (e.g. \"ims\"")
+					.doesNotContain("\"ims\"");
+			assertThat(body)
+					.as("Check that unauthorized attributes not returned (e.g. \"nickName\"")
+					.doesNotContain("\"nickName\"");
+
+			assertThat(body)
+					.as("Contains userName value as permitted by aci")
+					.contains("\"userName\"");
+
+			resp.close();
+			logger.debug("Entry retrieved:\n"+body);
+
+		} catch (IOException e) {
 			fail("Exception occured making GET request for bjensen",e);
 		}
 	}
@@ -318,10 +588,9 @@ public class ScimSecCRUDTest {
 	 * This test tries to search for the previously created user by searching on filter name
 	 */
 	@Test
-	public void d1_ScimSearchUserTest() throws MalformedURLException {
+	public void d1_ScimSearchUserAsJwtAdminTest() throws MalformedURLException {
 		
-		logger.info("\tD1. Search using GET for user from backend with filter=UserName eq bjensen@example.com");
-		CloseableHttpClient client = HttpClients.createDefault();
+		logger.info("D1. Search using GET for user from backend with filter=UserName eq bjensen@example.com");
 
 		String req = TestUtils.mapPathToReqUrl(baseUrl,
 				"/Users?filter="+URLEncoder.encode("UserName eq bjensen@example.com",StandardCharsets.UTF_8));
@@ -329,7 +598,7 @@ public class ScimSecCRUDTest {
 		HttpUriRequest request = new HttpGet(req);
 		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		try {
-			CloseableHttpResponse resp = client.execute(request);
+			CloseableHttpResponse resp = execute(request);
 			HttpEntity entity = resp.getEntity();
 			
 			assertThat(resp.getStatusLine().getStatusCode())
@@ -382,8 +651,8 @@ public class ScimSecCRUDTest {
 	@Test
 	public void d2_ScimSearchUserTest() throws MalformedURLException {
 		
-		logger.info("\tD2. POST Search user from backend with filter=UserName eq bjensen@example.com");
-		CloseableHttpClient client = HttpClients.createDefault();
+		logger.info("D2. POST Search user from backend with filter=UserName eq bjensen@example.com");
+
 		
 		String req = TestUtils.mapPathToReqUrl(baseUrl,
 				"/Users/.search");
@@ -403,7 +672,7 @@ public class ScimSecCRUDTest {
 			gen.writeString(ScimParams.SCHEMA_API_SearchRequest);
 			gen.writeEndArray();
 						
-			gen.writeStringField("filter", "UserName eq bjensen@example.com");
+			gen.writeStringField("filter", "userName eq bjensen@example.com");
 			gen.writeArrayFieldStart("attributes");
 			gen.writeString("userName");
 			gen.writeString("name");
@@ -417,7 +686,7 @@ public class ScimSecCRUDTest {
 			
 			request.setEntity(sEntity);
 			
-			CloseableHttpResponse resp = client.execute(request);
+			CloseableHttpResponse resp = execute(request);
 			HttpEntity entity = resp.getEntity();
 		
 			assertThat(resp.getStatusLine().getStatusCode())
@@ -451,7 +720,6 @@ public class ScimSecCRUDTest {
 	public void e_ScimSearchValPathUserTest() throws MalformedURLException {
 		
 		logger.info("\tD. Searching user from backend with filter=UserName eq bjensen@example.com and addresses[country eq \\\"USA\\\" and type eq \\\"home\\\"]");
-		CloseableHttpClient client = HttpClients.createDefault();
 		
 		String req = TestUtils.mapPathToReqUrl(baseUrl,
 				"/Users?filter="+URLEncoder.encode("UserName eq bjensen@example.com and addresses[country eq \"USA\" and type eq \"home\"]",StandardCharsets.UTF_8));
@@ -460,7 +728,7 @@ public class ScimSecCRUDTest {
 		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		
 		try {
-			CloseableHttpResponse resp = client.execute(request);
+			CloseableHttpResponse resp = execute(request);
 			HttpEntity entity = resp.getEntity();
 			
 			assertThat(resp.getStatusLine().getStatusCode())
@@ -509,17 +777,32 @@ public class ScimSecCRUDTest {
 	
 	@Test
 	public void f_updateUserTest() throws MalformedURLException {
-		logger.info("\t E. Modify user with PUT Test");
-		CloseableHttpClient client = HttpClients.createDefault();
+
 		
-		String req = TestUtils.mapPathToReqUrl(baseUrl, user1url);
-		
+		String req = TestUtils.mapPathToReqUrl(baseUrl, bJensonUrl);
+		logger.info("\tF. Modify user with PUT Test at: "+req);
+
 		HttpUriRequest request = new HttpGet(req);
 		
 		try {
-			CloseableHttpResponse resp = client.execute(request);
+			// first try anonymous test
+			logger.debug("\t\tAnonymous sub-test");
+			CloseableHttpResponse resp = execute(request);
+
+			assertThat(resp.getStatusLine().getStatusCode())
+					.as("Confirm annonymous is unauthorized")
+					.isEqualTo(ScimResponse.ST_UNAUTHORIZED);
+
+			resp.close();
+
+			logger.debug("\t\tBJsensen self-update sub-test");
+			request = new HttpGet(req);
+			String username = "bjensen@example.com";
+			String auth = "Basic " + Base64.getEncoder().encodeToString((username + ":" + testPass).getBytes());
+			request.addHeader(HttpHeaders.AUTHORIZATION, auth);
+
+			resp = execute(request);
 			HttpEntity entity = resp.getEntity();
-			
 			assertThat(resp.getStatusLine().getStatusCode())
 				.as("GET User - Check for status response 200 OK")
 				.isEqualTo(ScimResponse.ST_OK);
@@ -551,10 +834,11 @@ public class ScimSecCRUDTest {
 			res.addValue(name, newval);
 			
 			HttpPut put = new HttpPut(req);
+			put.addHeader(HttpHeaders.AUTHORIZATION, auth);
 		    entity = new StringEntity(res.toJsonString(),ContentType.create(ScimParams.SCIM_MIME_TYPE));
 			put.setEntity(entity);
 			
-			resp = client.execute(put);
+			resp = execute(put);
 			assertThat(resp.getStatusLine().getStatusCode())
 				.as("PUT User - Check for status response 200 OK")
 				.isEqualTo(ScimResponse.ST_OK);
@@ -569,6 +853,7 @@ public class ScimSecCRUDTest {
 				.as("Contains test value")
 				.contains("Babs (TEST)");
 			logger.debug("Entry retrieved:\n"+body);
+			resp.close();
 		} catch (IOException | ParseException | ScimException e) {
 			fail("Exception occured making GET request for bjensen",e);
 		}
@@ -577,33 +862,34 @@ public class ScimSecCRUDTest {
 	@Test
 	public void g_ScimDeleteUserTest() throws MalformedURLException {
 		
-		logger.info("Deleting user from backend");
-		CloseableHttpClient client = HttpClients.createDefault();
-		
-		String req = TestUtils.mapPathToReqUrl(baseUrl, user1url);
-		
+		String req = TestUtils.mapPathToReqUrl(baseUrl, bJensonUrl);
+		logger.info("\tG. Deleting user at: "+req);
+
 		HttpUriRequest request = new HttpDelete(req);
 		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		
 		try {
-			CloseableHttpResponse resp = client.execute(request);
+			CloseableHttpResponse resp = execute(request);
 			
 			// confirm status 204 per RFC7644 Sec 3.6
 			assertThat(resp.getStatusLine().getStatusCode())
 				.as("Confirm succesfull deletion of user")
 				.isEqualTo(ScimResponse.ST_NOCONTENT);
-			
-			
+			resp.close();
+
 			// Try to retrieve the deleted object. Should return 404
 			request = new HttpGet(req);
-			resp = client.execute(request);
+			request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+			resp = execute(request);
 			assertThat(resp.getStatusLine().getStatusCode())
 				.as("Confirm deleted user was not findable")
 				.isEqualTo(ScimResponse.ST_NOTFOUND);
-			
+			resp.close();
+
 			// Try delete of non-existent object, should be 404
 			request = new HttpDelete(req);
-			resp = client.execute(request);
+			request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+			resp = execute(request);
 			assertThat(resp.getStatusLine().getStatusCode())
 				.as("Confirm not found when deleting non-existent resource")
 				.isEqualTo(ScimResponse.ST_NOTFOUND);

@@ -88,8 +88,8 @@ public class PrecedenceFilter extends Filter {
 	}
 
 	@Override
-	protected void getFilterAttributes(@NotNull Set<Attribute> attrSet) {
-		filter.getFilterAttributes(attrSet);
+	protected void filterAttributes(@NotNull Set<Attribute> attrSet) {
+		filter.filterAttributes(attrSet);
 	}
 
 

@@ -15,8 +15,8 @@
 
 package com.independentid.scim.plugin;
 
+import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.op.Operation;
-import com.independentid.scim.schema.SchemaManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,7 +30,7 @@ public class TestPlugin implements IScimPlugin{
     private final static Logger logger = LoggerFactory.getLogger(TestPlugin.class);
 
     @Override
-    public void init(SchemaManager schemaManager) throws ServletException {
+    public void init() throws ServletException {
         logger.info("Test Plugin Init called.");
     }
 

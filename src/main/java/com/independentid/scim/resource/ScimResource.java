@@ -50,7 +50,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	protected String externalId;
 
 	protected List<String> schemas;
-	public Schema commonSchema;
+	public static Schema commonSchema;
 	protected Schema coreSchema;
 	protected ResourceType type;
 
@@ -63,6 +63,8 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	protected LinkedHashMap<String, ExtensionValues> extAttrVals;
 
 	protected HashSet<Attribute> attrsInUse = new HashSet<>();
+
+	protected HashSet<Attribute> blockedAttrs = new HashSet<>();
 		
 	protected boolean modified;
 	
@@ -84,7 +86,9 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		
 	}
 
-	protected ScimResource () {
+	protected ScimResource(SchemaManager smgr) {
+		this.smgr = smgr;
+		commonSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
 		this.coreAttrVals = new LinkedHashMap<>();
 		this.extAttrVals = new LinkedHashMap<>();
 		this.idResolver = null;
@@ -109,7 +113,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 		this.coreAttrVals = new LinkedHashMap<>();
 		this.extAttrVals = new LinkedHashMap<>();
-		this.commonSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
+		commonSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
 		setResourceType(container);
 		this.idResolver = bulkIdResolver;
 		this.parseJson(resourceNode);
@@ -182,9 +186,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		return this.extAttrVals;
 	}
 
-	public void addValue(@NotNull Attribute attr,@NotNull Value addval) throws SchemaException {
-		//ResourceType type = cfg.getResourceType(getResourceType());
-		//String core = type.getSchema();
+	public synchronized void addValue(@NotNull Attribute attr,@NotNull Value addval) throws SchemaException {
 
 		Attribute rootAttribute;
 		if (attr.isChild())
@@ -255,7 +257,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		
 	}
 	
-	public void removeValue(Attribute attr) {
+	public synchronized void  removeValue(Attribute attr) {
 		//ResourceType type = cfg.getResourceType(getResourceType());
 		String core = type.getSchema();
 
@@ -352,10 +354,13 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		if (item != null)
 			this.id = item.asText();
 
-		JsonNode meta = node.get("meta");
+		JsonNode metaNode = node.get("meta");
 		//Note: a SCIM schema or ResourceType might not have a meta
-		if (meta != null) {
-			this.meta = new Meta(commonSchema.getAttribute("meta"), meta);
+		Attribute mattr = commonSchema.getAttribute("meta");
+		attrsInUse.add(mattr);
+		if (metaNode != null) {
+			this.meta = new Meta(mattr, metaNode);
+
 			if (this.type == null) {
 				this.type = smgr.getResourceType(this.meta.getResourceType());
 				this.coreSchema = smgr.getSchemaById(this.type.getSchema());
@@ -370,8 +375,11 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		// endpoint
 		
 		item = node.get("externalId");
-		if (item != null)
+		if (item != null) {
+			Attribute attr = commonSchema.getAttribute("externalid");
+			attrsInUse.add(attr);
 			this.externalId = item.asText();
+		}
 
 		parseAttributes(node,true,false);
 		
@@ -541,8 +549,13 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		return null;
 	}
 
+	public boolean isNotBlocked(Attribute attr) {
+		return !blockedAttrs.contains(attr);
+	}
+
 	public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash)
 			throws IOException, ScimException {
+
 		gen.writeStartObject();
 
 		// Write out the schemas value
@@ -556,12 +569,17 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			gen.writeStringField("id", this.id);
 
 		
-		if (this.externalId != null && ValueUtil.isReturnable(commonSchema,"externalId", ctx))
+		if (this.externalId != null &&
+				ValueUtil.isReturnable(commonSchema,"externalId", ctx)
+				&& isNotBlocked(commonSchema.getAttribute("externalId")))
+
 			gen.writeStringField("externalId", this.externalId);
 
 		// Write out the meta information
 		// Meta will not be used for hash calculations.
-		if (this.meta != null && !forHash && ValueUtil.isReturnable(commonSchema,"meta", ctx)) {
+		if (this.meta != null && !forHash &&
+				ValueUtil.isReturnable(commonSchema,"meta", ctx) &&
+				isNotBlocked(commonSchema.getAttribute("meta"))) {
 			gen.writeFieldName("meta");
 			this.meta.serialize(gen, ctx, false);
 		}
@@ -571,14 +589,18 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		for (Attribute attr: coreAttrVals.keySet()) {
 			if(!ValueUtil.isReturnable(attr, ctx))
 				continue;
-			Value val = this.coreAttrVals.get(attr);
-			gen.writeFieldName(attr.getName());
-			val.serialize(gen, ctx);
+			if(isNotBlocked(attr)) {
+				Value val = this.coreAttrVals.get(attr);
+				gen.writeFieldName(attr.getName());
+				val.serialize(gen, ctx);
+			}
 		}
 
 		for (ExtensionValues ext : this.extAttrVals.values()) {
-			if (ValueUtil.isReturnable(ext, ctx))
+			if (ValueUtil.isReturnable(ext, ctx)) {
+				ext.setBlockedAttrs(blockedAttrs);
 				ext.serialize(gen, ctx, forHash);
+			}
 		}
 
 		// Write out the end of object for the resource
@@ -905,8 +927,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 									// TODO may need to check if sub attribute is multi-valued
 									cval.addValue(sattr,nval);
 								}
-								//cval.attrs.remove(path.getTargetAttrName());
-								//cval.attrs.put(path.getSubAttrName(), nval);
+
 							} catch (SchemaException | ParseException e) {
 								throw new InvalidValueException("JSON parsing error parsing value parameter.",e);
 							}	
@@ -954,8 +975,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	}
 	
 	@Override
-	public boolean replaceResAttributes(ScimResource res, RequestCtx ctx)
-			throws ScimException {
+	public boolean replaceResAttributes(ScimResource res, RequestCtx ctx) {
 		
 		//removeReadWriteAttributes(ctx);
 		
@@ -965,10 +985,6 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	}
 	
 	private void copyAttributesFrom(ScimResource res, RequestCtx ctx)  {
-		//ResourceType type = cfg.getResourceType(getResourceType());
-		//String coreSchemaId = type.getSchema();
-		
-		//Attribute attr = this.cfg.findAttribute("externalId", ctx);
 		if (res.getExternalId() != null)
 			this.setExternalId(res.getExternalId());
 		
@@ -1161,5 +1177,11 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		return attrsInUse.contains(attr);
 	}
 
+	public void blockAttrSet(Set<Attribute> attrs) {
+		this.blockedAttrs.addAll(attrs);
+	}
 
+	public void blockAttribute(Attribute attr) {
+		this.blockedAttrs.add(attr);
+	}
 }

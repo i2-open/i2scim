@@ -1,0 +1,77 @@
+{
+  "acis": [
+
+    {
+      "path" : "/",
+      "name" : "Administrators can read, search, compare all records and operational attributes",
+      "targetAttrs" : "*",
+      "rights" : "read, search, compare",
+      "actors" : [
+        "role=root admin full"
+      ]
+    },
+    {
+      "path" : "/",
+      "name" : "Root can update all systems",
+      "targetAttrs" : "*",
+      "rights" : "add, modify, delete",
+      "actors" : [
+        "role=root admin full"
+      ]
+    },
+
+    {
+      "path" : "/Users",
+      "name" : "Users can read self except userType",
+      "targetAttrs": "*,-userType,-ims",
+      "rights" : "read,search",
+      "actors" : [ "self"]
+    },
+    {
+      "path" : "/Users",
+      "name" : "Users can self-modify some attributes",
+      "targetAttrs": "displayName, emails, nickName, addresses, phoneNumbers",
+      "rights" : "modify",
+      "actors" : [ "self"]
+    },
+
+    {
+      "path" : "/Users",
+      "name" : "Allow unauthenticated access to names and email addresses of Users",
+      "targetFilter":"meta.resourceType eq User",
+      "targetAttrs" :"username,displayName,emails,name,phoneNumbers",
+      "rights" : "read",
+      "actors" : ["any"]
+    },
+    {
+      "path" : "/Users",
+      "name" : "Allow unauthenticated access to names and email addresses of Users",
+      "targetFilter":"meta.resourceType eq User",
+      "targetAttrs" :"username",
+      "rights" : "search",
+      "actors" : ["any"]
+    },
+
+    {
+      "path" : "/ServiceProviderConfig",
+      "name" : "Allow unauthenticated access to ServiceProviderConfig",
+      "targetAttrs" :"*",
+      "rights" : "read, search",
+      "actors" : ["any"]
+    },
+    {
+      "path" : "/Schemas",
+      "name" : "Allow unauthenticated access to ServiceProviderConfig",
+      "targetAttrs" :"*",
+      "rights" : "read, search",
+      "actors" : ["any"]
+    },
+    {
+      "path" : "/ResourceTypes",
+      "name" : "Allow unauthenticated access to ServiceProviderConfig",
+      "targetAttrs" :"*",
+      "rights" : "read, search",
+      "actors" : ["any"]
+    }
+  ]
+}

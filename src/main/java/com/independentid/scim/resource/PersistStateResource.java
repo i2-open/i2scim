@@ -22,11 +22,11 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
-import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Date;
 
 /**
@@ -53,17 +53,24 @@ public class PersistStateResource extends ScimResource {
 			throws ParseException, ScimException {
 		super(schemaManager, resourceNode, bulkIdResolver, container);
 		setId(CONFIG_ID);
+
 		
 	}
 	
 	public PersistStateResource(SchemaManager schemaManager, int rCnt, int sCnt) {
-		super();
+		super(schemaManager);
 		this.smgr = schemaManager;
 		setId(CONFIG_ID);
 		
 		this.rTypeCnt = rCnt;
 		this.schemaCnt = sCnt;
+		initSchemas();
 		// last sync date will be defaulted to current time
+	}
+
+	private void initSchemas() {
+		this.schemas = new ArrayList<>();
+		this.schemas.add(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 	}
 	
 	public Date getLastSyncDate() {
@@ -82,9 +89,10 @@ public class PersistStateResource extends ScimResource {
 		return this.schemaCnt;
 	}
 
-	public void parseJson(ConfigMgr cfg, JsonNode node) throws SchemaException, ParseException, ScimException {
-		// TODO Auto-generated method stub
-		
+	public void parseJson(ConfigMgr cfg, JsonNode node) throws ParseException, ScimException {
+
+		initSchemas();
+
 		JsonNode item = node.get("id");
 		if (item != null) 
 			this.id = item.asText();
@@ -107,7 +115,7 @@ public class PersistStateResource extends ScimResource {
 		
 		JsonNode meta = node.get("meta");
 		if (meta != null)
-			this.meta = new Meta(meta);
+			this.meta = new Meta(commonSchema.getAttribute("meta"), meta);
 	}
 
 	@Override

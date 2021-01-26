@@ -47,7 +47,7 @@ public class SearchOp extends Operation {
 					HttpServletResponse resp) {
 		super(req, resp );
 
-		if (!req.getRequestURI().endsWith(ScimParams.PATH_SEARCH)) {
+		if (!req.getRequestURI().endsWith(ScimParams.PATH_GLOBAL_SEARCH)) {
 			InternalException ie = new InternalException(
 					"Was expecting a search request, got: "
 							+ req.getRequestURI());
@@ -70,11 +70,6 @@ public class SearchOp extends Operation {
 			setCompletionError(new InvalidSyntaxException(
 					"Unable to parse request body (SCIM JSON Search Schema format expected)."));
 			this.opState = OpState.invalid;
-		}
-		try {
-			pluginHandler.doPreOperations(this);
-		} catch (ScimException e) {
-			e.printStackTrace();
 		}
 
 	}
