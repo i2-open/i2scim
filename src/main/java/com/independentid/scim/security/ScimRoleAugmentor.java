@@ -23,6 +23,8 @@ import io.quarkus.security.identity.SecurityIdentityAugmentor;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.jwt.auth.principal.JWTCallerPrincipal;
 import io.smallrye.mutiny.Uni;
+import org.eclipse.microprofile.metrics.annotation.Counted;
+import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,7 +53,9 @@ public class ScimRoleAugmentor implements SecurityIdentityAugmentor {
         // if a blocking call is required to customize the identity
     }
 
-    private Supplier<SecurityIdentity> build(SecurityIdentity identity) {
+    @Counted(name="scim.auth.jwt.count",description="Counts the number JWT identities")
+    @Timed(name="scim.auth.jwt.timer",description = "Measures JWT processing time")
+    public Supplier<SecurityIdentity> build(SecurityIdentity identity) {
 
         if(identity.isAnonymous()) {
             return () -> identity;
@@ -60,15 +64,8 @@ public class ScimRoleAugmentor implements SecurityIdentityAugmentor {
             QuarkusSecurityIdentity.Builder builder = QuarkusSecurityIdentity.builder(identity);
             Principal pal = identity.getPrincipal();
             if (pal instanceof JWTCallerPrincipal) {
-                JWTCallerPrincipal jpal = (JWTCallerPrincipal) pal;
-                Object val = jpal.getClaim(cmgr.getJwtScopeClaim());
-                assert val instanceof String;
-                String[] scopes = ((String) val).split(" ");
-                for (String scope: scopes) {
-                    builder.addRole(scope);
-                }
+               buildJwt(builder,identity);
             }
-
             if (pal.getName().equalsIgnoreCase(cmgr.getRootUser()))
                 builder.addRole("root");
 
@@ -76,6 +73,20 @@ public class ScimRoleAugmentor implements SecurityIdentityAugmentor {
             builder.addRole("bearer");
             return builder::build;
         }
+    }
+
+    public void buildJwt(QuarkusSecurityIdentity.Builder builder,SecurityIdentity identity) {
+
+        Principal pal = identity.getPrincipal();
+
+        JWTCallerPrincipal jpal = (JWTCallerPrincipal) pal;
+        Object val = jpal.getClaim(cmgr.getJwtScopeClaim());
+        assert val instanceof String;
+        String[] scopes = ((String) val).split(" ");
+        for (String scope: scopes) {
+            builder.addRole(scope);
+        }
+
     }
 
 

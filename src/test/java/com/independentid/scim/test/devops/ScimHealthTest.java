@@ -300,7 +300,7 @@ public class ScimHealthTest {
 		logger.info("/metrics/application\n"+body);
 		assertThat(body)
 				.as("Confirm 2 create operations")
-				.contains("\"com.independentid.scim.server.ScimV2Servlet.createOps\": 2,");
+				.contains("\"com.independentid.scim.server.ScimV2Servlet.scim.ops.create.count\": 2,");
 		resp.close();
 
 

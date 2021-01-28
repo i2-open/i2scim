@@ -103,8 +103,8 @@ public class ScimV2Servlet extends HttpServlet {
 			super.service(req, resp);
 	}
 
-	@Counted(name="patchOps",description="Counts the number of SCIM Patch requests")
-	@Timed (name="patchTimer",description = "Measures SCIM Patch operation times")
+	@Counted(name="scim.ops.patch.count",description="Counts the number of SCIM Patch requests")
+	@Timed (name="scim.ops.patch.timer",description = "Measures SCIM Patch operation times")
 	protected void doPatch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 
 		PatchOp op = new PatchOp(req, resp);
@@ -115,8 +115,8 @@ public class ScimV2Servlet extends HttpServlet {
 	/* (non-Javadoc)
 	 * @see javax.servlet.http.HttpServlet#doPut(javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse)
 	 */
-	@Counted(name="putOps",description="Counts the number of SCIM Put requests")
-	@Timed (name="putTimer",description = "Measures SCIM Put operation times")
+	@Counted(name="scim.ops.put.count",description="Counts the number of SCIM Put requests")
+	@Timed (name="scim.ops.put.timer",description = "Measures SCIM Put operation times")
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
@@ -133,8 +133,8 @@ public class ScimV2Servlet extends HttpServlet {
 	 * javax.servlet.http.HttpServlet#doDelete(javax.servlet.http.HttpServletRequest
 	 * , javax.servlet.http.HttpServletResponse)
 	 */
-	@Counted(name="deleteOps",description="Counts the number of SCIM Delete requests")
-	@Timed (name="deleteTimer",description = "Measures SCIM Delete operation times")
+	@Counted(name="scim.ops.delete.count",description="Counts the number of SCIM Delete requests")
+	@Timed (name="scim.ops.delete.timer",description = "Measures SCIM Delete operation times")
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
@@ -145,8 +145,8 @@ public class ScimV2Servlet extends HttpServlet {
 		
 	}
 
-	@Counted(name="postSearchOps",description="Counts the number of SCIM Post Search requests")
-	@Timed (name="postSearchTimer",description = "Measures SCIM Post Search operation times")
+	@Counted(name="scim.ops.search.count",description="Counts the number of SCIM Post Search requests")
+	@Timed (name="scim.ops.search.timer",description = "Measures SCIM Post Search operation times")
 	protected void doSearch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		
 		SearchOp op = new SearchOp(req, resp);
@@ -154,8 +154,8 @@ public class ScimV2Servlet extends HttpServlet {
 		complete(op);
 	}
 
-	@Counted(name="getOps",description="Counts the number of SCIM Get requests")
-	@Timed (name="getTimer",description = "Measures SCIM Get operation times")
+	@Counted(name="scim.ops.get.count",description="Counts the number of SCIM Get requests")
+	@Timed (name="scim.ops.get.timer",description = "Measures SCIM Get operation times")
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
@@ -194,8 +194,8 @@ public class ScimV2Servlet extends HttpServlet {
 		complete(op);
 	}
 
-	@Counted(name="bulkOps",description="Counts the number of SCIM Bulk requests")
-	@Timed (name="bulkTimer",description = "Measures SCIM Bulk operation times")
+	@Counted(name="scim.ops.bulk.count",description="Counts the number of SCIM Bulk requests")
+	@Timed (name="scim.ops.bulk.timer",description = "Measures SCIM Bulk operation times")
 	protected void doBulk(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
 		
@@ -233,8 +233,8 @@ public class ScimV2Servlet extends HttpServlet {
 		
 	}
 
-	@Counted(name="createOps",description="Counts the number of SCIM Create requests")
-	@Timed (name="createTimer",description = "Measures SCIM Create operation times")
+	@Counted(name="scim.ops.create.count",description="Counts the number of SCIM Create requests")
+	@Timed (name="scim.ops.create.timer",description = "Measures SCIM Create operation times")
 	protected void doCreate(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		CreateOp op = new CreateOp(req, resp);
 

@@ -38,6 +38,8 @@ import io.quarkus.security.identity.request.UsernamePasswordAuthenticationReques
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import org.apache.http.auth.BasicUserPrincipal;
+import org.eclipse.microprofile.metrics.annotation.Counted;
+import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,6 +77,23 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
         return UsernamePasswordAuthenticationRequest.class;
     }
 
+    @Counted(name = "scim.auth.root",description = "Number of times root has authenticated via basic auth")
+    public Uni<SecurityIdentity> doRootAuthentication(String userName, PasswordCredential cred) {
+        String pwd = new String(cred.getPassword());
+        if (pwd.equals(cmgr.getRootPassword())) {
+            SecurityIdentity identity = QuarkusSecurityIdentity.builder()
+                    .setPrincipal(new BasicUserPrincipal(userName))
+                    .addRole("root")
+                    .addCredential(new PasswordCredential(pwd.toCharArray()))
+                    .build();
+
+            return Uni.createFrom().item(identity);
+        }
+        logger.debug("Failed authentication of root user.");
+        return Uni.createFrom().failure(new AuthenticationFailedException());
+
+    }
+
     @Override
     public Uni<SecurityIdentity> authenticate(UsernamePasswordAuthenticationRequest request, AuthenticationRequestContext context) {
         String userName = request.getUsername();
@@ -83,22 +102,8 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
         //String azHeader = context.request().getHeader(HttpHeaderNames.AUTHORIZATION);
         if (cmgr.isRootEnabled() && cmgr.isAuthBasic()) {
 
-            if (userName.equalsIgnoreCase(cmgr.getRootUser())) {
-                //Ok we have the root user. Authenticate locally.
-                String pwd = new String(cred.getPassword());
-                if (pwd.equals(cmgr.getRootPassword())) {
-                    SecurityIdentity identity = QuarkusSecurityIdentity.builder()
-                            .setPrincipal(new BasicUserPrincipal(userName))
-                            .addRole("root")
-                            .addCredential(new PasswordCredential(pwd.toCharArray()))
-                            .build();
-
-                    return Uni.createFrom().item(identity);
-                }
-                logger.debug("Failed authentication of root user.");
-                return Uni.createFrom().failure(new AuthenticationFailedException());
-
-            }
+            if (userName.equalsIgnoreCase(cmgr.getRootUser()))
+                return doRootAuthentication(userName,cred);
 
             return doInternalAuthentication(userName, cred);
         }
@@ -109,6 +114,8 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
         return Uni.createFrom().failure(new AuthenticationFailedException());
     }
 
+    @Counted(name = "scim.auth.internal.count",description = "Number of times intenral users have been authenticated.")
+    @Timed(name="scim.auth.internal.timer",description = "Measures internal(users in SCIM) SCIM user authentication rates")
     private Uni<SecurityIdentity> doInternalAuthentication(String user, PasswordCredential cred) {
         String pwd = new String(cred.getPassword());
         if (pwd.contains("\"")) // check for embedded quotes for injection attack
