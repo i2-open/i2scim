@@ -86,9 +86,6 @@ public class ConfigMgr {
 	@ConfigProperty(name = SCIM_PERSIST_SCHEMA, defaultValue="true")
 	boolean persistSchema;
 
-	//public final static String PARAM_PROVIDER_CLASS = "scim.provider.class";
-	//public final static String DEFAULT_PROVIDER = MongoProvider.class.getName();
-
 	//public final static String PARAM_MAX_RESULTS = "scim.query.max.resultsize";
 	//public final static String DEFAULT_MAX_RESULTS = "1000";
 	

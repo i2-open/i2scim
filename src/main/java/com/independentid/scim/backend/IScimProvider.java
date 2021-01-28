@@ -21,11 +21,13 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
+import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
 
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.Collection;
 
 /**
@@ -117,6 +119,13 @@ public interface IScimProvider {
      * returned until shutdown is safe.
      */
     void shutdown();
+
+    /**
+     * Used to return the current configuration state of the backend provider. In particular it is used for co-ordinating
+     * persisted schema and resource types and co-ordinating synchronization. May also be used to test database live-ness.
+     * @return The PersistStateResoruce that holds the current schema sync state of the server.
+     */
+    PersistStateResource getConfigState() throws ScimException, IOException, ParseException;
 
     /**
      * This method is typically called by ConfigMgr to load the system SCIM Schema definitions. This method checks the

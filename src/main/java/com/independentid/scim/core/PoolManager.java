@@ -15,6 +15,8 @@
 package com.independentid.scim.core;
 
 import com.independentid.scim.op.Operation;
+import org.eclipse.microprofile.metrics.MetricUnits;
+import org.eclipse.microprofile.metrics.annotation.Gauge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -146,14 +148,17 @@ public class PoolManager {
 		return false;
 	}
 
+	@Gauge(unit = MetricUnits.NONE, name = "Pool: Operation Count")
 	public int getOperationCnt() {
 		return this.opCnt;
 	}
 
+	@Gauge(unit = MetricUnits.NONE, name = "Pool: Active Threads")
 	public int getThreadCnt() {
 		return pool.getActiveThreadCount();
 	}
 
+	@Gauge(unit = MetricUnits.NONE, name = "Pool: Pending Ops")
 	public int getPendingTasksCnt() {
 		return pool.getQueuedSubmissionCount();
 	}

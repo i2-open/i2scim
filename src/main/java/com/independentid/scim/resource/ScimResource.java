@@ -116,7 +116,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		commonSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
 		setResourceType(container);
 		this.idResolver = bulkIdResolver;
-		this.parseJson(resourceNode);
+		parseJson(resourceNode);
 		this.modified = false;
 		
 	}

@@ -25,6 +25,7 @@ import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.ListResponse;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
+import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Meta;
 import com.independentid.scim.schema.ResourceType;
@@ -308,6 +309,14 @@ public class MemoryProvider implements IScimProvider {
 		}
 		
 
+	}
+
+	@Override
+	public PersistStateResource getConfigState()  {
+		//TODO This is just temporary to satisfy the interface requirements for health check
+		if (ready())
+			return new PersistStateResource(smgr,smgr.getResourceTypeCnt(), smgr.getSchemaCnt());
+		return null;
 	}
 
 	@Override
