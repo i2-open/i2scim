@@ -39,6 +39,7 @@ import javax.annotation.PostConstruct;
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.inject.Alternative;
 import javax.inject.Named;
+import javax.inject.Singleton;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -49,8 +50,8 @@ import java.util.*;
  * @author pjdhunt
  *
  */
-@ApplicationScoped
 @Alternative
+@Singleton
 @Named("MemoryProvider")
 public class MemoryProvider implements IScimProvider {
 
