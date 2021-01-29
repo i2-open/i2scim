@@ -16,6 +16,7 @@
 package com.independentid.scim.test.backend;
 
 
+import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.backend.mongo.MongoProvider;
@@ -63,7 +64,7 @@ public class MongoConfigTest {
 
 		try {
 			provider = handler.getProvider();
-		} catch (InstantiationException | ClassNotFoundException e) {
+		} catch (InstantiationException | ClassNotFoundException | BackendException e) {
 			fail(e);
 		}
 		logger.info("==========   MongoConfig Tests ==========");

@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Priority;
+import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
@@ -51,7 +52,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 
-@Singleton
+@ApplicationScoped
 @Priority(10)
 public class MongoProvider implements IScimProvider {
 	private final static Logger logger = LoggerFactory
@@ -67,7 +68,8 @@ public class MongoProvider implements IScimProvider {
 	// private DB sDb = null;
 	private boolean ready = false;
 
-	ConfigMgr configMgr = null;
+	@Inject
+	ConfigMgr configMgr;
 
 	@Inject
 	SchemaManager schemaManager;
@@ -106,8 +108,8 @@ public class MongoProvider implements IScimProvider {
 	}
 
 	//@PostConstruct  We don't want auto start.  Backendhandler will do this.
-	public synchronized void init(ConfigMgr configMgr) {
-		this.configMgr = configMgr;
+	public synchronized void init() {
+		//this.configMgr = configMgr;
 		if (singleton == null)
 			singleton = this;
 		if (this.ready)

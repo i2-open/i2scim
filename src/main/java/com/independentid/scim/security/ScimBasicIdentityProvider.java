@@ -46,8 +46,6 @@ import org.slf4j.LoggerFactory;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.ws.rs.InternalServerErrorException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Iterator;
 
@@ -132,7 +130,7 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
         }
         if (!handler.isReady()) {
             try {
-                handler.init(cmgr);
+                handler.init();
             } catch (ClassNotFoundException | InstantiationException | BackendException e) {
                 return Uni.createFrom().failure(new InternalServerErrorException());
             }

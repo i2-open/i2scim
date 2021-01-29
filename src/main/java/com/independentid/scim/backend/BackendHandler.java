@@ -65,7 +65,6 @@ public class BackendHandler {
 	 * Causes the backend system to initialize by dynamically creating the configured provider as
 	 * specified in the property scim.provider.bean. Once created, the init(config) method of the
 	 * provider is called to initialize the provider.
-	 * @param config Provides the schema and resource definitions that a provider may need to start up.
 	 * @return true if provider is ready.
 	 * @throws ClassNotFoundException Thrown when the provider class (specified in scim.provider.bean property)
 	 * could not be loaded.
@@ -73,7 +72,7 @@ public class BackendHandler {
 	 * @throws BackendException An error thrown by the provider related to SCIM (e.g. parsing schema).
 	 */
 	@PostConstruct
-	public synchronized boolean init(ConfigMgr config)
+	public synchronized boolean init()
 			throws ClassNotFoundException, InstantiationException, BackendException {
 		if (provider == null) {
 			logger.info("=====BackendHandler initialization=====");
@@ -82,8 +81,7 @@ public class BackendHandler {
 			getProvider();
 		}
 
-		if (!provider.ready())
-			provider.init(config);
+
 
 		return provider.ready();
 
@@ -111,7 +109,7 @@ public class BackendHandler {
 		return self;
 	}*/
 
-	public synchronized IScimProvider getProvider() throws InstantiationException, ClassNotFoundException {
+	public synchronized IScimProvider getProvider() throws InstantiationException, ClassNotFoundException, BackendException {
 		if (provider != null)
 			return provider;
 		
@@ -122,14 +120,15 @@ public class BackendHandler {
 			providerName = providerName.substring(6);
 
 		provider = getProvider(providerName);
+		provider.init();
 
 		return provider;
 	}
 
 	public IScimProvider getProvider(String className) {
 		for (IScimProvider item : providers) {
-			//String cname = item.getClass().getName();
-			if (item.getClass().getName().equalsIgnoreCase(className))
+			String cname = item.getClass().toString();
+			if (cname.contains(className))
 				return item;
 		}
 		return null;

@@ -16,6 +16,7 @@
 package com.independentid.scim.test.http;
 
 
+import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.protocol.ScimParams;
@@ -69,9 +70,6 @@ public class ScimAttributeQualTest {
 	private final static Logger logger = LoggerFactory.getLogger(ScimAttributeQualTest.class);
 	
 	//private static String userSchemaId = "urn:ietf:params:scim:schemas:core:2.0:User";
-	@Inject
-	@Resource(name="ConfigMgr")
-	ConfigMgr cmgr ;
 
 	@Inject
 	@Resource(name="SchemaMgr")
@@ -117,7 +115,7 @@ public class ScimAttributeQualTest {
 		try {
 			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
 			loadTestUser();
-		} catch (IOException | InstantiationException | ClassNotFoundException e) {
+		} catch (IOException | InstantiationException | ClassNotFoundException | BackendException e) {
 			fail("Failed to initialize test Mongo DB: "+scimDbName);
 		}
 
@@ -140,6 +138,7 @@ public class ScimAttributeQualTest {
 
 		try {
 			File uFile = ConfigMgr.findClassLoaderResource(testUserFile1);
+			assert uFile != null;
 			InputStream userStream = new FileInputStream(uFile);
 
 			String req = TestUtils.mapPathToReqUrl(baseUrl, "/Users");

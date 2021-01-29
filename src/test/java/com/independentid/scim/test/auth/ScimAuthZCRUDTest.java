@@ -18,6 +18,7 @@ package com.independentid.scim.test.auth;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
@@ -139,7 +140,7 @@ public class ScimAuthZCRUDTest {
 		
 		try {
 			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-		} catch (IOException | InstantiationException | ClassNotFoundException e) {
+		} catch (IOException | InstantiationException | ClassNotFoundException | BackendException e) {
 			fail("Failed to initialize test Mongo DB: "+scimDbName);
 		}
 		

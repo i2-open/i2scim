@@ -17,6 +17,7 @@ package com.independentid.scim.test.http;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
@@ -112,6 +113,7 @@ public class ScimLoadParallelSampleTest {
         logger.debug("\t\tReading sample data from: "+dataSet);
         Instant start = Instant.now();
         File dataFile = ConfigMgr.findClassLoaderResource(dataSet);
+        assert dataFile != null;
         InputStream dataStream = new FileInputStream(dataFile);
         JsonNode dataNode = JsonUtil.getJsonTree(dataStream);
 
@@ -261,7 +263,7 @@ public class ScimLoadParallelSampleTest {
 
         try {
             handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-        } catch (IOException | InstantiationException | ClassNotFoundException e) {
+        } catch (IOException | InstantiationException | ClassNotFoundException | BackendException e) {
             fail("Failed to initialize test Mongo DB: "+scimDbName);
         }
         try {

@@ -16,6 +16,7 @@
 package com.independentid.scim.test.devops;
 
 
+import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.protocol.ScimParams;
@@ -127,7 +128,7 @@ public class ScimHealthTest {
 		
 		try {
 			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-		} catch (IOException | InstantiationException | ClassNotFoundException e) {
+		} catch (IOException | InstantiationException | ClassNotFoundException | BackendException e) {
 			fail("Failed to initialize test Mongo DB: "+scimDbName);
 		}
 		

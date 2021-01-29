@@ -235,12 +235,15 @@ public class ConfigMgr {
 		
 		self = this;
 
+		/*
 		if (!configOnly && !backendHandler.isReady())
 			try {
-				backendHandler.init(this);
+				backendHandler.init();
 			} catch (ClassNotFoundException | InstantiationException | BackendException e) {
 				throw new ScimException("Fatal error starting backend handler: "+e.getLocalizedMessage(),e);
 			}
+
+		 */
 		
 		//If the server will not persist its schema in the database, then load directly into config.
 

@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Priority;
+import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -50,7 +51,7 @@ import java.util.*;
  * @author pjdhunt
  *
  */
-@Singleton
+@ApplicationScoped
 @Priority(50)
 @Named("MemoryProvider")
 public class MemoryProvider implements IScimProvider {
@@ -64,8 +65,8 @@ public class MemoryProvider implements IScimProvider {
 	
 	private final HashMap<String,ScimResource> mainMap;
 
-
-	ConfigMgr configMgr = null;
+	@Inject
+	ConfigMgr configMgr;
 
 	@Inject
 	SchemaManager schemaManager;
@@ -227,8 +228,8 @@ public class MemoryProvider implements IScimProvider {
 	 */
 	@Override
 	//@PostConstruct  We do not want auto start..backendhandler will call this.
-	public void init(ConfigMgr configMgr) {
-		this.configMgr = configMgr;
+	public void init() {
+		//this.configMgr = configMgr;
 		if (singleton == null)
 			singleton = this;
 		//String file = cfg.getInitParameter(PARAM_PERSIST_FILE);

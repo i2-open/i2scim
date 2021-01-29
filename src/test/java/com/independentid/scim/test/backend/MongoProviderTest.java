@@ -16,6 +16,7 @@
 package com.independentid.scim.test.backend;
 
 
+import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.mongo.MongoProvider;
 import com.independentid.scim.core.ConfigMgr;
@@ -60,7 +61,7 @@ public class MongoProviderTest {
 	static MongoProvider mp = null;
 
 	@Test
-	public void a_mongoProviderTest() throws ScimException, IOException, SchemaException {
+	public void a_mongoProviderTest() throws ScimException, IOException {
 
 		logger.info("========== MongoProvider Basic Test ==========");
 		if (!cmgr.isReady()) {
@@ -69,7 +70,7 @@ public class MongoProviderTest {
 
 		try {
 			mp = (MongoProvider) handler.getProvider();
-		} catch (InstantiationException | ClassNotFoundException e) {
+		} catch (InstantiationException | ClassNotFoundException | BackendException e) {
 			fail("Exception occured getting MongoProvider: "+e.getLocalizedMessage());
 		}
 		//ConfigMgr mgr = (ConfigMgr) ctx.getBean("Configmgr");

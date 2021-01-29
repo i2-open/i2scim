@@ -16,7 +16,6 @@
 package com.independentid.scim.backend;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
@@ -105,9 +104,8 @@ public interface IScimProvider {
      * during init.
      * @throws BackendException May be thrown when the provider cannot be initialized or connection established. This
      *                          will cause the server to fail startup.
-     * @param configMgr A handle to the Configuration Manager. Note, this is passed at init to allow ConfigMgr to compete startup first.
      */
-    void init(ConfigMgr configMgr) throws BackendException;
+    void init() throws BackendException;
 
     /**
      * @return Returns true if the provider is fully initialized and ready.

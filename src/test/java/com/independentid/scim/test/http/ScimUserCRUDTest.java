@@ -18,6 +18,7 @@ package com.independentid.scim.test.http;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
@@ -125,7 +126,7 @@ public class ScimUserCRUDTest {
 		
 		try {
 			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-		} catch (IOException | InstantiationException | ClassNotFoundException e) {
+		} catch (IOException | InstantiationException | ClassNotFoundException | BackendException e) {
 			fail("Failed to initialize test Mongo DB: "+scimDbName);
 		}
 		
@@ -142,6 +143,7 @@ public class ScimUserCRUDTest {
 		try {
 			File user1File = ConfigMgr.findClassLoaderResource(testUserFile1);
 
+			assert user1File != null;
 			InputStream userStream = new FileInputStream(user1File);
 
 			URL rUrl = new URL(baseUrl,"/Users");
