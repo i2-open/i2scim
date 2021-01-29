@@ -25,19 +25,19 @@ import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.ListResponse;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
+import com.independentid.scim.resource.Meta;
 import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.resource.ScimResource;
-import com.independentid.scim.resource.Meta;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.inject.Alternative;
+import javax.annotation.Priority;
+import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 import java.io.File;
@@ -50,8 +50,8 @@ import java.util.*;
  * @author pjdhunt
  *
  */
-@Alternative
 @Singleton
+@Priority(50)
 @Named("MemoryProvider")
 public class MemoryProvider implements IScimProvider {
 
@@ -64,13 +64,16 @@ public class MemoryProvider implements IScimProvider {
 	
 	private final HashMap<String,ScimResource> mainMap;
 
-	static ConfigMgr config =  null;
-	SchemaManager smgr;
+
+	ConfigMgr configMgr = null;
+
+	@Inject
+	SchemaManager schemaManager;
 	
 	private boolean ready;
 	
-	//@ConfigProperty(name = "scim.memdao.memoryFile", defaultValue="scimdata.json")
-	String storeFile = System.getProperty(PARAM_PERSIST_FILE, DEFAULT_FILE);
+	@ConfigProperty(name =PARAM_PERSIST_FILE, defaultValue=DEFAULT_FILE)
+	String storeFile;
 	
 	/**
 	 * 
@@ -110,7 +113,7 @@ public class MemoryProvider implements IScimProvider {
 		//ServletContext sctx = ctx.getServletContext();
 						
 		String path = ctx.getResourceContainer();
-		ResourceType type = smgr.getResourceTypeByPath(path);
+		ResourceType type = schemaManager.getResourceTypeByPath(path);
 		if (type != null)
 			meta.setResourceType(type.getName());
 		
@@ -120,7 +123,7 @@ public class MemoryProvider implements IScimProvider {
 		
 		this.mainMap.put(res.getId(), res);
 		
-		ListResponse resp = new ListResponse(res,ctx, config);
+		ListResponse resp = new ListResponse(res,ctx, configMgr);
 		resp.setStatus(ScimResponse.ST_CREATED);
 		resp.setLocation(res.getMeta().getLocation());
 		if (logger.isDebugEnabled())
@@ -144,7 +147,7 @@ public class MemoryProvider implements IScimProvider {
 						"\nMatches:\t" + vals.size();
 				logger.debug(buf);
 			}
-			return new ListResponse(vals,ctx, config);
+			return new ListResponse(vals,ctx, configMgr);
 		}
 		ScimResource res = this.mainMap.get(id);
 		if (res == null) {
@@ -165,7 +168,7 @@ public class MemoryProvider implements IScimProvider {
 					"\nMatches:\t" + "1";
 			logger.debug(buf);
 		}
-		return new ListResponse(res,ctx, config);
+		return new ListResponse(res,ctx, configMgr);
 	}
 	
 	/* (non-Javadoc)
@@ -223,10 +226,9 @@ public class MemoryProvider implements IScimProvider {
 	 * @see com.independentid.scim.backend.PersistenceProvider#init(javax.servlet.ServletConfig)
 	 */
 	@Override
-	@PostConstruct
-	public void init(ConfigMgr cfg) {
-		config = cfg;
-		smgr = cfg.getSchemaManager();
+	//@PostConstruct  We do not want auto start..backendhandler will call this.
+	public void init(ConfigMgr configMgr) {
+		this.configMgr = configMgr;
 		if (singleton == null)
 			singleton = this;
 		//String file = cfg.getInitParameter(PARAM_PERSIST_FILE);
@@ -247,7 +249,7 @@ public class MemoryProvider implements IScimProvider {
 			for (JsonNode resNode : node) {
 				ScimResource res;
 				try {
-					res = new ScimResource(smgr, resNode, null, null);
+					res = new ScimResource(schemaManager, resNode, null, null);
 					this.mainMap.put(res.getId(), res);
 				} catch (ScimException | ParseException e) {
 					System.err.println("Error parsing SCIM resource");
@@ -316,7 +318,7 @@ public class MemoryProvider implements IScimProvider {
 	public PersistStateResource getConfigState()  {
 		//TODO This is just temporary to satisfy the interface requirements for health check
 		if (ready())
-			return new PersistStateResource(smgr,smgr.getResourceTypeCnt(), smgr.getSchemaCnt());
+			return new PersistStateResource(schemaManager, schemaManager.getResourceTypeCnt(), schemaManager.getSchemaCnt());
 		return null;
 	}
 

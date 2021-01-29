@@ -35,10 +35,12 @@ import com.mongodb.client.model.ReplaceOptions;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
+import javax.annotation.Priority;
+import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
 import java.security.MessageDigest;
@@ -50,6 +52,7 @@ import java.util.Date;
 import java.util.Iterator;
 
 @Singleton
+@Priority(10)
 public class MongoProvider implements IScimProvider {
 	private final static Logger logger = LoggerFactory
 			.getLogger(MongoProvider.class);
@@ -64,27 +67,29 @@ public class MongoProvider implements IScimProvider {
 	// private DB sDb = null;
 	private boolean ready = false;
 
-	ConfigMgr cfgMgr;
+	ConfigMgr configMgr = null;
 
-	SchemaManager smgr;
+	@Inject
+	SchemaManager schemaManager;
 
-	final String dbUrl = System.getProperty("scim.mongodb.uri", "mongodb://localhost:27017");
+	@ConfigProperty(name = "scim.mongodb.uri", defaultValue="mongodb://localhost:27017")
+	String dbUrl;
 
 	//@Value("${scim.mongodb.dbname: SCIM}")
-	//@ConfigProperty(name = "scim.mongodb.dbname", defaultValue="SCIM")
-	final String scimDbName = System.getProperty("scim.mongodb.dbname", "SCIM");
+	@ConfigProperty(name = "scim.mongodb.dbname", defaultValue="SCIM")
+	String scimDbName;
 	
 	//@Value("${scim.mongodb.indexes: User:userName,User:emails.value,Group:displayName}")
-	//@ConfigProperty(name = "scim.mongodb.indexes", defaultValue="User:userName,User:emails.value,Group:displayName")
-	final String[] indexes = System.getProperty("scim.mongodb.indexes", "User:userName,User:emails.value,Group:displayName").split(",");
+	@ConfigProperty(name = "scim.mongodb.indexes", defaultValue="User:userName,User:emails.value,Group:displayName")
+	String[] indexes;
 
 	/**
 	 *  When set true, causes the configuration stored to be erased
 	 *  to ensure full reset to configuration and test data.
 	 */
 	//@Value("${scim.mongodb.test: false}")
-	//@ConfigProperty(name = "scim.mongodb.test", defaultValue="false")
-	boolean resetDb = Boolean.parseBoolean(System.getProperty("scim.mongodb.test", "false"));
+	@ConfigProperty(name = "scim.mongodb.test", defaultValue="false")
+	boolean resetDb;
 	
 	private MongoDatabase scimDb = null;
 	
@@ -100,16 +105,16 @@ public class MongoProvider implements IScimProvider {
 		return singleton;
 	}
 
-	@PostConstruct
-	public synchronized void init(ConfigMgr cfg) {
-		cfgMgr = cfg;
-		smgr = cfg.getSchemaManager();
+	//@PostConstruct  We don't want auto start.  Backendhandler will do this.
+	public synchronized void init(ConfigMgr configMgr) {
+		this.configMgr = configMgr;
 		if (singleton == null)
 			singleton = this;
 		if (this.ready)
 			return; // only run once
 		// this.scfg = cfg;
 		logger.info("======Initializing SCIM MongoDB Provider======");
+
 		// Connect to the instance define by injected dbUrl value
 		if (mclient == null)
 			mclient = MongoClients.create(this.dbUrl);
@@ -124,16 +129,16 @@ public class MongoProvider implements IScimProvider {
 		
 		MongoIterable<String> colIter =  this.scimDb.listCollectionNames();
 		if (colIter.first() == null)
-			logger.info("Initializing new SCIM database.");
+			logger.info("/t** Initializing new SCIM database.**");
 		else {
 			try {
 				PersistStateResource cres = this.getConfigState();
 				if (cres == null) 
-					logger.warn("Missing configuration state resource. Recommend reseting database.");
+					logger.warn("/tMissing configuration state resource. Recommend reseting database.");
 				else {
-					logger.info("Restoring configuration data from "+cres.getLastSync());
-					logger.debug("  PState Resource Type Count: "+cres.getResTypeCnt());
-					logger.debug("  PState Schema Count:        "+cres.getSchemaCnt());
+					logger.info("\tRestoring configuration data from "+cres.getLastSync());
+					logger.debug("\t\tPState Resource Type Count: "+cres.getResTypeCnt());
+					logger.debug("\t\tPState Schema Count:        "+cres.getSchemaCnt());
 				}
 			} catch (ScimException | IOException | ParseException e) {
 				logger.error("Unexpected error processing Persisted State Resource: "+e.getLocalizedMessage(),e);
@@ -144,7 +149,7 @@ public class MongoProvider implements IScimProvider {
 		}
 		if (mclient != null) {
 			this.ready = true;
-			logger.info("================ SCIM Mongo Provider initialized ================");
+			logger.info("====== SCIM Mongo Provider initialized =======");
 		}
 	}
 	
@@ -204,7 +209,7 @@ public class MongoProvider implements IScimProvider {
 			return new ScimResponse(ScimResponse.ST_INTERNAL,e.getLocalizedMessage(),null);
 		}
 		ctx.setEncodeExtensions(false);
-		ResourceResponse resp = new ResourceResponse(res, ctx, cfgMgr);
+		ResourceResponse resp = new ResourceResponse(res, ctx, configMgr);
 		resp.setStatus(ScimResponse.ST_CREATED);
 		resp.setLocation(res.getMeta().getLocation());
 		resp.setETag(res.getMeta().getVersion());
@@ -258,7 +263,7 @@ public class MongoProvider implements IScimProvider {
 		
 		// meta.setVersion(etag);
 		ctx.setEncodeExtensions(false);
-		ResourceResponse resp = new ResourceResponse(replacementResource, ctx, cfgMgr);
+		ResourceResponse resp = new ResourceResponse(replacementResource, ctx, configMgr);
 		resp.setStatus(ScimResponse.ST_OK);
 		resp.setLocation(replacementResource.getMeta().getLocation());
 		resp.setETag(replacementResource.getMeta().getVersion());
@@ -286,7 +291,7 @@ public class MongoProvider implements IScimProvider {
 			String jsonstr = pdoc.toJson();
 			JsonNode jdoc = JsonUtil.getJsonTree(jsonstr);
 			
-			stateResource = new PersistStateResource(this.smgr,jdoc,null, PersistStateResource.RESTYPE_CONFIG);
+			stateResource = new PersistStateResource(this.schemaManager,jdoc,null, PersistStateResource.RESTYPE_CONFIG);
 		}
 		
 		return stateResource;
@@ -297,9 +302,9 @@ public class MongoProvider implements IScimProvider {
 	 * @param ctx The SCIM request context (includes HTTP Context). Defines the search filter (if any) along with other
 	 *            search parameters like attributes requested. Filter matching is done after the resource is located and
 	 *            converted.  Use get(ResourceCtx) to apply filter at the database level.
-	 * @return
-	 * @throws ScimException
-	 * @throws BackendException
+	 * @return The requested ScimResource or null if not matched
+	 * @throws ScimException thrown if a SCIM protocol mapping error occurs (e.g. mapping filter)
+	 * @throws BackendException thrown if a database exception occurs.
 	 */
 	@Override
 	public ScimResource getResource(RequestCtx ctx) throws ScimException,
@@ -334,7 +339,7 @@ public class MongoProvider implements IScimProvider {
 		//String json = JSON.serialize(res);
 		
 		try {
-			ScimResource sres = new MongoScimResource(smgr, res, type);
+			ScimResource sres = new MongoScimResource(schemaManager, res, type);
 			if (Filter.checkMatch(sres,ctx))
 				return sres;
 			return null;
@@ -365,13 +370,13 @@ public class MongoProvider implements IScimProvider {
 			
 			// if this is a get of a specific resource return the object
 			if (res != null && ctx.hasNoClientFilter())
-				return new ResourceResponse(res,ctx,cfgMgr);
+				return new ResourceResponse(res,ctx, configMgr);
 			
 			// if this is a filtered request, must return a list response per RFC7644 Sec 3.4.2
 			if (res != null)
-				return new ListResponse(res, ctx, cfgMgr);  // return the single item
+				return new ListResponse(res, ctx, configMgr);  // return the single item
 			else
-				return new ListResponse(ctx, cfgMgr);  // return an empty response
+				return new ListResponse(ctx, configMgr);  // return an empty response
 		}
 		
 		String type = ctx.getResourceContainer();
@@ -397,7 +402,7 @@ public class MongoProvider implements IScimProvider {
 		MongoCursor<Document> iter = fiter.iterator();
 		// If there are no results return empty set.
 		if (!iter.hasNext())
-			return new ListResponse(ctx, cfgMgr);
+			return new ListResponse(ctx, configMgr);
 
 		// Multi-object response.
 		ArrayList<ScimResource> vals = new ArrayList<>();
@@ -406,7 +411,7 @@ public class MongoProvider implements IScimProvider {
 			Document res = iter.next();
 
 			try {
-				ScimResource sres = new MongoScimResource(smgr, res, type);
+				ScimResource sres = new MongoScimResource(schemaManager, res, type);
 			
 				// if (Filter.checkMatch(sres, ctx))
 				vals.add(sres);
@@ -420,7 +425,7 @@ public class MongoProvider implements IScimProvider {
 								*/
 			}
 		}
-		return new ListResponse(vals, ctx, cfgMgr);
+		return new ListResponse(vals, ctx, configMgr);
 
 	}
 
@@ -618,7 +623,7 @@ public class MongoProvider implements IScimProvider {
 		//Initialize "id" index is not required as Mongo will auto index "_id" (which is mapped from id)
 
 
-		for (String index : this.indexes) {
+		for (String index : indexes) {
 			String schema = index.substring(0, index.indexOf(':'));
 			String attrName = index.substring(index.indexOf(':') + 1);
 
@@ -640,7 +645,7 @@ public class MongoProvider implements IScimProvider {
 
 
 			MongoCollection<Document> col = sDb.getCollection(dbName);
-			Attribute attr = smgr.findAttribute(index, null);
+			Attribute attr = schemaManager.findAttribute(index, null);
 			if (attr == null) {
 				logger.warn("Attribute configuration for " + attrName + " was not found. Ignoring index: " + index);
 				continue;
@@ -676,7 +681,7 @@ public class MongoProvider implements IScimProvider {
 		int scnt = schemaCol.size();
 		int rcnt = resTypeCol.size();
 			
-		PersistStateResource confState = new PersistStateResource(this.smgr,rcnt,scnt);
+		PersistStateResource confState = new PersistStateResource(this.schemaManager,rcnt,scnt);
 		
 		// Process the schemas
 		

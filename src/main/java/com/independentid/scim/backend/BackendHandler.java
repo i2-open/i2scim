@@ -29,15 +29,14 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.ManagedBean;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.ejb.Startup;
+import javax.enterprise.inject.Instance;
+import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
-import javax.ws.rs.Produces;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
 
 //@ApplicationScoped
@@ -54,6 +53,9 @@ public class BackendHandler {
 
 	@ConfigProperty(name = "scim.provider.bean", defaultValue="com.independentid.scim.backend.mongo.MongoProvider")
 	String providerName;
+
+	@Inject
+	Instance<IScimProvider> providers;
 	
 	public BackendHandler() {
 		// Can't do anything here that involves injected properties etc!
@@ -109,7 +111,6 @@ public class BackendHandler {
 		return self;
 	}*/
 
-	@Produces
 	public synchronized IScimProvider getProvider() throws InstantiationException, ClassNotFoundException {
 		if (provider != null)
 			return provider;
@@ -120,14 +121,18 @@ public class BackendHandler {
 		if (providerName.startsWith("class"))
 			providerName = providerName.substring(6);
 
-		Class<?> provClass = Class.forName(providerName);
-		try {
-			provider = (IScimProvider) provClass.getDeclaredConstructor().newInstance();
-		} catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-			throw new InstantiationException("Unable to instantiate, IScimProvider bean class "+providerName+ ": "+e.getLocalizedMessage());
-		}
+		provider = getProvider(providerName);
 
 		return provider;
+	}
+
+	public IScimProvider getProvider(String className) {
+		for (IScimProvider item : providers) {
+			//String cname = item.getClass().getName();
+			if (item.getClass().getName().equalsIgnoreCase(className))
+				return item;
+		}
+		return null;
 	}
 	
 	public boolean isReady() {

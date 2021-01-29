@@ -116,7 +116,7 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
 
     @Counted(name = "scim.auth.internal.count",description = "Number of times intenral users have been authenticated.")
     @Timed(name="scim.auth.internal.timer",description = "Measures internal(users in SCIM) SCIM user authentication rates")
-    private Uni<SecurityIdentity> doInternalAuthentication(String user, PasswordCredential cred) {
+    Uni<SecurityIdentity> doInternalAuthentication(String user, PasswordCredential cred) {
         String pwd = new String(cred.getPassword());
         if (pwd.contains("\"")) // check for embedded quotes for injection attack
             return Uni.createFrom().failure(new AuthenticationFailedException("Invalid password detected"));

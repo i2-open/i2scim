@@ -101,13 +101,13 @@ public interface IScimProvider {
 
     /**
      * Called to request the provider initialize itself and complete startup. Upon successful startup, the ready()
-     * method should return true;
-     * @param cfg The <ConfigMgr> instance that is used to inform the provider about SCIM Schema Configuration and
-     *            Resource Types.
+     * method should return true. Providers should avoid doing substantial work during construction and should do all work
+     * during init.
      * @throws BackendException May be thrown when the provider cannot be initialized or connection established. This
      *                          will cause the server to fail startup.
+     * @param configMgr A handle to the Configuration Manager. Note, this is passed at init to allow ConfigMgr to compete startup first.
      */
-    void init(ConfigMgr cfg) throws BackendException;
+    void init(ConfigMgr configMgr) throws BackendException;
 
     /**
      * @return Returns true if the provider is fully initialized and ready.
