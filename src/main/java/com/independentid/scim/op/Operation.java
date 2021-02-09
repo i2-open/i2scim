@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.RecursiveAction;
 
 /**
@@ -150,8 +151,11 @@ public class Operation extends RecursiveAction {
      * This method is used to parse SCIM command from the URL component, (as apposed to {@link #parseRequestBody()}.
      */
     protected void parseRequestUrl() {
+
         try {
             // CHeck if RequestCtx is already defined
+            if (req == null)
+                return;  // Ctx was provided via constructor!
             this.ctx = (RequestCtx) req.getAttribute(RequestCtx.REQUEST_ATTRIBUTE);
             if (this.ctx == null)  // If RequestCtx wasn't created by the filter, do it now
                 this.ctx = new RequestCtx(req, resp, schemaManager);
@@ -162,8 +166,8 @@ public class Operation extends RecursiveAction {
         if (this.opState != OpState.invalid &&
                 ctx.getResourceContainer() == null)
             ctx.setResourceContainer("/");
-        req.setAttribute(SCIM_OP_ATTR, this);
 
+        req.setAttribute(SCIM_OP_ATTR, this);
     }
 
     /**

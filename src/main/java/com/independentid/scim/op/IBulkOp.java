@@ -14,6 +14,7 @@
  */
 package com.independentid.scim.op;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.err.ScimException;
 
 import java.util.List;
@@ -37,5 +38,13 @@ public interface IBulkOp {
 	boolean isChildOperation(Operation op) throws ScimException;
 
 	BulkOps getParentBulkRequest();
+
+	/**
+	 * Generates a bulk request "operation" for the operation performed. Used to propagate replication ops. Note
+	 * that for request, the post-add result is sent to capture generated "id".
+	 * @return A JsonNode representation of operation in Bulk "Operation" format as described in RFC7644 Sec 3.7. If the
+	 * operation did not complete normally, the request returns NULL (because the operation was not processed).
+	 */
+	JsonNode getJsonReplicaOp();
 	
 }

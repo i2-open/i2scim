@@ -15,11 +15,13 @@
 package com.independentid.scim.op;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.core.err.InternalException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.ResourceType;
+import com.independentid.scim.serializer.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,6 +97,22 @@ public class DeleteOp extends Operation implements IBulkOp {
     protected void parseJson(JsonNode node) {
         // nothing needed to be done.
 
+    }
+
+    @Override
+    public JsonNode getJsonReplicaOp() {
+        if (this.isCompletedNormally()) {
+            ObjectNode node = JsonUtil.getMapper().createObjectNode();
+            node.put(BulkOps.PARAM_METHOD, Bulk_Method_POST);
+            node.put(BulkOps.PARAM_PATH, ctx.getPath());
+            OpStat stats = getStats();
+            node.put(BulkOps.PARAM_SEQNUM,stats.executionNum);
+            node.put(BulkOps.PARAM_ACCEPTDATE,stats.getFinishDate());
+            if (ctx != null)
+                node.put(BulkOps.PARAM_TRANID, ctx.getTranId());
+            return node;
+        }
+        return null;
     }
 
 }

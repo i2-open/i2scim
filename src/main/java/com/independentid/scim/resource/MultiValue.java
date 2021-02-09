@@ -81,6 +81,10 @@ public class MultiValue extends Value {
 
 	}
 
+	public int size() {
+		return this.values.size();
+	}
+
 	@Override
 	public JsonNode toJsonNode(ObjectNode parent, String aname) {
 		if (parent == null)

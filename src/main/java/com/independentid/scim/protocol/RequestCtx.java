@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.err.InvalidSyntaxException;
 import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.op.BulkOps;
 import com.independentid.scim.op.Operation;
 import com.independentid.scim.security.AccessControl;
 import com.independentid.scim.schema.Attribute;
@@ -110,6 +111,8 @@ public class RequestCtx {
 
 	private boolean postSearch = false;
 
+	protected String tid = UUID.randomUUID().toString();
+
 	/**
 	 * Used to create a request context that exists within a single SCIM Bulk operation
 	 * @param bulkReqOp A parsed JSON structure representing a single SCIM bulk operation
@@ -126,7 +129,7 @@ public class RequestCtx {
 		this.sctx = null;
 	
 
-		JsonNode item = bulkReqOp.get("method");
+		JsonNode item = bulkReqOp.get(BulkOps.PARAM_METHOD);
 		if (item == null)
 			throw new InvalidValueException(
 					"Bulk request operation missing required attribute 'method'.");
@@ -142,10 +145,10 @@ public class RequestCtx {
 					"Unsupported bulk method specified: " + this.bulkMethod);
 		}
 
-		item = bulkReqOp.get("bulkId");
+		item = bulkReqOp.get(BulkOps.PARAM_BULKID);
 		this.bulkId = (item == null) ? null : item.asText();
 
-		item = bulkReqOp.get("version");
+		item = bulkReqOp.get(BulkOps.PARAM_VERSION);
 		this.etag = (item == null) ? null : item.asText();
 
 		
@@ -153,7 +156,7 @@ public class RequestCtx {
 		//this.req = req;
 		
 		
-		item = bulkReqOp.get("path");
+		item = bulkReqOp.get(BulkOps.PARAM_PATH);
 		if (item == null)
 			throw new SchemaException(
 					"Bulk request operation missing required attribute 'path'.");
@@ -849,5 +852,18 @@ public class RequestCtx {
 
 	public void setRight(AccessControl.Rights right) {
 		this.right = right;
+	}
+
+	public String getTranId() {
+		return this.tid;
+	}
+
+	/**
+	 * Used to override the transaction identifier. Typically used when executing a replication transaction and the
+	 * original TID is to be maintained
+	 * @param tranUuid The transaction id (a UUID) to be set.
+	 */
+	public void setTranId(String tranUuid) {
+		this.tid = tranUuid;
 	}
 }

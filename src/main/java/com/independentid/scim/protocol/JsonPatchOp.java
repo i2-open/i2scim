@@ -16,48 +16,61 @@
 package com.independentid.scim.protocol;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
 
 public class JsonPatchOp {
 
-	public final static String OP_ADD = "add";
-	public final static String OP_REMOVE = "remove";
-	public final static String OP_REPLACE = "replace";
-	
+	public final static String OP_ACTION_ADD = "add";
+	public final static String OP_ACTION_REMOVE = "remove";
+	public final static String OP_ACTION_REPLACE = "replace";
+	public static final String OP_ACTION = "op";
+	public static final String OP_VALUE = "value";
+	public static final String OP_PATH = "path";
+
 	public String path;
 	public String op;
 	public JsonNode value;
 	
 	
 	public JsonPatchOp(RequestCtx ctx, JsonNode node) throws SchemaException {
-		JsonNode onode = node.get("op");
+		JsonNode onode = node.get(OP_ACTION);
 		if (onode == null)
 			throw new SchemaException("Missing attribute 'op' defining the SCIM patch operation type.");
 		
 		String type = onode.asText();
 		switch (type) {
-		case OP_ADD:
-		case OP_REMOVE:
-		case OP_REPLACE:
+		case OP_ACTION_ADD:
+		case OP_ACTION_REMOVE:
+		case OP_ACTION_REPLACE:
 			op =type;
 			break;
 		default:
-			op = "error";
-			
-		}
-		if (op.equals("error"))
 			throw new SchemaException("Invalid SCIM Patch operation value for 'op'. Found: "+type);
+		}
+
 		
-		JsonNode pnode = node.get("path");
+		JsonNode pnode = node.get(OP_PATH);
 		if (pnode == null)
-			this.path = null;
+			path = null;
 		else
-			this.path = pnode.asText();
+			path = pnode.asText();
 		
-		if (this.path == null && this.op.equals("remove"))
+		if (path == null && op.equals(OP_ACTION_REMOVE))
 			throw new SchemaException("Missing path value for a SCIM Patch 'remove' operation.");
 		
-		this.value = node.get("value");
+		this.value = node.get(OP_VALUE);
+	}
+
+	public JsonNode toJsonNode() {
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+		node.put(OP_ACTION,op);
+		if (path != null)
+			node.put(OP_PATH,path);
+		if (value != null)
+			node.set(OP_VALUE,value);
+		return node;
 	}
 
 }

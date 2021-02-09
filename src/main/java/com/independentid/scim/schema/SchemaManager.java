@@ -32,7 +32,6 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import javax.ejb.Startup;
-import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -58,6 +57,8 @@ public class SchemaManager {
     @Resource(name="BackendHandler")
     BackendHandler backendHandler;
 
+    public final static String SCIM_CORE_SCHEMAID = "urn:ietf:params:scim:schemas:core:2.0:Common";
+
     public final static List<String> SCIM_CORE_ATTRS = Arrays.asList(
             "id", "externalid", "schemas", "meta");
 
@@ -69,9 +70,6 @@ public class SchemaManager {
 
     @ConfigProperty(name = "scim.coreSchema.path", defaultValue = "classpath:/schema/scimCommonSchema.json")
     String coreSchemaPath;
-
-    @ConfigProperty(name = "scim.json.pretty", defaultValue = "false")
-    boolean jsonPretty;
 
     @ConfigProperty(name = "scim.persist.schema", defaultValue = "true")
     boolean persistSchema;
@@ -95,8 +93,8 @@ public class SchemaManager {
     /**
      * During initial startup, the default Schema and ResourceTypes are loaded into the server. Once the rest of the
      * server is started, ConfigMgr may check the backend provider to see if there is persisted schema available.
-     * @throws ScimException
-     * @throws IOException
+     * @throws ScimException due to invalid data in schema config
+     * @throws IOException due to problems accessing files
      */
     @PostConstruct
     public void init() throws ScimException, IOException {
@@ -224,8 +222,7 @@ public class SchemaManager {
                 try {
                     schema = new Schema(schemaNode);
                     addSchema(schema);
-                    //logger.debug("  Schema loaded>"+schema.getId());
-                    //System.out.println("Debug: Schema loaded>"+schema.getId());
+
                 } catch (SchemaException e) {
                     logger.warn("SchemaException while parsing schema config.", e);
                 }
@@ -239,6 +236,8 @@ public class SchemaManager {
         // TODO Handle invalid node on schema parsing
         logger.error("Unexpected JsonNode while parsing schema: " + node.toString());
     }
+
+
 
     public void addSchema(Schema schemaDef) {
         String id = schemaDef.getId();
@@ -285,10 +284,7 @@ public class SchemaManager {
     public String serializeSchema(RequestCtx ctx, Writer writer) throws IOException {
 
         Writer swriter;
-        if (writer == null)
-            swriter = new StringWriter();
-        else
-            swriter = writer;
+        swriter = (writer != null)?writer : new StringWriter();
 
         JsonGenerator gen = JsonUtil.getGenerator(swriter, false);
 
@@ -409,11 +405,7 @@ public class SchemaManager {
      */
     public String serializeResourceTypes(RequestCtx ctx, Writer writer) throws IOException {
 
-        Writer swriter;
-        if (writer == null)
-            swriter = new StringWriter();
-        else
-            swriter = writer;
+        Writer swriter = (writer != null)? writer : new StringWriter();
 
         JsonGenerator gen = JsonUtil.getGenerator(swriter, false);
 
@@ -471,13 +463,13 @@ public class SchemaManager {
             //check the resource type endpoint for core schema and extensions
             ResourceType type = getResourceTypeByPath(ctx.getResourceContainer());
             if (type != null) {
-                Schema core = this.getSchemaById(type.getSchema());
+                Schema core = getSchemaById(type.getSchema());
                 attr = core.getAttribute(name);
                 if (attr != null) return attr;
 
                 String[] exts = type.getSchemaExtension();
                 for (String s : exts) {
-                    Schema ext = this.getSchemaById(s);
+                    Schema ext = getSchemaById(s);
                     if (ext != null) {
                         attr = ext.getAttribute(name);
                         if (attr != null) {
@@ -601,7 +593,7 @@ public class SchemaManager {
      * @param id May be the schema id value or the schema name to locate the corresponding <code>Schema<code> object
      * @return The <code>Schema</code> object that corresponds to the schema urn provided
      */
-    public Schema getSchemaById(String id) {
+    public static Schema getSchemaById(String id) {
         return schIdMap.get(id);
     }
 

@@ -88,7 +88,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 	protected ScimResource(SchemaManager smgr) {
 		this.smgr = smgr;
-		commonSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
+		commonSchema = SchemaManager.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
 		this.coreAttrVals = new LinkedHashMap<>();
 		this.extAttrVals = new LinkedHashMap<>();
 		this.idResolver = null;
@@ -113,7 +113,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 		this.coreAttrVals = new LinkedHashMap<>();
 		this.extAttrVals = new LinkedHashMap<>();
-		commonSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
+		commonSchema = SchemaManager.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
 		setResourceType(container);
 		this.idResolver = bulkIdResolver;
 		parseJson(resourceNode);
@@ -139,7 +139,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	public void setResourceType(String container) {
 		this.type = smgr.getResourceTypeByPath(container);
 		if (this.type != null)
-			this.coreSchema = smgr.getSchemaById(this.type.getSchema());
+			this.coreSchema = SchemaManager.getSchemaById(this.type.getSchema());
 	
 	}
 	
@@ -239,7 +239,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		}
 		
 		// The attribute is an extension attribute
-		Schema eschema = smgr.getSchemaById(attr.getSchema());
+		Schema eschema = SchemaManager.getSchemaById(attr.getSchema());
 		if (!eschema.getId().equalsIgnoreCase(this.coreSchema.getId())) {
 			ExtensionValues map = this.extAttrVals.get(eschema.getId());
 			if (map == null) {
@@ -296,7 +296,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		}
 		
 		// The attribute is an extension attribute
-		Schema eSchema = smgr.getSchemaById(attr.getSchema());
+		Schema eSchema = SchemaManager.getSchemaById(attr.getSchema());
 		ExtensionValues map = this.extAttrVals.get(eSchema.getId());
 		//refval1 = map.getAttribute(rootAttribute.getName());
 		if (map == null)
@@ -338,7 +338,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	
 	public void parseJson(JsonNode node) throws ParseException, ScimException {
 
-		JsonNode snode = node.get("schemas");
+		JsonNode snode = node.get(ScimParams.ATTR_SCHEMAS);
 		if (snode == null) throw new SchemaException("Schemas attribute missing");
 		else {
 			Iterator<JsonNode> iter = snode.elements();
@@ -350,20 +350,20 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 		}
 
-		JsonNode item = node.get("id");
+		JsonNode item = node.get(ScimParams.ATTR_ID);
 		if (item != null)
 			this.id = item.asText();
 
-		JsonNode metaNode = node.get("meta");
+		JsonNode metaNode = node.get(ScimParams.ATTR_META);
 		//Note: a SCIM schema or ResourceType might not have a meta
-		Attribute mattr = commonSchema.getAttribute("meta");
+		Attribute mattr = commonSchema.getAttribute(ScimParams.ATTR_META);
 		attrsInUse.add(mattr);
 		if (metaNode != null) {
 			this.meta = new Meta(mattr, metaNode);
 
 			if (this.type == null) {
 				this.type = smgr.getResourceType(this.meta.getResourceType());
-				this.coreSchema = smgr.getSchemaById(this.type.getSchema());
+				this.coreSchema = SchemaManager.getSchemaById(this.type.getSchema());
 			}
 		} else
 			this.meta = new Meta();
@@ -374,9 +374,9 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		// TODO Write validate method to check schemas attr against resource
 		// endpoint
 		
-		item = node.get("externalId");
+		item = node.get(ScimParams.ATTR_EXTID);
 		if (item != null) {
-			Attribute attr = commonSchema.getAttribute("externalid");
+			Attribute attr = commonSchema.getAttribute(ScimParams.ATTR_EXTID);
 			attrsInUse.add(attr);
 			this.externalId = item.asText();
 		}
@@ -433,7 +433,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	
 	protected void processExtension(ResourceType type, String extensionId,JsonNode parent) throws SchemaException, ParseException, ConflictException {
 		
-		Schema eSchema = smgr.getSchemaById(extensionId);
+		Schema eSchema = SchemaManager.getSchemaById(extensionId);
 		if (eSchema == null)
 			return;  //ignore, unsupported core attribute or schema
 		String sname = eSchema.getName();
@@ -792,19 +792,19 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			// Is this a resource level patch?
 			if (op.path == null || op.path.equals("")) {
 				performResourcePatch(op,ctx);
-				return;
+				continue;
 			}
 			JsonPath jpath = new JsonPath(this,op,ctx);
 			
 			// Is this a multi-value patch?
 			if (jpath.isMultiValue()) {
 				performMultiValOp(op,jpath,ctx);
-				return;
+				continue;
 			}
 			// Now we have simple attribute manipulation
 			Attribute tattr = jpath.getTargetAttribute();
 			switch (op.op){
-			case JsonPatchOp.OP_ADD:
+			case JsonPatchOp.OP_ACTION_ADD:
 				try {
 					Value val = ValueUtil.parseJson(tattr, op.value, null);
 					this.addValue(tattr, val);
@@ -812,11 +812,11 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 					throw new InvalidValueException("JSON parsing error parsing value parameter.",e);
 				}
 				break;
-			case JsonPatchOp.OP_REMOVE:
+			case JsonPatchOp.OP_ACTION_REMOVE:
 				// TODO should we test for a specific value to remove???
 				this.removeValue(tattr);
 				break;
-			case JsonPatchOp.OP_REPLACE:
+			case JsonPatchOp.OP_ACTION_REPLACE:
 				Value val;
 				try {
 					val = ValueUtil.parseJson(tattr, op.value, null);
@@ -843,7 +843,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			throw new NoTargetException("No match found for the path filter.");
 			
 				switch (op.op){
-				case JsonPatchOp.OP_ADD:
+				case JsonPatchOp.OP_ACTION_ADD:
 					if (path.hasSubAttr() && !op.value.isObject()) {
 						if (val instanceof ComplexValue) {
 							ComplexValue cval = (ComplexValue) val;
@@ -895,7 +895,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 						}
 					}
 					break;
-				case JsonPatchOp.OP_REMOVE:
+				case JsonPatchOp.OP_ACTION_REMOVE:
 					if (path.hasSubAttr()) {
 						if (val instanceof ComplexValue) {
 							ComplexValue cval = (ComplexValue) val;
@@ -912,7 +912,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 					
 					break;
 					
-				case JsonPatchOp.OP_REPLACE:
+				case JsonPatchOp.OP_ACTION_REPLACE:
 					if (path.hasSubAttr() && !op.value.isObject()) {
 						if (val instanceof ComplexValue) {
 							ComplexValue cval = (ComplexValue) val;
@@ -959,11 +959,11 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	
 	private void performResourcePatch(JsonPatchOp op, RequestCtx ctx) throws ScimException {
 		ScimResource target = this;
-		if (op.op.equalsIgnoreCase(JsonPatchOp.OP_ADD)
-				|| op.op.equalsIgnoreCase(JsonPatchOp.OP_REPLACE)) {
+		if (op.op.equalsIgnoreCase(JsonPatchOp.OP_ACTION_ADD)
+				|| op.op.equalsIgnoreCase(JsonPatchOp.OP_ACTION_REPLACE)) {
 			try {
 				target.parseAttributes(op.value,
-						(op.op.equalsIgnoreCase(JsonPatchOp.OP_REPLACE)), false);
+						(op.op.equalsIgnoreCase(JsonPatchOp.OP_ACTION_REPLACE)), false);
 				return;
 			} catch (SchemaException | ParseException e) {
 				throw new InvalidSyntaxException("Unable to parse value.", e);

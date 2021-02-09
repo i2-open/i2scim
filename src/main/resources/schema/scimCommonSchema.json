@@ -34,6 +34,36 @@
       "mutability": "readOnly",
       "subAttributes": [
         {
+          "name": "revisions",
+          "type": "complex",
+          "multiValued": true,
+          "description": "Resource revision history",
+          "required": false,
+          "returned": "request",
+          "mutability": "readOnly",
+          "subAttributes": [
+            {
+              "name": "date",
+              "type": "dateTime",
+              "multiValued": false,
+              "description": "The date of the modification",
+              "required": true,
+              "returned": "default",
+              "mutability": "readOnly"
+            },
+            {
+              "name": "value",
+              "type": "string",
+              "multiValued": false,
+              "description": "a unique transaction identifier",
+              "required": true,
+              "returned": "default",
+              "mutability": "readOnly",
+              "caseExact": true
+            }
+          ]
+        },
+        {
           "name": "acis",
           "type": "complex",
           "multiValued": true,

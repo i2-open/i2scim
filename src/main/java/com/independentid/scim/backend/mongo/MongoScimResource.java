@@ -17,11 +17,8 @@ package com.independentid.scim.backend.mongo;
 
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.resource.ExtensionValues;
-import com.independentid.scim.resource.ScimResource;
-import com.independentid.scim.resource.Value;
+import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.resource.Meta;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
@@ -90,16 +87,18 @@ public class MongoScimResource extends ScimResource {
 		Document mdoc = doc.get("meta", Document.class);
 		if (mdoc != null) {
 			this.meta = new Meta();
-			this.meta.setCreatedDate(mdoc.getDate("created"));
-			this.meta.setLastModifiedDate(mdoc.getDate("lastModified"));
-			this.meta.setResourceType(mdoc.getString("resourceType"));
-			this.meta.setLocation(mdoc.getString("location"));
+			this.meta.setCreatedDate(mdoc.getDate(Meta.META_CREATED));
+			this.meta.setLastModifiedDate(mdoc.getDate(Meta.META_LAST_MODIFIED));
+			this.meta.setResourceType(mdoc.getString(Meta.META_RESOURCE_TYPE));
+			this.meta.setLocation(mdoc.getString(Meta.META_LOCATION));
 			try {
-				this.meta.setVersion(mdoc.getString("version"));
+				this.meta.setVersion(mdoc.getString(Meta.META_VERSION));
 			} catch (Exception e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			Attribute rev = commonSchema.getAttribute(Meta.META).getSubAttribute(Meta.META_REVISIONS);
+			this.meta.setRevisions((MultiValue) MongoMapUtil.mapBsonDocument(rev, mdoc));
 		}
 		
 		parseAttributes(doc);
@@ -123,7 +122,7 @@ public class MongoScimResource extends ScimResource {
 		
 		String[] eids = type.getSchemaExtension();
 		for (String eid : eids) {
-			Schema schema = smgr.getSchemaById(eid);
+			Schema schema = SchemaManager.getSchemaById(eid);
 			ExtensionValues val = MongoMapUtil.mapBsonExtension(schema, doc);
 			if (val != null) {
 				this.extAttrVals.put(eid, val);

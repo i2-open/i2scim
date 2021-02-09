@@ -167,6 +167,7 @@ public class MongoProvider implements IScimProvider {
 		if (meta.getCreatedDate() == null) // only set the created date if it does not already exist.
 			meta.setCreatedDate(created);
 		meta.setLastModifiedDate(created); // always set the modify date upon create.
+		meta.addRevision(ctx);
 		meta.setLocation('/' + type + '/' + res.getId());
 		
 		String etag = res.calcVersionHash();
@@ -238,6 +239,7 @@ public class MongoProvider implements IScimProvider {
 		Meta meta = replacementResource.getMeta();
 		Date modDate = new Date();
 		meta.setLastModifiedDate(modDate);
+		meta.addRevision(ctx);
 		// res.setId(id);
 		//meta.setLocation(null);
 		String etag = replacementResource.calcVersionHash();
@@ -448,6 +450,7 @@ public class MongoProvider implements IScimProvider {
 		ctx.setEncodeExtensions(true);
 		MongoScimResource mres = (MongoScimResource) getResource(ctx);
 		mres.modifyResource(req, ctx);
+		// Modify resource will update the meta.revision
 		return this.putResource(mres, ctx);
 	}
 

@@ -15,6 +15,7 @@
 package com.independentid.scim.op;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.core.err.InternalException;
 import com.independentid.scim.core.err.InvalidSyntaxException;
@@ -23,6 +24,7 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.ResourceType;
+import com.independentid.scim.serializer.JsonUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -131,6 +133,24 @@ public class PutOp extends Operation implements IBulkOp {
                             + this.ctx.getPath() + "] " + e.getMessage(), e);
             setCompletionError(se);
         }
+    }
+
+    @Override
+    public JsonNode getJsonReplicaOp() {
+        if (isCompletedNormally()) {
+            ObjectNode node = JsonUtil.getMapper().createObjectNode();
+            node.put(BulkOps.PARAM_METHOD,Bulk_Method_PUT);
+            node.put(BulkOps.PARAM_PATH,ctx.getPath());
+            node.set(BulkOps.PARAM_DATA,newResource.toJsonNode(ctx));
+
+            OpStat stats = getStats();
+            node.put(BulkOps.PARAM_SEQNUM,stats.executionNum);
+            node.put(BulkOps.PARAM_ACCEPTDATE,stats.getFinishDate());
+            if (ctx != null)
+                node.put(BulkOps.PARAM_TRANID, ctx.getTranId());
+            return node;
+        }
+        return null;
     }
 
 }

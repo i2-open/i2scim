@@ -65,5 +65,12 @@ public class ScimParams {
 	public final static String PATH_BULK = "/Bulk";
 	
 	public final static String SCIM_MIME_TYPE = "application/scim+json";
-	
+
+	public static final String ATTR_SCHEMAS = "schemas";
+	public static final String ATTR_ID = "id";
+	public static final String ATTR_META = "meta";
+	public static final String ATTR_EXTID = "externalId";
+	public static final String ATTR_PATCH_OPS = "Operations";
+
+
 }

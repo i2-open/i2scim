@@ -16,8 +16,11 @@
 package com.independentid.scim.protocol;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -49,7 +52,7 @@ public class JsonPatchRequest {
 	}
 	
 	public void parseJson(JsonNode node) throws SchemaException {
-		JsonNode snode = node.get("schemas");
+		JsonNode snode = node.get(ScimParams.ATTR_SCHEMAS);
 		if (snode == null) throw new SchemaException("JSON is missing 'schemas' attribute.");
 		
 		boolean invalidSchema = true;
@@ -67,7 +70,7 @@ public class JsonPatchRequest {
 		if (invalidSchema)
 			throw new SchemaException("Expecting JSON with schemas attribute with value of: "+ScimParams.SCHEMA_API_PatchOp);
 		
-		JsonNode opsnode = node.get("Operations");
+		JsonNode opsnode = node.get(ScimParams.ATTR_PATCH_OPS);
 		if (opsnode == null)
 			throw new SchemaException("Missing 'Operations' attribute array.");
 		
@@ -105,6 +108,16 @@ public class JsonPatchRequest {
 			if (iter.hasNext()) buf.append(",\n");
 		}
 		return buf.toString();
+	}
+
+	public JsonNode toJsonNode() {
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+		ArrayNode anode = node.putArray(ScimParams.ATTR_SCHEMAS);
+		anode.add(ScimParams.SCHEMA_API_PatchOp);
+		ArrayNode opsNode = node.putArray(ScimParams.ATTR_PATCH_OPS);
+		for(JsonPatchOp op : ops)
+			opsNode.add(op.toJsonNode());
+		return node;
 	}
 
 }
