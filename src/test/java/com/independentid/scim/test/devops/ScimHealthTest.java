@@ -59,7 +59,7 @@ import static org.assertj.core.api.Assertions.fail;
 
 
 @QuarkusTest
-@TestProfile(ScimAuthTestProfile.class)
+@TestProfile(ScimDevOpsTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
 public class ScimHealthTest {
 	
