@@ -56,9 +56,6 @@ public class Meta extends ComplexValue implements ScimSerializer {
 	public static final String META_ACIS = "acis";
 	public static final String META_REVISIONS = "revisions";
 
-	final Attribute revAttr = SchemaManager.getSchemaById(SchemaManager.SCIM_CORE_SCHEMAID).getAttribute(META_REVISIONS);
-	final Attribute aciAttr = SchemaManager.getSchemaById(SchemaManager.SCIM_CORE_SCHEMAID).getAttribute("acis");
-
 	private String location = null;
 	
     private String resourceType = null;
@@ -74,15 +71,18 @@ public class Meta extends ComplexValue implements ScimSerializer {
 
     public final static DateFormat ScimDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
-	public Meta () {
+    public Meta() {}
+
+	public Meta(SchemaManager schemaManager) {
 		this.created = new Date();
 		this.lastModified = this.created;
+		this.attr = schemaManager.getSchemaById(SchemaManager.SCIM_CORE_SCHEMAID).getAttribute(META);
+
 	}	
 	
-	public Meta(Attribute attribute, JsonNode node) throws SchemaException {
-		this.attr = attribute;  // This is always the common attribute Meta
+	public Meta(Attribute metaAttr, JsonNode node) throws SchemaException {
+		this.attr = metaAttr;  // This is always the common attribute Meta
 		this.parseJson(node);
-		
 	}
             
     public String getLocation() {
@@ -193,9 +193,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 
 	public Value getValue(String subattrname) {
 			Attribute sattr = attr.getSubAttribute(subattrname);
-
 			return getValue(sattr);
-
 	}
 
 	public Value getValue(Attribute attr) {
@@ -232,10 +230,19 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		return null;
 	}
 
+	private void checkAttr(RequestCtx ctx) {
+    	if (this.attr == null) {
+			this.attr = ctx.getSchemaMgr().getSchemaById(SchemaManager.SCIM_CORE_SCHEMAID).getAttribute(META);
+			if (logger.isDebugEnabled())
+				logger.debug("Lazy load of Meta Attribute definition *******");
+		}
+	}
+
 	public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException {
-				
+    	checkAttr(ctx);
+
 		gen.writeStartObject();
-		
+
 		if (this.created != null
 				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_CREATED),ctx)) {
 			gen.writeStringField(META_CREATED, getCreated());
@@ -249,6 +256,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 				&& this.revisions.size() > 0
 				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_REVISIONS),ctx)) {
 			try {
+				gen.writeFieldName(META_REVISIONS);
 				this.revisions.serialize(gen,ctx);
 			} catch (ScimException e) {
 				e.printStackTrace();
@@ -299,8 +307,6 @@ public class Meta extends ComplexValue implements ScimSerializer {
 			}
 
 		}
-
-
 		gen.writeEndObject();
 	}
 
@@ -320,7 +326,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 
 	@Override
 	public void parseJson(JsonNode node) throws SchemaException {
-		
+
 		JsonNode item = node.get(META_LOCATION);
 		if (item != null)
 			this.location = item.asText();
@@ -359,9 +365,12 @@ public class Meta extends ComplexValue implements ScimSerializer {
 
 		item = node.get(META_REVISIONS);
 		try {
-			if (item != null)
-				this.revisions = (MultiValue) ValueUtil.parseJson(revAttr,item,null);
-			else
+			if (item != null) {
+				if (this.attr == null)
+					logger.warn("**** Unable to load revisions as META Attr not loaded!");
+				else
+					this.revisions = (MultiValue) ValueUtil.parseJson(this.attr.getSubAttribute(META_REVISIONS), item, null);
+			} else
 				this.revisions = null;
 		} catch (ConflictException | ParseException e) {
 			e.printStackTrace();
@@ -373,6 +382,10 @@ public class Meta extends ComplexValue implements ScimSerializer {
 	}
 
 	public void addRevision(RequestCtx ctx) {
+    	checkAttr(ctx);
+
+    	Attribute revAttr = this.attr.getSubAttribute(META_REVISIONS);
+
 		Map<Attribute,Value> map = new HashMap<>() ;
 		StringValue tid = new StringValue(revAttr.getSubAttribute("value"), ctx.getTranId());
 		this.lastModified = Date.from(Instant.now());
@@ -387,8 +400,6 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		} catch (SchemaException e) {
 			e.printStackTrace();
 		}
-
-
 	}
     
 }

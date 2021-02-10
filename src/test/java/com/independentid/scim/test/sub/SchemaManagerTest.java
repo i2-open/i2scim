@@ -16,7 +16,6 @@
 package com.independentid.scim.test.sub;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
@@ -256,7 +255,7 @@ public class SchemaManagerTest {
 
 	@Test
 	public void d_addSchemaAndResTypeTest()  {
-		Schema a = new Schema();
+		Schema a = new Schema(smgr);
 		a.setId("urn:bla.de.blah.TEST");
 		a.setName("TestSchema");
 		Attribute name = smgr.findAttribute("User","name",null,null);
@@ -302,7 +301,7 @@ public class SchemaManagerTest {
 				.isNotEqualTo(nameCompare);
 
 
-		ResourceType type = new ResourceType();
+		ResourceType type = new ResourceType(smgr);
 		type.setId("urn:bla.de.blah.TEST");
 		type.setSchema(a.getId());
 		try {

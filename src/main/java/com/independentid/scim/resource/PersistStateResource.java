@@ -45,16 +45,15 @@ public class PersistStateResource extends ScimResource {
 	static Attribute syncDateAttr = new Attribute(FIELD_LAST_SYNC);
 	static Attribute rTypeCntAttr = new Attribute(FIELD_RTYPE_CNT);
 	static Attribute sCntAttr = new Attribute(FIELD_SCHEMA_CNT);
-	static Schema persistSchema = new Schema();
-	static ResourceType persistType = new ResourceType();
+	static Schema persistSchema;
+	ResourceType persistType;
 	static {
 		persistSchema.setName("Persisted Configuration State");
 		persistSchema.setId(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 		persistSchema.putAttribute(syncDateAttr);
 		persistSchema.putAttribute(rTypeCntAttr);
 		persistSchema.putAttribute(sCntAttr);
-		persistType.setName(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
-		persistType.setSchema(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
+
 		syncDateAttr.setPath(persistSchema.getId(),null);
 		syncDateAttr.setType(Attribute.TYPE_Date);
 		rTypeCntAttr.setPath(persistSchema.getId(),null);
@@ -71,15 +70,24 @@ public class PersistStateResource extends ScimResource {
 	public PersistStateResource(SchemaManager schemaManager, JsonNode resourceNode, IBulkIdResolver bulkIdResolver, String container)
 			throws ParseException, ScimException {
 		super(schemaManager, resourceNode, bulkIdResolver, container);
+		persistSchema = new Schema(schemaManager);
 		type = persistType;
 		coreSchema = persistSchema;
 		setId(CONFIG_ID);
+
+		persistType = new ResourceType(schemaManager);
+		persistType.setName(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
+		persistType.setSchema(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 		
 	}
 	
 	public PersistStateResource(SchemaManager schemaManager, int rCnt, int sCnt) {
 		super(schemaManager);
 		this.smgr = schemaManager;
+		persistSchema = new Schema(schemaManager);
+		persistType = new ResourceType(schemaManager);
+		persistType.setName(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
+		persistType.setSchema(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 		type = persistType;
 		coreSchema = persistSchema;
 		setId(CONFIG_ID);

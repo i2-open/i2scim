@@ -42,7 +42,6 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.Priority;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import javax.inject.Singleton;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -572,7 +571,7 @@ public class MongoProvider implements IScimProvider {
 			
 			for (Document doc : iter) {
 				JsonNode jdoc = JsonUtil.getJsonTree(doc.toJson());
-				Schema entry = new Schema(jdoc);
+				Schema entry = new Schema(schemaManager,jdoc);
 				//  map.put(entry.getName(), entry);  // Map by both id and name
 				scol.add(entry);
 			}
@@ -603,7 +602,7 @@ public class MongoProvider implements IScimProvider {
 			
 			for (Document doc : iter) {
 				JsonNode jdoc = JsonUtil.getJsonTree(doc.toJson());
-				ResourceType entry = new ResourceType(jdoc);
+				ResourceType entry = new ResourceType(jdoc, schemaManager);
 				rcol.add(entry);  
 			}
 			

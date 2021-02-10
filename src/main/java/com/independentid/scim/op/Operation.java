@@ -31,6 +31,7 @@ import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
+import io.quarkus.security.identity.SecurityIdentity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +42,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.RecursiveAction;
 
 /**
@@ -485,6 +485,28 @@ public class Operation extends RecursiveAction {
             logger.debug(this.toString());
             logger.debug("Op Stats: " + this.stats.toString());
         }
+
+    }
+
+    public String getLogMessage() {
+        if (ctx != null) {
+            SecurityIdentity identity = ctx.getSecSubject();
+            HttpServletRequest req = ctx.getHttpServletRequest();
+            String tranId = ctx.getTranId();
+            String subj = "";
+            if (identity != null)
+                subj = " "+identity.toString();
+            if (req != null)
+                return "["+req.getRemoteAddr()+subj+"] "
+                        + " Tx:"+((tranId != null)?tranId:"NULL") + " "
+                        + req.getMethod() + " "
+                        + req.getRequestURL().toString();
+            return "[<INTERNAL>"+subj+"] Tx:"+((tranId != null)?tranId:"NULL") + " "
+                    + this.getClass().getSimpleName()+" "+ctx.getPath();
+        }
+
+        return "<Missing context>";
+
     }
 
     public String toString() {

@@ -64,6 +64,8 @@ public class PoolManager {
 	//@Value("${pool.thread.count:5}")
 	@SuppressWarnings("FieldCanBeLocal")
 	private int threads = 50;
+
+	private boolean ready = false;
 	
 	//@Autowired
 	//ApplicationContext ctx;
@@ -102,7 +104,7 @@ public class PoolManager {
 		pool = new ForkJoinPool(threads);
 	
 		//self = (PoolManager) this.ctx.getBean("PoolMgr");
-
+		ready = true;
 	}
 
 	public synchronized Operation addJob(Operation task) {
@@ -115,8 +117,15 @@ public class PoolManager {
 
 		return op;
 	}
+
 	public void addJobAndWait(Operation task)
 			throws RejectedExecutionException {
+		while (!ready) {
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+			}
+		}
 		opCnt++;
 		if (logger.isDebugEnabled())
 			logger.debug("Queued(wait):  " + task.toString());

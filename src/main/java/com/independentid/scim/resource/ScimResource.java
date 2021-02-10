@@ -88,7 +88,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 	protected ScimResource(SchemaManager smgr) {
 		this.smgr = smgr;
-		commonSchema = SchemaManager.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
+		commonSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
 		this.coreAttrVals = new LinkedHashMap<>();
 		this.extAttrVals = new LinkedHashMap<>();
 		this.idResolver = null;
@@ -113,7 +113,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 		this.coreAttrVals = new LinkedHashMap<>();
 		this.extAttrVals = new LinkedHashMap<>();
-		commonSchema = SchemaManager.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
+		commonSchema = schemaManager.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
 		setResourceType(container);
 		this.idResolver = bulkIdResolver;
 		parseJson(resourceNode);
@@ -139,7 +139,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	public void setResourceType(String container) {
 		this.type = smgr.getResourceTypeByPath(container);
 		if (this.type != null)
-			this.coreSchema = SchemaManager.getSchemaById(this.type.getSchema());
+			this.coreSchema = smgr.getSchemaById(this.type.getSchema());
 	
 	}
 	
@@ -239,7 +239,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		}
 		
 		// The attribute is an extension attribute
-		Schema eschema = SchemaManager.getSchemaById(attr.getSchema());
+		Schema eschema = smgr.getSchemaById(attr.getSchema());
 		if (!eschema.getId().equalsIgnoreCase(this.coreSchema.getId())) {
 			ExtensionValues map = this.extAttrVals.get(eschema.getId());
 			if (map == null) {
@@ -296,7 +296,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		}
 		
 		// The attribute is an extension attribute
-		Schema eSchema = SchemaManager.getSchemaById(attr.getSchema());
+		Schema eSchema = smgr.getSchemaById(attr.getSchema());
 		ExtensionValues map = this.extAttrVals.get(eSchema.getId());
 		//refval1 = map.getAttribute(rootAttribute.getName());
 		if (map == null)
@@ -363,10 +363,10 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 			if (this.type == null) {
 				this.type = smgr.getResourceType(this.meta.getResourceType());
-				this.coreSchema = SchemaManager.getSchemaById(this.type.getSchema());
+				this.coreSchema = smgr.getSchemaById(this.type.getSchema());
 			}
 		} else
-			this.meta = new Meta();
+			this.meta = new Meta(smgr);
 		
 		// We will override meta resource type based on where this object is written (driven by type)
 		this.meta.setResourceType(this.getResourceType());
@@ -433,7 +433,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	
 	protected void processExtension(ResourceType type, String extensionId,JsonNode parent) throws SchemaException, ParseException, ConflictException {
 		
-		Schema eSchema = SchemaManager.getSchemaById(extensionId);
+		Schema eSchema = smgr.getSchemaById(extensionId);
 		if (eSchema == null)
 			return;  //ignore, unsupported core attribute or schema
 		String sname = eSchema.getName();

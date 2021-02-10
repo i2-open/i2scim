@@ -45,11 +45,13 @@ public class Schema implements ScimSerializer  {
     private String description;
     
     private final TreeMap<String,Attribute> attributes;
+
+    private SchemaManager smgr;
     
     
-	public Schema () {
+	public Schema (SchemaManager schemaManager) {
 		this.attributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-		
+		this.smgr = schemaManager;
 	}	
         
 	/**
@@ -57,10 +59,10 @@ public class Schema implements ScimSerializer  {
 	 * @param node A <JsonMode> parser handle containing a SCIM Schema object
 	 * @throws SchemaException May be thrown when parsing an invalid JSON representation of SCIM Schema
 	 */
-	public Schema (JsonNode node) throws SchemaException {
+	public Schema (SchemaManager schemaManager,JsonNode node) throws SchemaException {
 		
 		this.attributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-		
+		this.smgr = schemaManager;
 		this.parseJson(node);
 	}
 	    

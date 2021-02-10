@@ -98,6 +98,7 @@ public class RequestCtx {
 	// Used to address field name and length restrictions in some dbs
 	protected boolean encodeFields = false;
 
+	HttpServletRequest req = null;
 	HttpServletResponse hresp = null;
 	
 	ServletContext sctx;
@@ -287,6 +288,7 @@ public class RequestCtx {
 	public RequestCtx(HttpServletRequest req, HttpServletResponse resp, SchemaManager schemaManager) throws ScimException {
 		//this.req = request;
 		//sctx = request.getServletContext();
+		this.req = req;
 		this.smgr = schemaManager;
 		path = req.getPathInfo();
 		if (path == null)
@@ -299,23 +301,7 @@ public class RequestCtx {
 		this.sctx = req.getServletContext();
 
 		parseSecurityContext(req);
-		
-		//parseSecurityContext();
-		
-		
-		//.forEach(role -> logger.debug("User: "+curUser+", Role: "+role.getAuthority()));
-		//boolean hasUserRole = authentication.getAuthorities().stream()
-		//          .anyMatch(r -> r.getAuthority().equals("ROLE_USER"));
-		
-		//Object pobj = req.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
-		//if (pobj != null) logger.debug("path withing mapping:\t"+pobj);
-		//logger.debug("Ctx.ContextPath:\t"+this.sctx.getContextPath()); 
-		//logger.debug("ServletPath:\t"+req.getServletPath());
-		//logger.debug("ContextPath:\t"+req.getContextPath());
-		//logger.debug("Path Trans:\t"+req.getPathTranslated());
-		//logger.debug("PathInfo:\t"+req.getPathInfo());
-		
-		//String path = request.getRequestURI().substring(request.getContextPath().length());
+
 		this.hresp = resp;
 		
 		this.bulkId = null;
@@ -734,6 +720,10 @@ public class RequestCtx {
 	public HttpServletResponse getHttpServletResponse() {
 		return this.hresp;
 	}
+
+	public HttpServletRequest getHttpServletRequest() {
+		return this.req;
+	}
 	
 	
 	public String toString() {
@@ -866,4 +856,5 @@ public class RequestCtx {
 	public void setTranId(String tranUuid) {
 		this.tid = tranUuid;
 	}
+
 }

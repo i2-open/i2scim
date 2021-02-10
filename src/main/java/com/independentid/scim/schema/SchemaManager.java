@@ -146,7 +146,7 @@ public class SchemaManager {
             }
             Schema schema;
             try {
-                schema = new Schema(node);
+                schema = new Schema(this,node);
                 addSchema(schema);
                 if (logger.isDebugEnabled())
                     logger.debug("\t....Attribute Schema loaded>" + schema.getId());
@@ -220,7 +220,7 @@ public class SchemaManager {
                 JsonNode schemaNode = iter.next();
                 Schema schema;
                 try {
-                    schema = new Schema(schemaNode);
+                    schema = new Schema(this,schemaNode);
                     addSchema(schema);
 
                 } catch (SchemaException e) {
@@ -347,7 +347,7 @@ public class SchemaManager {
                 JsonNode typeNode = iter.next();
                 ResourceType type;
 
-                type = new ResourceType(typeNode);
+                type = new ResourceType(typeNode, this);
                 addResourceType(type);
             }
             return;
@@ -593,7 +593,7 @@ public class SchemaManager {
      * @param id May be the schema id value or the schema name to locate the corresponding <code>Schema<code> object
      * @return The <code>Schema</code> object that corresponds to the schema urn provided
      */
-    public static Schema getSchemaById(String id) {
+    public Schema getSchemaById(String id) {
         return schIdMap.get(id);
     }
 

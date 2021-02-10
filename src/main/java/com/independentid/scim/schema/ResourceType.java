@@ -52,12 +52,15 @@ public class ResourceType implements ScimSerializer {
 
 	private Meta meta;
 
-	public ResourceType() {
-		
+	private final SchemaManager smgr;
+
+	public ResourceType(SchemaManager schemaManager) {
+		this.smgr = schemaManager;
 	}
 	
-	public ResourceType(JsonNode node) throws SchemaException {
+	public ResourceType(JsonNode node, SchemaManager schemaManager) throws SchemaException {
 		this.schemaExtensions = new LinkedHashMap<>();
+		this.smgr = schemaManager;
 		this.parseJson(node);
 	}
 	
@@ -183,7 +186,7 @@ public class ResourceType implements ScimSerializer {
 		if (metaNode != null) {
 			this.meta = new Meta(null, metaNode);
 		} else {
-			this.meta = new Meta();
+			this.meta = new Meta(smgr);
 			// Set proper defaults
 			this.meta.setResourceType(ScimParams.TYPE_RESOURCETYPE);
 			this.meta.setLocation("/"+ScimParams.PATH_TYPE_RESOURCETYPE+"/"+getId());

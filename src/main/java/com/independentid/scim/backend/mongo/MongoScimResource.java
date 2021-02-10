@@ -86,7 +86,7 @@ public class MongoScimResource extends ScimResource {
 		
 		Document mdoc = doc.get("meta", Document.class);
 		if (mdoc != null) {
-			this.meta = new Meta();
+			this.meta = new Meta(smgr);
 			this.meta.setCreatedDate(mdoc.getDate(Meta.META_CREATED));
 			this.meta.setLastModifiedDate(mdoc.getDate(Meta.META_LAST_MODIFIED));
 			this.meta.setResourceType(mdoc.getString(Meta.META_RESOURCE_TYPE));
@@ -122,7 +122,7 @@ public class MongoScimResource extends ScimResource {
 		
 		String[] eids = type.getSchemaExtension();
 		for (String eid : eids) {
-			Schema schema = SchemaManager.getSchemaById(eid);
+			Schema schema = smgr.getSchemaById(eid);
 			ExtensionValues val = MongoMapUtil.mapBsonExtension(schema, doc);
 			if (val != null) {
 				this.extAttrVals.put(eid, val);
