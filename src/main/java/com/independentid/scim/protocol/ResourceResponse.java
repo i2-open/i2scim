@@ -107,7 +107,7 @@ public class ResourceResponse extends ScimResponse {
 		
 		
 		// For single results, just return the object itself.
-		ScimResource resource = this.entries.get(0);
+		ScimResource resource = getResultResource();
 		try {
 			resource.serialize(gen, ctx, false);
 		} catch (ScimException e) {
@@ -136,5 +136,10 @@ public class ResourceResponse extends ScimResponse {
 					res.blockAttribute(attr);
 			}
 		}
+	}
+
+	public ScimResource getResultResource() {
+		if(this.entries.isEmpty()) return null;
+		return this.entries.get(0);
 	}
 }

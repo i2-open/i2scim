@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.core.err.TooLargeException;
+import com.independentid.scim.events.EventManager;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.schema.SchemaException;
@@ -43,6 +44,16 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	 * 
 	 */
 	private static final long serialVersionUID = 794465867214870343L;
+	public static final String FAIL_ON_ERRORS = "failOnErrors";
+	public static final String PREFIX_BULKID = "bulkid:";
+	public static final String PARAM_BULKID = "bulkid";
+	public static final String PARAM_METHOD = "method";
+	public static final String PARAM_PATH = "path";
+	public static final String PARAM_DATA = "data";
+	public static final String PARAM_VERSION = "version";
+	public static final String PARAM_SEQNUM = "seq";
+	public static final String PARAM_ACCEPTDATE = "accptd";
+	public static final String PARAM_TRANID = "tid";
 
 	/*
 	@Inject
@@ -59,21 +70,24 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	protected int opCompleted = 0, opFailed = 0, opRequested = 0;
 	protected int failOnErrors = 0;
 
-	public BulkOps(HttpServletRequest req, HttpServletResponse resp) {
+	EventManager eventManager;
+
+	public BulkOps(HttpServletRequest req, HttpServletResponse resp, EventManager eventManager) {
 		super (req,resp);
 		this.ops = new ArrayList<>();
 		this.bulkMap = new HashMap<>();
 		this.bulkValMap = new HashMap<>();
+		this.eventManager = eventManager;
 	}
 
-	public BulkOps(JsonNode node, RequestCtx ctx) {
+	public BulkOps(JsonNode node, RequestCtx ctx, EventManager eventManager) {
 		super(ctx, 0);
 
 		this.node = node;
 		this.ops = new ArrayList<>();
 		this.bulkMap = new HashMap<>();
 		this.bulkValMap = new HashMap<>();
-
+		this.eventManager = eventManager;
 	}
 
 	@Override
@@ -89,7 +103,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	}
 
 	public void parseJson(JsonNode node) {
-		JsonNode snode = node.get("schemas");
+		JsonNode snode = node.get(ScimParams.ATTR_SCHEMAS);
 		if (snode == null) {
 			setCompletionError(new SchemaException("JSON is missing 'schemas' attribute."));
 			return;
@@ -116,12 +130,12 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 		}
 
 		this.failOnErrors = configMgr.getBulkMaxErrors();
-		JsonNode fnode = node.get("failOnErrors");
+		JsonNode fnode = node.get(FAIL_ON_ERRORS);
 		if (fnode != null) {
 			this.failOnErrors = fnode.asInt();
 		}
 			
-		JsonNode opsnode = node.get("Operations");
+		JsonNode opsnode = node.get(ScimParams.ATTR_PATCH_OPS);
 		if (opsnode == null) {
 			setCompletionError(new SchemaException("Missing 'Operations' attribute array."));
 			return;
@@ -146,7 +160,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 
 			Operation op;
 			try {
-				op = parseOperation(oper,	requestNum);
+				op = parseOperation(oper,this,requestNum);
 			} catch (ScimException e) {
 				setCompletionError(e);
 				return;
@@ -187,7 +201,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 		}
 
 
-		JsonNode feNode = node.get("failOnErrors");
+		JsonNode feNode = node.get(FAIL_ON_ERRORS);
 		if (feNode != null) {
 			if (!feNode.isInt()) {
 				setCompletionError(new SchemaException(
@@ -264,32 +278,37 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 		
 	}
 
-	protected Operation parseOperation(
-			JsonNode bulkOpNode, int requestNum) throws ScimException {
+	public static Operation parseOperation(
+			JsonNode bulkOpNode, BulkOps parent, int requestNum) throws ScimException {
 		RequestCtx octx = new RequestCtx(bulkOpNode, schemaManager);
 
-		JsonNode item = bulkOpNode.get("data");
+		JsonNode item = bulkOpNode.get(PARAM_DATA);
 		if (item == null) {
 			if (!octx.getBulkMethod().equals(Operation.Bulk_Method_DELETE))
 				throw new SchemaException(
 						"Bulk request for POST/PUT/PATCH missing required attribute 'data'.");
 		}
 
+		item = bulkOpNode.get(BulkOps.PARAM_TRANID);
+		if (item != null)
+			octx.setTranId(item.asText());
+
+		Operation op = null;
 		switch (octx.getBulkMethod()) {
 		case Operation.Bulk_Method_POST:
-			return new CreateOp(item, octx, this, requestNum);
-
+			op = new CreateOp(item, octx, parent, requestNum);
+			break;
 		case Operation.Bulk_Method_PUT:
-			return new PutOp(item, octx, this, requestNum);
-
+			op = new PutOp(item, octx, parent, requestNum);
+			break;
 		case Operation.Bulk_Method_PATCH:
-			return new PatchOp(item, octx, this, requestNum);
-
+			op = new PatchOp(item, octx, parent, requestNum);
+			break;
 		case Operation.Bulk_Method_DELETE:
-			return new DeleteOp(octx, this, requestNum);
-
+			op = new DeleteOp(octx, parent, requestNum);
 		}
-		return null;
+
+		return op;
 	}
 
 	/*
@@ -304,7 +323,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 			return null;
 
 		String id;
-		if (bulkId.toLowerCase().startsWith("bulkid:"))
+		if (bulkId.toLowerCase().startsWith(PREFIX_BULKID))
 			id = bulkId.substring(7);
 		else
 			return bulkId;
@@ -324,7 +343,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 			return null;
 
 		String id;
-		if (bulkId.toLowerCase().startsWith("bulkid:"))
+		if (bulkId.toLowerCase().startsWith(PREFIX_BULKID))
 			id = bulkId.substring(7);
 		else
 			return bulkId;
@@ -341,13 +360,14 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	protected void doOperation() {
 		int batchExecNum = 0;
 		if (logger.isDebugEnabled()) {
-			logger.debug("========Begin BATCH Request========");
+			logger.debug("Processing BATCH request with "+this.ops.size()+" operations.");
 		}
 		for (Operation op : this.ops) {
 			if (!op.isDone()) {
 				OpStat stat = op.getStats();
 				stat.setBulkExecNumber(batchExecNum++);
 				op.compute();
+				eventManager.logEvent(op);
 			}
 
 			if (op.isError())

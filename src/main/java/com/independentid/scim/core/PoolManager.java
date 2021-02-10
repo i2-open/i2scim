@@ -14,6 +14,7 @@
  */
 package com.independentid.scim.core;
 
+import com.independentid.scim.events.PublishOperation;
 import com.independentid.scim.op.Operation;
 import org.eclipse.microprofile.metrics.MetricUnits;
 import org.eclipse.microprofile.metrics.annotation.Gauge;
@@ -57,7 +58,8 @@ public class PoolManager {
 	@Resource(name="ConfigMgr")
 	ConfigMgr sconfig;
 	
-	private ForkJoinPool pool;
+	private ForkJoinPool operationPool;
+	private ForkJoinPool eventPool;
 
 	private int opCnt = 0;
 
@@ -86,14 +88,15 @@ public class PoolManager {
 	 */
 	@PreDestroy
 	public void shutdown() {
-		pool.shutdownNow();
+		operationPool.shutdownNow();
+		eventPool.shutdownNow();
 	}
 
 	@PostConstruct
 	public void initialize() {
 		//check if already started
 
-		if (pool != null)
+		if (operationPool != null)
 			return;
 		logger.info("Transaction Pool Manager Starting...");
 		threads = sconfig.getPoolThreadCount();
@@ -101,7 +104,9 @@ public class PoolManager {
 		if (logger.isDebugEnabled())
 			logger.debug("Pool Manager initializing with " + threads + " threads.");
 				//pool = new ForkJoinPool(threads);
-		pool = new ForkJoinPool(threads);
+		operationPool = new ForkJoinPool(threads);
+
+		eventPool = new ForkJoinPool(5);
 	
 		//self = (PoolManager) this.ctx.getBean("PoolMgr");
 		ready = true;
@@ -109,7 +114,7 @@ public class PoolManager {
 
 	public synchronized Operation addJob(Operation task) {
 		opCnt++;
-		Operation op = (Operation) pool.submit(task);
+		Operation op = (Operation) operationPool.submit(task);
 		// actions.add(task);
 		
 		if (logger.isDebugEnabled())
@@ -129,7 +134,7 @@ public class PoolManager {
 		opCnt++;
 		if (logger.isDebugEnabled())
 			logger.debug("Queued(wait):  " + task.toString());
-		pool.invoke(task);
+		operationPool.invoke(task);
 		
 	}
 
@@ -164,16 +169,21 @@ public class PoolManager {
 
 	@Gauge(unit = MetricUnits.NONE, name = "Pool: Active Threads")
 	public int getThreadCnt() {
-		return pool.getActiveThreadCount();
+		return operationPool.getActiveThreadCount();
 	}
 
 	@Gauge(unit = MetricUnits.NONE, name = "Pool: Pending Ops")
 	public int getPendingTasksCnt() {
-		return pool.getQueuedSubmissionCount();
+		return operationPool.getQueuedSubmissionCount();
 	}
 
 	public boolean close(long time, TimeUnit unit) throws InterruptedException {
-		return pool.awaitTermination(time, unit);
+		return operationPool.awaitTermination(time, unit);
+	}
+
+	public synchronized PublishOperation addPublishOperation(PublishOperation task) {
+		return (PublishOperation) eventPool.submit(task);
+
 	}
 
 }

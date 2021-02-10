@@ -36,13 +36,15 @@ public class TestPlugin implements IScimPlugin{
 
     @Override
     public void doPreOperation(Operation op) {
-        logger.info("doPreOp called: "+op.getRequest().getRequestURI());
+        if (op.getRequest() != null)
+         logger.info("doPreOp called: "+op.getRequest().getRequestURI());
 
     }
 
     @Override
     public void doPostOperation(Operation op) {
-        logger.info("doPostOp called: "+op.getRequest().getRequestURI());
+        if (op.getRequest() != null)
+            logger.info("doPostOp called: "+op.getRequest().getRequestURI());
 
     }
 }

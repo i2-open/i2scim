@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.PoolManager;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.events.EventManager;
 import com.independentid.scim.op.*;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.serializer.JsonUtil;
@@ -74,6 +75,8 @@ public class ScimV2Servlet extends HttpServlet {
 	@Resource(name="PoolMgr")
   	PoolManager pool;
 
+	@Inject
+	EventManager eventManager;
 
 	public ScimV2Servlet() {
 		logger.info("Scim Servlet Constructed");
@@ -110,6 +113,8 @@ public class ScimV2Servlet extends HttpServlet {
 		PatchOp op = new PatchOp(req, resp);
 
 		complete(op);
+
+		eventManager.logEvent(op);
 	}
 
 	/* (non-Javadoc)
@@ -124,6 +129,8 @@ public class ScimV2Servlet extends HttpServlet {
 		PutOp op = new PutOp(req, resp);
 
 		complete(op);
+
+		eventManager.logEvent(op);
 	}
 
 	/*
@@ -142,7 +149,8 @@ public class ScimV2Servlet extends HttpServlet {
 		DeleteOp op = new DeleteOp(req, resp);
 
 		complete(op);
-		
+
+		eventManager.logEvent(op);
 	}
 
 	@Counted(name="scim.ops.search.count",description="Counts the number of SCIM Post Search requests")
@@ -152,6 +160,8 @@ public class ScimV2Servlet extends HttpServlet {
 		SearchOp op = new SearchOp(req, resp);
 			
 		complete(op);
+
+		eventManager.logEvent(op);
 	}
 
 	@Counted(name="scim.ops.get.count",description="Counts the number of SCIM Get requests")
@@ -192,6 +202,8 @@ public class ScimV2Servlet extends HttpServlet {
 		GetOp op = new GetOp(req,resp);
 
 		complete(op);
+
+		eventManager.logEvent(op);
 	}
 
 	@Counted(name="scim.ops.bulk.count",description="Counts the number of SCIM Bulk requests")
@@ -199,8 +211,11 @@ public class ScimV2Servlet extends HttpServlet {
 	protected void doBulk(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
 		
-		BulkOps op = new BulkOps(req, resp);
+		BulkOps op = new BulkOps(req, resp, eventManager);
 		complete(op);
+
+		//BulkOps will invoke individual events as well
+		eventManager.logEvent(op);
 	}
 	
 	/*
