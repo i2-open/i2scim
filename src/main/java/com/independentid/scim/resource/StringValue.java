@@ -38,13 +38,13 @@ public class StringValue extends Value implements IBulkIdTarget {
 	
 	public StringValue(Attribute attr, JsonNode node,IBulkIdResolver bulkIdResolver) throws SchemaException {
 		super(attr,node);
-		parseJson(attr, node);
+		parseJson(node);
 		this.resolver = bulkIdResolver;
 	}
 	
 	public StringValue(Attribute attr, JsonNode node) throws SchemaException {
 		super(attr,node);
-		parseJson(attr, node);
+		parseJson(node);
 		this.resolver = null;
 	}
 	
@@ -79,7 +79,7 @@ public class StringValue extends Value implements IBulkIdTarget {
 		return parent;
 	}
 
-	public void parseJson(Attribute attr, JsonNode node) throws SchemaException {
+	public void parseJson(JsonNode node) throws SchemaException {
 		if (node == null)
 			throw new SchemaException("Was expecting a String value but encountered null");
 		if (!this.jtype.equals(JsonNodeType.STRING))

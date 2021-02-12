@@ -41,7 +41,6 @@ public class MultiValue extends Value {
 
 	private final Vector<Value> values;
 	private final IBulkIdResolver resolver;
-	private final Attribute attr;
 
 	public MultiValue() {
 		this.jtype = JsonNodeType.ARRAY;
@@ -57,8 +56,7 @@ public class MultiValue extends Value {
 			throw new SchemaException("Attribute schema is null");
 		this.values = new Vector<>();
 		this.resolver = bulkIdResolver;
-		parseJson(attr, node);
-		this.attr = attr;
+		parseJson(node);
 	}
 	
 	public MultiValue(@NotNull Attribute attr, List<Value> vals) throws SchemaException {
@@ -128,7 +126,7 @@ public class MultiValue extends Value {
 	}
 
 	@Override
-	public void parseJson(Attribute attr, JsonNode node)
+	public void parseJson(JsonNode node)
 			throws ConflictException, SchemaException, ParseException {
 
 		for (JsonNode item : node) {

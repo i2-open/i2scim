@@ -90,15 +90,6 @@ public class DeleteOp extends Operation implements IBulkOp {
         }
     }
 
-    /* (non-Javadoc)
-     * @see com.independentid.scim.op.Operation#parseJson(com.fasterxml.jackson.databind.JsonNode)
-     */
-    @Override
-    protected void parseJson(JsonNode node) {
-        // nothing needed to be done.
-
-    }
-
     @Override
     public JsonNode getJsonReplicaOp() {
         if (this.isCompletedNormally()) {
@@ -107,7 +98,7 @@ public class DeleteOp extends Operation implements IBulkOp {
             node.put(BulkOps.PARAM_PATH, ctx.getPath());
             OpStat stats = getStats();
             node.put(BulkOps.PARAM_SEQNUM,stats.executionNum);
-            node.put(BulkOps.PARAM_ACCEPTDATE,stats.getFinishDate());
+            node.put(BulkOps.PARAM_ACCEPTDATE,stats.getFinishDateStr());
             if (ctx != null)
                 node.put(BulkOps.PARAM_TRANID, ctx.getTranId());
             return node;

@@ -93,9 +93,9 @@ public class PersistStateResource extends ScimResource {
 		setId(CONFIG_ID);
 		initSchemas();
 		try {
-			super.addValue(rTypeCntAttr,new IntegerValue(rTypeCntAttr,rCnt));
-			super.addValue(sCntAttr,new IntegerValue(sCntAttr,sCnt));
-			super.addValue(syncDateAttr,new DateValue(syncDateAttr,new Date(System.currentTimeMillis())));
+			super.addValue(new IntegerValue(rTypeCntAttr,rCnt));
+			super.addValue(new IntegerValue(sCntAttr,sCnt));
+			super.addValue(new DateValue(syncDateAttr,new Date(System.currentTimeMillis())));
 		} catch (SchemaException e) {
 			e.printStackTrace();
 		}
@@ -138,17 +138,17 @@ public class PersistStateResource extends ScimResource {
 		
 		item = node.get(FIELD_LAST_SYNC);
 		if (item != null) {
-			addValue(syncDateAttr,new DateValue(syncDateAttr,item));
+			addValue(new DateValue(syncDateAttr,item));
 		}
 
 	
 		item = node.get(FIELD_RTYPE_CNT);
 		if (item != null)
-			addValue(rTypeCntAttr,new IntegerValue(rTypeCntAttr,item));
+			addValue(new IntegerValue(rTypeCntAttr,item));
 
 		item = node.get(FIELD_SCHEMA_CNT);
 		if (item != null)
-			addValue(sCntAttr, new IntegerValue(sCntAttr,item));
+			addValue(new IntegerValue(sCntAttr,item));
 
 		JsonNode meta = node.get("meta");
 		if (meta != null)

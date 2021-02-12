@@ -29,18 +29,21 @@ import java.text.ParseException;
 
 public abstract class Value {
 	public JsonNodeType jtype;
-	
+
+	Attribute attr;
+
 	public Value() {
 		
 	}
 	
 	public Value(Attribute attr, JsonNode node) {
 		this.jtype = node.getNodeType();
+		this.attr = attr;
 	}
 	
 	public abstract void serialize(JsonGenerator gen, RequestCtx ctx) throws ScimException,IOException;
 	
-	public abstract void parseJson(Attribute attr, JsonNode node) throws ConflictException, SchemaException, ParseException;
+	public abstract void parseJson(JsonNode node) throws ConflictException, SchemaException, ParseException;
 	
 	public abstract Object getValueArray();
 	
@@ -48,5 +51,9 @@ public abstract class Value {
 
 	public  String toString(Attribute attr) {
 		return toJsonNode(null,attr.getName()).toString();
+	}
+
+	public  Attribute getAttribute() {
+		return attr;
 	}
 }

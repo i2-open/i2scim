@@ -77,8 +77,9 @@ public class ScimAuthTest {
 				.as("JWKS file is not null")
 				.isNotNull();
 
-		File jwksFile = cmgr.findClassLoaderResource(jwks);
-		
+		File jwksFile = ConfigMgr.findClassLoaderResource(jwks);
+
+		assert jwksFile != null;
 		assertThat(jwksFile.exists())
 			.as("Jwks file located")
 			.isTrue();

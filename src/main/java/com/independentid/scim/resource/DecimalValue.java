@@ -36,7 +36,7 @@ public class DecimalValue extends Value {
 
 	public DecimalValue(Attribute attr, JsonNode node) throws SchemaException, ParseException {
 		super(attr,node);
-		parseJson(attr, node);
+		parseJson(node);
 	}
 	
 	public DecimalValue(Attribute attr, BigDecimal num) {
@@ -51,7 +51,7 @@ public class DecimalValue extends Value {
 	}
 
 	@Override
-	public void parseJson(Attribute attr, JsonNode node) throws SchemaException, ParseException {
+	public void parseJson(JsonNode node) throws SchemaException, ParseException {
 		if (!this.jtype.equals(JsonNodeType.NUMBER))
 			throw new SchemaException("Invalid field data endpoint. Expecting decimal 'number'."+node.toString());
 		this.value = node.decimalValue();

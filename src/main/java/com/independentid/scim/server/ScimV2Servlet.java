@@ -18,7 +18,6 @@ package com.independentid.scim.server;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.PoolManager;
-import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.events.EventManager;
 import com.independentid.scim.op.*;
 import com.independentid.scim.protocol.ScimParams;
@@ -57,9 +56,6 @@ import java.io.IOException;
 @WebServlet(name = "ScimServlet", urlPatterns = "/*")
 public class ScimV2Servlet extends HttpServlet {
 
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 4864829511529176833L;
 
 	private final Logger logger = LoggerFactory.getLogger(ScimV2Servlet.class);
@@ -67,10 +63,7 @@ public class ScimV2Servlet extends HttpServlet {
 	@Inject
 	@Resource(name="ConfigMgr")
 	ConfigMgr cfgMgr;
-	
-	//@Inject
-	//private BackendHandler persistMgr;
-	
+
 	@Inject
 	@Resource(name="PoolMgr")
   	PoolManager pool;
@@ -170,13 +163,10 @@ public class ScimV2Servlet extends HttpServlet {
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
 
-		//String cp = getServletContext().getContextPath();
-		//String path = new UrlPathHelper().getPathWithinApplication(req);
 		String path = reqPath(req);
 		
 		//Used when jwks-certs needs to be served locally (usually for testing)
 		if (path.startsWith("/certs")) {
-			//super.doGet(req, resp);
 
 			ServletOutputStream out = resp.getOutputStream();
 			FileInputStream instream = ConfigMgr.getClassLoaderFile(path);
@@ -256,26 +246,16 @@ public class ScimV2Servlet extends HttpServlet {
 		complete(op);
 	}
 
-	/*
-	@SuppressWarnings("unchecked")
-	private <T> T getBean(Class<T> beanClass) {
-		BeanManager bm = CDI.current().getBeanManager();
-		Bean<T> bean = (Bean<T>) bm.getBeans(beanClass).iterator().next();
-		CreationalContext<T> ctx = bm.createCreationalContext(bean);
-		return (T) bm.getReference(bean, beanClass, ctx);
-	}
-	*/
-
 	@Override
 	public void init() {
 		logger.info("====== SCIM V2 Servlet Initialized =====");
-		if (!cfgMgr.isReady()) {
+		/*  This is already PostConstruct and should self start.
 			try {
 				cfgMgr.initializeConfiguration();
 			} catch (ScimException | IOException e) {
 				logger.error("Error initializing configuration manager: "+e.getLocalizedMessage(),e);
 			}
-		}
+		*/
 
 	}
 

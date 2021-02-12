@@ -22,7 +22,6 @@ import com.independentid.scim.backend.mongo.MongoProvider;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.PersistStateResource;
-import com.independentid.scim.schema.SchemaException;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -61,12 +60,9 @@ public class MongoProviderTest {
 	static MongoProvider mp = null;
 
 	@Test
-	public void a_mongoProviderTest() throws ScimException, IOException {
+	public void a_mongoProviderTest() {
 
 		logger.info("========== MongoProvider Basic Test ==========");
-		if (!cmgr.isReady()) {
-			cmgr.initializeConfiguration();
-		}
 
 		try {
 			mp = (MongoProvider) handler.getProvider();

@@ -39,10 +39,7 @@ import java.util.List;
 public class BulkOps extends Operation implements IBulkIdResolver {
 
 	private final static Logger logger = LoggerFactory.getLogger(BulkOps.class);
-	
-	/**
-	 * 
-	 */
+
 	private static final long serialVersionUID = 794465867214870343L;
 	public static final String FAIL_ON_ERRORS = "failOnErrors";
 	public static final String PREFIX_BULKID = "bulkid:";
@@ -55,22 +52,15 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	public static final String PARAM_ACCEPTDATE = "accptd";
 	public static final String PARAM_TRANID = "tid";
 
-	/*
-	@Inject
-	@Resource(name="PoolMgr")
-	protected PoolManager pool;
-	*/
-
 	protected RequestCtx ctx;
-	protected ArrayList<Operation> ops;
-	protected HashMap<String, Operation> bulkMap;
-	protected HashMap<Operation, List<String>> bulkValMap;
-	//protected BackendHandler handler;
+	protected final ArrayList<Operation> ops;
+	protected final HashMap<String, Operation> bulkMap;
+	protected final HashMap<Operation, List<String>> bulkValMap;
 	
 	protected int opCompleted = 0, opFailed = 0, opRequested = 0;
 	protected int failOnErrors = 0;
 
-	EventManager eventManager;
+	final EventManager eventManager;
 
 	public BulkOps(HttpServletRequest req, HttpServletResponse resp, EventManager eventManager) {
 		super (req,resp);
@@ -166,12 +156,6 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 				return;
 			}
 
-			/*
-			String key = op.getBulkId();
-			if (key == null)
-				key = UUID.randomUUID().toString();
-				*/
-
 			this.ops.add(op); // add to the list of operations
 
 			String bulkId = op.getBulkId();
@@ -211,18 +195,6 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 			this.failOnErrors = feNode.asInt();
 		}
 	}
-
-	/*
-	private boolean checkReqdBulkIds(HashSet bset, List<String> needed) {
-		Iterator<String> iter = needed.iterator();
-		while (iter.hasNext()) {
-			String bval = iter.next();
-			if (!bset.contains(bval))
-				return false;
-		}
-		return true;
-	}
-	*/
 
 	/**
 	 * This routine checks if b depends on a. The assumption is that a already

@@ -186,8 +186,8 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		return this.extAttrVals;
 	}
 
-	public synchronized void addValue(@NotNull Attribute attr,@NotNull Value addval) throws SchemaException {
-
+	public synchronized void addValue(@NotNull Value addval) throws SchemaException {
+		Attribute attr = addval.getAttribute();
 		Attribute rootAttribute;
 		if (attr.isChild())
 			rootAttribute = attr.getParent();
@@ -362,7 +362,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			this.meta = new Meta(mattr, metaNode);
 
 			if (this.type == null) {
-				this.type = smgr.getResourceType(this.meta.getResourceType());
+				this.type = smgr.getResourceTypeById(this.meta.getResourceType());
 				this.coreSchema = smgr.getSchemaById(this.type.getSchema());
 			}
 		} else
@@ -807,7 +807,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			case JsonPatchOp.OP_ACTION_ADD:
 				try {
 					Value val = ValueUtil.parseJson(tattr, op.value, null);
-					this.addValue(tattr, val);
+					this.addValue(val);
 				} catch (SchemaException | ParseException e) {
 					throw new InvalidValueException("JSON parsing error parsing value parameter.",e);
 				}
@@ -823,7 +823,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 				} catch (SchemaException | ParseException e) {
 					throw new InvalidValueException("JSON parsing error parsing value parameter.",e);
 				}
-				this.addValue(tattr, val);
+				this.addValue(val);
 				break;
 			default:
 				throw new InvalidValueException("The operation requested ("+op.op+") is not supported");

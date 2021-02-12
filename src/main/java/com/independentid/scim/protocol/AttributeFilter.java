@@ -20,7 +20,6 @@ import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.schema.SchemaManager;
 
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
@@ -53,7 +52,7 @@ public class AttributeFilter extends Filter {
 
     private Attribute attr;
 
-    private final String compOp;
+    private String compOp;
 
     private String valString;
 
@@ -63,14 +62,13 @@ public class AttributeFilter extends Filter {
 
     private boolean isExtension;
 
-    public AttributeFilter(String attr, String cond, String value, RequestCtx ctx, SchemaManager schemaManager) throws BadFilterException {
-        this(attr, cond, value, null,ctx , schemaManager);
+    public AttributeFilter(String attr, String cond, String value, RequestCtx ctx) throws BadFilterException {
+        this(attr, cond, value, null,ctx);
     }
 
-    public AttributeFilter(String aname, @NotNull String cond, String value, String parentAttr, RequestCtx ctx, SchemaManager schemaManager) throws BadFilterException {
+    public AttributeFilter(String aname, @NotNull String cond, String value, String parentAttr, @NotNull RequestCtx ctx) throws BadFilterException {
         super();
-
-        smgr = schemaManager;
+        smgr = ctx.getSchemaMgr();
         if (parentAttr == null)
             this.parentAttr = null;
         else
@@ -107,17 +105,28 @@ public class AttributeFilter extends Filter {
             }
         }
 
+        parse(cond,value,ctx);
+    }
+
+    public AttributeFilter(Attribute attr,@NotNull String cond, String value, @NotNull RequestCtx ctx) throws BadFilterException {
+        this.attr = attr;
+        parse(cond,value,ctx);
+    }
+
+    private void parse(@NotNull String cond, String value, @NotNull RequestCtx ctx) throws BadFilterException {
         if (this.attr == null)
             throw new BadFilterException("Unable to parse a valid attribute or attribute was null.");
-
-        if (ctx != null) {
-            String container = ctx.getResourceContainer();
-            if (container != null) {
+        String container = ctx.getResourceContainer();
+        if (container != null) {
+            if (container.equals("/"))
+                isExtension = false;
+            else {
                 ResourceType type = smgr.getResourceTypeByPath(container);
                 isExtension = type.getSchemaExtensions().containsKey(attr.getSchema());
             }
-
         }
+
+
         this.compOp = cond.toLowerCase();
 
         if (!valid_ops.contains(this.compOp))
@@ -174,7 +183,7 @@ public class AttributeFilter extends Filter {
                         ReferenceValue rval;
                         // This is done to normalize the URI
                         if (value.startsWith("\"") &&
-                            value.endsWith("\"")) {
+                                value.endsWith("\"")) {
                             rval = new ReferenceValue(attr,value.substring(1, value.length() - 1));
                         }
                         else

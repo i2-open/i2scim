@@ -27,12 +27,13 @@ import java.util.StringTokenizer;
  *
  */
 public class JsonPath {
-	protected String aname;
+	protected final String aname;
+	protected final Attribute targAttr;
+
 	protected String vpath;
 	protected String subAttr;
 	protected Filter filter;
-	protected Attribute targAttr;
-	
+
 	public JsonPath(ScimResource res, JsonPatchOp op, RequestCtx ctx) throws ScimException {
 		StringTokenizer tkn = new StringTokenizer(op.path,"[]");
 		
@@ -54,7 +55,7 @@ public class JsonPath {
 		
 		filter = null;
 		if (vpath != null)
-			filter = Filter.parseFilter(vpath,aname, ctx, null);
+			filter = Filter.parseFilter(vpath,aname, ctx);
 		
 		// check to see if attribute has a multi-value parent
 		if (targAttr.isChild()){

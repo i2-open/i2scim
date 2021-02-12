@@ -35,7 +35,7 @@ public class BooleanValue extends Value {
 
 	public BooleanValue(Attribute cfg, JsonNode node) throws SchemaException, ParseException {
 		super(cfg,node);
-		parseJson(cfg,node);
+		parseJson(node);
 	}
 	
 	public BooleanValue(Attribute name, boolean value) {
@@ -50,7 +50,7 @@ public class BooleanValue extends Value {
 	}
 
 	@Override
-	public void parseJson(Attribute attr, JsonNode node) throws SchemaException, ParseException {
+	public void parseJson(JsonNode node) throws SchemaException, ParseException {
 		if (!this.jtype.equals(JsonNodeType.BOOLEAN))
 			throw new SchemaException("Invalid field data endpoint. Expecting boolean."+node.toString());
 		this.value = node.asBoolean();

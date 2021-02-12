@@ -218,7 +218,7 @@ public class AccessControl implements ScimSerializer {
         item = node.get("targetFilter");
         if (item != null) {
             try {
-                this.targetFilter = Filter.parseFilter(item.asText(), null, smgr);
+                this.targetFilter = Filter.parseFilter(item.asText(), aclCtx);
             } catch (BadFilterException e) {
                 throw new SchemaException("Invalid aci: invalid filter specified for targetFilter: " + e.getLocalizedMessage());
             }
@@ -281,7 +281,7 @@ public class AccessControl implements ScimSerializer {
                         if (parts.length < 2)
                             throw new SchemaException("Invalid actor reference specified: " + aline);
                         try {
-                            this.clientFilters.add(Filter.parseFilter(parts[1], null, smgr));
+                            this.clientFilters.add(Filter.parseFilter(parts[1], aclCtx));
                         } catch (BadFilterException e) {
                             throw new SchemaException("Invalid actor filter specified: " + aline);
                         }

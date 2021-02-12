@@ -40,7 +40,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.RecursiveAction;
 
@@ -71,7 +70,7 @@ public class Operation extends RecursiveAction {
 
     protected OpState opState;
     private OpState finalState = OpState.pending;
-    private OpStat stats; //Used for tracking operation nos and timing
+    private final OpStat stats; //Used for tracking operation nos and timing
 
     HttpServletRequest req;
 
@@ -86,8 +85,9 @@ public class Operation extends RecursiveAction {
     static PluginHandler pluginHandler;
 
     protected RequestCtx ctx;
-    protected Date start = new Date();
-    protected Date end = null;
+    //protected Date start = new Date();
+
+    //protected Date end = null;
     private Exception err = null;
     ScimResponse scimresp = null;
     protected JsonNode node;
@@ -511,7 +511,7 @@ public class Operation extends RecursiveAction {
 
     public String toString() {
         return "Op: " + this.getClass().getSimpleName() +
-                ", State: " + this.opState + ", " + this.start.toString();
+                ", State: " + this.opState + ", " + stats.getStartDateStr();
     }
 
     public String getResourceId() {

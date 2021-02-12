@@ -47,7 +47,8 @@ public class ScimParams {
 	public final static String SCHEMA_SCHEMA_Schema = "urn:ietf:params:scim:schemas:core:2.0:Schema";
 	public final static String SCHEMA_SCHEMA_Common = "urn:ietf:params:scim:schemas:core:2.0:Common";
 
-	public final static String SCHEMA_SCHEMA_PERSISTEDSTATE = "urn:ietf:params:scim:schemas:i2:1.0:PersistedState";
+	public final static String SCHEMA_SCHEMA_PERSISTEDSTATE = "SyncState";
+	public final static String SCHEMA_SCHEMA_SYNCREC = "SyncRec";
 
 	public final static String PATH_TYPE_ME = "Me";
 

@@ -46,7 +46,7 @@ public class Schema implements ScimSerializer  {
     
     private final TreeMap<String,Attribute> attributes;
 
-    private SchemaManager smgr;
+    private final SchemaManager smgr;
     
     
 	public Schema (SchemaManager schemaManager) {

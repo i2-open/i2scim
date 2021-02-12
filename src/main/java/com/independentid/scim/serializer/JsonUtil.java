@@ -28,9 +28,9 @@ import java.io.*;
 
 public class JsonUtil {
 
-	static JsonFactory jFact = new JsonFactory();
+	static final JsonFactory jFact = new JsonFactory();
 		
-	static ObjectMapper mapper;
+	static final ObjectMapper mapper;
 	
 	static {
 		mapper = new ObjectMapper();

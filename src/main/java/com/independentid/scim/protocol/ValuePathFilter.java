@@ -21,7 +21,6 @@ import com.independentid.scim.resource.MultiValue;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.SchemaManager;
 
 import javax.validation.constraints.NotNull;
 import java.util.Set;
@@ -31,11 +30,11 @@ public class ValuePathFilter extends Filter {
 	private final Attribute attr;
 	private final Filter filter;
 	
-	public ValuePathFilter(String attr, String filterStr, SchemaManager schemaManager) throws BadFilterException {
+	public ValuePathFilter(String attr, String filterStr, @NotNull RequestCtx ctx) throws BadFilterException {
 		super(filterStr);
-		smgr = schemaManager;
-		this.filter = Filter.parseFilter(filterStr, attr,null , smgr);
-		this.attr = smgr.findAttribute(attr, null);
+		smgr = ctx.getSchemaMgr();
+		this.filter = Filter.parseFilter(filterStr, attr,ctx);
+		this.attr = smgr.findAttribute(attr, ctx);
 	}
 
 	public String getAttributeName() {

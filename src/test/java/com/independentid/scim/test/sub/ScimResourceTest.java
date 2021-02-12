@@ -88,7 +88,7 @@ public class ScimResourceTest {
 			JsonNode node = JsonUtil.getJsonTree(userStream);
 			user1 = new ScimResource(smgr,node, "Users");
 			String outString = user1.toString();
-			logger.debug("User loaded: \n"+outString.toString());
+			logger.debug("User loaded: \n"+ outString);
 			assertThat(outString)
 					.as("User1 contains the certificate")
 					.contains(certMatch);
@@ -308,14 +308,14 @@ public class ScimResourceTest {
 
 		Attribute gname = smgr.findAttribute("User:name.givenName",null);
 		StringValue given = new StringValue(gname,testGiven);
-		user1.addValue(gname,given);
+		user1.addValue(given);
 
 		Attribute uname = smgr.findAttribute("User:userName",null);
 
 		String newUsername = "testUser";
-		user1.addValue(uname,new StringValue(uname,newUsername));
+		user1.addValue(new StringValue(uname,newUsername));
 
-		user1.addValue(phoneNum,number);
+		user1.addValue(number);
 
 		String testMatch = user1.toJsonString();
 		assertThat(testMatch)
@@ -340,7 +340,7 @@ public class ScimResourceTest {
 		user1.removeValue(uname);
 		user1.removeValue(phoneNum);
 
-		user1.addValue(phoneNum,number);
+		user1.addValue(number);
 		testMatch = user1.toJsonString();
 		assertThat(testMatch)
 				.as("Check new phone present")
@@ -371,7 +371,7 @@ public class ScimResourceTest {
 		map.put(manager.getSubAttribute("$ref"),referenceValue);
 		ComplexValue newManager = new ComplexValue(manager,map);
 
-		user1.addValue(manager,newManager);
+		user1.addValue(newManager);
 
 		String testMatch = user1.toJsonString();
 		assertThat(testMatch)
@@ -397,7 +397,7 @@ public class ScimResourceTest {
 				.doesNotContain(origMatch);
 
 		// Now lets put the new value back
-		user1.addValue(manager,newManager);
+		user1.addValue(newManager);
 
 		testMatch = user1.toJsonString();
 		assertThat(testMatch)

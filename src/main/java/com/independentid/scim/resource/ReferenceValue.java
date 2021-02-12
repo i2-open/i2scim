@@ -60,7 +60,7 @@ public class ReferenceValue extends Value implements IBulkIdTarget  {
 		super(attr, node);
 		this.resolver = bulkIdResolver;
 		
-		parseJson(attr,node);
+		parseJson(node);
 	}
 
 	public String toString() {
@@ -81,7 +81,7 @@ public class ReferenceValue extends Value implements IBulkIdTarget  {
 	}
 
 	@Override
-	public void parseJson(Attribute attr, JsonNode node)
+	public void parseJson(JsonNode node)
 			throws ConflictException, SchemaException, ParseException {
 		setUri(attr,node.asText());
 	}

@@ -103,7 +103,7 @@ public class RequestCtx {
 	
 	ServletContext sctx;
 	
-	private boolean hasSecAuth = false;
+	private final boolean hasSecAuth = false;
 	private SecurityIdentity identity = null;
 	private ArrayList<String> secRoles = null;
 	private AciSet acis = null;
@@ -205,7 +205,7 @@ public class RequestCtx {
 		this.path = buf.toString();
 		parsePath();
 		if (filter != null) {
-			this.filter = Filter.parseFilter(filter, this, this.smgr);
+			this.filter = Filter.parseFilter(filter, this);
 			clientNoFilterSpecd = false;
 		}
 		this.sctx = null;
@@ -250,7 +250,7 @@ public class RequestCtx {
 		param = allParams.get(ScimParams.QUERY_filter);
 		
 		if (param != null) {
-			this.filter = Filter.parseFilter(param, this, smgr);
+			this.filter = Filter.parseFilter(param, this);
 			clientNoFilterSpecd = false;
 		}
 		
@@ -317,7 +317,7 @@ public class RequestCtx {
 		String filt = req.getParameter(ScimParams.QUERY_filter);
 		if (filt == null) filter=null;
 		else {
-			filter = Filter.parseFilter(filt, this, smgr);
+			filter = Filter.parseFilter(filt, this);
 			clientNoFilterSpecd = false;
 		}
 		
@@ -460,7 +460,7 @@ public class RequestCtx {
 		}			
 		vnode = node.get("filter");
 		if (vnode != null) {
-			this.filter = Filter.parseFilter(vnode.asText(), this, smgr);
+			this.filter = Filter.parseFilter(vnode.asText(), this);
 			this.clientNoFilterSpecd = false;
 		}
 		

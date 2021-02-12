@@ -138,7 +138,7 @@ public class PatchOp extends Operation implements IBulkOp {
 
             OpStat stats = getStats();
             node.put(BulkOps.PARAM_SEQNUM,stats.executionNum);
-            node.put(BulkOps.PARAM_ACCEPTDATE,stats.getFinishDate());
+            node.put(BulkOps.PARAM_ACCEPTDATE,stats.getFinishDateStr());
             if (ctx != null)
                 node.put(BulkOps.PARAM_TRANID, ctx.getTranId());
             return node;

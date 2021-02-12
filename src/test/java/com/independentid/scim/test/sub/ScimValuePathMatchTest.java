@@ -19,6 +19,7 @@
  import com.independentid.scim.core.err.BadFilterException;
  import com.independentid.scim.core.err.ScimException;
  import com.independentid.scim.protocol.Filter;
+ import com.independentid.scim.protocol.RequestCtx;
  import com.independentid.scim.resource.ScimResource;
  import com.independentid.scim.resource.Value;
  import com.independentid.scim.schema.Attribute;
@@ -84,12 +85,15 @@
      }
 
      @Test
-     public void b_ValPathFilterTest() throws BadFilterException {
+     public void b_ValPathFilterTest() throws ScimException {
          Attribute addr = smgr.findAttribute("addresses", null);
          assertThat(addr).isNotNull();
          Value val = user1.getValue(addr);
 
-         Filter filter = Filter.parseFilter("addresses[type eq work and postalCode eq 91608]", null, null, smgr);
+         // Create a dummy RequestCtx to pass schemaMgr.
+         RequestCtx ctx = new RequestCtx("/",null,null,smgr);
+
+         Filter filter = Filter.parseFilter("addresses[type eq work and postalCode eq 91608]", null, ctx);
 
          assertThat(filter.isMatch(user1))
                  .as("Check the value path filter is true for Babs Jensen")
@@ -99,7 +103,7 @@
                  .as("Check the value match for addresses attribute")
                  .isTrue();
 
-         filter = Filter.parseFilter("addresses[type eq work and postalCode eq 11111]", null, null, smgr);
+         filter = Filter.parseFilter("addresses[type eq work and postalCode eq 11111]", null, ctx);
 
          assertThat(filter.isMatch(user1))
                  .as("Check the value path filter is not true for Babs Jensen")

@@ -38,8 +38,7 @@ import java.util.Map;
 public class ComplexValue extends Value {
 
 	private final LinkedHashMap<Attribute, Value> vals;
-	private IBulkIdResolver resolver;
-	private Attribute attr;
+	private final IBulkIdResolver resolver;
 
 	public ComplexValue() {
 		this.vals = new LinkedHashMap<>();
@@ -59,8 +58,8 @@ public class ComplexValue extends Value {
 			throw new SchemaException("Attribute schema is null");
 		this.vals = new LinkedHashMap<>();
 		this.resolver = resolver;
-		this.attr = attrDef;
-		this.parseJson(attrDef, node);
+
+		this.parseJson(node);
 
 	}
 	
@@ -141,7 +140,7 @@ public class ComplexValue extends Value {
 	}
 
 	@Override
-	public void parseJson(Attribute attr, JsonNode node)
+	public void parseJson(JsonNode node)
 			throws ConflictException, SchemaException, ParseException {
 		Iterator<String> niter = node.fieldNames();
 		while (niter.hasNext()) {

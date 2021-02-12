@@ -532,7 +532,7 @@ public class ScimUserCRUDTest {
 			//node.get("displayName");
 			StringValue newval = new StringValue(name,node);
 			//res.removeValue(name);
-			res.addValue(name, newval);
+			res.addValue(newval);
 			
 			HttpPut put = new HttpPut(req);
 		    entity = new StringEntity(res.toJsonString(),ContentType.create(ScimParams.SCIM_MIME_TYPE));

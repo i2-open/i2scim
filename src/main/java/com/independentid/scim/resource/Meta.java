@@ -19,8 +19,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.core.err.ConflictException;
+import com.independentid.scim.core.err.DuplicateTxnException;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.protocol.AttributeFilter;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
@@ -310,10 +313,13 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		gen.writeEndObject();
 	}
 
+	/*
 	public void parseJson(Attribute attr, JsonNode node) throws SchemaException {
 		this.attr = attr;
 		parseJson(node);
 	}
+
+	 */
 
 	public HashMap<Attribute, Value> getValueArray() {
 		HashMap<Attribute,Value> map = new HashMap<>();
@@ -381,10 +387,21 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		this.revisions = revisions;
 	}
 
-	public void addRevision(RequestCtx ctx) {
+	public void addRevision(RequestCtx ctx) throws DuplicateTxnException {
     	checkAttr(ctx);
+		Attribute revAttr = this.attr.getSubAttribute(META_REVISIONS);
 
-    	Attribute revAttr = this.attr.getSubAttribute(META_REVISIONS);
+		//First, check for duplicate
+		if (this.revisions != null) {
+			try {
+				AttributeFilter filter = new AttributeFilter(revAttr.getSubAttribute("value"),"eq",ctx.getTranId(),ctx);
+				Value val = this.revisions.getMatchValue(filter);
+				if (val != null)
+					throw new DuplicateTxnException("Duplicate txn id("+ctx.getTranId()+") detected.");
+			} catch (BadFilterException e) {
+				e.printStackTrace();
+			}
+		}
 
 		Map<Attribute,Value> map = new HashMap<>() ;
 		StringValue tid = new StringValue(revAttr.getSubAttribute("value"), ctx.getTranId());

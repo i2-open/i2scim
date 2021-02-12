@@ -14,7 +14,6 @@
  */
 package com.independentid.scim.core;
 
-import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.plugin.PluginHandler;
@@ -159,8 +158,6 @@ public class ConfigMgr {
 	@Resource(name="ScimPlugins")
 	PluginHandler pluginHandler;
 
-	private static boolean initialized = false;
-
 	@Inject
 	ServletContext sctx;
 	
@@ -226,29 +223,11 @@ public class ConfigMgr {
 	
 	@PostConstruct
 	public synchronized void initializeConfiguration() throws ScimException,IOException {
-		if (initialized) {
-			logger.debug("ERROR: Multiple initializations detected");
-			return;
-		}
 
 		logger.info("======Initializing SCIM Config Mangaer=====");
 		
 		self = this;
 
-		/*
-		if (!configOnly && !backendHandler.isReady())
-			try {
-				backendHandler.init();
-			} catch (ClassNotFoundException | InstantiationException | BackendException e) {
-				throw new ScimException("Fatal error starting backend handler: "+e.getLocalizedMessage(),e);
-			}
-
-		 */
-		
-		//If the server will not persist its schema in the database, then load directly into config.
-
-		initialized = true;
-		
 		if (isRootEnabled() && getRootPassword().equals("admin"))
 			logger.warn("Server is configured with root access and default password!");
 	}
@@ -346,15 +325,7 @@ public class ConfigMgr {
 	public boolean isPrettyJsonMode() {
 		return this.jsonPretty;
 	}
-	
-	/**
-	 * @return Boolean contains true if ConfigMgr is fully initialized.
-	 */
-	public boolean isReady() {
-		return initialized;
-	}
 
-	
 	public void setMaxResults(int max) {
 		this.maxResults = max;
 	}

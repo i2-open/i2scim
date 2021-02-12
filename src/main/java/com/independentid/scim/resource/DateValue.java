@@ -34,7 +34,7 @@ public class DateValue extends Value {
 	
 	public DateValue(Attribute attr, JsonNode node) throws SchemaException, ParseException {
 		super(attr,node);
-		parseJson(attr,node);
+		parseJson(node);
 	}
 	
 	public DateValue(Attribute cfg, Date date) {
@@ -48,7 +48,7 @@ public class DateValue extends Value {
 		gen.writeString(dateValue);
 	}
 	
-	public void parseJson(Attribute attr,JsonNode node) throws SchemaException, ParseException {
+	public void parseJson(JsonNode node) throws SchemaException, ParseException {
 		if (node == null)
 			throw new SchemaException("Was expecting a String value but encountered null");
 		if (!this.jtype.equals(JsonNodeType.STRING))

@@ -223,6 +223,11 @@ public class ResourceType implements ScimSerializer {
 	}
 	
 	public String toString() {
+		return "RType name="+name
+					+", Id="+id
+					+", Endpoint="+endpoint;
+
+		/*
     	StringWriter writer = new StringWriter();
     	JsonGenerator gen;
 		try {
@@ -235,6 +240,8 @@ public class ResourceType implements ScimSerializer {
 		}
 
     	return writer.toString();
+
+		 */
 	}
 	
 	public JsonNode toJsonNode() {
@@ -370,4 +377,5 @@ public class ResourceType implements ScimSerializer {
 		item = node.get("meta");
 		setMeta(item);
 	}
+
 }

@@ -26,8 +26,8 @@ import java.util.ArrayList;
  */
 public class BulkResponse extends ScimResponse {
 //TODO: This code has not JUnit code and is not fully implemented.
-	protected RequestCtx ctx;
-	protected ArrayList<Operation> ops;
+	protected final RequestCtx ctx;
+	protected final ArrayList<Operation> ops;
 	protected int httpstat = 200;
 	protected String stype = null;
 	protected String detail = null;

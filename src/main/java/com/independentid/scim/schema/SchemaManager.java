@@ -380,7 +380,7 @@ public class SchemaManager {
 
         String id = ctx.getPathId();
         if (id != null && id.length() > 0) {
-            ResourceType type = getResourceType(id);
+            ResourceType type = getResourceTypeById(id);
             //		.getConfig(ctx.sctx).getSchema(ctx.id);
             if (type == null) {
                 return;
@@ -562,7 +562,7 @@ public class SchemaManager {
         return rTypes.values();
     }
 
-    public ResourceType getResourceType(String id) {
+    public ResourceType getResourceTypeById(String id) {
         return rTypes.get(id);
     }
 

@@ -34,7 +34,7 @@ public class IntegerValue extends Value {
 
 	public IntegerValue(Attribute attr, JsonNode node) throws SchemaException, ParseException {
 		super(attr, node);
-		parseJson(attr,node);
+		parseJson(node);
 	}
 	
 	public IntegerValue(Attribute attr, Integer val) {
@@ -57,7 +57,7 @@ public class IntegerValue extends Value {
 	}
 
 	@Override
-	public void parseJson(Attribute attr, JsonNode node) throws SchemaException, ParseException {
+	public void parseJson(JsonNode node) throws SchemaException, ParseException {
 		if (!this.jtype.equals(JsonNodeType.NUMBER))
 			throw new SchemaException("Invalid field data endpoint. Expecting integer 'number'."+node.toString());
 		this.value = node.asInt();

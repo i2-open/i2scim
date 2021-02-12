@@ -832,7 +832,7 @@ public class ScimAuthZCRUDTest {
 			//node.get("displayName");
 			StringValue newval = new StringValue(name,node);
 			//res.removeValue(name);
-			res.addValue(name, newval);
+			res.addValue(newval);
 			
 			HttpPut put = new HttpPut(req);
 			put.addHeader(HttpHeaders.AUTHORIZATION, auth);

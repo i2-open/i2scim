@@ -73,8 +73,8 @@ public abstract class Filter {
 		return this.filter;
 	} 
 	
-	public static Filter parseFilter(String filterStr, RequestCtx ctx, SchemaManager schemaManager) throws BadFilterException {
-		return parseFilter(filterStr, null, ctx, schemaManager);
+	public static Filter parseFilter(String filterStr, @NotNull RequestCtx ctx) throws BadFilterException {
+		return parseFilter(filterStr, null, ctx);
 	}
 
 	/**
@@ -96,14 +96,11 @@ public abstract class Filter {
 	 * @param filterStr A SCIM filter expressed in string form
 	 * @param parentAttr Optional parent attribute, used when parsing Value Filters.
 	 * @param ctx The RequestCtx which may be used for detecting attribute names using request Path
-	 * @param schemaManager Optional RequestCtx that provides additional context for matching
-	 * short attribute names. For example, ambiguous attribute "name" can be matched to User schema if
-	 * searching within the Users container.
 	 * @return A Filter object containing the parsed filter.
 	 * @throws BadFilterException Thrown if the filter is an invalid SCIM filter.
 	 */
-	public static Filter parseFilter(String filterStr, String parentAttr, RequestCtx ctx, SchemaManager schemaManager) throws BadFilterException {
-		smgr = schemaManager;
+	public static Filter parseFilter(String filterStr, String parentAttr, @NotNull RequestCtx ctx) throws BadFilterException {
+		smgr = ctx.getSchemaMgr();
 		int bCnt = 0;  int bIndex = -1;
 		int valPathCnt = 0;  int vPathStartIndex = -1;
 		int wordIndex = -1;
@@ -154,7 +151,7 @@ public abstract class Filter {
 						bCnt--;
 						if (bCnt == 0) {
 							String subFilterStr = filterStr.substring(bIndex+1,i);
-							Filter subFilter = Filter.parseFilter(subFilterStr, parentAttr, ctx, schemaManager);
+							Filter subFilter = Filter.parseFilter(subFilterStr, parentAttr, ctx);
 							// Precedence is redundant if Attribute Filter
 							if (! (subFilter instanceof AttributeFilter))
 								clauses.add(new PrecedenceFilter(subFilter, isNot));
@@ -201,7 +198,7 @@ public abstract class Filter {
 						if (valPathCnt == 0) {
 							String aname = filterStr.substring(wordIndex,vPathStartIndex);
 							String valueFilterStr = filterStr.substring(vPathStartIndex+1,i);
-							Filter clause = new ValuePathFilter(aname,valueFilterStr,smgr );
+							Filter clause = new ValuePathFilter(aname,valueFilterStr,ctx);
 							clauses.add(clause);
 							//reset for next phrase
 							vPathStartIndex = -1;
@@ -240,7 +237,7 @@ public abstract class Filter {
 							cond = phrase;
 							wordIndex = -1;
 							if (cond.equalsIgnoreCase(AttributeFilter.FILTEROP_PRESENCE)) {
-								Filter attrExp = new AttributeFilter(attr,cond,null,parentAttr, ctx, schemaManager);
+								Filter attrExp = new AttributeFilter(attr,cond,null,parentAttr, ctx);
 								attr = null; isAttr = false;
 								cond = null; isExpr = false;
 								isValue = false;
@@ -250,7 +247,7 @@ public abstract class Filter {
 							if (isValue) {
 								value = phrase;
 								wordIndex = -1;
-								Filter attrExp = new AttributeFilter(attr,cond,value,parentAttr, ctx, schemaManager);
+								Filter attrExp = new AttributeFilter(attr,cond,value,parentAttr, ctx);
 								attr = null; isAttr = false;
 								cond = null; isExpr = false;
 								isValue = false;
@@ -310,7 +307,7 @@ public abstract class Filter {
 				if (value.startsWith("\"") && value.endsWith("\"")) {
 					value = value.substring(1, value.length()-1);
 				}
-				Filter attrExp = new AttributeFilter(attr,cond,value,parentAttr, ctx, schemaManager);
+				Filter attrExp = new AttributeFilter(attr,cond,value,parentAttr, ctx);
 				
 				clauses.add(attrExp);
 			} else {
@@ -318,7 +315,7 @@ public abstract class Filter {
 				if (isAttr) 
 					cond = filterStr.substring(wordIndex);
 				// in a presence filter the value is always null.
-				Filter attrExp = new AttributeFilter(attr,cond,null,parentAttr, ctx, schemaManager);
+				Filter attrExp = new AttributeFilter(attr,cond,null,parentAttr, ctx);
 				clauses.add(attrExp);
 			}
 		}

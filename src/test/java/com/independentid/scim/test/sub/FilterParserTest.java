@@ -49,7 +49,7 @@ public class FilterParserTest {
 	/**
 	 * Test filters from RFC7644, figure 2
 	 */
-	String[][] testArray = new String[][] {
+	final String[][] testArray = new String[][] {
 		{"Users","userName eq \"bjensen\""},  // basic attribute filter
 		{"Users","displayName eq \"Phil Hunt\""},  //testing for parsing spaces
 		{null,"urn:ietf:params:scim:schemas:core:2.0:User:name.familyName co \"O'Malley\""},
@@ -77,7 +77,7 @@ public class FilterParserTest {
 
 	};
 	
-	String[] matchArray = new String[] {
+	final String[] matchArray = new String[] {
 			"userName eq bjensen",  // basic attribute filter
 			"displayName eq \"Phil Hunt\"",  //testing for parsing spaces
 			"name.familyName co O'Malley",

@@ -43,8 +43,8 @@ public class ConfigResponse extends ListResponse {
 
     //private RequestCtx ctx;
 
-    ConfigMgr cmgr;
-    SchemaManager smgr;
+    final ConfigMgr cmgr;
+    final SchemaManager smgr;
 
     private boolean isResourceResponse = false;
 

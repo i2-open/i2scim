@@ -32,6 +32,8 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
+import static java.lang.Thread.sleep;
+
 /**
  * @author pjdhunt
  * PoolManager handles the thread pool for processing SCIM requests. It is designed to be 
@@ -126,8 +128,10 @@ public class PoolManager {
 	public void addJobAndWait(Operation task)
 			throws RejectedExecutionException {
 		while (!ready) {
+			//noinspection CatchMayIgnoreException
 			try {
-				Thread.sleep(100);
+				//noinspection BusyWait
+				sleep(100);
 			} catch (InterruptedException e) {
 			}
 		}

@@ -319,7 +319,7 @@ public class SchemaManagerTest {
 			fail("Failed to add Test ResourceType");
 		}
 
-		ResourceType typeCopy = smgr.getResourceType(type.getId());
+		ResourceType typeCopy = smgr.getResourceTypeById(type.getId());
 		assertThat(typeCopy).isNotNull();
 		assertThat(typeCopy)
 				.as("Check new type is equal to the old")

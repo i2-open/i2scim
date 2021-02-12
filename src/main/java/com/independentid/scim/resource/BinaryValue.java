@@ -42,14 +42,11 @@ public class BinaryValue extends Value {
 	static final Encoder encoder = Base64.getEncoder();
 	
 	byte[] value;
-	
-	public BinaryValue() {
-		
-	}
+
 
 	public BinaryValue(Attribute attr, JsonNode node) throws SchemaException, ParseException {
 		super(attr, node);
-		parseJson(attr,node);
+		parseJson(node);
 	}
 	
 	/**
@@ -73,7 +70,7 @@ public class BinaryValue extends Value {
 	}
 
 	@Override
-	public void parseJson(Attribute attr, JsonNode node)
+	public void parseJson(JsonNode node)
 			throws SchemaException, ParseException {
 		//The value should be actually a base64 encoded string (DER)
 		if (node == null)

@@ -224,11 +224,6 @@ public class ListResponse extends ScimResponse {
 	}
 
 	@Override
-	public JsonNode toJsonNode() {
-		return super.toJsonNode();
-	}
-
-	@Override
 	protected void processReadableResult(AciSet set) {
 		for (ScimResource res : this.entries) {
 			Set<Attribute> attrs = res.getAttributesPresent();

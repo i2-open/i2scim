@@ -89,7 +89,7 @@ public class MongoConfigTest {
 	@Test 
 	public void c_ResTypeTest() {
 		ResourceType resByEp = smgr.getResourceTypeByPath("Users");
-		ResourceType resByName = smgr.getResourceType("User");
+		ResourceType resByName = smgr.getResourceTypeById("User");
 		
 		assertThat(resByEp == resByName).as("Is the same ResourceType config instance").isTrue();
 		

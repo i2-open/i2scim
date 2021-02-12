@@ -93,13 +93,5 @@ public class GetOp extends Operation {
 		}
 	}
 
-	/* (non-Javadoc)
-	 * @see com.independentid.scim.op.Operation#parseJson(com.fasterxml.jackson.databind.JsonNode)
-	 */
-	@Override
-	protected void parseJson(JsonNode node) {
-		// Nothing to be done.
-		
-	}
 
 }

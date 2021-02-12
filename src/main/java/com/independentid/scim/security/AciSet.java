@@ -45,10 +45,10 @@ public class AciSet {
 
     private final AccessControl.Rights right;
 
-    public HashSet<Attribute> opAttrsAllowed = new HashSet<>();
-    public HashSet<Attribute> opAttrsExcluded = new HashSet<>();
-    public HashSet<Attribute> retAttrsAllowed = new HashSet<>();
-    public HashSet<Attribute> retAttrsExcluded = new HashSet<>();
+    public final HashSet<Attribute> opAttrsAllowed = new HashSet<>();
+    public final HashSet<Attribute> opAttrsExcluded = new HashSet<>();
+    public final HashSet<Attribute> retAttrsAllowed = new HashSet<>();
+    public final HashSet<Attribute> retAttrsExcluded = new HashSet<>();
 
     public boolean isOpAllAttrs = false;
     public boolean isReadAllAttrs = false;

@@ -246,8 +246,8 @@ public class MongoFilterMapTest {
         user1 = new ScimResource(smgr, node, "Users");
         IntegerValue lcnt = new IntegerValue(loginCnt,1234);
         DecimalValue lstr = new DecimalValue(loginStrength,BigDecimal.valueOf(3.4));
-        user1.addValue(loginCnt,lcnt);
-        user1.addValue(loginStrength,lstr);
+        user1.addValue(lcnt);
+        user1.addValue(lstr);
 
         userStream.close();
 
@@ -258,8 +258,8 @@ public class MongoFilterMapTest {
         user2 = new ScimResource(smgr, node, "Users");
         lcnt = new IntegerValue(loginCnt,1);
         lstr = new DecimalValue(loginStrength,BigDecimal.valueOf(1.00));
-        user2.addValue(loginCnt,lcnt);
-        user2.addValue(loginStrength,lstr);
+        user2.addValue(lcnt);
+        user2.addValue(lstr);
         RequestCtx ctx = new RequestCtx("/Users", null, null, smgr);
         ScimResponse resp = mp.create(ctx, user1);
         assertThat(resp.getStatus())

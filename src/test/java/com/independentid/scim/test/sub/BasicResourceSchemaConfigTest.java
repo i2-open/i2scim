@@ -66,7 +66,7 @@ public class BasicResourceSchemaConfigTest {
 		//ConfigMgr mgr = (ConfigMgr) ctx.getBean("Configmgr");
 		
 		// Test the User object
-		ResourceType typ = smgr.getResourceType("User");
+		ResourceType typ = smgr.getResourceTypeById("User");
 		assertThat(typ.getEndpoint()).isEqualTo(URI.create("/Users"));
 		assertThat(typ.getSchema()).isEqualTo("urn:ietf:params:scim:schemas:core:2.0:User");
 		String[] schemaExts = typ.getSchemaExtension();

@@ -32,11 +32,11 @@ import java.util.Iterator;
  */
 public class JsonPatchRequest {
 
-	protected ConfigMgr cfg;
+	protected final ConfigMgr cfg;
 	
-	protected RequestCtx ctx;
+	protected final RequestCtx ctx;
 	
-	protected ArrayList<JsonPatchOp> ops;
+	protected final ArrayList<JsonPatchOp> ops;
 
 	/**
 	 * @param cfg The current context Configuration context.

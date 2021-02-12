@@ -147,7 +147,8 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
                 Iterator<ScimResource> entries = lresp.entries();
                 // Since username is unique, there should only be one entry.
                 ScimResource resource = entries.next();
-                Filter pfilt = Filter.parseFilter("password eq "+pwd,null,null,smgr);
+
+                Filter pfilt = Filter.parseFilter("password eq "+pwd,null,ctx);
                 if (!pfilt.isMatch(resource))
                     return Uni.createFrom().failure(new AuthenticationFailedException());
 
