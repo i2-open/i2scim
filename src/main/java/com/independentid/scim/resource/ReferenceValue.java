@@ -53,6 +53,7 @@ public class ReferenceValue extends Value implements IBulkIdTarget  {
 		super();
 		this.jtype = JsonNodeType.STRING;
 		this.value = uri;
+		this.attr = attr;
 	}
 
 

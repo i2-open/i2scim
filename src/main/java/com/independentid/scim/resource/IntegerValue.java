@@ -39,6 +39,7 @@ public class IntegerValue extends Value {
 	
 	public IntegerValue(Attribute attr, Integer val) {
 		super();
+		this.attr = attr;
 		this.jtype = JsonNodeType.NUMBER;
 		this.value = val;
 	}

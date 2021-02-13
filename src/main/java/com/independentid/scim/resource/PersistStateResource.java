@@ -33,52 +33,25 @@ import java.util.Date;
  */
 public class PersistStateResource extends ScimResource {
 
-
-	DateValue lastSyncDate;
-	IntegerValue rTypeCnt;
-	IntegerValue schemaCnt;
-	
+	public static String RESTYPE_CONFIG = ScimParams.PATH_SERV_PROV_CFG;
+	public static String CONFIG_ID = "ConfigState";
 	public static String FIELD_LAST_SYNC = "lastSyncDate";
 	public static String FIELD_RTYPE_CNT = "rTypeCnt";
 	public static String FIELD_SCHEMA_CNT = "schemaCnt";
 
-	static Attribute syncDateAttr = new Attribute(FIELD_LAST_SYNC);
-	static Attribute rTypeCntAttr = new Attribute(FIELD_RTYPE_CNT);
-	static Attribute sCntAttr = new Attribute(FIELD_SCHEMA_CNT);
-	static Schema persistSchema;
+	DateValue lastSyncDate;
+	IntegerValue rTypeCnt;
+	IntegerValue schemaCnt;
+
+	Attribute syncDateAttr = new Attribute(FIELD_LAST_SYNC);
+	Attribute rTypeCntAttr = new Attribute(FIELD_RTYPE_CNT);
+	Attribute sCntAttr = new Attribute(FIELD_SCHEMA_CNT);
+	Schema persistSchema;
 	ResourceType persistType;
-	static {
-		persistSchema.setName("Persisted Configuration State");
-		persistSchema.setId(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
-		persistSchema.putAttribute(syncDateAttr);
-		persistSchema.putAttribute(rTypeCntAttr);
-		persistSchema.putAttribute(sCntAttr);
-
-		syncDateAttr.setPath(persistSchema.getId(),null);
-		syncDateAttr.setType(Attribute.TYPE_Date);
-		rTypeCntAttr.setPath(persistSchema.getId(),null);
-		rTypeCntAttr.setType(Attribute.TYPE_Integer);
-		sCntAttr.setPath(persistSchema.getId(),null);
-		sCntAttr.setType(Attribute.TYPE_Integer);
-
-	}
-
-	public static String RESTYPE_CONFIG = ScimParams.PATH_SERV_PROV_CFG;
-	public static String CONFIG_ID = "ConfigState";
-			
 
 	public PersistStateResource(SchemaManager schemaManager, JsonNode resourceNode, IBulkIdResolver bulkIdResolver, String container)
 			throws ParseException, ScimException {
 		super(schemaManager, resourceNode, bulkIdResolver, container);
-		persistSchema = new Schema(schemaManager);
-		type = persistType;
-		coreSchema = persistSchema;
-		setId(CONFIG_ID);
-
-		persistType = new ResourceType(schemaManager);
-		persistType.setName(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
-		persistType.setSchema(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
-		
 	}
 	
 	public PersistStateResource(SchemaManager schemaManager, int rCnt, int sCnt) {
@@ -124,7 +97,28 @@ public class PersistStateResource extends ScimResource {
 	}
 
 
-	public void parseJson(JsonNode node) throws ParseException, ScimException {
+	public void parseJson(JsonNode node, SchemaManager schemaManager) throws ParseException, ScimException {
+		persistSchema = new Schema(schemaManager);
+		persistSchema.setName("Persisted Configuration State");
+		persistSchema.setId(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
+		persistSchema.putAttribute(syncDateAttr);
+		persistSchema.putAttribute(rTypeCntAttr);
+		persistSchema.putAttribute(sCntAttr);
+
+		syncDateAttr.setPath(persistSchema.getId(),null);
+		syncDateAttr.setType(Attribute.TYPE_Date);
+		rTypeCntAttr.setPath(persistSchema.getId(),null);
+		rTypeCntAttr.setType(Attribute.TYPE_Integer);
+		sCntAttr.setPath(persistSchema.getId(),null);
+		sCntAttr.setType(Attribute.TYPE_Integer);
+
+		type = persistType;
+		coreSchema = persistSchema;
+		setId(CONFIG_ID);
+
+		persistType = new ResourceType(schemaManager);
+		persistType.setName(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
+		persistType.setSchema(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 
 		initSchemas();
 
@@ -191,6 +185,7 @@ public class PersistStateResource extends ScimResource {
 		return this.toJsonString();
 
 	}
+
 
 
 }

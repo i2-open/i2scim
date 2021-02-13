@@ -37,10 +37,11 @@ public class DateValue extends Value {
 		parseJson(node);
 	}
 	
-	public DateValue(Attribute cfg, Date date) {
+	public DateValue(Attribute attr, Date date) {
 		super();
 		this.jtype = JsonNodeType.STRING;
 		this.value = date;
+		this.attr = attr;
 	}
 	
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {

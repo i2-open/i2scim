@@ -55,12 +55,14 @@ public class BinaryValue extends Value {
 	 */
 	public BinaryValue(Attribute attr, byte[] bval) {
 		this.value = bval;
-		this.jtype = JsonNodeType.BINARY;  
+		this.jtype = JsonNodeType.BINARY;
+		this.attr = attr;
 	}
 
 	public BinaryValue(Attribute attr, String b64string) {
 		this.value = decoder.decode(b64string.getBytes());  
 		this.jtype = JsonNodeType.BINARY;
+		this.attr = attr;
 	}
 
 	@Override

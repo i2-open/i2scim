@@ -43,6 +43,7 @@ public class DecimalValue extends Value {
 		super();
 		this.jtype = JsonNodeType.NUMBER;
 		this.value = num;
+		this.attr = attr;
 	}
 
 	@Override

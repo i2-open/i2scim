@@ -33,15 +33,16 @@ public class BooleanValue extends Value {
 	public BooleanValue() {
 	}
 
-	public BooleanValue(Attribute cfg, JsonNode node) throws SchemaException, ParseException {
-		super(cfg,node);
+	public BooleanValue(Attribute attr, JsonNode node) throws SchemaException, ParseException {
+		super(attr,node);
 		parseJson(node);
 	}
 	
-	public BooleanValue(Attribute name, boolean value) {
+	public BooleanValue(Attribute attr, boolean value) {
 		super();
 		this.value = value;
 		this.jtype = JsonNodeType.BOOLEAN;
+		this.attr = attr;
 	}
 
 	@Override
