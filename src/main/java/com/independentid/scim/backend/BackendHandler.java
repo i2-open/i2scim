@@ -109,12 +109,12 @@ public class BackendHandler {
 		return self;
 	}*/
 
-	public synchronized IScimProvider getProvider() throws InstantiationException, ClassNotFoundException, BackendException {
+	public synchronized IScimProvider getProvider() throws BackendException {
 		if (provider != null)
 			return provider;
 		
 		if (providerName == null)
-			throw new InstantiationException("Unable to instantiate, IScimProvider bean class property (scim.provider.bean) not defined.");
+			throw new BackendException("Unable to instantiate, IScimProvider bean class property (scim.provider.bean) not defined.");
 
 		if (providerName.startsWith("class"))
 			providerName = providerName.substring(6);

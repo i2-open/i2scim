@@ -136,6 +136,7 @@ public class TestProducer {
 
     }
 
+    @SuppressWarnings("CatchMayIgnoreException")
     @Test
     public void c_checkServerMessageRead()  {
         int waitCnt = 0;

@@ -263,7 +263,7 @@ public class ScimLoadParallelSampleTest {
 
         try {
             handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-        } catch (IOException | InstantiationException | ClassNotFoundException | BackendException e) {
+        } catch (IOException | BackendException e) {
             fail("Failed to initialize test Mongo DB: "+scimDbName);
         }
         try {

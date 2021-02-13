@@ -22,7 +22,6 @@ import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.SchemaManager;
-import com.independentid.scim.test.auth.ScimAuthTestProfile;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
@@ -128,7 +127,7 @@ public class ScimHealthTest {
 		
 		try {
 			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-		} catch (IOException | InstantiationException | ClassNotFoundException | BackendException e) {
+		} catch (IOException | BackendException e) {
 			fail("Failed to initialize test Mongo DB: "+scimDbName);
 		}
 		

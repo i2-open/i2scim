@@ -177,7 +177,7 @@ public class AccessMgrTest {
                     .isEqualTo(HttpStatus.SC_CREATED);
             idUser2 = authUser("jsmith@example.com",testPass,user2);
 
-        } catch (IOException | InstantiationException | ClassNotFoundException | ParseException | ScimException | BackendException e) {
+        } catch (IOException | ParseException | ScimException | BackendException e) {
             fail("Failed to initialize test Mongo DB: "+scimDbName+": "+e.getLocalizedMessage());
         }
 
