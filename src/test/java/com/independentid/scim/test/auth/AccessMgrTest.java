@@ -159,11 +159,12 @@ public class AccessMgrTest {
             InputStream userStream1 = ConfigMgr.getClassLoaderFile(testUserFile1);
             JsonNode userNode1 = JsonUtil.getJsonTree(userStream1);
             user1 = new ScimResource(smgr,userNode1,"Users");
+            user1.setId(null);
 
             InputStream userStream2 = ConfigMgr.getClassLoaderFile(testUserFile2);
             JsonNode userNode2 = JsonUtil.getJsonTree(userStream2);
             user2 = new ScimResource(smgr,userNode2,"Users");
-
+            user2.setId(null);
             RequestCtx ctx = new RequestCtx("/Users",null,null,smgr);
             ScimResponse resp = handler.create(ctx,user1);
             assertThat(resp.getStatus())
@@ -296,7 +297,7 @@ public class AccessMgrTest {
                     .as("All attributes are returnable")
                     .isTrue();
             ScimResource u1copy = user1.copy(ctx);
-            ResourceResponse resp = new ResourceResponse(u1copy,ctx,cmgr);
+            ResourceResponse resp = new ResourceResponse(u1copy,ctx);
             resp.applyAciSet(ctx.getAcis());
 
             StringWriter writer = new StringWriter();
@@ -356,7 +357,7 @@ public class AccessMgrTest {
                     .as("All attributes are not returnable")
                     .isFalse();
             ScimResource u2copy = user2.copy(ctx);
-            ResourceResponse resp = new ResourceResponse(u2copy,ctx,cmgr);
+            ResourceResponse resp = new ResourceResponse(u2copy,ctx);
             resp.applyAciSet(ctx.getAcis());
 
             StringWriter writer = new StringWriter();

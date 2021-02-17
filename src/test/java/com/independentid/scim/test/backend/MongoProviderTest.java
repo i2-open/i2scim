@@ -64,11 +64,7 @@ public class MongoProviderTest {
 
 		logger.info("========== MongoProvider Basic Test ==========");
 
-		try {
-			mp = (MongoProvider) handler.getProvider();
-		} catch (InstantiationException | ClassNotFoundException | BackendException e) {
-			fail("Exception occured getting MongoProvider: "+e.getLocalizedMessage());
-		}
+		mp = (MongoProvider) handler.getProvider();
 		//ConfigMgr mgr = (ConfigMgr) ctx.getBean("Configmgr");
 		//MongoProvider mp = (MongoProvider) MongoProvider.getProvider();
 		assertThat(mp).isNotNull();

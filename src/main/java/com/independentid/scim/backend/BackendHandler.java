@@ -16,7 +16,6 @@
 package com.independentid.scim.backend;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
@@ -38,6 +37,7 @@ import javax.inject.Named;
 import javax.inject.Singleton;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.function.Supplier;
 
 //@ApplicationScoped
 @Singleton
@@ -56,9 +56,17 @@ public class BackendHandler {
 
 	@Inject
 	Instance<IScimProvider> providers;
+
+	@Inject
+	Instance<IIdentifierGenerator> generators;
+
+	IIdentifierGenerator generator = null;
+
+	private final Supplier<IScimProvider> providerSupplier;
 	
-	public BackendHandler() {
+	public BackendHandler(){
 		// Can't do anything here that involves injected properties etc!
+		this.providerSupplier = new CachedProviderSupplier<>(this::getProvider);
 	}
 
 	/**
@@ -78,7 +86,7 @@ public class BackendHandler {
 			logger.info("=====BackendHandler initialization=====");
 			logger.info("Starting IScimProvider Provider: " + providerName);
 
-			getProvider();
+			provider = this.providerSupplier.get();
 		}
 
 
@@ -109,27 +117,42 @@ public class BackendHandler {
 		return self;
 	}*/
 
-	public synchronized IScimProvider getProvider() throws BackendException {
-		if (provider != null)
-			return provider;
-		
-		if (providerName == null)
-			throw new BackendException("Unable to instantiate, IScimProvider bean class property (scim.provider.bean) not defined.");
-
-		if (providerName.startsWith("class"))
-			providerName = providerName.substring(6);
-
-		provider = getProvider(providerName);
-		provider.init();
-
-		return provider;
+	public IIdentifierGenerator getGenerator() {
+		if (generator == null)
+			initGenerator();
+		return generator;
 	}
 
-	public IScimProvider getProvider(String className) {
+	private void initGenerator() {
+		for (IIdentifierGenerator gen : generators) {
+			String provName = gen.getProviderClass();
+			if (provName.equals(providerName)) {
+				generator = gen;
+				return;
+			}
+		}
+	}
+
+	public IScimProvider getProvider() {
+		if (provider != null)
+			return provider;
+
+		if (providerName == null)
+			logger.error("Unable to instantiate, IScimProvider bean class property (scim.provider.bean) not defined.");
+
+
 		for (IScimProvider item : providers) {
 			String cname = item.getClass().toString();
-			if (cname.contains(className))
+			if (cname.contains(providerName)) {
+				try {
+					item.init();
+				} catch (BackendException e) {
+					logger.error("Eror initializing provider: "+e.getMessage(),e);
+					return null;
+				}
+				initGenerator();
 				return item;
+			}
 		}
 		return null;
 	}
@@ -168,6 +191,8 @@ public class BackendHandler {
 	}
 
 	public void syncConfig(SchemaManager smgr) throws IOException {
+		if (provider == null)
+			provider = providerSupplier.get();
 		provider.syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
 	}
 	

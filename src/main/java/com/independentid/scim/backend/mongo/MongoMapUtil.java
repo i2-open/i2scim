@@ -74,18 +74,22 @@ public class MongoMapUtil {
             Document metaDoc = new Document();
 
             if (meta.getCreatedDate() != null)
-                metaDoc.append("created", meta.getCreatedDate());
+                metaDoc.append(Meta.META_CREATED, meta.getCreatedDate());
             if (meta.getLastModifiedDate() != null)
-                metaDoc.append("lastModified", meta.getLastModifiedDate());
+                metaDoc.append(Meta.META_LAST_MODIFIED, meta.getLastModifiedDate());
 
             if (meta.getResourceType() != null)
-                metaDoc.append("resourceType", meta.getResourceType());
+                metaDoc.append(Meta.META_RESOURCE_TYPE, meta.getResourceType());
 
             if (meta.getLocation() != null)
-                metaDoc.append("location", meta.getLocation());
+                metaDoc.append(Meta.META_LOCATION, meta.getLocation());
 
             if (meta.getVersion() != null)
-                metaDoc.append("version", meta.getVersion());
+                metaDoc.append(Meta.META_VERSION, meta.getVersion());
+
+            if (meta.getRevisions() != null)
+                metaDoc.append(Meta.META_REVISIONS,MongoMapUtil.mapValue(meta.getRevisions()));
+
             doc.append("meta", metaDoc);
         }
 

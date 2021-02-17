@@ -19,15 +19,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.ConfigMgr;
-import com.independentid.scim.core.err.InvalidValueException;
-import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.protocol.JsonPatchRequest;
-import com.independentid.scim.protocol.ListResponse;
-import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.protocol.ScimResponse;
+import com.independentid.scim.core.err.*;
+import com.independentid.scim.protocol.*;
 import com.independentid.scim.resource.Meta;
 import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.resource.TransactionRecord;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaManager;
@@ -40,7 +37,6 @@ import javax.annotation.Priority;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
-import javax.inject.Singleton;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -95,10 +91,12 @@ public class MemoryProvider implements IScimProvider {
 	 * @see com.independentid.scim.backend.PersistenceProvider#create(com.independentid.scim.protocol.RequestCtx, com.independentid.scim.resource.ScimResource)
 	 */
 	@Override
-	public ScimResponse create(RequestCtx ctx, ScimResource res) throws BackendException {
-		UUID uid = UUID.randomUUID();
-		String sid = uid.toString();
-		res.setId(sid);
+	public ScimResponse create(RequestCtx ctx, ScimResource res) throws ScimException, BackendException {
+		if (res.getId() == null) {
+			UUID uid = UUID.randomUUID();
+			String sid = uid.toString();
+			res.setId(sid);
+		}
 		
 		Meta meta = res.getMeta();
 		Date created = new Date();
@@ -107,7 +105,7 @@ public class MemoryProvider implements IScimProvider {
 		String buf = '/' +
 				ctx.getResourceContainer() +
 				'/' +
-				sid;
+				res.getId();
 		meta.setLocation(buf);
 		
 		
@@ -117,19 +115,30 @@ public class MemoryProvider implements IScimProvider {
 		ResourceType type = schemaManager.getResourceTypeByPath(path);
 		if (type != null)
 			meta.setResourceType(type.getName());
-		
+
+		if (!path.equals(TransactionRecord.TRANS_CONTAINER))
+			try {
+				meta.addRevision(ctx, this, created);
+			} catch (BackendException e) {
+				return handleUnexpectedException(e);
+			}
 		
 		if (meta.getResourceType() == null)
 			throw new BackendException("Unable to determine object resource endpoint");
 		
 		this.mainMap.put(res.getId(), res);
 		
-		ListResponse resp = new ListResponse(res,ctx, configMgr);
+		ListResponse resp = new ListResponse(res,ctx);
 		resp.setStatus(ScimResponse.ST_CREATED);
 		resp.setLocation(res.getMeta().getLocation());
 		if (logger.isDebugEnabled())
 			logger.debug("Added: \n"+res.toString()+"\n");
 		return resp;
+	}
+
+	private ScimResponse handleUnexpectedException(Exception e) {
+		logger.error("Unhandled exception: "+e.getLocalizedMessage(),e);
+		return new ScimResponse(ScimResponse.ST_INTERNAL,e.getLocalizedMessage(),null);
 	}
 
 	/* (non-Javadoc)
@@ -148,7 +157,7 @@ public class MemoryProvider implements IScimProvider {
 						"\nMatches:\t" + vals.size();
 				logger.debug(buf);
 			}
-			return new ListResponse(vals,ctx, configMgr);
+			return new ListResponse(vals,ctx);
 		}
 		ScimResource res = this.mainMap.get(id);
 		if (res == null) {
@@ -169,7 +178,7 @@ public class MemoryProvider implements IScimProvider {
 					"\nMatches:\t" + "1";
 			logger.debug(buf);
 		}
-		return new ListResponse(res,ctx, configMgr);
+		return new ListResponse(res,ctx);
 	}
 	
 	/* (non-Javadoc)
@@ -191,27 +200,68 @@ public class MemoryProvider implements IScimProvider {
 	 * @see com.independentid.scim.backend.PersistenceProvider#replace(com.independentid.scim.protocol.RequestCtx, com.independentid.scim.resource.ScimResource)
 	 */
 	@Override
-	public ScimResponse replace(RequestCtx ctx, ScimResource replaceResource) {
-		// TODO Auto-generated method stub
-		return null;
+	public ScimResponse replace(RequestCtx ctx, ScimResource replaceResource) throws ScimException {
+		ScimResource origRes = getResource(ctx);
+		if (origRes == null)
+			return new ScimResponse(ScimResponse.ST_NOTFOUND, null, null);
+
+		if (!origRes.checkPreCondition(ctx))
+			return new ScimResponse(new PreconditionFailException(
+					"ETag predcondition does not match"));
+		origRes.replaceResAttributes(replaceResource, ctx);
+		// Nothing to persist as this is in Memory
+
+		return completeResponse(origRes,ctx);
+
 	}
 
 	/* (non-Javadoc)
 	 * @see com.independentid.scim.backend.PersistenceProvider#patch(com.independentid.scim.protocol.RequestCtx, com.fasterxml.jackson.databind.JsonNode)
 	 */
 	@Override
-	public ScimResponse patch(RequestCtx ctx, JsonPatchRequest req) {
-		// TODO Auto-generated method stub
-		return null;
+	public ScimResponse patch(RequestCtx ctx, JsonPatchRequest req) throws ScimException {
+		ScimResource res = getResource(ctx);
+		if (res == null)
+			return new ScimResponse(ScimResponse.ST_NOTFOUND, null, null);
+		res.modifyResource(req, ctx);
+
+		return completeResponse(res, ctx);
+
+	}
+
+	@SuppressWarnings("DuplicatedCode")
+	private ScimResponse completeResponse(ScimResource res, RequestCtx ctx) throws ScimException {
+		String path = ctx.getResourceContainer();
+		Meta meta = res.getMeta();
+		Date modDate = new Date();
+		meta.setLastModifiedDate(modDate);
+
+		if (!path.equals(TransactionRecord.TRANS_CONTAINER))
+			try {
+				meta.addRevision(ctx, this, modDate);
+			} catch (BackendException  e) {
+				return handleUnexpectedException(e);
+			}
+
+		String etag = res.calcVersionHash();
+		meta.setVersion(etag);
+
+		// Nothing needs to be done as the original object modified directly.
+
+		ResourceResponse resp = new ResourceResponse(res, ctx);
+		resp.setStatus(ScimResponse.ST_OK);
+		resp.setLocation(res.getMeta().getLocation());
+		resp.setETag(res.getMeta().getVersion());
+
+		return resp;
 	}
 
 	/* (non-Javadoc)
 	 * @see com.independentid.scim.backend.PersistenceProvider#bulkRequest(com.independentid.scim.protocol.RequestCtx, com.fasterxml.jackson.databind.JsonNode)
 	 */
 	
-	public ScimResponse bulkRequest(RequestCtx ctx, JsonNode node) {
-		// TODO Auto-generated method stub
-		return null;
+	public ScimResponse bulkRequest(RequestCtx ctx, JsonNode node) throws ScimException {
+		throw new NotImplementedException("Bulk not implemented for MemoryProvider");
 	}
 
 	/* (non-Javadoc)
@@ -219,8 +269,13 @@ public class MemoryProvider implements IScimProvider {
 	 */
 	@Override
 	public ScimResponse delete(RequestCtx ctx) {
-		// TODO Auto-generated method stub
-		return null;
+		ScimResource res = this.mainMap.remove(ctx.getPathId());
+
+		if (res == null)
+			return new ScimResponse(ScimResponse.ST_NOTFOUND, null, null);
+
+		// return success
+		return new ScimResponse(ScimResponse.ST_NOCONTENT, null, null);
 	}
 
 	/* (non-Javadoc)
@@ -339,6 +394,57 @@ public class MemoryProvider implements IScimProvider {
 	public void syncConfig(Collection<Schema> schemaCol, Collection<ResourceType> resTypeCol) {
 		// TODO Auto-generated method stub
 		
+	}
+
+	/**
+	 * Used to obtain information about the transaction previously committed in the provider. The value in
+	 * Meta.revisions can be used as the query term.
+	 * @param transid The transaction id (e.g. from Meta.revisions.value or RequestCtx.getTranID().
+	 * @return The TransactionRecord in the form of {@link ScimResource} containing information about the transaction (a
+	 * ScimResource).
+	 */
+	@Override
+	public ScimResource getTransactionRecord(String transid) {
+		try {
+			RequestCtx ctx = new RequestCtx(TransactionRecord.TRANS_CONTAINER,transid,null,schemaManager);
+
+			return getResource(ctx);
+		} catch (ScimException e) {
+			// Would only expect a parsing error resulting from external data.
+			logger.error("Unexpected scim error: "+e.getMessage(),e);
+		}
+		return null;
+	}
+
+	/**
+	 * Used by the replication event processing system to detect if the cluster has already processed a transaction in
+	 * the case of 1 or more cluster members receiving the same event.
+	 * @param transid The transaction UUID string value to be checked (from {@link RequestCtx#getTranId()}).
+	 * @return true if present in the transaction store of the provider.
+	 */
+	@Override
+	public boolean isTransactionPresent(String transid) {
+		return this.mainMap.containsKey(transid);
+	}
+
+	/**
+	 * This method is typically called by a CreateOp, DeleteOp, Put or Patch Op, after any write transaction.
+	 * @param record A {@link TransactionRecord} containing information about the update.
+	 * @throws DuplicateTxnException if the transactionId already exists in the provider, an exception is thrown.
+	 */
+	@Override
+	public void storeTransactionRecord(TransactionRecord record) throws DuplicateTxnException {
+		ScimResponse resp = null;
+		try {
+			RequestCtx ctx = new RequestCtx(TransactionRecord.TRANS_CONTAINER,null,null,schemaManager);
+			// ScimResponse(ScimResponse.ST_BAD_REQUEST,e.getLocalizedMessage(),ScimResponse.ERR_TYPE_UNIQUENESS);
+			resp = create(ctx,record);
+
+		} catch (BackendException | ScimException e) {
+			logger.error("Unexpected scim error: "+e.getMessage(),e);
+		}
+		if (resp != null && resp.getScimErrorType().equals(ScimResponse.ERR_TYPE_UNIQUENESS))
+			throw new DuplicateTxnException("Transactionid is not unique.");
 	}
 
 }

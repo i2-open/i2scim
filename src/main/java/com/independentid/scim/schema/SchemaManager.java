@@ -18,11 +18,15 @@ package com.independentid.scim.schema;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
+import com.independentid.scim.backend.IIdentifierGenerator;
+import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
+import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.serializer.JsonUtil;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
@@ -32,6 +36,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import javax.ejb.Startup;
+import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -39,6 +44,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
+import java.text.ParseException;
 import java.util.*;
 
 /**
@@ -47,8 +53,7 @@ import java.util.*;
  * is migrated to solve bootstrap issues.
  */
 @Startup
-@Singleton
-//@ApplicationScoped
+@ApplicationScoped
 @Named("SchemaMgr")
 public class SchemaManager {
     private final static Logger logger = LoggerFactory.getLogger(SchemaManager.class);
@@ -83,8 +88,11 @@ public class SchemaManager {
     private final static HashMap<String, ResourceType> rTypePaths = new HashMap<>();
 
     //private ServletConfig scfg = null;
+    IIdentifierGenerator generator;
 
     private static boolean initialized = false;
+
+    private boolean loadedFromProvider = false;
 
     public SchemaManager() {
 
@@ -97,15 +105,55 @@ public class SchemaManager {
      * @throws IOException due to problems accessing files
      */
     @PostConstruct
-    public void init() throws ScimException, IOException {
-        logger.info("SchemaManager initializing");
+    public void init() throws ScimException, IOException, BackendException {
+
         if (initialized)
             return;
+        logger.info("SchemaManager initializing");
+        generator = backendHandler.getGenerator();
 
-        loadDefaultSchema();
-        loadDefaultResourceTypes();
-        loadCoreSchema();
-        initialized = true;
+        PersistStateResource cfgState = null;
+        try {
+            if(!backendHandler.isReady())
+                backendHandler.getProvider();
+            cfgState = backendHandler.getProvider().getConfigState();
+        } catch (ParseException e) {
+            logger.error("Unexpected error occurred reading provider configuration state: "+e.getMessage()+" RESETTING CONFIG TO DEFAULT",e);
+        }
+        if (cfgState == null) {
+            loadDefaultSchema();
+            loadDefaultResourceTypes();
+            loadCoreSchema();
+            initialized = true;
+
+            // Persist the configuration
+
+            // Attempt to run the sync process 5 seconds later to avoid startup conflicts
+            TimerTask task = new SyncTask(this);
+            Timer timer = new Timer("SyncTimer");
+            timer.schedule(task,50L);
+
+        } else {
+            loadSchemaFromProvider();
+
+        }
+
+    }
+
+    class SyncTask extends TimerTask {
+        SchemaManager mgr;
+        SyncTask(SchemaManager smgr) {
+            mgr = smgr;
+        }
+
+        public void run() {
+            try {
+                backendHandler.syncConfig(mgr);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
     @PreDestroy
@@ -113,6 +161,23 @@ public class SchemaManager {
         // clean up so that GC works faster
         logger.debug("SchemaManager shutdown.");
         resetSchema();
+    }
+
+    private void loadSchemaFromProvider() throws ScimException {
+        Collection<Schema> pSchemas = backendHandler.loadSchemas();
+        Collection<ResourceType> pResTypes = backendHandler.loadResourceTypes();
+
+        for (Schema schema : pSchemas)
+            addSchema(schema);
+
+        for (ResourceType type : pResTypes)
+            addResourceType(type);
+
+        loadedFromProvider = true;
+    }
+
+    public boolean isSchemaLoadedFromProvider() {
+        return loadedFromProvider;
     }
 
     /**
@@ -642,6 +707,16 @@ public class SchemaManager {
         logger.debug("Persisting schema to databse provider");
 
         this.backendHandler.syncConfig(this);
+    }
+
+    /**
+     * Obtains an identifier that acceptable to the backend provider.
+     * @return A unique identifier String for a transaction or resource identifier
+     */
+    public String generateTransactionId() {
+        if (generator == null)
+            generator = backendHandler.getGenerator();
+        return generator.getNewIdentifier();
     }
 
 

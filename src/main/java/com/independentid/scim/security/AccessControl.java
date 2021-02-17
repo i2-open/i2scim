@@ -54,6 +54,12 @@ import java.util.*;
 public class AccessControl implements ScimSerializer {
     private final static Logger logger = LoggerFactory
             .getLogger(AccessControl.class);
+    public static final String FIELD_NAME = "name";
+    public static final String FIELD_PATH = "path";
+    public static final String FIELD_TARGETATTRS = "targetAttrs";
+    public static final String FIELD_TARGET_FILTER = "targetFilter";
+    public static final String FIELD_RIGHTS = "rights";
+    public static final String FIELD_ACTORS = "actors";
 
     public enum Rights {all, add, modify, delete, read, search}
 
@@ -192,11 +198,11 @@ public class AccessControl implements ScimSerializer {
 
     @Override
     public void parseJson(JsonNode node) throws SchemaException {
-        JsonNode item = node.get("name");
+        JsonNode item = node.get(FIELD_NAME);
         if (item != null)
             this.name = item.asText();
 
-        item = node.get("path");
+        item = node.get(FIELD_PATH);
         if (item == null)
             this.path = "/"; // default to global
         else
@@ -209,13 +215,13 @@ public class AccessControl implements ScimSerializer {
             e.printStackTrace();
         }
 
-        item = node.get("targetAttrs");
+        item = node.get(FIELD_TARGETATTRS);
         if (item != null) {
             this.targetAttrs = item.asText();
             parseTargetAttrs();
         }
 
-        item = node.get("targetFilter");
+        item = node.get(FIELD_TARGET_FILTER);
         if (item != null) {
             try {
                 this.targetFilter = Filter.parseFilter(item.asText(), aclCtx);
@@ -227,7 +233,7 @@ public class AccessControl implements ScimSerializer {
         if (this.targetAttrs == null && this.targetFilter == null)
             throw new SchemaException("Invalid aci: no target specified: \n"+node.toString());
 
-        item = node.get("rights");
+        item = node.get(FIELD_RIGHTS);
         if (item == null)
             throw new SchemaException("ACI missing rights value.");
         privs = new ArrayList<>();
@@ -253,7 +259,7 @@ public class AccessControl implements ScimSerializer {
             }
         }
 
-        item = node.get("actors");
+        item = node.get(FIELD_ACTORS);
         if (item != null) {
             for (JsonNode vnode : item) {
                 String aline = vnode.asText();

@@ -16,12 +16,14 @@
 package com.independentid.scim.backend;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.core.err.DuplicateTxnException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.resource.TransactionRecord;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
 
@@ -30,8 +32,8 @@ import java.text.ParseException;
 import java.util.Collection;
 
 /**
- * @author pjdhunt
- * This interface defines an extension point which may be used to define a new data source for SCIM server.
+ * @author pjdhunt This interface defines an extension point which may be used to define a new data source for SCIM
+ * server.
  */
 public interface IScimProvider {
 
@@ -100,8 +102,8 @@ public interface IScimProvider {
 
     /**
      * Called to request the provider initialize itself and complete startup. Upon successful startup, the ready()
-     * method should return true. Providers should avoid doing substantial work during construction and should do all work
-     * during init.
+     * method should return true. Providers should avoid doing substantial work during construction and should do all
+     * work during init.
      * @throws BackendException May be thrown when the provider cannot be initialized or connection established. This
      *                          will cause the server to fail startup.
      */
@@ -119,8 +121,9 @@ public interface IScimProvider {
     void shutdown();
 
     /**
-     * Used to return the current configuration state of the backend provider. In particular it is used for co-ordinating
-     * persisted schema and resource types and co-ordinating synchronization. May also be used to test database live-ness.
+     * Used to return the current configuration state of the backend provider. In particular it is used for
+     * co-ordinating persisted schema and resource types and co-ordinating synchronization. May also be used to test
+     * database live-ness.
      * @return The PersistStateResoruce that holds the current schema sync state of the server.
      */
     PersistStateResource getConfigState() throws ScimException, IOException, ParseException;
@@ -148,4 +151,30 @@ public interface IScimProvider {
      * @param resTypeCol TODO
      */
     void syncConfig(Collection<Schema> schemaCol, Collection<ResourceType> resTypeCol) throws IOException;
+
+    /**
+     * Used to obtain information about the transaction previously committed in the provider. The value in
+     * Meta.revisions can be used as the query term.
+     * @param transid The transaction id (e.g. from Meta.revisions.value or RequestCtx.getTranID().
+     * @return The TransactionRecord in the form of {@link ScimResource} containing information about the transaction (a
+     * ScimResource).
+     */
+    ScimResource getTransactionRecord(String transid) throws BackendException;
+
+    /**
+     * Used by the replication event processing system to detect if the cluster has already processed a transaction in
+     * the case of 1 or more cluster members receiving the same event.
+     * @param transid The transaction UUID string value to be checked (from {@link RequestCtx#getTranId()}).
+     * @return true if present in the transaction store of the provider.
+     */
+    boolean isTransactionPresent(String transid) throws BackendException;
+
+    /**
+     * This method is typically called by a CreateOp, DeleteOp, Put or Patch Op, after any write transaction.
+     * @param record A {@link TransactionRecord} containing information about the update.
+     * @throws DuplicateTxnException if the transactionId already exists in the provider, an exception is thrown.
+     */
+    void storeTransactionRecord(TransactionRecord record) throws DuplicateTxnException;
+
+
 }

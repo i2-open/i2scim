@@ -16,8 +16,6 @@
 package com.independentid.scim.protocol;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.core.err.TooManyException;
 import com.independentid.scim.resource.ScimResource;
@@ -41,6 +39,7 @@ import java.util.*;
 public class ListResponse extends ScimResponse {
 	private static final Logger logger = LoggerFactory.getLogger(ListResponse.class);
 
+
 	public final static SimpleDateFormat headDate = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");
 	
 	protected Date lastMod;
@@ -54,14 +53,13 @@ public class ListResponse extends ScimResponse {
 	/**
 	 * Constructor used to create an empty SCIM List Response.
 	 * @param ctx A <RequestCtx> object containing the original request information.
-	 * @param configMgr System configuration to obtain max results.
+	 *
 	 */
-	public ListResponse(RequestCtx ctx, ConfigMgr configMgr) {
+	public ListResponse(RequestCtx ctx) {
 		super();
 		this.ctx = ctx; 
 		
-		this.smax = configMgr.getMaxResults();
-		if (this.ctx.count == 0 || this.ctx.count > this.smax)  
+		if (this.ctx.count == 0 || this.ctx.count > maxResults)
 			this.ctx.count = this.smax;
 		this.totalRes = 0;
 		this.id = null;
@@ -79,14 +77,12 @@ public class ListResponse extends ScimResponse {
 	 * For resource retrievals see <ResourceResponse>.
 	 * @param val The <ScimResource> object to be returned.
 	 * @param ctx The <RequestCtx> containing the original request/search.
-	 * @param configMgr System config to obtain max results
 	 */
-	public ListResponse(final ScimResource val, RequestCtx ctx, ConfigMgr configMgr) {
+	public ListResponse(final ScimResource val, RequestCtx ctx) {
 		super();
 		this.ctx = ctx;
 		
-		this.smax = configMgr.getMaxResults();
-		if (this.ctx.count == 0 || this.ctx.count > this.smax)  
+		if (this.ctx.count == 0 || this.ctx.count > maxResults)
 			this.ctx.count = this.smax;
 		
 		setLocation(val.getMeta().getLocation());
@@ -104,14 +100,13 @@ public class ListResponse extends ScimResponse {
 	}
 	
 	
-	public ListResponse(final List<ScimResource> vals, RequestCtx ctx, ConfigMgr configMgr) throws ScimException {
+	public ListResponse(final List<ScimResource> vals, RequestCtx ctx) throws ScimException {
 		super();
 		this.ctx = ctx;
 		
 		this.id = null;
 		
-		this.smax = configMgr.getMaxResults();
-		if (this.ctx.count == 0 || this.ctx.count > this.smax)  
+		if (this.ctx.count == 0 || this.ctx.count > maxResults)
 			this.ctx.count = this.smax;
 		
 		this.totalRes = vals.size();

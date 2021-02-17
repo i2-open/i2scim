@@ -115,7 +115,7 @@ public class ScimAttributeQualTest {
 		try {
 			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
 			loadTestUser();
-		} catch (IOException | BackendException e) {
+		} catch (IOException e) {
 			fail("Failed to initialize test Mongo DB: "+scimDbName);
 		}
 

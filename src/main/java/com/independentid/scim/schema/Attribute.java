@@ -202,7 +202,8 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
     	boolean subreturn = false;
     	Iterator<Attribute> sattrIter = this.getSubAttributesMap().values().iterator();
     	while (!subreturn && sattrIter.hasNext()) {
-    		if (ctx.isAttrRequested(sattrIter.next()))
+    		Attribute next = sattrIter.next();
+    		if (ctx.isAttrRequested(next))
     			subreturn = true;
     	}
     	

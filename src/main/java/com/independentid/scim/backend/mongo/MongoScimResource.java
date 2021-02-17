@@ -86,7 +86,7 @@ public class MongoScimResource extends ScimResource {
 		
 		Document mdoc = doc.get("meta", Document.class);
 		if (mdoc != null) {
-			this.meta = new Meta(smgr);
+			this.meta = new Meta();
 			this.meta.setCreatedDate(mdoc.getDate(Meta.META_CREATED));
 			this.meta.setLastModifiedDate(mdoc.getDate(Meta.META_LAST_MODIFIED));
 			this.meta.setResourceType(mdoc.getString(Meta.META_RESOURCE_TYPE));

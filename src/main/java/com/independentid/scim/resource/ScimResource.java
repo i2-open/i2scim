@@ -116,7 +116,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		commonSchema = schemaManager.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
 		setResourceType(container);
 		this.idResolver = bulkIdResolver;
-		parseJson(resourceNode);
+		parseJson(resourceNode, smgr);
 		this.modified = false;
 		
 	}
@@ -336,7 +336,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		return this.coreSchema;
 	}
 	
-	public void parseJson(JsonNode node) throws ParseException, ScimException {
+	public void parseJson(JsonNode node, SchemaManager schemaManager) throws ParseException, ScimException {
 
 		JsonNode snode = node.get(ScimParams.ATTR_SCHEMAS);
 		if (snode == null) throw new SchemaException("Schemas attribute missing");
@@ -359,14 +359,14 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		Attribute mattr = commonSchema.getAttribute(ScimParams.ATTR_META);
 		attrsInUse.add(mattr);
 		if (metaNode != null) {
-			this.meta = new Meta(mattr, metaNode);
+			this.meta = new Meta(metaNode);
 
 			if (this.type == null) {
 				this.type = smgr.getResourceTypeById(this.meta.getResourceType());
 				this.coreSchema = smgr.getSchemaById(this.type.getSchema());
 			}
 		} else
-			this.meta = new Meta(smgr);
+			this.meta = new Meta();
 		
 		// We will override meta resource type based on where this object is written (driven by type)
 		this.meta.setResourceType(this.getResourceType());

@@ -50,12 +50,11 @@ public class ResourceResponse extends ScimResponse {
 	protected ArrayList<ScimResource> entries = new ArrayList<>();
 	
 	
-	public ResourceResponse(ScimResource val, RequestCtx ctx, ConfigMgr configMgr) {
+	public ResourceResponse(ScimResource val, RequestCtx ctx) {
 		super();
 		this.ctx = ctx;
 
-		this.smax = configMgr.getMaxResults();
-		if (this.ctx.count == 0 || this.ctx.count > this.smax)  
+		if (this.ctx.count == 0 || this.ctx.count > maxResults)
 			this.ctx.count = this.smax;
 		
 		if (val.getMeta() == null) {

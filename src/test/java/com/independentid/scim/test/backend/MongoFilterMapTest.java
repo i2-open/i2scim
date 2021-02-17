@@ -211,15 +211,11 @@ public class MongoFilterMapTest {
         scimDb.drop();
         try {
             handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-        } catch (IOException | BackendException e) {
+        } catch (IOException e) {
             fail("Failed to initialize test Mongo DB: " + scimDbName);
         }
 
-        try {
-            mp = (MongoProvider) handler.getProvider();
-        } catch (BackendException e) {
-            Assertions.fail("Exception occured getting MongoProvider: " + e.getLocalizedMessage());
-        }
+        mp = (MongoProvider) handler.getProvider();
 
         assertThat(mp).isNotNull();
 

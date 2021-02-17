@@ -52,6 +52,7 @@ public class StringValue extends Value implements IBulkIdTarget {
 		super();
 		this.jtype = JsonNodeType.STRING;
 		this.value = value;
+		this.attr = attr;
 	}
 	
 	public String getBulkId() {

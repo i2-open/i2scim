@@ -39,13 +39,9 @@ public class PersistStateResource extends ScimResource {
 	public static String FIELD_RTYPE_CNT = "rTypeCnt";
 	public static String FIELD_SCHEMA_CNT = "schemaCnt";
 
-	DateValue lastSyncDate;
-	IntegerValue rTypeCnt;
-	IntegerValue schemaCnt;
-
-	Attribute syncDateAttr = new Attribute(FIELD_LAST_SYNC);
-	Attribute rTypeCntAttr = new Attribute(FIELD_RTYPE_CNT);
-	Attribute sCntAttr = new Attribute(FIELD_SCHEMA_CNT);
+	static final Attribute syncDateAttr = new Attribute(FIELD_LAST_SYNC);
+	static final Attribute rTypeCntAttr = new Attribute(FIELD_RTYPE_CNT);
+	static final Attribute sCntAttr = new Attribute(FIELD_SCHEMA_CNT);
 	Schema persistSchema;
 	ResourceType persistType;
 
@@ -56,14 +52,7 @@ public class PersistStateResource extends ScimResource {
 	
 	public PersistStateResource(SchemaManager schemaManager, int rCnt, int sCnt) {
 		super(schemaManager);
-		this.smgr = schemaManager;
-		persistSchema = new Schema(schemaManager);
-		persistType = new ResourceType(schemaManager);
-		persistType.setName(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
-		persistType.setSchema(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
-		type = persistType;
-		coreSchema = persistSchema;
-		setId(CONFIG_ID);
+
 		initSchemas();
 		try {
 			super.addValue(new IntegerValue(rTypeCntAttr,rCnt));
@@ -75,30 +64,7 @@ public class PersistStateResource extends ScimResource {
 	}
 
 	private void initSchemas() {
-		this.schemas = new ArrayList<>();
-		this.schemas.add(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
-		this.coreSchema = persistSchema;
-	}
-	
-	public Date getLastSyncDate() {
-		return this.lastSyncDate.getDateValue();
-	}
-	
-	public String getLastSync() {
-		return this.lastSyncDate.toString();
-	}	
-	
-	public int getResTypeCnt() {
-		return this.rTypeCnt.getValueArray();
-	}
-	
-	public int getSchemaCnt() {
-		return this.schemaCnt.getValueArray();
-	}
-
-
-	public void parseJson(JsonNode node, SchemaManager schemaManager) throws ParseException, ScimException {
-		persistSchema = new Schema(schemaManager);
+		persistSchema = new Schema(smgr);
 		persistSchema.setName("Persisted Configuration State");
 		persistSchema.setId(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 		persistSchema.putAttribute(syncDateAttr);
@@ -112,13 +78,44 @@ public class PersistStateResource extends ScimResource {
 		sCntAttr.setPath(persistSchema.getId(),null);
 		sCntAttr.setType(Attribute.TYPE_Integer);
 
-		type = persistType;
+
 		coreSchema = persistSchema;
 		setId(CONFIG_ID);
 
-		persistType = new ResourceType(schemaManager);
+		persistType = new ResourceType(smgr);
 		persistType.setName(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 		persistType.setSchema(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
+
+		type = persistType;
+
+		this.schemas = new ArrayList<>();
+		this.schemas.add(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
+		this.coreSchema = persistSchema;
+	}
+	
+	public Date getLastSyncDate() {
+		DateValue val = (DateValue) getValue(syncDateAttr);
+		return val.getDateValue();
+	}
+	
+	public String getLastSync() {
+		DateValue val = (DateValue) getValue(syncDateAttr);
+		return val.toString();
+	}	
+	
+	public int getResTypeCnt() {
+		IntegerValue val = (IntegerValue) getValue(rTypeCntAttr);
+		return val.getValueArray();
+	}
+	
+	public int getSchemaCnt() {
+		IntegerValue val = (IntegerValue) getValue(sCntAttr);
+
+		return val.getValueArray();
+	}
+
+
+	public void parseJson(JsonNode node, SchemaManager schemaManager) throws ParseException, ScimException {
 
 		initSchemas();
 
@@ -146,40 +143,9 @@ public class PersistStateResource extends ScimResource {
 
 		JsonNode meta = node.get("meta");
 		if (meta != null)
-			this.meta = new Meta(commonSchema.getAttribute("meta"), meta);
+			this.meta = new Meta(meta);
 	}
 
-	/*
-	@Override
-	public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException, ScimException {
-		gen.writeStartObject();
-
-
-		// Write out the id and externalId
-		if (this.id != null)
-			gen.writeStringField("id", this.id);
-
-		if (this.externalId != null)
-			gen.writeStringField("externalId", this.externalId);
-
-		if (getLastSyncDate() != null)
-			gen.writeStringField(FIELD_LAST_SYNC, getLastSync());
-		
-		gen.writeNumberField(FIELD_RTYPE_CNT, smgr.getResourceTypeCnt());
-		
-		gen.writeNumberField(FIELD_SCHEMA_CNT, smgr.getSchemaCnt());
-		
-		// Write out the meta information
-		// Meta will not be used for hash calculations.
-		if (this.meta != null && !forHash) {
-			gen.writeFieldName("meta");
-			this.meta.serialize(gen, ctx, forHash);
-		}
-
-		// Write out the end of object for the resource
-		gen.writeEndObject();
-	}
- */
 	@Override
 	public String toString() {
 		return this.toJsonString();

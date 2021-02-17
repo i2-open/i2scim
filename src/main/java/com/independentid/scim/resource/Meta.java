@@ -18,6 +18,8 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.independentid.scim.backend.BackendException;
+import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.core.err.ConflictException;
@@ -25,9 +27,7 @@ import com.independentid.scim.core.err.DuplicateTxnException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.AttributeFilter;
 import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.schema.SchemaManager;
+import com.independentid.scim.schema.*;
 import com.independentid.scim.security.AccessControl;
 import com.independentid.scim.security.AccessManager;
 import com.independentid.scim.serializer.JsonUtil;
@@ -40,7 +40,6 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
 import java.util.*;
 
 /**
@@ -70,21 +69,20 @@ public class Meta extends ComplexValue implements ScimSerializer {
     
     private String version = null;
 
-    private Attribute attr = null;
+    private final Attribute attr = MetaAttribute.getMeta();
+
+
 
     public final static DateFormat ScimDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
 
-    public Meta() {}
-
-	public Meta(SchemaManager schemaManager) {
+	public Meta() {
 		this.created = new Date();
 		this.lastModified = this.created;
-		this.attr = schemaManager.getSchemaById(SchemaManager.SCIM_CORE_SCHEMAID).getAttribute(META);
 
-	}	
+	}
 	
-	public Meta(Attribute metaAttr, JsonNode node) throws SchemaException {
-		this.attr = metaAttr;  // This is always the common attribute Meta
+	public Meta(JsonNode node) throws SchemaException {
+
 		this.parseJson(node);
 	}
             
@@ -154,26 +152,27 @@ public class Meta extends ComplexValue implements ScimSerializer {
 	}
 
 	public JsonNode toJsonNode(RequestCtx ctx) {
+
 		ObjectNode node = JsonUtil.getMapper().createObjectNode();
 		if (created != null
-			&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_CREATED),ctx))
+			&& ValueUtil.isReturnable(attr.getSubAttribute(META_CREATED),ctx))
 			node.put(META_CREATED,getCreated());
 		if (lastModified != null
-				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_LAST_MODIFIED),ctx))
+				&& ValueUtil.isReturnable(attr.getSubAttribute(META_LAST_MODIFIED),ctx))
 			node.put(META_LAST_MODIFIED,getLastModified());
 
 		if (revisions != null
-				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_REVISIONS),ctx))
+				&& ValueUtil.isReturnable(attr.getSubAttribute(META_REVISIONS),ctx))
 			revisions.toJsonNode(node, META_REVISIONS);
 
 		if (this.resourceType != null
-				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_RESOURCE_TYPE),ctx))
+				&& ValueUtil.isReturnable(attr.getSubAttribute(META_RESOURCE_TYPE),ctx))
 			node.put(META_RESOURCE_TYPE,resourceType);
 		if (this.version != null
-				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_VERSION),ctx))
+				&& ValueUtil.isReturnable(attr.getSubAttribute(META_VERSION),ctx))
 			node.put(META_VERSION,version);
 		if (location != null
-				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_LOCATION),ctx))
+				&& ValueUtil.isReturnable(attr.getSubAttribute(META_LOCATION),ctx))
 			node.put(META_LOCATION,location);
 
 		ConfigMgr cmgr = ConfigMgr.getConfig();
@@ -183,7 +182,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		if (amgr != null) {
 			List<AccessControl> set = amgr.getResourceAcis(this.location);
 			if (set.size()>0
-				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_ACIS),ctx)) {
+				&& ValueUtil.isReturnable(attr.getSubAttribute(META_ACIS),ctx)) {
 				ArrayNode anode = node.putArray(META_ACIS);
 				for (AccessControl aci : set) {
 					anode.add(aci.toJsonNode());
@@ -233,31 +232,21 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		return null;
 	}
 
-	private void checkAttr(RequestCtx ctx) {
-    	if (this.attr == null) {
-			this.attr = ctx.getSchemaMgr().getSchemaById(SchemaManager.SCIM_CORE_SCHEMAID).getAttribute(META);
-			if (logger.isDebugEnabled())
-				logger.debug("Lazy load of Meta Attribute definition *******");
-		}
-	}
-
 	public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException {
-    	checkAttr(ctx);
-
 		gen.writeStartObject();
 
 		if (this.created != null
-				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_CREATED),ctx)) {
+				&& ValueUtil.isReturnable(attr.getSubAttribute(META_CREATED),ctx)) {
 			gen.writeStringField(META_CREATED, getCreated());
 		}
 		
 		if (this.lastModified != null
-				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_CREATED),ctx))
+				&& ValueUtil.isReturnable(attr.getSubAttribute(META_CREATED),ctx))
 			gen.writeStringField(META_LAST_MODIFIED, getLastModified());
 
 		if (this.revisions != null
 				&& this.revisions.size() > 0
-				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_REVISIONS),ctx)) {
+				&& ValueUtil.isReturnable(attr.getSubAttribute(META_REVISIONS),ctx)) {
 			try {
 				gen.writeFieldName(META_REVISIONS);
 				this.revisions.serialize(gen,ctx);
@@ -267,17 +256,17 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		}
 
 		if (this.resourceType != null
-				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_RESOURCE_TYPE),ctx))
+				&& ValueUtil.isReturnable(attr.getSubAttribute(META_RESOURCE_TYPE),ctx))
 			gen.writeStringField(META_RESOURCE_TYPE, this.resourceType);
 		
 		if (!forHash && this.version != null
-				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_VERSION),ctx)) {
+				&& ValueUtil.isReturnable(attr.getSubAttribute(META_VERSION),ctx)) {
 			gen.writeStringField(META_VERSION, this.version);
 		}
 
 		// Write out the browser location if a servlet context is available
 		if (this.location != null
-				&& ValueUtil.isReturnable(this.attr.getSubAttribute(META_LOCATION),ctx)) {
+				&& ValueUtil.isReturnable(attr.getSubAttribute(META_LOCATION),ctx)) {
 			String url;
 			ServletContext sctx = (ctx !=null)?ctx.getServletContext():null;
 			if (sctx != null) {
@@ -293,7 +282,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 			if (amgr != null && !forHash) {
 				List<AccessControl> set = amgr.getResourceAcis(this.location);
 				if (set.size()>0) {
-					if (ValueUtil.isReturnable(this.attr.getSubAttribute(META_ACIS), ctx)) {
+					if (ValueUtil.isReturnable(attr.getSubAttribute(META_ACIS), ctx)) {
 						gen.writeFieldName(META_ACIS);
 						gen.writeStartArray();
 						for (AccessControl aci : set) {
@@ -372,10 +361,11 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		item = node.get(META_REVISIONS);
 		try {
 			if (item != null) {
-				if (this.attr == null)
+
+				if (attr == null)
 					logger.warn("**** Unable to load revisions as META Attr not loaded!");
 				else
-					this.revisions = (MultiValue) ValueUtil.parseJson(this.attr.getSubAttribute(META_REVISIONS), item, null);
+					this.revisions = (MultiValue) ValueUtil.parseJson(attr.getSubAttribute(META_REVISIONS), item, null);
 			} else
 				this.revisions = null;
 		} catch (ConflictException | ParseException e) {
@@ -387,17 +377,28 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		this.revisions = revisions;
 	}
 
-	public void addRevision(RequestCtx ctx) throws DuplicateTxnException {
-    	checkAttr(ctx);
-		Attribute revAttr = this.attr.getSubAttribute(META_REVISIONS);
+	/**
+	 * This method adds a revision record to the resource. The corresponding {@link TransactionRecord} is written via
+	 * a separate process through the {@link com.independentid.scim.events.EventManager}.
+	 * @param ctx The {@link RequestCtx} for the transaction that contains the Transaction id
+	 * @param provider The IScimProvider that holds the TransactionRecord values.
+	 * @param modDate The actual date of the modification/revision
+	 * @throws DuplicateTxnException When a duplicate transId is found on the current resource or the Transaction Records.
+	 * @throws BackendException is thrown due to a Backend error.
+	 */
+	public void addRevision(RequestCtx ctx, IScimProvider provider, Date modDate) throws DuplicateTxnException, BackendException {
+
+		Attribute revAttr = attr.getSubAttribute(META_REVISIONS);
 
 		//First, check for duplicate
 		if (this.revisions != null) {
 			try {
 				AttributeFilter filter = new AttributeFilter(revAttr.getSubAttribute("value"),"eq",ctx.getTranId(),ctx);
 				Value val = this.revisions.getMatchValue(filter);
-				if (val != null)
+				if (val != null
+					|| provider.isTransactionPresent(ctx.getTranId()))
 					throw new DuplicateTxnException("Duplicate txn id("+ctx.getTranId()+") detected.");
+
 			} catch (BadFilterException e) {
 				e.printStackTrace();
 			}
@@ -405,9 +406,8 @@ public class Meta extends ComplexValue implements ScimSerializer {
 
 		Map<Attribute,Value> map = new HashMap<>() ;
 		StringValue tid = new StringValue(revAttr.getSubAttribute("value"), ctx.getTranId());
-		this.lastModified = Date.from(Instant.now());
-		DateValue tdate = new DateValue(revAttr.getSubAttribute("date"),this.lastModified);
-		map.put(revAttr.getSubAttribute("date"),tdate);
+		DateValue dateValue = new DateValue(revAttr.getSubAttribute("date"),modDate);
+		map.put(revAttr.getSubAttribute("date"),dateValue);
 		map.put(revAttr.getSubAttribute("value"),tid);
 		try {
 			ComplexValue revision = new ComplexValue(revAttr,map);
@@ -417,6 +417,10 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		} catch (SchemaException e) {
 			e.printStackTrace();
 		}
+	}
+
+	public MultiValue getRevisions() {
+		return this.revisions;
 	}
     
 }

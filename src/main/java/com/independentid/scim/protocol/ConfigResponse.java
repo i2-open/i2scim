@@ -54,7 +54,7 @@ public class ConfigResponse extends ListResponse {
      * @param configMgr The system {@link ConfigMgr} object containing the operational configuration and schema
      */
     public ConfigResponse(RequestCtx ctx, ConfigMgr configMgr) {
-        super(ctx, configMgr);
+        super(ctx);
         this.cmgr = configMgr;
         this.smgr = configMgr.getSchemaManager();
 
@@ -185,7 +185,7 @@ public class ConfigResponse extends ListResponse {
 
         if (this.isResourceResponse && this.entries.size() == 1) {
             // Converts to a resource response for single entry non-filter GETs
-            ResourceResponse rresp = new ResourceResponse(this.entries.get(0), ctx, cmgr);
+            ResourceResponse rresp = new ResourceResponse(this.entries.get(0), ctx);
             rresp.serialize(gen, ctx, forHash);
             return;
         }

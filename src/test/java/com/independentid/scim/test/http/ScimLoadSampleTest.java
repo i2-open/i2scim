@@ -255,7 +255,7 @@ public class ScimLoadSampleTest {
 		
 		try {
 			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-		} catch (IOException | BackendException e) {
+		} catch (IOException e) {
 			fail("Failed to initialize test Mongo DB: "+scimDbName);
 		}
 		try {

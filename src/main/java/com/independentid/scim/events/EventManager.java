@@ -15,9 +15,14 @@
 
 package com.independentid.scim.events;
 
+import com.independentid.scim.backend.BackendException;
+import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.PoolManager;
 import com.independentid.scim.op.Operation;
+import com.independentid.scim.resource.TransactionRecord;
+import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.schema.SchemaManager;
 import io.quarkus.runtime.Startup;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
@@ -28,8 +33,6 @@ import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
-import java.util.Iterator;
-import java.util.List;
 
 @Startup
 @Singleton
@@ -61,11 +64,22 @@ public class EventManager {
     @ConfigProperty(name = "scim.event.encryptedTypes", defaultValue = "None")
     String[] encryptedTypes;
 
+    @ConfigProperty (name= "scim.kafkaRepEventHandler.client.id", defaultValue="defaultClient")
+    String clientId;
+
     @Inject
     PoolManager poolManager;
 
     @Inject
     Instance<IEventHandler> handlers;
+
+    @Inject
+    BackendHandler backendHandler;
+
+    @Inject
+    SchemaManager schemaManager;
+
+    IScimProvider provider;
 
     //static List<Operation> queue = Collections.synchronizedList(new ArrayList<Operation>());
 
@@ -75,10 +89,12 @@ public class EventManager {
 
     @PostConstruct
     public void init() {
-        if (isEnabled())
+        if (isEnabled()) {
             logger.info("Event Manager Started.");
-        else
-            logger.warn("Event Manager *DISABLED*.");
+            provider = backendHandler.getProvider();
+            return;
+        }
+       logger.warn("Event Manager *DISABLED*.");
     }
 
     public boolean isEnabled() {
@@ -154,10 +170,18 @@ public class EventManager {
      * @param op The {@link Operation} that was performed (not complete or errored)
      */
     public void logEvent(Operation op) {
-        if (isEnabled()) {
-            PublishOperation pop = new PublishOperation(op,handlers.iterator());
-            poolManager.addPublishOperation(pop);
+        try {
+            if (isEnabled()) {
+                TransactionRecord rec = new TransactionRecord(schemaManager,clientId,op);
+
+                PublishOperation pop = new PublishOperation(rec,handlers.iterator(), provider);
+                poolManager.addPublishOperation(pop);
+            }
+        } catch (SchemaException e) {
+           //ignore - should not happen.
+            logger.error("Unexpected error creating transaction record: "+e.getLocalizedMessage(),e);
         }
+
     }
 
 }

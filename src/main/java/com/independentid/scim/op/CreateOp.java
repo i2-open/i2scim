@@ -92,6 +92,7 @@ public class CreateOp extends Operation implements IBulkOp {
 
         try {
             newResource = new ScimResource(schemaManager, node, null, getResourceType().getTypePath());
+            newResource.setId(null); // ignore inbound identifiers (unless via replication).
         } catch (ScimException | ParseException e) {
             ScimException se;
             if (e instanceof ParseException) {

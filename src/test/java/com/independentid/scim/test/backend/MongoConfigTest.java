@@ -37,6 +37,7 @@ import javax.annotation.Resource;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.text.ParseException;
+import java.time.Instant;
 import java.util.Collection;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -59,107 +60,127 @@ public class MongoConfigTest {
 
 	static IScimProvider provider = null;
 
+	static Instant startTime = Instant.now();
+
 	@Test
 	public void a_beanCheckTest() {
 
-		try {
-			provider = handler.getProvider();
-		} catch (InstantiationException | ClassNotFoundException | BackendException e) {
-			fail(e);
-		}
+		provider = handler.getProvider();
+		assertThat(provider).isNotNull();;
+
 		logger.info("==========   MongoConfig Tests ==========");
 		 
-		logger.info("* Running initial persistance provider checks");
+		logger.info("\t* Running initial persistance provider checks");
 		assertThat(provider).as("MongoProvider is defined.").isNotNull();
 		
 		assertThat(provider.ready()).as("MongoProvider is ready").isTrue();
-	}
-	
-	@Test
-	public void b_SchemaTest() {
+
+		logger.info("\t* Check that default schema was loaded by SchemaManager");
 		Schema userById = smgr.getSchemaById("urn:ietf:params:scim:schemas:core:2.0:User");
 		Schema userByName = smgr.getSchemaByName("User");
-		
+
 		assertThat(userById == userByName).as("Is the same Schema config instance").isTrue();
-		
 		assertThat(userById).as("Schema content equality is true").isEqualTo(userByName);
+
+		assertThat(smgr.isSchemaLoadedFromProvider())
+				.as("Confirm schema was loaded from default")
+				.isFalse();
+	}
+
+	/**
+	 * After the initial reset boot up, syncConfig should have been run. If so, a {@link PersistStateResource} should
+	 * be available
+	 */
+	@Test
+	public void b_checkForConfigState() throws ParseException, ScimException, IOException {
+		logger.info("\t* Checking for stored PersistStateResource");
+		PersistStateResource cfgState = provider.getConfigState();
+		assertThat(cfgState)
+			.as("Check configstate was persisted")
+			.isNotNull();
+	}
+
+	/**
+	 * Now that config state was persisted, check that SchemaManager and provider agree.
+	 */
+	@Test
+	public void c_compareSchemaAndTypeCounts() throws ScimException {
+		logger.info("\t* Checking schema and type count matches");
+		Collection<Schema> mSchemas = provider.loadSchemas();
+
+		assertThat(mSchemas.size())
+				.as("Schema count is the same")
+				.isEqualTo(smgr.getSchemaCnt());
+
+		assertThat(provider.loadResourceTypes().size())
+				.as("Check Resource Type count matches")
+				.isEqualTo(smgr.getResourceTypeCnt());
 		
 	}
 
-	@Test 
-	public void c_ResTypeTest() {
-		ResourceType resByEp = smgr.getResourceTypeByPath("Users");
-		ResourceType resByName = smgr.getResourceTypeById("User");
-		
-		assertThat(resByEp == resByName).as("Is the same ResourceType config instance").isTrue();
-		
-		assertThat(resByEp).as("ResourceType content equality is true").isEqualTo(resByName);
-		
-	}
 
 	@Test
 	public void d_PersistedConfig() {
 		
-		logger.info("* Checking schema");
+		logger.info("\t* Checking PersistStateResource");
 
-		Collection<Schema> schCol = smgr.getSchemas();
-		Collection<ResourceType> resTypeCol = smgr.getResourceTypes();
-		//schCol.forEach(sch -> logger.debug("Cfg Schema: {}", sch.getName()));
-		
-		int confSchCnt = schCol.size();
-		logger.debug("  ConfigMgr loaded Schema count: "+confSchCnt);
-		
-		Collection<Schema> scol = null;
-		try {
-			scol = provider.loadSchemas();
-			// Note; Config Schema always has one extra - "Common" for common attributes!
-			//scol.forEach(sch -> logger.debug("Per Schema: {}", sch.getName()));
-			assertThat(scol.size())
-				.as("Persisted schema count matches ConfigMgr count: "+scol.size())
-				.isEqualTo(confSchCnt-1); 
-			
-		} catch (ScimException e) {
-			logger.error("Error while loading schema from Mongo: "+e.getMessage(),e);
-			fail("ScimException while loading schema from Mongo: "+e.getMessage(),e);
-		}
-		
-		int confResTypeCnt = resTypeCol.size();
-		logger.debug("  ConfigMgr loaded Resource Type count: "+confResTypeCnt);
-		
-		Collection<ResourceType> rcol = null;
-		try {
-			rcol = provider.loadResourceTypes();
-			assertThat(rcol.size())
-				.as("Persisted resource type count matches ConfigMgr count: "+rcol.size())
-				.isEqualTo(confResTypeCnt);
-		} catch (ScimException e) {
-			logger.error("Error while loading resource types: "+e.getMessage(),e);
-			fail("Error while loading resource types: "+e.getMessage(),e);
-		}
-		
 		try {
 			MongoProvider mprovider = (MongoProvider) provider;
 			PersistStateResource cnfRes = mprovider.getConfigState();
 			assertThat(cnfRes)
 				.as("Check for persisted config resource not Null")
 				.isNotNull();
-			assertThat(cnfRes.getSchemaCnt())
-				.as("Check state schema count matches")
-				.isEqualByComparingTo(scol.size());
+
 			assertThat(cnfRes.getResTypeCnt())
-				.as("Check state resource type count matches")
-				.isEqualByComparingTo(rcol.size());
-			
-			assertThat(cnfRes.getLastSyncDate())
-				.as("Check last sync date not null")
-				.isNotNull();
-			
-			logger.debug("  Last sync date is "+cnfRes.getLastSync());
-			
+					.as("Check type count matches")
+					.isEqualTo(smgr.getResourceTypeCnt());
+			assertThat(cnfRes.getSchemaCnt())
+					.as("Check that schema count persisted matches")
+					.isEqualTo(smgr.getSchemaCnt());
+
+			assertThat(cnfRes.getLastSyncDate().toInstant())
+					.as("Check date is before now")
+					.isBefore(Instant.now());
+
+			assertThat(cnfRes.getLastSyncDate().toInstant())
+					.as("Check sync date is after start time of test.")
+					.isAfter(startTime);
+
 		} catch (ScimException | IOException | ParseException e) {
 			logger.error("Error while loading persistant state config resource",e);
 			fail("Error while loading persistant state config resource",e);
 		}
+	}
+
+	/**
+	 * Check that a restart (withhout reset) properly loads the configs.
+	 */
+	@Test
+	public void e_CheckRestart() throws ScimException {
+		logger.info("\t* Restart and re-load provider and SchemaManager");
+		provider.shutdown();
+		smgr.resetSchema();
+		try {
+			provider.init();
+		} catch (BackendException e) {
+			logger.error("Error while restarting provider",e);
+			fail("Error while restarting provider",e);
+		}
+
+		try {
+			// This time, the schema should be loaded from MongoProvider
+			smgr.init();
+		} catch (ScimException | IOException | BackendException e) {
+			logger.error("Error while restarting SchemaManager",e);
+			fail("Error while restarting SchemaManager",e);
+		}
+
+		assertThat(smgr.isSchemaLoadedFromProvider())
+				.as("Confirm schema was loaded from provider")
+				.isTrue();
+		//re-run the count test.
+		c_compareSchemaAndTypeCounts();
+
 	}
 	
 

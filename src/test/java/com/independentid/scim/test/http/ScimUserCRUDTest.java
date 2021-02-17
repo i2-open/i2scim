@@ -121,12 +121,12 @@ public class ScimUserCRUDTest {
 
 
 		MongoDatabase scimDb = mclient.getDatabase(scimDbName);
-		
 		scimDb.drop();
+		mclient.close();
 		
 		try {
 			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-		} catch (IOException | BackendException e) {
+		} catch (IOException e) {
 			fail("Failed to initialize test Mongo DB: "+scimDbName);
 		}
 		
@@ -279,7 +279,7 @@ public class ScimUserCRUDTest {
 				.contains("Tour Operations");
 
 			resp.close();
-			logger.debug("Entry retrieved:\n"+body);
+			System.out.println("Entry retrieved:\n"+body);
 			
 			// Check that the result can be parsed as a SCIM object
 			JsonNode jres = JsonUtil.getJsonTree(body);
