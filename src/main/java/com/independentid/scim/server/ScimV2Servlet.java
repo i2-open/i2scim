@@ -25,6 +25,7 @@ import com.independentid.scim.serializer.JsonUtil;
 import org.apache.http.HttpStatus;
 import org.eclipse.microprofile.metrics.annotation.Counted;
 import org.eclipse.microprofile.metrics.annotation.Timed;
+import org.jose4j.http.Get;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,7 +108,7 @@ public class ScimV2Servlet extends HttpServlet {
 
 		complete(op);
 
-		eventManager.logEvent(op);
+		checkAndLogModOp(op);
 	}
 
 	/* (non-Javadoc)
@@ -123,7 +124,7 @@ public class ScimV2Servlet extends HttpServlet {
 
 		complete(op);
 
-		eventManager.logEvent(op);
+		checkAndLogModOp(op);
 	}
 
 	/*
@@ -143,7 +144,7 @@ public class ScimV2Servlet extends HttpServlet {
 
 		complete(op);
 
-		eventManager.logEvent(op);
+		checkAndLogModOp(op);
 	}
 
 	@Counted(name="scim.ops.search.count",description="Counts the number of SCIM Post Search requests")
@@ -153,8 +154,6 @@ public class ScimV2Servlet extends HttpServlet {
 		SearchOp op = new SearchOp(req, resp);
 			
 		complete(op);
-
-		eventManager.logEvent(op);
 	}
 
 	@Counted(name="scim.ops.get.count",description="Counts the number of SCIM Get requests")
@@ -193,7 +192,6 @@ public class ScimV2Servlet extends HttpServlet {
 
 		complete(op);
 
-		eventManager.logEvent(op);
 	}
 
 	@Counted(name="scim.ops.bulk.count",description="Counts the number of SCIM Bulk requests")
@@ -205,7 +203,7 @@ public class ScimV2Servlet extends HttpServlet {
 		complete(op);
 
 		//BulkOps will invoke individual events as well
-		eventManager.logEvent(op);
+		checkAndLogModOp(op);
 	}
 	
 	/*
@@ -244,6 +242,7 @@ public class ScimV2Servlet extends HttpServlet {
 		CreateOp op = new CreateOp(req, resp);
 
 		complete(op);
+		checkAndLogModOp(op);
 	}
 
 	@Override
@@ -279,13 +278,21 @@ public class ScimV2Servlet extends HttpServlet {
 		}
 	}
 
+	private void checkAndLogModOp(Operation op) {
+		if (op instanceof GetOp
+			|| op instanceof SearchOp) return;  //search ops not logged.
+
+		if (op.isDone()
+				&& !op.isError()
+				&& op.getResponse().getStatus() < 400)
+			eventManager.logEvent(op);
+	}
+
 
 	@Counted(name="opsCnt",description="Counts the total number of SCIM operations")
 	@Timed (name="opsTimer",description = "Measures SCIM operation times (all types)")
 	protected void complete (Operation op) throws IOException {
-		
 
-		
 		pool.addJobAndWait(op);
 
 		checkDone(op);

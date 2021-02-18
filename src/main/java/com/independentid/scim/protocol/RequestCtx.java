@@ -112,7 +112,7 @@ public class RequestCtx {
 
 	private boolean postSearch = false;
 
-	protected String tid = UUID.randomUUID().toString();
+	protected String tid;
 
 	/**
 	 * Used to create a request context that exists within a single SCIM Bulk operation
@@ -128,7 +128,7 @@ public class RequestCtx {
 		}
 		this.smgr = schemaManager;
 		this.sctx = null;
-	
+		this.tid = schemaManager.generateTransactionId();
 
 		JsonNode item = bulkReqOp.get(BulkOps.PARAM_METHOD);
 		if (item == null)
@@ -191,6 +191,7 @@ public class RequestCtx {
 		this.smgr = schemaManager;
 		this.endpoint = resEndpoint;
 		this.id = id;
+		this.tid = schemaManager.generateTransactionId();
 		StringBuilder buf = new StringBuilder();
 		
 		if (resEndpoint != null) {
@@ -227,6 +228,7 @@ public class RequestCtx {
 		this.smgr = schemaManager;
 		this.endpoint = resType;
 		this.id = id;
+		this.tid = schemaManager.generateTransactionId();
 		StringBuilder buf = new StringBuilder("/");
 		if (resType != null) {
 			buf.append(resType).append('/');
@@ -289,6 +291,7 @@ public class RequestCtx {
 		//this.req = request;
 		//sctx = request.getServletContext();
 		this.req = req;
+		this.tid = schemaManager.generateTransactionId();
 		this.smgr = schemaManager;
 		path = req.getPathInfo();
 		if (path == null)
@@ -770,7 +773,8 @@ public class RequestCtx {
 		return secRoles.contains(role.toLowerCase());
 	}
 
-	public void setSecSubject(SecurityIdentity identity) {
+	public void setSecSubject(@NotNull SecurityIdentity identity) {
+
 		this.identity = identity;
 		this.secRoles = new ArrayList<>();
 		this.secRoles.addAll(
@@ -781,7 +785,8 @@ public class RequestCtx {
 		this.acis = acis;
 	}
 
-	public void setAccessContext(SecurityIdentity identity, AciSet acis) {
+	public void setAccessContext(@NotNull SecurityIdentity identity, AciSet acis) {
+
 		this.identity = identity;
 		this.secRoles = new ArrayList<>();
 		this.secRoles.addAll(

@@ -114,9 +114,11 @@ public class SchemaManager {
 
         PersistStateResource cfgState = null;
         try {
-            if(!backendHandler.isReady())
-                backendHandler.getProvider();
-            cfgState = backendHandler.getProvider().getConfigState();
+
+            IScimProvider prov = backendHandler.getProvider();
+            if (prov == null)
+                throw new BackendException("Provider did not start. See logs.");
+            cfgState = prov.getConfigState();
         } catch (ParseException e) {
             logger.error("Unexpected error occurred reading provider configuration state: "+e.getMessage()+" RESETTING CONFIG TO DEFAULT",e);
         }
@@ -127,8 +129,9 @@ public class SchemaManager {
             initialized = true;
 
             // Persist the configuration
-
+            //backendHandler.syncConfig(this);
             // Attempt to run the sync process 5 seconds later to avoid startup conflicts
+
             TimerTask task = new SyncTask(this);
             Timer timer = new Timer("SyncTimer");
             timer.schedule(task,50L);

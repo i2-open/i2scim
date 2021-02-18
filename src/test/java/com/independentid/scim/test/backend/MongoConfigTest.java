@@ -43,7 +43,10 @@ import java.util.Collection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
-
+/**
+ * Note this test may have some timing issues when run in debug stepping mode. Tests b thru d expects schema to be initialized fairly
+ * quickly.
+ */
 @QuarkusTest
 @TestProfile(ScimMongoTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
@@ -66,7 +69,7 @@ public class MongoConfigTest {
 	public void a_beanCheckTest() {
 
 		provider = handler.getProvider();
-		assertThat(provider).isNotNull();;
+		assertThat(provider).isNotNull();
 
 		logger.info("==========   MongoConfig Tests ==========");
 		 
@@ -94,7 +97,17 @@ public class MongoConfigTest {
 	@Test
 	public void b_checkForConfigState() throws ParseException, ScimException, IOException {
 		logger.info("\t* Checking for stored PersistStateResource");
-		PersistStateResource cfgState = provider.getConfigState();
+		PersistStateResource cfgState = null;
+		int cnt = 0;
+		while (cfgState==null && cnt < 5) {
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException ignored) {
+			}
+			cnt ++;
+			cfgState = provider.getConfigState();
+		}
+
 		assertThat(cfgState)
 			.as("Check configstate was persisted")
 			.isNotNull();

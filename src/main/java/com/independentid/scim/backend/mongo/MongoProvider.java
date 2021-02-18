@@ -70,8 +70,11 @@ public class MongoProvider implements IScimProvider {
 	// private DB sDb = null;
 	private boolean ready = false;
 
+	//@Inject
+	//SchemaManager schemaManager;
+
 	@Inject
-	SchemaManager schemaManager;
+	MongoMapUtil mapUtil;
 
 	@ConfigProperty(name = "scim.mongodb.uri", defaultValue="mongodb://localhost:27017")
 	String dbUrl;
@@ -81,8 +84,7 @@ public class MongoProvider implements IScimProvider {
 	String scimDbName;
 	
 	//@Value("${scim.mongodb.indexes: User:userName,User:emails.value,Group:displayName}")
-	@ConfigProperty(name = "scim.mongodb.indexes", defaultValue="User:userName,User:emails.value,Group:displayName")
-	String[] indexes;
+
 
 	/**
 	 *  When set true, causes the configuration stored to be erased
@@ -94,7 +96,7 @@ public class MongoProvider implements IScimProvider {
 	
 	private MongoDatabase scimDb = null;
 	
-	private PersistStateResource stateResource = null;
+	//private PersistStateResource stateResource = null;
 	
 	public MongoProvider() {
 	}
@@ -315,15 +317,8 @@ public class MongoProvider implements IScimProvider {
 		FindIterable<Document> iter = col.find(query);
 		Document pdoc = iter.first();  // there should be only one document!
 
-		if(pdoc == null)
-			return null;
-		String jsonstr = pdoc.toJson();
-		JsonNode jdoc = JsonUtil.getJsonTree(jsonstr);
 
-		stateResource = new PersistStateResource(this.schemaManager,jdoc,null, PersistStateResource.RESTYPE_CONFIG);
-
-		
-		return stateResource;
+		return mapUtil.mapConfigState(pdoc);
 	}
 
 	/**
@@ -359,26 +354,16 @@ public class MongoProvider implements IScimProvider {
 		FindIterable<Document> iter = col.find(query);
 		Document res = iter.first();
 
-
-
 		if (res == null) {
 			return null;
 		}
 
 		//String json = JSON.serialize(res);
 		
-		try {
-			ScimResource sres = new MongoScimResource(schemaManager, res, type);
-			if (Filter.checkMatch(sres,ctx))
-				return sres;
-			return null;
-			
-		} catch (SchemaException | ParseException e) {
-			throw new BackendException(
-					"Unknown parsing exception parsing data from MongoDB."
-							+ e.getMessage(), e);
-		}
-
+		ScimResource sres = mapUtil.mapScimResource(res,type);
+		if (Filter.checkMatch(sres,ctx))
+			return sres;
+		return null;
 	}
 
 	@Override
@@ -440,11 +425,11 @@ public class MongoProvider implements IScimProvider {
 			Document res = iter.next();
 
 			try {
-				ScimResource sres = new MongoScimResource(schemaManager, res, type);
+				ScimResource sres = mapUtil.mapScimResource(res, type);
 			
 				// if (Filter.checkMatch(sres, ctx))
 				vals.add(sres);
-			} catch (SchemaException | ParseException e) {
+			} catch (SchemaException e) {
 				logger.warn("Unhandled exception: "+e.getLocalizedMessage(),e);
 				return new ScimResponse(ScimResponse.ST_INTERNAL,e.getLocalizedMessage(),null);
 				/*
@@ -601,8 +586,7 @@ public class MongoProvider implements IScimProvider {
 			FindIterable<Document> iter = col.find();
 			
 			for (Document doc : iter) {
-				JsonNode jdoc = JsonUtil.getJsonTree(doc.toJson());
-				Schema entry = new Schema(schemaManager,jdoc);
+				Schema entry = mapUtil.mapSchema(doc);
 				//  map.put(entry.getName(), entry);  // Map by both id and name
 				scol.add(entry);
 			}
@@ -632,9 +616,8 @@ public class MongoProvider implements IScimProvider {
 			FindIterable<Document> iter = col.find();
 			
 			for (Document doc : iter) {
-				JsonNode jdoc = JsonUtil.getJsonTree(doc.toJson());
-				ResourceType entry = new ResourceType(jdoc, schemaManager);
-				rcol.add(entry);  
+
+				rcol.add(mapUtil.mapResourceType(doc));
 			}
 			
 			return rcol;
@@ -657,34 +640,25 @@ public class MongoProvider implements IScimProvider {
 
 		//Initialize "id" index is not required as Mongo will auto index "_id" (which is mapped from id)
 
-
-		for (String index : indexes) {
-			String schema = index.substring(0, index.indexOf(':'));
-			String attrName = index.substring(index.indexOf(':') + 1);
-
+		Collection<Attribute> indexed = mapUtil.getIndexedAttributes();
+		for (Attribute attr: indexed) {
 			ResourceType type, typematch = null;
 			for (ResourceType resourceType : resTypeCol) {
 				type = resourceType;
 
-				if (type.getId().equals(schema) || type.getName().equals(schema)) {
+				if (type.getSchema().equals(attr.getSchema())) {
 					typematch = type;
 					break;
 				}
 			}
 
 			if (typematch == null) {
-				logger.warn("Schema configuration for " + schema + " was not found. Ignoring index: " + index);
+				logger.warn("Schema configuration for " + attr.getSchema() + " was not found. Ignoring index: " + attr.getName());
 				continue;
 			}
 			String dbName = typematch.getTypePath();
 
-
 			MongoCollection<Document> col = sDb.getCollection(dbName);
-			Attribute attr = schemaManager.findAttribute(index, null);
-			if (attr == null) {
-				logger.warn("Attribute configuration for " + attrName + " was not found. Ignoring index: " + index);
-				continue;
-			}
 
 			if (logger.isDebugEnabled())
 				logger.debug("Creating index for " + attr.getRelativePath() + ", unique: " + attr.getUniqueness());
@@ -708,12 +682,7 @@ public class MongoProvider implements IScimProvider {
 	public void syncConfig(Collection<Schema> schemaCol, Collection<ResourceType> resTypeCol) throws IOException {
 		
 		initDbSchema(resTypeCol);
-		RequestCtx ctx = null;
-		try {
-			ctx = new RequestCtx(ScimParams.PATH_TYPE_SCHEMAS,null,null,schemaManager);
-		} catch (ScimException e) {
-			//will not happen
-		}
+
 		Iterator<Schema> siter = schemaCol.iterator();
 
 		Iterator<ResourceType> riter = resTypeCol.iterator();
@@ -721,8 +690,8 @@ public class MongoProvider implements IScimProvider {
 		int scnt = schemaCol.size();
 		int rcnt = resTypeCol.size();
 			
-		PersistStateResource confState = new PersistStateResource(this.schemaManager,rcnt,scnt);
-		
+		PersistStateResource confState = mapUtil.mapConfigState(rcnt,scnt);
+
 		// Process the schemas
 		
 		MongoCollection<Document> col = getDbConnection().getCollection(ScimParams.PATH_TYPE_SCHEMAS);
@@ -791,9 +760,23 @@ public class MongoProvider implements IScimProvider {
 	@Override
 	public ScimResource getTransactionRecord(String transid) throws BackendException {
 		try {
-			RequestCtx ctx = new RequestCtx(TransactionRecord.TRANS_CONTAINER,transid,null,schemaManager);
 
-			return getResource(ctx);
+
+			Document query = new Document();
+
+			MongoCollection<Document> col = this.scimDb.getCollection(TransactionRecord.TRANS_CONTAINER);
+
+
+			query.put("_id", new ObjectId(transid));
+			FindIterable<Document> iter = col.find(query);
+			Document doc = iter.first();
+
+			if (doc == null)
+				return null;
+
+			//String json = JSON.serialize(res);
+
+			return mapUtil.mapScimResource(doc,TransactionRecord.TRANS_CONTAINER);
 		} catch (ScimException e) {
 			// Would only expect a parsing error resulting from external data.
 			logger.error("Unexpected scim error: "+e.getMessage(),e);
@@ -818,19 +801,49 @@ public class MongoProvider implements IScimProvider {
 	}
 
 	@Override
-	public void storeTransactionRecord(TransactionRecord record) throws DuplicateTxnException {
-		ScimResponse resp = null;
-		try {
-			RequestCtx ctx = new RequestCtx(TransactionRecord.TRANS_CONTAINER,null,null,schemaManager);
-			// ScimResponse(ScimResponse.ST_BAD_REQUEST,e.getLocalizedMessage(),ScimResponse.ERR_TYPE_UNIQUENESS);
-			resp = create(ctx,record);
+	public synchronized void storeTransactionRecord(TransactionRecord record) throws DuplicateTxnException {
 
-		} catch (ScimException e) {
-			System.err.println("Unexpected error: "+e.getMessage());
-			logger.error("Unexpected scim error: "+e.getMessage(),e);
+		if (record.getId() == null)  // in the case of replication, the id is already set
+			record.setId((new ObjectId()).toString());
+		MongoDatabase sDb = getDbConnection();
+		MongoCollection<Document> col = sDb.getCollection(TransactionRecord.TRANS_CONTAINER);
+
+		// Check if the transaction is already stored.
+		Document query = new Document();
+		query.put("_id", new ObjectId(record.getId()));
+		FindIterable<Document> iter = col.find(query);
+		Document doc = iter.first();
+		if (doc != null)
+			throw new DuplicateTxnException("Transaction id "+record.getId()+" already exists.");
+
+		Meta meta = record.getMeta();
+		if (meta != null) {// Not needed for TransactionRecord type
+			Date created = new Date(System.currentTimeMillis());
+			if (meta.getCreatedDate() == null) // only set the created date if it does not already exist.
+				meta.setCreatedDate(created);
+			meta.setLastModifiedDate(created); // always set the modify date upon create.
+			meta.setLocation('/' + TransactionRecord.TRANS_CONTAINER + '/' + record.getId());
+
+
+			try {
+				String etag = record.calcVersionHash();
+				meta.setVersion(etag);
+			} catch (ScimException ignored) {
+			}
+
 		}
-		if (resp != null && resp.getScimErrorType().equals(ScimResponse.ERR_TYPE_UNIQUENESS))
-			throw new DuplicateTxnException("Transactionid is not unique.");
+
+		// Map and store the record
+		doc = MongoMapUtil.mapResource(record);
+		try {
+			col.insertOne(doc);
+		} catch (IllegalArgumentException e) {
+			//Should not happen
+			if (logger.isDebugEnabled())
+				logger.debug("Bad argument exception: "+e.getLocalizedMessage(),e);
+		} catch (MongoWriteException e) {
+			logger.warn("Unexpected error writing transaction record. "+e.getMessage(),e);
+		}
 	}
 
 }

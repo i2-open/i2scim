@@ -17,27 +17,34 @@ package com.independentid.scim.backend.mongo;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.backend.BackendException;
+import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.protocol.Filter;
+import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.resource.*;
-import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.*;
 import com.independentid.scim.resource.Meta;
-import com.independentid.scim.schema.Schema;
-import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
+import com.mongodb.client.MongoCollection;
 import org.bson.Document;
 import org.bson.internal.Base64;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.Binary;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.text.ParseException;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -45,10 +52,17 @@ import java.util.regex.Pattern;
 /**
  * @author pjdhunt A general SCIM / MongoDb bidirectional mapping utility.
  */
+@ApplicationScoped
 public class MongoMapUtil {
     private final static Logger logger = LoggerFactory.getLogger(MongoMapUtil.class);
 
     public final static Pattern hrefPattern = Pattern.compile("\\\"href\\\"");
+
+    @Inject
+    SchemaManager schemaManager;
+
+    @ConfigProperty(name = "scim.mongodb.indexes", defaultValue="User:userName,User:emails.value,Group:displayName")
+    String[] indexes;
 
     /**
      * Converts a <ScimResource> object to a Mongo <Document>. Conversion does not modify original ScimResource.
@@ -469,4 +483,51 @@ public class MongoMapUtil {
         }
         return new ExtensionValues(schema, valMap);
     }
+
+    public PersistStateResource mapConfigState(int rcnt, int scnt) {
+        return new PersistStateResource(schemaManager,rcnt,scnt);
+    }
+
+    public PersistStateResource mapConfigState(Document persistDoc) throws ScimException, ParseException, JsonProcessingException {
+        if(persistDoc == null)
+            return null;
+        String jsonstr = persistDoc.toJson();
+        JsonNode jdoc = JsonUtil.getJsonTree(jsonstr);
+
+        return new PersistStateResource(schemaManager,jdoc,null, PersistStateResource.RESTYPE_CONFIG);
+    }
+
+    public ScimResource mapScimResource(Document res, String type) throws ScimException, BackendException {
+        try {
+            return new MongoScimResource(schemaManager, res, type);
+
+        } catch (SchemaException | ParseException e) {
+            throw new BackendException(
+                    "Unknown parsing exception parsing data from MongoDB."
+                            + e.getMessage(), e);
+        }
+
+    }
+
+    public Schema mapSchema(Document doc) throws SchemaException, JsonProcessingException {
+        JsonNode jdoc = JsonUtil.getJsonTree(doc.toJson());
+        return new Schema(schemaManager,jdoc);
+    }
+
+    public ResourceType mapResourceType(Document doc) throws JsonProcessingException, SchemaException {
+        JsonNode jdoc = JsonUtil.getJsonTree(doc.toJson());
+        return new ResourceType(jdoc, schemaManager);
+    }
+
+    public Collection<Attribute> getIndexedAttributes() {
+        Collection<Attribute> iattrs = new ArrayList<>();
+
+        for (String index : indexes) {
+            Attribute attr = schemaManager.findAttribute(index, null);
+            iattrs.add(attr);
+        }
+        return iattrs;
+    }
+
+
 }
