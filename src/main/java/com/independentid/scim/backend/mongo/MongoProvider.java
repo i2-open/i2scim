@@ -18,6 +18,7 @@ package com.independentid.scim.backend.mongo;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.IScimProvider;
+import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.*;
 import com.independentid.scim.protocol.*;
 import com.independentid.scim.resource.Meta;
@@ -25,14 +26,12 @@ import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.TransactionRecord;
 import com.independentid.scim.schema.*;
-import com.independentid.scim.serializer.JsonUtil;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.ReplaceOptions;
-import io.quarkus.runtime.Startup;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -40,7 +39,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -82,6 +80,9 @@ public class MongoProvider implements IScimProvider {
 	//@Value("${scim.mongodb.dbname: SCIM}")
 	@ConfigProperty(name = "scim.mongodb.dbname", defaultValue="SCIM")
 	String scimDbName;
+
+	@ConfigProperty(name = ConfigMgr.SCIM_QUERY_MAX_RESULTSIZE, defaultValue= ConfigMgr.SCIM_QUERY_MAX_RESULTS_DEFAULT)
+	protected int maxResults;
 	
 	//@Value("${scim.mongodb.indexes: User:userName,User:emails.value,Group:displayName}")
 
@@ -390,7 +391,7 @@ public class MongoProvider implements IScimProvider {
 			if (res != null)
 				return new ListResponse(res, ctx);  // return the single item
 			else
-				return new ListResponse(ctx);  // return an empty response
+				return new ListResponse(ctx, maxResults);  // return an empty response
 		}
 		
 		String type = ctx.getResourceContainer();
@@ -416,7 +417,7 @@ public class MongoProvider implements IScimProvider {
 		MongoCursor<Document> iter = fiter.iterator();
 		// If there are no results return empty set.
 		if (!iter.hasNext())
-			return new ListResponse(ctx);
+			return new ListResponse(ctx, maxResults);
 
 		// Multi-object response.
 		ArrayList<ScimResource> vals = new ArrayList<>();
@@ -439,7 +440,7 @@ public class MongoProvider implements IScimProvider {
 								*/
 			}
 		}
-		return new ListResponse(vals, ctx);
+		return new ListResponse(vals, ctx,maxResults);
 
 	}
 

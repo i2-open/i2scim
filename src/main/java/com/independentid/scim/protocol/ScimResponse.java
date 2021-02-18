@@ -78,9 +78,6 @@ public class ScimResponse implements ScimSerializer {
 	public static final String DESCR_TYPE_BADVAL     = "A required value is missing, or the supplied value is not compatible.";
 	public static final String DESCR_TYPE_BADVERS    = "The specified SCIM protocol version is not supported.";
 
-	@ConfigProperty(name = ConfigMgr.SCIM_QUERY_MAX_RESULTSIZE, defaultValue= ConfigMgr.SCIM_QUERY_MAX_RESULTS_DEFAULT)
-	protected int maxResults;
-
 	private int status;
 	private String stype;
 	private String location;

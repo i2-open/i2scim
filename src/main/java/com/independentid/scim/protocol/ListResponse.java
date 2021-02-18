@@ -53,12 +53,13 @@ public class ListResponse extends ScimResponse {
 	/**
 	 * Constructor used to create an empty SCIM List Response.
 	 * @param ctx A <RequestCtx> object containing the original request information.
+	 * @param maxResults
 	 *
 	 */
-	public ListResponse(RequestCtx ctx) {
+	public ListResponse(RequestCtx ctx, int maxResults) {
 		super();
 		this.ctx = ctx; 
-		
+		this.smax = maxResults;
 		if (this.ctx.count == 0 || this.ctx.count > maxResults)
 			this.ctx.count = this.smax;
 		this.totalRes = 0;
@@ -82,9 +83,6 @@ public class ListResponse extends ScimResponse {
 		super();
 		this.ctx = ctx;
 		
-		if (this.ctx.count == 0 || this.ctx.count > maxResults)
-			this.ctx.count = this.smax;
-		
 		setLocation(val.getMeta().getLocation());
 		
 		this.etag = val.getMeta().getVersion();
@@ -100,10 +98,10 @@ public class ListResponse extends ScimResponse {
 	}
 	
 	
-	public ListResponse(final List<ScimResource> vals, RequestCtx ctx) throws ScimException {
+	public ListResponse(final List<ScimResource> vals, RequestCtx ctx, int maxResults) throws ScimException {
 		super();
 		this.ctx = ctx;
-		
+		this.smax = maxResults;
 		this.id = null;
 		
 		if (this.ctx.count == 0 || this.ctx.count > maxResults)
@@ -126,7 +124,7 @@ public class ListResponse extends ScimResponse {
 			 */
 
 			
-			for (int i = start; (i < this.ctx.count && i < vals.size()); i++) {
+			for (int i = start; (i < this.ctx.count && i < this.totalRes); i++) {
 				ScimResource resource = vals.get(i);
 				Date mdate = resource.getMeta().getLastModifiedDate();
 				if (mdate != null &&(lastMod == null || mdate.after(lastMod)))

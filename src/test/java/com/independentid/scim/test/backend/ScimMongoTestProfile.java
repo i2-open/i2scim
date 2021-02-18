@@ -27,10 +27,11 @@ public class ScimMongoTestProfile implements QuarkusTestProfile {
                 "scim.mongodb.test", "true",
                 "scim.mongodb.dbname", "testMongoSCIM",
                 "scim.mongodb.uri","mongodb://localhost:27017",
-                    "scim.json.pretty","true",
+
                 "scim.provider.bean", MongoProvider.class.getName(),
                 "scim.security.enable", "false",
                 "quarkus.http.test-port","0",
+                "quarkus.log.min-level","DEBUG",
                 "logging.level.com.independentid.scim","DEBUG",
                 "quarkus.log.category.\"com.independentid.scim\".level","DEBUG",
                 "scim.schema.path","classpath:/schema/scimSchemaTest.json"

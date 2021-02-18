@@ -71,7 +71,10 @@ public class MemoryProvider implements IScimProvider {
 	
 	@ConfigProperty(name =PARAM_PERSIST_FILE, defaultValue=DEFAULT_FILE)
 	String storeFile;
-	
+
+	@ConfigProperty(name = ConfigMgr.SCIM_QUERY_MAX_RESULTSIZE, defaultValue= ConfigMgr.SCIM_QUERY_MAX_RESULTS_DEFAULT)
+	protected int maxResults;
+
 	/**
 	 * 
 	 */
@@ -157,7 +160,7 @@ public class MemoryProvider implements IScimProvider {
 						"\nMatches:\t" + vals.size();
 				logger.debug(buf);
 			}
-			return new ListResponse(vals,ctx);
+			return new ListResponse(vals,ctx, maxResults);
 		}
 		ScimResource res = this.mainMap.get(id);
 		if (res == null) {

@@ -14,7 +14,6 @@
  */
 package com.independentid.scim.op;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.core.err.InternalException;
 import com.independentid.scim.core.err.NotFoundException;
@@ -42,6 +41,7 @@ public class GetOp extends Operation {
 	private static final long serialVersionUID = 2919810859040965128L;
 	private final static Logger logger = LoggerFactory.getLogger(GetOp.class);
 
+	private final static int CONFIG_MAX_RESULTS = 1000;
 	/**
 	 * @param req The {@link HttpServletRequest} object received by the SCIM Servlet
 	 * @param resp The {@link HttpServletResponse} to be returned by the SCIM Servlet
@@ -65,7 +65,7 @@ public class GetOp extends Operation {
 		String container = ctx.getResourceContainer();
 		// If this is a query to the Schema or ResourceType end points use ConfigResponse
 		if (ConfigResponse.isConfigEndpoint(container)) {
-			this.scimresp = new ConfigResponse(ctx, configMgr);
+			this.scimresp = new ConfigResponse(ctx, configMgr,CONFIG_MAX_RESULTS);
 			return;
 		} 
 		

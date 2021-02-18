@@ -240,6 +240,7 @@ public class MongoFilterMapTest {
         InputStream userStream = new FileInputStream(user1File);
         JsonNode node = JsonUtil.getJsonTree(userStream);
         user1 = new ScimResource(smgr, node, "Users");
+        user1.setId(null);  // When adding directly, id must be NULL!
         IntegerValue lcnt = new IntegerValue(loginCnt,1234);
         DecimalValue lstr = new DecimalValue(loginStrength,BigDecimal.valueOf(3.4));
         user1.addValue(lcnt);
@@ -252,6 +253,7 @@ public class MongoFilterMapTest {
         userStream = new FileInputStream(user2File);
         node = JsonUtil.getJsonTree(userStream);
         user2 = new ScimResource(smgr, node, "Users");
+        user2.setId(null);  // When adding directly, id must be NULL!
         lcnt = new IntegerValue(loginCnt,1);
         lstr = new DecimalValue(loginStrength,BigDecimal.valueOf(1.00));
         user2.addValue(lcnt);

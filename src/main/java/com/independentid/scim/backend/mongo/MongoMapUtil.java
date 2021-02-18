@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
+import javax.inject.Singleton;
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
@@ -52,7 +53,8 @@ import java.util.regex.Pattern;
 /**
  * @author pjdhunt A general SCIM / MongoDb bidirectional mapping utility.
  */
-@ApplicationScoped
+//@ApplicationScoped
+@Singleton
 public class MongoMapUtil {
     private final static Logger logger = LoggerFactory.getLogger(MongoMapUtil.class);
 

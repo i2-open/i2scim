@@ -54,9 +54,6 @@ public class ResourceResponse extends ScimResponse {
 		super();
 		this.ctx = ctx;
 
-		if (this.ctx.count == 0 || this.ctx.count > maxResults)
-			this.ctx.count = this.smax;
-		
 		if (val.getMeta() == null) {
 			// This typically happens in server config endpoints
 			String cp = ctx.sctx.getContextPath();
