@@ -71,11 +71,11 @@ import static org.assertj.core.api.Assertions.fail;
 @QuarkusTest
 @TestProfile(ScimHttpTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
-public class ScimLoadParallelSampleTest {
+public class ScimLoadSampleTestParallel {
 
     private final static Logger logger = LoggerFactory.getLogger(ScimLoadSampleTest.class);
 
-    private static final int testThreads = 50;
+    private static final int testThreads = 10;
 
     //private static String userSchemaId = "urn:ietf:params:scim:schemas:core:2.0:User";
 
@@ -106,8 +106,6 @@ public class ScimLoadParallelSampleTest {
     private static String readTime = null;
 
     static String req = null;
-
-    //private static ScimResource user1,user2 = null;
 
     private void readSampleData() throws IOException, ParseException, ScimException {
         logger.debug("\t\tReading sample data from: "+dataSet);

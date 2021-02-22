@@ -24,15 +24,15 @@ public class ScimEventsTestProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
         Map<String, String> cmap = new HashMap<>(Map.of(
-                "scim.mongodb.test", "true",
-                "scim.mongodb.dbname", "secTestSCIM",
-                "scim.mongodb.uri", "mongodb://localhost:27017",
+                "scim.prov.mongo.test", "true",
+                "scim.prov.mongo.dbname", "secTestSCIM",
+                "scim.prov.mongo.uri", "mongodb://localhost:27017",
 
                 "quarkus.log.category.\"com.independentid.scim\".level", "DEBUG",
 
                 "scim.security.enable","false",
-                "scim.kafkaLogEventHandler.enable","true",
-                "scim.kafkaRepEventHandler.enable","true"
+                "scim.kafka.log.enable","true",
+                "scim.kafka.rep.enable","true"
                  ));
         cmap.putAll(Map.of(
 

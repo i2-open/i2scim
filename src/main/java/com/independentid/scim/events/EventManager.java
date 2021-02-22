@@ -40,6 +40,8 @@ import javax.inject.Singleton;
 public class EventManager {
     private final static Logger logger = LoggerFactory.getLogger(EventManager.class);
 
+    public static final String PARAM_KAFKA_BOOTSTRAP = "scim.kafka.bootstrap";
+
     @ConfigProperty(name = "scim.event.enable", defaultValue = "false")
     boolean enabled;
 

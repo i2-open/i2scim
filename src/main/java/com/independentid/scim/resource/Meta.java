@@ -179,7 +179,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		AccessManager amgr = null;
 		if (cmgr != null)
 			amgr = ConfigMgr.getConfig().getAccessManager();
-		if (amgr != null) {
+		if (amgr != null && this.location != null) {
 			List<AccessControl> set = amgr.getResourceAcis(this.location);
 			if (set.size()>0
 				&& ValueUtil.isReturnable(attr.getSubAttribute(META_ACIS),ctx)) {

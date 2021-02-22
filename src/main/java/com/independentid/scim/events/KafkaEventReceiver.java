@@ -38,7 +38,8 @@ public class KafkaEventReceiver implements Runnable{
     private final static Logger logger = LoggerFactory.getLogger(KafkaEventReceiver.class);
     private final AtomicBoolean closed = new AtomicBoolean(false);
     private final KafkaConsumer<String, JsonNode> consumer;
-    KafkaRepEventHandler eventHandler;
+    final KafkaRepEventHandler eventHandler;
+
     List<Operation> repErrorOps = Collections.synchronizedList(new ArrayList<>());
     List<Operation> received = Collections.synchronizedList(new ArrayList<>());
 
@@ -69,6 +70,7 @@ public class KafkaEventReceiver implements Runnable{
             // Ignore exception if closing
             if (!closed.get()) throw e;
         } finally {
+            consumer.commitSync();
             consumer.close();
         }
     }

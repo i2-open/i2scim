@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.ejb.Startup;
+import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -46,15 +47,15 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
 
-@Startup
-@Singleton
+//@Startup
+@ApplicationScoped
 @Named("AccessMgr")
 public class AccessManager {
 
     private final static Logger logger = LoggerFactory
             .getLogger(AccessManager.class);
 
-    @ConfigProperty(name = "scim.security.acis.path", defaultValue = "classpath:/schema/acis.json")
+    @ConfigProperty(name = "scim.security.acis", defaultValue = "classpath:/schema/acis.json")
     String acisPath;
 
     @Inject

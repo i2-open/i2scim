@@ -16,6 +16,7 @@
 package com.independentid.scim.backend;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.backend.mongo.MongoProvider;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
@@ -46,12 +47,14 @@ import java.util.function.Supplier;
 public class BackendHandler {
 
 	private final static Logger logger = LoggerFactory.getLogger(BackendHandler.class);
-		
+	public static final String SCIM_PROVIDER_BEAN = "scim.prov.providerClass";
+	public static final String DEFAULT_PROVIDER_BEAN = "com.independentid.scim.backend.mongo.MongoProvider";
+
 	//private final static HashMap<ServletContext,BackendHandler> handlers = new HashMap<ServletContext,BackendHandler>();
 	
-	static IScimProvider provider = null;
+	private static IScimProvider provider = null;
 
-	@ConfigProperty(name = "scim.provider.bean", defaultValue="com.independentid.scim.backend.mongo.MongoProvider")
+	@ConfigProperty(name = "scim.prov.providerClass", defaultValue="com.independentid.scim.backend.mongo.MongoProvider")
 	String providerName;
 
 	@Inject
@@ -133,9 +136,9 @@ public class BackendHandler {
 		}
 	}
 
-	public IScimProvider getProvider() {
-		if (provider != null)
-			return provider;
+	public synchronized IScimProvider getProvider() {
+		if (BackendHandler.provider != null)
+			return BackendHandler.provider;
 
 		if (providerName == null)
 			logger.error("Unable to instantiate, IScimProvider bean class property (scim.provider.bean) not defined.");
@@ -151,6 +154,7 @@ public class BackendHandler {
 					return null;
 				}
 				initGenerator();
+				BackendHandler.provider = item;
 				return item;
 			}
 		}
@@ -174,7 +178,7 @@ public class BackendHandler {
 
 	public ScimResponse replace(RequestCtx ctx, final ScimResource res)
 			throws ScimException, BackendException {
-		return provider.replace(ctx, res);
+		return provider.put(ctx, res);
 	}
 
 	public ScimResponse patch(RequestCtx ctx, JsonPatchRequest	req) throws ScimException, BackendException {

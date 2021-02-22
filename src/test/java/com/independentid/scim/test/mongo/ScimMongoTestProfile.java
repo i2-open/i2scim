@@ -13,7 +13,7 @@
  * subject to the terms of such agreement.
  */
 
-package com.independentid.scim.test.backend;
+package com.independentid.scim.test.mongo;
 
 import com.independentid.scim.backend.mongo.MongoProvider;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -24,11 +24,11 @@ public class ScimMongoTestProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
         return Map.of(
-                "scim.mongodb.test", "true",
-                "scim.mongodb.dbname", "testMongoSCIM",
-                "scim.mongodb.uri","mongodb://localhost:27017",
+                "scim.prov.mongo.test", "true",
+                "scim.prov.mongo.dbname", "testMongoSCIM",
+                "scim.prov.mongo.uri","mongodb://localhost:27017",
 
-                "scim.provider.bean", MongoProvider.class.getName(),
+                "scim.prov.providerClass", MongoProvider.class.getName(),
                 "scim.security.enable", "false",
                 "quarkus.http.test-port","0",
                 "quarkus.log.min-level","DEBUG",

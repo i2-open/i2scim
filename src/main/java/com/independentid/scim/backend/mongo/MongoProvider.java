@@ -58,7 +58,14 @@ public class MongoProvider implements IScimProvider {
 	private final static Logger logger = LoggerFactory
 			.getLogger(MongoProvider.class);
 
-	//public static final String MONGO_PROVIDER = "MongoProvider";
+	public final static String PARAM_MONGO_URI = "scim.prov.mongo.uri";
+	public final static String DEFAULT_MONGO_URI = "mongodb://localhost:27017";
+
+	public final static String PARAM_MONGO_DBNAME = "scim.prov.mongo.dbname";
+	public final static String DEFAULT_MONGO_DBNAME = "SCIM";
+
+	public final static String PARAM_MONGO_INDEXES = "scim.prov.mongo.indexes";
+	public final static String DEFAULT_MONGO_INDEXES = "User:userName,User:emails.value,Group:displayName";
 
 	private static MongoProvider singleton = null;
 	
@@ -74,11 +81,14 @@ public class MongoProvider implements IScimProvider {
 	@Inject
 	MongoMapUtil mapUtil;
 
-	@ConfigProperty(name = "scim.mongodb.uri", defaultValue="mongodb://localhost:27017")
+	@Inject
+	MongoIdGenerator generator;
+
+	@ConfigProperty(name = "scim.prov.mongo.uri", defaultValue="mongodb://localhost:27017")
 	String dbUrl;
 
 	//@Value("${scim.mongodb.dbname: SCIM}")
-	@ConfigProperty(name = "scim.mongodb.dbname", defaultValue="SCIM")
+	@ConfigProperty(name = "scim.prov.mongo.dbname", defaultValue="SCIM")
 	String scimDbName;
 
 	@ConfigProperty(name = ConfigMgr.SCIM_QUERY_MAX_RESULTSIZE, defaultValue= ConfigMgr.SCIM_QUERY_MAX_RESULTS_DEFAULT)
@@ -92,7 +102,7 @@ public class MongoProvider implements IScimProvider {
 	 *  to ensure full reset to configuration and test data.
 	 */
 	//@Value("${scim.mongodb.test: false}")
-	@ConfigProperty(name = "scim.mongodb.test", defaultValue="false")
+	@ConfigProperty(name = "scim.prov.mongo.test", defaultValue="false")
 	boolean resetDb;
 	
 	private MongoDatabase scimDb = null;
@@ -171,9 +181,12 @@ public class MongoProvider implements IScimProvider {
 			throws ScimException {
 
 		String type = ctx.getResourceContainer();
+		if (type == null || type.equals("/")) {
+			return new ScimResponse(ScimResponse.ST_NOSUPPORT,"Creating resource at root not supported",null);
+		}
 
 		if (res.getId() == null)  // in the case of replication, the id is already set
-			res.setId((new ObjectId()).toString());
+			res.setId(generator.getNewIdentifier());
 
 		Meta meta = res.getMeta();
 		if (meta != null) {// Not needed for TransactionRecord type
@@ -384,9 +397,17 @@ public class MongoProvider implements IScimProvider {
 			//String json = JSON.serialize(res);
 			
 			// if this is a get of a specific resource return the object
-			if (res != null && ctx.hasNoClientFilter())
-				return new ResourceResponse(res,ctx);
-			
+			if (res != null && ctx.hasNoClientFilter()) {
+				if (ctx.getFilter() != null) {
+					//Apply the targetFilter
+					if (Filter.checkMatch(res,ctx))
+						return new ResourceResponse(res, ctx);
+					else
+						return new ScimResponse(ScimResponse.ST_NOTFOUND,null,null);
+				}
+				return new ResourceResponse(res, ctx);
+			}
+
 			// if this is a filtered request, must return a list response per RFC7644 Sec 3.4.2
 			if (res != null)
 				return new ListResponse(res, ctx);  // return the single item
@@ -445,7 +466,7 @@ public class MongoProvider implements IScimProvider {
 	}
 
 	@Override
-	public ScimResponse replace(RequestCtx ctx, final ScimResource replaceResource)
+	public ScimResponse put(RequestCtx ctx, final ScimResource replaceResource)
 			throws ScimException, BackendException {
 		MongoScimResource origRes = (MongoScimResource) getResource(ctx);
 		if (origRes == null )

@@ -63,7 +63,7 @@ public class MongoMapUtil {
     @Inject
     SchemaManager schemaManager;
 
-    @ConfigProperty(name = "scim.mongodb.indexes", defaultValue="User:userName,User:emails.value,Group:displayName")
+    @ConfigProperty(name = "scim.prov.mongo.indexes", defaultValue=MongoProvider.DEFAULT_MONGO_INDEXES)
     String[] indexes;
 
     /**

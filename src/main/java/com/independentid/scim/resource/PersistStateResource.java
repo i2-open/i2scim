@@ -21,6 +21,7 @@ import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.schema.*;
 
+import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -85,7 +86,7 @@ public class PersistStateResource extends ScimResource {
 		persistType = new ResourceType(smgr);
 		persistType.setName(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 		persistType.setSchema(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
-
+		this.container = PersistStateResource.RESTYPE_CONFIG;
 		type = persistType;
 
 		this.schemas = new ArrayList<>();

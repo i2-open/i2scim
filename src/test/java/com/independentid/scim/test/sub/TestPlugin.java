@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * Confidential and Proprietary
  *
@@ -13,10 +13,10 @@
  * subject to the terms of such agreement.
  */
 
-package com.independentid.scim.plugin;
+package com.independentid.scim.test.sub;
 
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.op.Operation;
+import com.independentid.scim.plugin.IScimPlugin;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,7 +26,7 @@ import javax.servlet.ServletException;
 
 @ApplicationScoped
 @Priority(10)
-public class TestPlugin implements IScimPlugin{
+public class TestPlugin implements IScimPlugin {
     private final static Logger logger = LoggerFactory.getLogger(TestPlugin.class);
 
     @Override
@@ -36,14 +36,15 @@ public class TestPlugin implements IScimPlugin{
 
     @Override
     public void doPreOperation(Operation op) {
-        if (op.getRequest() != null)
-         logger.info("doPreOp called: "+op.getRequest().getRequestURI());
+        if (op.getRequest() != null && logger.isDebugEnabled())
+                logger.debug("doPreOp called: "+op.getRequest().getRequestURI());
 
     }
 
     @Override
     public void doPostOperation(Operation op) {
-        if (op.getRequest() != null)
+        if (op.getRequest() != null
+            && logger.isDebugEnabled())
             logger.info("doPostOp called: "+op.getRequest().getRequestURI());
 
     }

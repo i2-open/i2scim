@@ -54,6 +54,7 @@ import java.util.*;
  */
 @Startup
 @ApplicationScoped
+//@Singleton
 @Named("SchemaMgr")
 public class SchemaManager {
     private final static Logger logger = LoggerFactory.getLogger(SchemaManager.class);
@@ -76,7 +77,7 @@ public class SchemaManager {
     @ConfigProperty(name = "scim.coreSchema.path", defaultValue = "classpath:/schema/scimCommonSchema.json")
     String coreSchemaPath;
 
-    @ConfigProperty(name = "scim.persist.schema", defaultValue = "true")
+    @ConfigProperty(name = "scim.prov.persist.schema", defaultValue = "true")
     boolean persistSchema;
 
     private final static LinkedHashMap<String, Schema> schIdMap = new LinkedHashMap<>();
@@ -112,34 +113,16 @@ public class SchemaManager {
         logger.info("SchemaManager initializing");
         generator = backendHandler.getGenerator();
 
+        // Load the default schemas first. This allows new instances of provider ability to boot.
+        loadDefaultSchema();
+        loadDefaultResourceTypes();
+        loadCoreSchema();
+
         PersistStateResource cfgState = null;
-        try {
 
-            IScimProvider prov = backendHandler.getProvider();
-            if (prov == null)
-                throw new BackendException("Provider did not start. See logs.");
-            cfgState = prov.getConfigState();
-        } catch (ParseException e) {
-            logger.error("Unexpected error occurred reading provider configuration state: "+e.getMessage()+" RESETTING CONFIG TO DEFAULT",e);
-        }
-        if (cfgState == null) {
-            loadDefaultSchema();
-            loadDefaultResourceTypes();
-            loadCoreSchema();
-            initialized = true;
-
-            // Persist the configuration
-            //backendHandler.syncConfig(this);
-            // Attempt to run the sync process 5 seconds later to avoid startup conflicts
-
-            TimerTask task = new SyncTask(this);
-            Timer timer = new Timer("SyncTimer");
-            timer.schedule(task,50L);
-
-        } else {
-            loadSchemaFromProvider();
-
-        }
+        TimerTask task = new SyncTask(this);
+        Timer timer = new Timer("SyncTimer");
+        timer.schedule(task,100L);
 
     }
 
@@ -151,9 +134,25 @@ public class SchemaManager {
 
         public void run() {
             try {
-                backendHandler.syncConfig(mgr);
-            } catch (IOException e) {
-                e.printStackTrace();
+                PersistStateResource cfgState = null;
+                try {
+
+                    IScimProvider prov = backendHandler.getProvider();
+                    if (prov == null)
+                        logger.error("Provider did not start. See logs.");
+                    assert prov != null;
+                    cfgState = prov.getConfigState();
+                } catch (ParseException | ScimException e) {
+                    logger.error("Unexpected error occurred reading provider configuration state: "+e.getMessage()+" RESETTING CONFIG TO DEFAULT",e);
+                }
+                if (cfgState == null)
+                    backendHandler.syncConfig(mgr);
+                else
+                    loadConfigFromProvider();
+
+
+            } catch (IOException | ScimException e) {
+                logger.error("Unexpected exception syncing configuration with provider. "+e.getMessage(),e);
             }
         }
 
@@ -163,13 +162,13 @@ public class SchemaManager {
     public synchronized void shutdown() {
         // clean up so that GC works faster
         logger.debug("SchemaManager shutdown.");
-        resetSchema();
+        resetConfig();
     }
 
-    private void loadSchemaFromProvider() throws ScimException {
+    private void loadConfigFromProvider() throws ScimException {
         Collection<Schema> pSchemas = backendHandler.loadSchemas();
         Collection<ResourceType> pResTypes = backendHandler.loadResourceTypes();
-
+        resetConfig();
         for (Schema schema : pSchemas)
             addSchema(schema);
 
@@ -234,7 +233,7 @@ public class SchemaManager {
      * Resets the default schema and resource types loaded by SchemaManager so that persisted schema can be loaded from
      * backend handler.
      */
-    public void resetSchema() {
+    public void resetConfig() {
         initialized = false;
         schIdMap.clear();
         schNameMap.clear();
@@ -248,7 +247,7 @@ public class SchemaManager {
      * @throws ScimException thrown configured filepath is undefined or invalid, or due to invalid JSON
      * @throws IOException   thrown due to file processing errors (missing file)
      */
-    protected void loadDefaultSchema() throws ScimException, IOException {
+    public void loadDefaultSchema() throws ScimException, IOException {
         if (schemaPath == null)
             throw new ScimException("SCIM default schema file path is null.");
 
@@ -373,7 +372,7 @@ public class SchemaManager {
      * @throws ScimException thrown configured filepath is undefined or invalid, or due to invalid JSON
      * @throws IOException   thrown due to file processing errors (missing file)
      */
-    protected void loadDefaultResourceTypes() throws ScimException, IOException {
+    public void loadDefaultResourceTypes() throws ScimException, IOException {
 
         if (resourceTypePath == null)
             throw new ScimException("SCIM default resource type configuraiton file path is null.");

@@ -13,30 +13,36 @@
  * subject to the terms of such agreement.
  */
 
-package com.independentid.scim.test.http;
+package com.independentid.scim.test.memory;
 
+import com.independentid.scim.backend.BackendHandler;
+import com.independentid.scim.backend.memory.MemoryProvider;
+import com.independentid.scim.backend.mongo.MongoProvider;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 import java.util.Map;
 
-public class ScimHttpTestProfile implements QuarkusTestProfile {
+public class ScimMemoryTestProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
         return Map.of(
-                "scim.prov.mongo.test", "true",
-                "scim.prov.mongo.dbname", "testHttpSCIM",
-                "scim.prov.mongo.uri","mongodb://localhost:27017",
-                "scim.json.pretty","true",
-                "scim.prov.providerClass","com.independentid.scim.backend.mongo.MongoProvider",
+
+                "scim.prov.providerClass", MemoryProvider.class.getName(),
+                "scim.prov.memory.maxbackups", "2",
+                "scim.prov.memory.backup.mins","1",
                 "scim.security.enable", "false",
                 "quarkus.http.test-port","0",
+                "quarkus.log.min-level","DEBUG",
                 "logging.level.com.independentid.scim","DEBUG",
-                "quarkus.log.category.\"com.independentid.scim\".level","DEBUG"
+                "quarkus.log.category.\"com.independentid.scim\".level","DEBUG",
+                "scim.schema.path","classpath:/schema/scimSchemaTest.json",
+                "scim.prov.memory.test","true"
+
         );
     }
 
     @Override
     public String getConfigProfile() {
-        return "ScimHttpTestProfile";
+        return "ScimMemoryTestProfile";
     }
 }

@@ -135,11 +135,13 @@ public class OpStat {
 		return buf.toString();
 	}
 
+	public Integer getRequestNumber() { return this.requestNum; }
+
 	public Date getStartDate() { return Date.from(this.receiveDate);}
 
 	public Date getFinishDate() { return Date.from(this.finishDate);}
 
-	public static synchronized int getRequestNum() {
+	protected static synchronized int getRequestNum() {
 		return OpStat.requestCounter++;
 	}
 	

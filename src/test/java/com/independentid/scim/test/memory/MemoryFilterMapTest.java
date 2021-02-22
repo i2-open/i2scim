@@ -13,7 +13,7 @@
  * subject to the terms of such agreement.
  */
 
-package com.independentid.scim.test.backend;
+package com.independentid.scim.test.memory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
@@ -36,7 +36,6 @@ import com.mongodb.client.MongoDatabase;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -56,11 +55,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 @QuarkusTest
-@TestProfile(ScimMongoTestProfile.class)
+@TestProfile(ScimMemoryTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
-public class MongoFilterMapTest {
+public class MemoryFilterMapTest {
 
-    static final Logger logger = LoggerFactory.getLogger(MongoFilterMapTest.class);
+    static final Logger logger = LoggerFactory.getLogger(MemoryFilterMapTest.class);
 
     @Inject
     @Resource(name = "SchemaMgr")

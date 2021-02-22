@@ -13,10 +13,9 @@
  * subject to the terms of such agreement.
  */
 
-package com.independentid.scim.test.backend;
+package com.independentid.scim.test.mongo;
 
 
-import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.mongo.MongoProvider;
 import com.independentid.scim.core.ConfigMgr;

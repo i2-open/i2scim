@@ -45,24 +45,21 @@ import java.util.*;
 public class KafkaLogEventHandler implements IEventHandler {
     private final static Logger logger = LoggerFactory.getLogger(KafkaLogEventHandler.class);
 
-    static final String KAFKA_PUB_PREFIX = "scim.kafkaLogEventHandler.pub.";
+    static final String KAFKA_PUB_PREFIX = "scim.kafka.log.pub.";
 
-    static List<Operation> errorOps = Collections.synchronizedList(new ArrayList<>());
-    static List<Operation> pendingOps = Collections.synchronizedList(new ArrayList<>());
+    static final List<Operation> errorOps = Collections.synchronizedList(new ArrayList<>());
+    static final List<Operation> pendingOps = Collections.synchronizedList(new ArrayList<>());
 
-    @ConfigProperty (name = "kafka.bootstrap.servers",defaultValue="localhost:9092")
+    @ConfigProperty (name = "scim.kafka.log.bootstrap",defaultValue="localhost:9092")
     String bootstrapServers;
 
-    @ConfigProperty (name = "scim.kafkaLogEventHandler.enable", defaultValue = "false")
+    @ConfigProperty (name = "scim.kafka.log.enable", defaultValue = "false")
     boolean enabled;
 
-    @ConfigProperty (name = KAFKA_PUB_PREFIX+"topic", defaultValue="log")
+    @ConfigProperty (name = "scim.kafka.log.pub.topic", defaultValue="log")
     String logTopic;
 
     KafkaProducer<String,String> producer = null;
-
-    //HashSet<UUID> processed = new HashSet<>();
-    KafkaEventReceiver processor = null;
 
     static boolean isErrorState = false;
 
@@ -75,7 +72,7 @@ public class KafkaLogEventHandler implements IEventHandler {
     public void init() {
         if (!enabled)
             return;
-        logger.info("Kafka Event Logger configured.");
+        logger.info("Kafka event logger starting on "+bootstrapServers+" using topic:"+logTopic+".");
         Config sysconf = ConfigProvider.getConfig();
         Iterable<String> iter = sysconf.getPropertyNames();
         Properties prodProps = new Properties();
@@ -89,7 +86,7 @@ public class KafkaLogEventHandler implements IEventHandler {
         }
         prodProps.put("bootstrap.servers",bootstrapServers);
 
-        producer = new KafkaProducer<String, String>(prodProps);
+        producer = new KafkaProducer<>(prodProps);
 
         logger.info("Kafka Event Logger configured.");
     }
@@ -170,8 +167,8 @@ public class KafkaLogEventHandler implements IEventHandler {
             while(pendingOps.size()>0 && isProducing())
                 produce(pendingOps.remove(0));
         }
+
         producer.close();
-        processor.shutdown();
 
     }
 

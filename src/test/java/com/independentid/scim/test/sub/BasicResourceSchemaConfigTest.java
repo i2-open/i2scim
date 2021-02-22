@@ -45,11 +45,7 @@ public class BasicResourceSchemaConfigTest {
 	private final Logger logger = LoggerFactory.getLogger(BasicResourceSchemaConfigTest.class);
 	
 	private final static String userSchemaId = "urn:ietf:params:scim:schemas:core:2.0:User";
-	
 
-	@Inject
-	@Resource(name="ConfigMgr")
-	ConfigMgr cmgr ;
 
 	@Inject
 	@Resource(name="SchemaMgr")

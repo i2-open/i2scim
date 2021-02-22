@@ -15,6 +15,7 @@
 
 package com.independentid.scim.test.sub;
 
+import com.independentid.scim.backend.memory.MemoryProvider;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 import java.util.Map;
@@ -25,11 +26,12 @@ public class ScimSubComponentTestProfile implements QuarkusTestProfile {
         return Map.of(
                 "scim.test.configOnly","true",
                 "scim.json.pretty","true",
-                "scim.provider.bean","null",
+
                 "scim.security.enable", "false",
                 "logging.level.com.independentid.scim","DEBUG",
                 "quarkus.log.category.\"com.independentid.scim\".level","DEBUG",
-                "scim.persist.schema","false"
+                "scim.prov.providerClass", MemoryProvider.class.getName(),
+                "scim.prov.persist.schema","false"
         );
     }
 
