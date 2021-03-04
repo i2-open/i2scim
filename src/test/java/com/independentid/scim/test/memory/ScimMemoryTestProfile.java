@@ -20,25 +20,35 @@ import com.independentid.scim.backend.memory.MemoryProvider;
 import com.independentid.scim.backend.mongo.MongoProvider;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class ScimMemoryTestProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
-        return Map.of(
+        Map<String,String> cmap = new HashMap<>(  Map.of(
 
                 "scim.prov.providerClass", MemoryProvider.class.getName(),
                 "scim.prov.memory.maxbackups", "2",
                 "scim.prov.memory.backup.mins","1",
+                "scim.prov.memory.test","true",
+
                 "scim.security.enable", "false",
                 "quarkus.http.test-port","0",
                 "quarkus.log.min-level","DEBUG",
                 "logging.level.com.independentid.scim","DEBUG",
                 "quarkus.log.category.\"com.independentid.scim\".level","DEBUG",
-                "scim.schema.path","classpath:/schema/scimSchemaTest.json",
-                "scim.prov.memory.test","true"
+                "scim.schema.path","classpath:/schema/scimSchemaTest.json"
 
-        );
+
+        ));
+        cmap.putAll(Map.of(
+                "scim.kafka.log.bootstrap","10.1.10.101:9092",
+                "scim.kafka.rep.bootstrap","10.1.10.101:9092",
+                "scim.event.enable","false"
+
+        ));
+        return cmap;
     }
 
     @Override
