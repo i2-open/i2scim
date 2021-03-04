@@ -66,8 +66,25 @@ public class IntegerValue extends Value {
 	}
 
 	@Override
-	public Integer getValueArray() {
+	public Integer getRawValue() {
 		return this.value;
 	}
 
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof IntegerValue) {
+			IntegerValue obVal = (IntegerValue) obj;
+			return obVal.value.equals(value);
+		}
+		return false;
+	}
+
+	@Override
+	public int compareTo(Value o) {
+		if (o instanceof IntegerValue) {
+			IntegerValue obVal = (IntegerValue) o;
+			return value.compareTo(obVal.value);
+		}
+		throw new ClassCastException("Unable to compare Value types");
+	}
 }

@@ -312,7 +312,7 @@ public abstract class Filter {
 				clauses.add(attrExp);
 			} else {
 				// a presence match at the end of the filter input string
-				if (isAttr) 
+ 				if (isAttr)
 					cond = filterStr.substring(wordIndex);
 				// in a presence filter the value is always null.
 				Filter attrExp = new AttributeFilter(attr,cond,null,parentAttr, ctx);

@@ -116,7 +116,7 @@ public class ReferenceValue extends Value implements IBulkIdTarget  {
 	}
 
 	@Override
-	public URI getValueArray() {
+	public URI getRawValue() {
 		return this.value;
 	}
 
@@ -153,15 +153,19 @@ public class ReferenceValue extends Value implements IBulkIdTarget  {
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof ReferenceValue) {
-			ReferenceValue val = (ReferenceValue) obj;
-			// equality is based on the java.net.URL based equality
-			return
-				val.value.equals(this.value);
+			ReferenceValue obVal = (ReferenceValue) obj;
+			return obVal.value.equals(value);
 		}
-		// types don't match,so not equal
 		return false;
 	}
-	
-	
+
+	@Override
+	public int compareTo(Value o) {
+		if (o instanceof ReferenceValue) {
+			ReferenceValue obVal = (ReferenceValue) o;
+			return value.compareTo(obVal.value);
+		}
+		throw new ClassCastException("Unable to compare Value types");
+	}
 
 }

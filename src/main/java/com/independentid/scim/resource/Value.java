@@ -26,8 +26,9 @@ import com.independentid.scim.schema.SchemaException;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.HashMap;
 
-public abstract class Value {
+public abstract class Value implements Comparable<Value> {
 	public JsonNodeType jtype;
 
 	Attribute attr;
@@ -45,7 +46,7 @@ public abstract class Value {
 	
 	public abstract void parseJson(JsonNode node) throws ConflictException, SchemaException, ParseException;
 	
-	public abstract Object getValueArray();
+	public abstract Object getRawValue();
 	
 	public abstract JsonNode toJsonNode(ObjectNode parent, String aname);
 
@@ -56,4 +57,10 @@ public abstract class Value {
 	public  Attribute getAttribute() {
 		return attr;
 	}
+
+	@Override
+	public int hashCode() {
+		return this.getRawValue().hashCode();
+	}
+
 }

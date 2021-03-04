@@ -27,6 +27,7 @@ import com.independentid.scim.serializer.JsonUtil;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Base64.Decoder;
 import java.util.Base64.Encoder;
@@ -106,7 +107,7 @@ public class BinaryValue extends Value {
 	 * Returns the unencoded raw binary as byte[]
 	 */
 	@Override
-	public byte[] getValueArray() {
+	public byte[] getRawValue() {
 		return this.value;
 	}
 	
@@ -117,4 +118,21 @@ public class BinaryValue extends Value {
 		return encoder.encodeToString(this.value);
 	}
 
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof BinaryValue) {
+			BinaryValue obVal = (BinaryValue) obj;
+			return Arrays.equals(value,obVal.value);
+		}
+		return false;
+	}
+
+	@Override
+	public int compareTo(Value o) {
+		if (o instanceof BinaryValue) {
+			BinaryValue obVal = (BinaryValue) o;
+			return Arrays.compare(value,obVal.value);
+		}
+		throw new ClassCastException("Unable to compare Value types");
+	}
 }

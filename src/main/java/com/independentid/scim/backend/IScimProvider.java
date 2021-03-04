@@ -67,7 +67,7 @@ public interface IScimProvider {
      * @throws ScimException    when SCIM protocol level error is detected
      * @throws BackendException when the storage handler returns an error not related to SCIM
      */
-    ScimResponse replace(RequestCtx ctx, final ScimResource replaceResource) throws ScimException, BackendException;
+    ScimResponse put(RequestCtx ctx, final ScimResource replaceResource) throws ScimException, BackendException;
 
     /**
      * Performs a SCIM PATCH request as per RFC7644, Section 3.5.2 based on RFC6902 JSON Patch Specification

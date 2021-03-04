@@ -130,7 +130,8 @@ public class ScimResponse implements ScimSerializer {
 	 * @throws IOException may be thrown when attempting to write to generator
 	 */
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
-		ctx.getHttpServletResponse().setStatus(getStatus());
+		if (ctx.getHttpServletResponse() != null)
+			ctx.getHttpServletResponse().setStatus(getStatus());
 
 		if (this.status >= 400) {
 			gen.writeStartObject();

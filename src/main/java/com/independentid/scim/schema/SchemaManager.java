@@ -21,11 +21,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.IIdentifierGenerator;
-import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
+import com.independentid.scim.resource.Meta;
 import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.serializer.JsonUtil;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -36,7 +36,6 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import javax.ejb.Startup;
-import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -44,7 +43,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.text.ParseException;
 import java.util.*;
 
 /**
@@ -53,7 +51,7 @@ import java.util.*;
  * is migrated to solve bootstrap issues.
  */
 @Startup
-@ApplicationScoped
+@Singleton
 //@Singleton
 @Named("SchemaMgr")
 public class SchemaManager {
@@ -62,6 +60,9 @@ public class SchemaManager {
     @Inject
     @Resource(name="BackendHandler")
     BackendHandler backendHandler;
+
+    @Inject
+    SystemSchemas systemSchemas;
 
     public final static String SCIM_CORE_SCHEMAID = "urn:ietf:params:scim:schemas:core:2.0:Common";
 
@@ -85,7 +86,7 @@ public class SchemaManager {
 
     //private TreeMap<String,Attribute> vals = new TreeMap<String,Attribute>();
 
-    private final static LinkedHashMap<String, ResourceType> rTypes = new LinkedHashMap<>();
+    private final static LinkedHashMap<String, ResourceType> rTypesById = new LinkedHashMap<>();
     private final static HashMap<String, ResourceType> rTypePaths = new HashMap<>();
 
     //private ServletConfig scfg = null;
@@ -120,41 +121,6 @@ public class SchemaManager {
 
         PersistStateResource cfgState = null;
 
-        TimerTask task = new SyncTask(this);
-        Timer timer = new Timer("SyncTimer");
-        timer.schedule(task,100L);
-
-    }
-
-    class SyncTask extends TimerTask {
-        SchemaManager mgr;
-        SyncTask(SchemaManager smgr) {
-            mgr = smgr;
-        }
-
-        public void run() {
-            try {
-                PersistStateResource cfgState = null;
-                try {
-
-                    IScimProvider prov = backendHandler.getProvider();
-                    if (prov == null)
-                        logger.error("Provider did not start. See logs.");
-                    assert prov != null;
-                    cfgState = prov.getConfigState();
-                } catch (ParseException | ScimException e) {
-                    logger.error("Unexpected error occurred reading provider configuration state: "+e.getMessage()+" RESETTING CONFIG TO DEFAULT",e);
-                }
-                if (cfgState == null)
-                    backendHandler.syncConfig(mgr);
-                else
-                    loadConfigFromProvider();
-
-
-            } catch (IOException | ScimException e) {
-                logger.error("Unexpected exception syncing configuration with provider. "+e.getMessage(),e);
-            }
-        }
 
     }
 
@@ -165,7 +131,7 @@ public class SchemaManager {
         resetConfig();
     }
 
-    private void loadConfigFromProvider() throws ScimException {
+    public void loadConfigFromProvider() throws ScimException {
         Collection<Schema> pSchemas = backendHandler.loadSchemas();
         Collection<ResourceType> pResTypes = backendHandler.loadResourceTypes();
         resetConfig();
@@ -238,7 +204,7 @@ public class SchemaManager {
         schIdMap.clear();
         schNameMap.clear();
 
-        rTypes.clear();
+        rTypesById.clear();
         rTypePaths.clear();
     }
 
@@ -428,7 +394,8 @@ public class SchemaManager {
 
     public void addResourceType(ResourceType type) throws SchemaException {
         logger.debug("  Resource endpoint loading: " + type.getId() + ", URI: " + type.getEndpoint());
-        rTypes.put(type.getId(), type);
+        rTypesById.put(type.getId(), type);
+        rTypesById.put(type.getSchema(),type);
         String path = type.getTypePath();
         if (path == null)
             throw new SchemaException("The resource endpoint path for " + type.getName() + " was null or not valid.");
@@ -437,6 +404,7 @@ public class SchemaManager {
         rTypePaths.put(path.toLowerCase(), type);
 
     }
+
 
     /**
      * @param ctx The SCIM RequestCtx - which specifies all the request parameters
@@ -456,7 +424,7 @@ public class SchemaManager {
 
         } else {
             gen.writeStartArray();
-            for (ResourceType type : rTypes.values()) {
+            for (ResourceType type : rTypesById.values()) {
                 type.serialize(gen, ctx, false);
             }
             gen.writeEndArray();
@@ -626,15 +594,17 @@ public class SchemaManager {
     }
 
     public Collection<ResourceType> getResourceTypes() {
-        return rTypes.values();
+        return rTypePaths.values();
     }
 
     public ResourceType getResourceTypeById(String id) {
-        return rTypes.get(id);
+        if (systemSchemas.isSystemSchema(id))
+            return systemSchemas.getSystemResTypeBySchemaId(id);
+        return rTypesById.get(id);
     }
 
     public int getResourceTypeCnt() {
-        return rTypes.size();
+        return rTypePaths.size();
     }
 
     public int getSchemaCnt() {
@@ -649,7 +619,26 @@ public class SchemaManager {
     public ResourceType getResourceTypeByPath(String path) {
         if (path == null)
             return null;
-        return rTypePaths.get(path.toLowerCase());
+
+        ResourceType res = rTypePaths.get(path.toLowerCase());
+        if (res == null)
+            res = systemSchemas.getSystemResTypeByPath(path);
+        return res;
+    }
+
+    /**
+     * This is typically used to convert the String value form {@link Meta#getResourceType()} back into an actual ResourceType
+     * @param name The name of the resource type to return;
+     * @return a ResourceType object with the name specified.
+     */
+    public ResourceType getResourceTypeByName(String name) {
+        if (name == null) return null;
+
+        for (ResourceType type : rTypePaths.values()) //use rTypePaths as it has fewer entries
+            if(type.getName().equals(name))
+                return type;
+
+        return null;
     }
 
     public Schema getSchemaByName(String name) {
@@ -661,6 +650,8 @@ public class SchemaManager {
      * @return The <code>Schema</code> object that corresponds to the schema urn provided
      */
     public Schema getSchemaById(String id) {
+        if(systemSchemas.isSystemSchema(id))
+            return systemSchemas.getSystemSchema(id);
         return schIdMap.get(id);
     }
 
@@ -719,6 +710,26 @@ public class SchemaManager {
         if (generator == null)
             generator = backendHandler.getGenerator();
         return generator.getNewIdentifier();
+    }
+
+    public List<Attribute> getUniqueAttributes(ResourceType type) {
+        List<Attribute> attrs = new ArrayList<>();
+        Schema schema = getSchemaById(type.getSchema());
+        for (Attribute attr : schema.getAttributes()) {
+            String unique = attr.getUniqueness();
+            if (unique != null && !unique.equals(Attribute.UNIQUE_none))
+                attrs.add(attr);
+        }
+
+        for (String schemaId : type.getSchemaExtension()) {
+            Schema scheme = getSchemaById(schemaId);
+            for (Attribute attr : scheme.getAttributes()) {
+                String unique = attr.getUniqueness();
+                if (unique != null && !unique.equals(Attribute.UNIQUE_none))
+                    attrs.add(attr);
+            }
+        }
+        return attrs;
     }
 
 

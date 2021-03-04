@@ -24,14 +24,12 @@ import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
 
+import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.text.ParseException;
 
 public class BooleanValue extends Value {
 	public Boolean value;
-	
-	public BooleanValue() {
-	}
 
 	public BooleanValue(Attribute attr, JsonNode node) throws SchemaException, ParseException {
 		super(attr,node);
@@ -66,8 +64,25 @@ public class BooleanValue extends Value {
 	}
 
 	@Override
-	public Boolean getValueArray() {
+	public Boolean getRawValue() {
 		return this.value;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof BooleanValue) {
+			BooleanValue obVal = (BooleanValue) obj;
+			return obVal.value.equals(value);
+		}
+		return false;
+	}
+
+	public int compareTo(Value val) {
+		if (val instanceof BooleanValue) {
+			BooleanValue obVal = (BooleanValue) val;
+			return value.compareTo(obVal.value);
+		}
+		throw new ClassCastException("Unable to compare Value types");
 	}
 
 }

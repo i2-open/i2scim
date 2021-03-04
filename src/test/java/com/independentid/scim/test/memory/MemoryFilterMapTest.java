@@ -18,7 +18,8 @@ package com.independentid.scim.test.memory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
-import com.independentid.scim.backend.mongo.MongoProvider;
+import com.independentid.scim.backend.memory.MemoryProvider;
+
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.ListResponse;
@@ -30,9 +31,7 @@ import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoDatabase;
+
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -64,6 +63,9 @@ public class MemoryFilterMapTest {
     @Inject
     @Resource(name = "SchemaMgr")
     SchemaManager smgr;
+
+    @Inject
+    BackendHandler handler;
 
     /**
      * Test filters from RFC7644, figure 2
@@ -182,44 +184,23 @@ public class MemoryFilterMapTest {
     private static final String testUserFile1 = "classpath:/schema/TestUser-bjensen.json";
     private static final String testUserFile2 = "classpath:/schema/TestUser-jsmith.json";
 
-    private static MongoClient mclient = null;
 
-    @Inject
-    BackendHandler handler;
 
-    @ConfigProperty(name = "scim.mongodb.uri", defaultValue = "mongodb://localhost:27017")
-    String dbUrl;
-    @ConfigProperty(name = "scim.mongodb.dbname", defaultValue = "testSCIM")
-    String scimDbName;
-
-    static MongoProvider mp = null;
+    static MemoryProvider mp = null;
 
     static ScimResource user1, user2;
     static String user1loc, user2loc;
 
     @Test
-    public void a_mongoProviderInit() throws ScimException, IOException, ParseException {
-        logger.info("========== MongoProvider Filter Test ==========");
+    public void a_memProviderInit() throws ScimException, IOException, ParseException, BackendException {
+        logger.info("========== MemoryProvider Filter Test ==========");
 
-        if (mclient == null)
-            mclient = MongoClients.create(dbUrl);
+        mp = (MemoryProvider) handler.getProvider();
 
+        logger.info("\t* Running initial persistance provider checks");
+        assertThat(mp).as("MemoryProvider is defined.").isNotNull();
 
-        MongoDatabase scimDb = mclient.getDatabase(scimDbName);
-
-        scimDb.drop();
-        try {
-            handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-        } catch (IOException e) {
-            fail("Failed to initialize test Mongo DB: " + scimDbName);
-        }
-
-        mp = (MongoProvider) handler.getProvider();
-
-        assertThat(mp).isNotNull();
-
-        assertThat(mp.ready()).isTrue();
-        assertThat(mp.getMongoDbName()).isEqualTo(scimDbName);
+        assertThat(mp.ready()).as("MemoryProvider is ready").isTrue();
 
         logger.debug("\tLoading sample data.");
 
@@ -258,11 +239,15 @@ public class MemoryFilterMapTest {
         user2.addValue(lcnt);
         user2.addValue(lstr);
         RequestCtx ctx = new RequestCtx("/Users", null, null, smgr);
+
         ScimResponse resp = mp.create(ctx, user1);
         assertThat(resp.getStatus())
                 .as("Check user1 created")
                 .isEqualTo(ScimResponse.ST_CREATED);
         user1loc = resp.getLocation();
+
+        // We should generate a new CTX with each request (new transid).
+        ctx = new RequestCtx("/Users", null, null, smgr);
         resp = mp.create(ctx, user2);
         assertThat(resp.getStatus())
                 .as("Check user2 created")
@@ -275,7 +260,7 @@ public class MemoryFilterMapTest {
      * usually resolved at the SCIM layer rather than within Mongo.
      */
     @Test
-    public void b_testFilterResource() throws BackendException {
+    public void b_testFilterResource() {
         logger.info("Testing filter match against specific resources");
         for (int i = 0; i < testArray.length; i++) {
             logger.debug("");
@@ -318,7 +303,7 @@ public class MemoryFilterMapTest {
      * appiled by Mongo
      */
     @Test
-    public void c_testFilterMongoDb() throws BackendException {
+    public void c_testFilterMongoDb() {
         logger.info("Testing filter matches against all Users");
         for (int i = 0; i < testArray.length; i++) {
             logger.debug("");

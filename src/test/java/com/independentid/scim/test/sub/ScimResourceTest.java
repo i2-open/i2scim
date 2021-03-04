@@ -127,7 +127,7 @@ public class ScimResourceTest {
 			
 			StringValue sval = (StringValue)dval;
 		
-			assertThat(sval.getValueArray())
+			assertThat(sval.getRawValue())
 				.as("Check that department is Tour Operations")
 				.isEqualTo("Tour Operations");
 			
@@ -280,7 +280,7 @@ public class ScimResourceTest {
 		assertThat(certVal).as("Has a certificate value").isNotNull();
 		assertThat(certVal).as("Cert is instanceof MultiValue").isInstanceOf(MultiValue.class);
 		MultiValue mval = (MultiValue) certVal;
-		Value[] vals = mval.getValueArray();
+		Value[] vals = mval.getRawValue();
 		assertThat(vals)
 				.as("Contains 1 value")
 				.hasSize(1);

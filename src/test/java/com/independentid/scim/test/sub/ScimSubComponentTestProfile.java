@@ -27,11 +27,15 @@ public class ScimSubComponentTestProfile implements QuarkusTestProfile {
                 "scim.test.configOnly","true",
                 "scim.json.pretty","true",
 
-                "scim.security.enable", "false",
+                "quarkus.log.min-level","DEBUG",
                 "logging.level.com.independentid.scim","DEBUG",
                 "quarkus.log.category.\"com.independentid.scim\".level","DEBUG",
+
                 "scim.prov.providerClass", MemoryProvider.class.getName(),
-                "scim.prov.persist.schema","false"
+                "scim.prov.persist.schema","false",
+                "scim.security.enable", "false",
+                "scim.kafka.rep.enable","false",
+                "scim.kafka.log.enable","false"
         );
     }
 

@@ -91,7 +91,7 @@ public class MultiValue extends Value {
 		switch (attr.getType()) {
 			case Attribute.TYPE_String:
 				for(Value val: values)
-					anode.add((String) val.getValueArray());
+					anode.add((String) val.getRawValue());
 				break;
 
 			case Attribute.TYPE_Complex:
@@ -102,7 +102,7 @@ public class MultiValue extends Value {
 
 			case Attribute.TYPE_Boolean:
 				for(Value val: values)
-					anode.add((Boolean) val.getValueArray());
+					anode.add((Boolean) val.getRawValue());
 				break;
 
 			case Attribute.TYPE_Binary:
@@ -114,11 +114,11 @@ public class MultiValue extends Value {
 
 			case Attribute.TYPE_Decimal:
 				for(Value val: values)
-					anode.add((BigDecimal) val.getValueArray());
+					anode.add((BigDecimal) val.getRawValue());
 				break;
 			case Attribute.TYPE_Integer:
 				for(Value val: values)
-					anode.add((Integer) val.getValueArray());
+					anode.add((Integer) val.getRawValue());
 				break;
 		}
 
@@ -141,7 +141,7 @@ public class MultiValue extends Value {
 	}
 
 	@Override
-	public Value[] getValueArray() {
+	public Value[] getRawValue() {
 		// TODO Auto-generated method stub
 		return this.values.toArray(new Value[0]);
 	}
@@ -195,6 +195,32 @@ public class MultiValue extends Value {
 
 	public Collection<Value> values() {
 		return this.values;
+	}
+
+	@Override
+	public int hashCode() {
+		int res = 0;
+		for (Value val : values)
+			res = res + val.hashCode();
+		return res;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof MultiValue) {
+			MultiValue obVal = (MultiValue) obj;
+			return (this.hashCode() == obVal.hashCode());
+		}
+		return false;
+	}
+
+	@Override
+	public int compareTo(Value o) {
+		if (o instanceof MultiValue) {
+			MultiValue obVal = (MultiValue) o;
+			return (this.toString().compareTo(obVal.toString()));
+		}
+		throw new ClassCastException("Unable to compare Value types");
 	}
 
 }

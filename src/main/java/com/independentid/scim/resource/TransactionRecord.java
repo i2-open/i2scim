@@ -27,79 +27,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class TransactionRecord extends ScimResource {
-    public final static String SYNC_ID = "id";
-    public final static String SYNC_OPCNT = "opNum";
-    public final static String SYNC_DATE = "date";
-    public final static String SYNC_SOURCE = "source";
-    public final static String SYNC_ACTOR = "actor";
-    public final static String SYNC_REFS = "refs";
-    public final static String SYNC_OPTYPE = "op";
-
-    public final static String TRANS_CONTAINER = "Trans";
-
-    private final static Schema tranSchema;
-    private final static Attribute idAttr;
-    private final static Attribute dateAttr;
-    private final static Attribute opTypAttr;
-    private final static Attribute sourceAttr;
-    private final static Attribute actorAttr;
-    private final static Attribute refsAttr;
-    private final static Attribute opCntAttr;
-
-    ResourceType syncType;
-
-    static {
-
-        tranSchema = new Schema(null);
-        TransactionRecord.tranSchema.setName("Transaction Record");
-        TransactionRecord.tranSchema.setId(ScimParams.SCHEMA_SCHEMA_SYNCREC);
-
-        idAttr = new Attribute(SYNC_ID);
-        TransactionRecord.idAttr.setPath(tranSchema.getId(),null);
-        TransactionRecord.idAttr.setReturned(Attribute.RETURNED_default);
-        TransactionRecord.idAttr.setType(Attribute.TYPE_String);
-
-        opCntAttr = new Attribute(SYNC_OPCNT);
-        TransactionRecord.opCntAttr.setPath(tranSchema.getId(),null);
-        TransactionRecord.opCntAttr.setReturned(Attribute.RETURNED_default);
-        TransactionRecord.opCntAttr.setType(Attribute.TYPE_Integer);
-
-        opTypAttr = new Attribute(SYNC_OPTYPE);
-        TransactionRecord.opTypAttr.setPath(tranSchema.getId(),null);
-        TransactionRecord.opTypAttr.setReturned(Attribute.RETURNED_default);
-        TransactionRecord.opTypAttr.setType(Attribute.TYPE_String);
-
-        dateAttr = new Attribute(SYNC_DATE);
-        TransactionRecord.dateAttr.setPath(tranSchema.getId(),null);
-        TransactionRecord.dateAttr.setReturned(Attribute.RETURNED_default);
-        TransactionRecord.dateAttr.setType(Attribute.TYPE_Date);
-
-        sourceAttr = new Attribute(SYNC_SOURCE);
-        TransactionRecord.sourceAttr.setPath(tranSchema.getId(),null);
-        TransactionRecord.sourceAttr.setReturned(Attribute.RETURNED_default);
-        TransactionRecord.sourceAttr.setType(Attribute.TYPE_String);
-
-        actorAttr = new Attribute(SYNC_ACTOR);
-        TransactionRecord.actorAttr.setPath(tranSchema.getId(),null);
-        TransactionRecord.actorAttr.setReturned(Attribute.RETURNED_default);
-        TransactionRecord.actorAttr.setType(Attribute.TYPE_String);
-
-        refsAttr = new Attribute(SYNC_REFS);
-        TransactionRecord.refsAttr.setPath(tranSchema.getId(),null);
-        TransactionRecord.refsAttr.setReturned(Attribute.RETURNED_default);
-        TransactionRecord.refsAttr.setType(Attribute.TYPE_String);
-        TransactionRecord.refsAttr.setMultiValued(true);
-
-        TransactionRecord.tranSchema.putAttribute(idAttr);
-        TransactionRecord.tranSchema.putAttribute(opCntAttr);
-        TransactionRecord.tranSchema.putAttribute(opTypAttr);
-        TransactionRecord.tranSchema.putAttribute(dateAttr);
-        TransactionRecord.tranSchema.putAttribute(sourceAttr);
-        TransactionRecord.tranSchema.putAttribute(actorAttr);
-        TransactionRecord.tranSchema.putAttribute(refsAttr);
-    }
 
     public Operation op;
+
+    public TransactionRecord(SchemaManager schemaManager, JsonNode node, String container) throws ScimException, ParseException {
+        super(schemaManager,node,null,container);
+    }
 
     public TransactionRecord(SchemaManager schemaManager, String clientId, Operation op) throws SchemaException {
         super(schemaManager);
@@ -109,24 +42,24 @@ public class TransactionRecord extends ScimResource {
         this.id = op.getRequestCtx().getTranId();
         if (this.id == null)
             throw new SchemaException("Unexpected error - missing transaction id");
-        addValue(new DateValue(TransactionRecord.dateAttr,op.getStats().getFinishDate()));
+        addValue(new DateValue(SystemSchemas.dateAttr,op.getStats().getFinishDate()));
 
         if (clientId != null)
-            addValue(new StringValue(TransactionRecord.sourceAttr, clientId));
+            addValue(new StringValue(SystemSchemas.sourceAttr, clientId));
 
         String type = op.getScimType();
         if (type != null)
-            addValue(new StringValue(TransactionRecord.opTypAttr,type));
+            addValue(new StringValue(SystemSchemas.opTypAttr,type));
 
-        addValue(new IntegerValue(TransactionRecord.opCntAttr,op.getStats().getRequestNumber()));
+        addValue(new IntegerValue(SystemSchemas.opCntAttr,op.getStats().getRequestNumber()));
 
         SecurityIdentity identity = op.getRequestCtx().getSecSubject();
         if (identity != null)
-            addValue(new StringValue(TransactionRecord.actorAttr, identity.getPrincipal().getName()));
+            addValue(new StringValue(SystemSchemas.actorAttr, identity.getPrincipal().getName()));
 
         if (op.getResourceId() != null) {
             String ref = op.getResourceType().getEndpoint() + "/" + op.getResourceId();
-            Attribute attr = TransactionRecord.refsAttr;
+            Attribute attr = SystemSchemas.refsAttr;
             StringValue val = new StringValue(attr,ref);
             MultiValue mval = new MultiValue(attr, List.of(val));
             addValue(mval);
@@ -135,12 +68,9 @@ public class TransactionRecord extends ScimResource {
     }
 
     private  void initSchemas() {
-        super.coreSchema = tranSchema;
-        syncType = new ResourceType(smgr);
-        syncType.setName(ScimParams.SCHEMA_SCHEMA_SYNCREC);
-        syncType.setSchema(ScimParams.SCHEMA_SCHEMA_SYNCREC);
+        super.coreSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_SYNCREC);
 
-        super.type = syncType;
+        super.type = smgr.getResourceTypeById(ScimParams.SCHEMA_SCHEMA_SYNCREC);
 
         schemas = new ArrayList<>();
         schemas.add(ScimParams.SCHEMA_SCHEMA_SYNCREC);
@@ -160,30 +90,30 @@ public class TransactionRecord extends ScimResource {
         if (item != null)
             this.externalId = item.asText();
 
-        item = node.get(SYNC_DATE);
+        item = node.get(SystemSchemas.SYNC_DATE);
         if (item != null) {
-            addValue(new DateValue(dateAttr,item));
+            addValue(new DateValue(SystemSchemas.dateAttr,item));
         }
 
-        item = node.get(SYNC_OPCNT);
+        item = node.get(SystemSchemas.SYNC_OPCNT);
         if (item != null)
-            addValue(new IntegerValue(opCntAttr,item));
+            addValue(new IntegerValue(SystemSchemas.opCntAttr,item));
 
-        item = node.get(SYNC_OPTYPE);
+        item = node.get(SystemSchemas.SYNC_OPTYPE);
         if (item != null)
-            addValue(new StringValue(opTypAttr,item));
+            addValue(new StringValue(SystemSchemas.opTypAttr,item));
 
-        item = node.get(SYNC_SOURCE);
+        item = node.get(SystemSchemas.SYNC_SOURCE);
         if (item != null)
-            addValue(new StringValue(sourceAttr,item));
+            addValue(new StringValue(SystemSchemas.sourceAttr,item));
 
-        item = node.get(SYNC_ACTOR);
+        item = node.get(SystemSchemas.SYNC_ACTOR);
         if (item != null)
-            addValue(new StringValue(actorAttr,item));
+            addValue(new StringValue(SystemSchemas.actorAttr,item));
 
-        item = node.get(SYNC_REFS);
+        item = node.get(SystemSchemas.SYNC_REFS);
         if (item != null)
-            addValue(new MultiValue(refsAttr,item,null));
+            addValue(new MultiValue(SystemSchemas.refsAttr,item,null));
 
         JsonNode meta = node.get("meta");
         if (meta != null)

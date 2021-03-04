@@ -46,6 +46,7 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
@@ -75,8 +76,8 @@ public class MongoProvider implements IScimProvider {
 	// private DB sDb = null;
 	private boolean ready = false;
 
-	//@Inject
-	//SchemaManager schemaManager;
+	@Inject
+	SchemaManager schemaManager;
 
 	@Inject
 	MongoMapUtil mapUtil;
@@ -148,27 +149,21 @@ public class MongoProvider implements IScimProvider {
 		}
 		
 		MongoIterable<String> colIter =  this.scimDb.listCollectionNames();
-		if (colIter.first() == null)
+		if (colIter.first() == null) {
 			logger.info("\tPreparing new database instance.");
-		/*
-		else {
 			try {
-				PersistStateResource cres = this.getConfigState();
-				if (cres == null) 
-					logger.warn("\tMissing configuration state resource. Recommend reseting database.");
-				else {
-					logger.info("\tRestoring configuration data from "+cres.getLastSync());
-					logger.debug("\t\tPState Resource Type Count: "+cres.getResTypeCnt());
-					logger.debug("\t\tPState Schema Count:        "+cres.getSchemaCnt());
-				}
-			} catch (ScimException | IOException | ParseException e) {
-				logger.error("Unexpected error processing Persisted State Resource: "+e.getLocalizedMessage(),e);
+				syncConfig(schemaManager.getSchemas(), schemaManager.getResourceTypes());
+			} catch (IOException e) {
+				logger.error("Error storing schema in Mongo: "+e.getMessage(),e);
 			}
-			logger.info("Existing Persisted SCIM Types: ");
-			colIter.forEach(name ->
-					logger.info("Resource Type: "+name));
+		} else {
+			try {
+				if (getConfigState() != null)
+					schemaManager.loadConfigFromProvider();
+			} catch (ScimException | IOException | ParseException e) {
+				logger.error("Error loading schema from MemoryProvider. Using default schema. "+e.getMessage());
+			}
 		}
-		 */
 
 		if (mclient != null) {
 			this.ready = true;
@@ -180,8 +175,8 @@ public class MongoProvider implements IScimProvider {
 	public ScimResponse create(RequestCtx ctx,final ScimResource res)
 			throws ScimException {
 
-		String type = ctx.getResourceContainer();
-		if (type == null || type.equals("/")) {
+		String container = ctx.getResourceContainer();
+		if (container == null || container.equals("/")) {
 			return new ScimResponse(ScimResponse.ST_NOSUPPORT,"Creating resource at root not supported",null);
 		}
 
@@ -189,23 +184,26 @@ public class MongoProvider implements IScimProvider {
 			res.setId(generator.getNewIdentifier());
 
 		Meta meta = res.getMeta();
-		if (meta != null) {// Not needed for TransactionRecord type
-			Date created = new Date(System.currentTimeMillis());
-			if (meta.getCreatedDate() == null) // only set the created date if it does not already exist.
-				meta.setCreatedDate(created);
-			meta.setLastModifiedDate(created); // always set the modify date upon create.
-			if (!type.equals(TransactionRecord.TRANS_CONTAINER))
-				try {
-					meta.addRevision(ctx, this, created);
-				} catch (BackendException e) {
-					return handleUnexpectedException(e);
-				}
-			meta.setLocation('/' + type + '/' + res.getId());
+        if (meta == null) {
+            meta = new Meta();
+            res.setMeta(meta);
+        }
+        // Not needed for TransactionRecord type
+        Date created = Date.from(Instant.now());
+        if (meta.getCreatedDate() == null) // only set the created date if it does not already exist.
+            meta.setCreatedDate(created);
+        meta.setLastModifiedDate(created); // always set the modify date upon create.
+        if (!container.equals(SystemSchemas.TRANS_CONTAINER))
+            try {
+                meta.addRevision(ctx, this, created);
+            } catch (BackendException e) {
+                return handleUnexpectedException(e);
+            }
+        meta.setLocation('/' + container + '/' + res.getId());
 
-			String etag = res.calcVersionHash();
-			meta.setVersion(etag);
-		}
-		/*
+        String etag = res.calcVersionHash();
+        meta.setVersion(etag);
+        /*
 		 * StringBuffer buf = new StringBuffer(); buf.append('/');
 		 * buf.append(ctx.endpoint); buf.append('/'); buf.append(id);
 		 * meta.setLocation(buf.toString());
@@ -224,7 +222,7 @@ public class MongoProvider implements IScimProvider {
 
 		MongoDatabase sDb = getDbConnection();
 
-		MongoCollection<Document> col = sDb.getCollection(type);
+		MongoCollection<Document> col = sDb.getCollection(container);
 		
 		try {
 			col.insertOne(doc);  
@@ -278,7 +276,7 @@ public class MongoProvider implements IScimProvider {
 		Meta meta = replacementResource.getMeta();
 		Date modDate = new Date();
 		meta.setLastModifiedDate(modDate);
-		if (!type.equals(TransactionRecord.TRANS_CONTAINER)) // transaction records are not revisioned
+		if (!type.equals(SystemSchemas.TRANS_CONTAINER)) // transaction records are not revisioned
 			try {
 				meta.addRevision(ctx, this, modDate);
 			} catch (BackendException e) {
@@ -320,9 +318,9 @@ public class MongoProvider implements IScimProvider {
 
 		
 		Document query = new Document();
-		query.put("id",PersistStateResource.CONFIG_ID);
+		query.put("id", ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 
-		MongoCollection<Document> col =  getDbConnection().getCollection(PersistStateResource.RESTYPE_CONFIG);
+		MongoCollection<Document> col =  getDbConnection().getCollection(SystemSchemas.RESTYPE_CONFIG);
 
 		// If this is a brand new databse, return null
 		if (col.countDocuments() == 0)
@@ -756,11 +754,11 @@ public class MongoProvider implements IScimProvider {
 		}
 		
 		// Write out the current sync information.
-		Document query = new Document().append("id", PersistStateResource.CONFIG_ID);
+		Document query = new Document().append("id", ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 		
 		//Set options to create if it does not exist (upsert = true)
 		ReplaceOptions options = new ReplaceOptions().upsert(true);
-		col =  getDbConnection().getCollection(PersistStateResource.RESTYPE_CONFIG);
+		col =  getDbConnection().getCollection(SystemSchemas.RESTYPE_CONFIG);
 		try {
 			Document cfgDoc = Document.parse(confState.toJsonString());
 			col.replaceOne(query, cfgDoc,options);
@@ -786,7 +784,7 @@ public class MongoProvider implements IScimProvider {
 
 			Document query = new Document();
 
-			MongoCollection<Document> col = this.scimDb.getCollection(TransactionRecord.TRANS_CONTAINER);
+			MongoCollection<Document> col = this.scimDb.getCollection(SystemSchemas.TRANS_CONTAINER);
 
 
 			query.put("_id", new ObjectId(transid));
@@ -798,7 +796,7 @@ public class MongoProvider implements IScimProvider {
 
 			//String json = JSON.serialize(res);
 
-			return mapUtil.mapScimResource(doc,TransactionRecord.TRANS_CONTAINER);
+			return mapUtil.mapScimResource(doc, SystemSchemas.TRANS_CONTAINER);
 		} catch (ScimException e) {
 			// Would only expect a parsing error resulting from external data.
 			logger.error("Unexpected scim error: "+e.getMessage(),e);
@@ -815,7 +813,7 @@ public class MongoProvider implements IScimProvider {
 	@Override
 	public boolean isTransactionPresent(String transid)  {
 		Document query = new Document("_id", new ObjectId(transid));
-		String type = TransactionRecord.TRANS_CONTAINER;
+		String type = SystemSchemas.TRANS_CONTAINER;
 		MongoCollection<Document> col = this.scimDb.getCollection(type);
 
 		long num = col.countDocuments(query);
@@ -828,7 +826,7 @@ public class MongoProvider implements IScimProvider {
 		if (record.getId() == null)  // in the case of replication, the id is already set
 			record.setId((new ObjectId()).toString());
 		MongoDatabase sDb = getDbConnection();
-		MongoCollection<Document> col = sDb.getCollection(TransactionRecord.TRANS_CONTAINER);
+		MongoCollection<Document> col = sDb.getCollection(SystemSchemas.TRANS_CONTAINER);
 
 		// Check if the transaction is already stored.
 		Document query = new Document();
@@ -844,7 +842,7 @@ public class MongoProvider implements IScimProvider {
 			if (meta.getCreatedDate() == null) // only set the created date if it does not already exist.
 				meta.setCreatedDate(created);
 			meta.setLastModifiedDate(created); // always set the modify date upon create.
-			meta.setLocation('/' + TransactionRecord.TRANS_CONTAINER + '/' + record.getId());
+			meta.setLocation('/' + SystemSchemas.TRANS_CONTAINER + '/' + record.getId());
 
 
 			try {

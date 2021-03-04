@@ -65,6 +65,14 @@ public class MongoFilterMapTest {
     @Resource(name = "SchemaMgr")
     SchemaManager smgr;
 
+    @Inject
+    BackendHandler handler;
+
+    @ConfigProperty(name = "scim.prov.mongo.uri", defaultValue = "mongodb://localhost:27017")
+    String dbUrl;
+    @ConfigProperty(name = "scim.prov.mongo.dbname", defaultValue = "testSCIM")
+    String scimDbName;
+
     /**
      * Test filters from RFC7644, figure 2
      */
@@ -184,14 +192,6 @@ public class MongoFilterMapTest {
 
     private static MongoClient mclient = null;
 
-    @Inject
-    BackendHandler handler;
-
-    @ConfigProperty(name = "scim.mongodb.uri", defaultValue = "mongodb://localhost:27017")
-    String dbUrl;
-    @ConfigProperty(name = "scim.mongodb.dbname", defaultValue = "testSCIM")
-    String scimDbName;
-
     static MongoProvider mp = null;
 
     static ScimResource user1, user2;
@@ -263,6 +263,9 @@ public class MongoFilterMapTest {
                 .as("Check user1 created")
                 .isEqualTo(ScimResponse.ST_CREATED);
         user1loc = resp.getLocation();
+
+        // We should generate a new CTX with each request (new transid).
+        ctx = new RequestCtx("/Users", null, null, smgr);
         resp = mp.create(ctx, user2);
         assertThat(resp.getStatus())
                 .as("Check user2 created")

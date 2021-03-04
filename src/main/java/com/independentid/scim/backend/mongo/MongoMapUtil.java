@@ -19,13 +19,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.protocol.Filter;
-import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.*;
 import com.independentid.scim.resource.Meta;
 import com.independentid.scim.serializer.JsonUtil;
-import com.mongodb.client.MongoCollection;
 import org.bson.Document;
 import org.bson.internal.Base64;
 import org.bson.json.JsonWriterSettings;
@@ -36,7 +33,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.validation.constraints.NotNull;
@@ -189,11 +185,11 @@ public class MongoMapUtil {
             return mapValue((BooleanValue) val);
 
         logger.warn("\n\n\n***** Mapping object to mongo using default type: " + val.getClass().toString() + " = " + val.toString());
-        return val.getValueArray();
+        return val.getRawValue();
     }
 
     public static Object mapValue(StringValue val) {
-        return val.getValueArray();
+        return val.getRawValue();
     }
 
     public static Object mapValue(DateValue val) {
@@ -201,16 +197,16 @@ public class MongoMapUtil {
     }
 
     public static Object mapValue(BinaryValue val) {
-        return new Binary(val.getValueArray());
+        return new Binary(val.getRawValue());
     }
 
     public static Object mapValue(BooleanValue val) {
-        return val.getValueArray();
+        return val.getRawValue();
     }
 
     public static Document mapValue(ComplexValue val) {
         Document doc = new Document();
-        Map<Attribute, Value> map = val.getValueArray();
+        Map<Attribute, Value> map = val.getRawValue();
         map.forEach((aname, item) -> {
             String mname = aname.getName();
             // $ref is special in Mongo, rename the field to href
@@ -223,7 +219,7 @@ public class MongoMapUtil {
 
     public static Object mapValue(MultiValue val) {
         List<Object> values = new ArrayList<>();
-        Value[] mvarray = val.getValueArray();
+        Value[] mvarray = val.getRawValue();
         for (Value value : mvarray) {
             values.add(MongoMapUtil.mapValue(value));
         }
@@ -232,11 +228,11 @@ public class MongoMapUtil {
     }
 
     public static Object mapValue(DecimalValue val) {
-        return val.getValueArray();
+        return val.getRawValue();
     }
 
     public static Object mapValue(IntegerValue val) {
-        return val.getValueArray();
+        return val.getRawValue();
 
     }
 
@@ -496,7 +492,7 @@ public class MongoMapUtil {
         String jsonstr = persistDoc.toJson();
         JsonNode jdoc = JsonUtil.getJsonTree(jsonstr);
 
-        return new PersistStateResource(schemaManager,jdoc,null, PersistStateResource.RESTYPE_CONFIG);
+        return new PersistStateResource(schemaManager,jdoc,null, SystemSchemas.RESTYPE_CONFIG);
     }
 
     public ScimResource mapScimResource(Document res, String type) throws ScimException, BackendException {

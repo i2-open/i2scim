@@ -27,7 +27,9 @@ import com.independentid.scim.core.err.DuplicateTxnException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.AttributeFilter;
 import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.schema.*;
+import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.MetaAttribute;
+import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.security.AccessControl;
 import com.independentid.scim.security.AccessManager;
 import com.independentid.scim.serializer.JsonUtil;
@@ -310,7 +312,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 
 	 */
 
-	public HashMap<Attribute, Value> getValueArray() {
+	public HashMap<Attribute, Value> getRawValue() {
 		HashMap<Attribute,Value> map = new HashMap<>();
 		Map<String,Attribute> amap = attr.getSubAttributesMap();
 		for(Attribute sattr: amap.values()) {
@@ -422,5 +424,5 @@ public class Meta extends ComplexValue implements ScimSerializer {
 	public MultiValue getRevisions() {
 		return this.revisions;
 	}
-    
+
 }

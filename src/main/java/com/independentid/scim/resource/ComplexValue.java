@@ -171,7 +171,7 @@ public class ComplexValue extends Value {
 	}
 
 	@Override
-	public HashMap<Attribute, Value> getValueArray() {
+	public HashMap<Attribute, Value> getRawValue() {
 		return this.vals;
 	}
 
@@ -182,7 +182,7 @@ public class ComplexValue extends Value {
 
 		if (val instanceof BooleanValue) {
 			BooleanValue bval = (BooleanValue) val;
-			return bval.getValueArray();
+			return bval.getRawValue();
 		}
 		return false;
 	}
@@ -209,4 +209,29 @@ public class ComplexValue extends Value {
 		}
 	}
 
+	@Override
+	public int hashCode() {
+		int res = 0;
+		for (Value val : this.vals.values())
+			res = res + val.hashCode();
+		return res;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof ComplexValue) {
+			ComplexValue obVal = (ComplexValue) obj;
+			return (this.hashCode() == obVal.hashCode());
+		}
+		return false;
+	}
+
+	@Override
+	public int compareTo(Value o) {
+		if (o instanceof ComplexValue) {
+			ComplexValue obVal = (ComplexValue) o;
+			return (this.toString().compareTo(obVal.toString()));
+		}
+		throw new ClassCastException("Unable to compare Value types");
+	}
 }

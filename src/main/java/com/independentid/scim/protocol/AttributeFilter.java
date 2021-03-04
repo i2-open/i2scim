@@ -23,6 +23,7 @@ import com.independentid.scim.schema.SchemaException;
 
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
@@ -56,7 +57,7 @@ public class AttributeFilter extends Filter {
 
     private String valString;
 
-    public Value value;
+    private Value value;
 
     private Object val;
 
@@ -91,8 +92,10 @@ public class AttributeFilter extends Filter {
             else if (aname.equalsIgnoreCase("meta")) {
                 this.attr.setType(Attribute.TYPE_Complex);
 
-            } else
-                this.attr.setType(ValueUtil.parseValueType(aname, value));
+            } else {
+                String valType = ValueUtil.parseValueType(aname, value);
+                this.attr.setType(valType);
+            }
 
         } else if (this.attr.isChild() && this.parentAttr == null)
             this.parentAttr = this.attr.getParent();
@@ -122,7 +125,10 @@ public class AttributeFilter extends Filter {
                 isExtension = false;
             else {
                 ResourceType type = smgr.getResourceTypeByPath(container);
-                isExtension = type.getSchemaExtensions().containsKey(attr.getSchema());
+                if (type != null)
+                    isExtension = type.getSchemaExtensions().containsKey(attr.getSchema());
+                else
+                    isExtension = false;
             }
         }
 
@@ -146,7 +152,7 @@ public class AttributeFilter extends Filter {
             switch (attr.getType()) {
                 case Attribute.TYPE_Binary:
                     BinaryValue bval = new BinaryValue(attr,value);
-                    this.val = bval.getValueArray();
+                    this.val = bval.getRawValue();
                     break;
 
                 case Attribute.TYPE_Boolean:
@@ -234,8 +240,31 @@ public class AttributeFilter extends Filter {
         return attr.getType();
     }
 
-    public Object getValue() {
-        return this.val;
+    /**
+     * @return The SCIM Value representation of the filter value
+     */
+    public Value getValue()  {
+        switch (attr.getType()) {
+            case Attribute.TYPE_String:
+                return new StringValue(attr,this.valString);
+            case Attribute.TYPE_Binary:
+                return new BinaryValue(attr, (byte[]) this.val);
+            case Attribute.TYPE_Boolean:
+                return new BooleanValue(attr, (Boolean) this.val);
+            case Attribute.TYPE_Date:
+                return new DateValue(attr,(Date) this.val);
+            case Attribute.TYPE_Decimal:
+                return new DecimalValue(attr, (BigDecimal) this.val);
+            case Attribute.TYPE_Integer:
+                return new IntegerValue(attr, (Integer) this.val);
+            case Attribute.TYPE_Reference:
+                try {
+                    return new ReferenceValue(attr,this.valString);
+                } catch (SchemaException e) {
+                    return null; // should not happen!
+                }
+        }
+       return null;
     }
 
     @Override
@@ -354,7 +383,7 @@ public class AttributeFilter extends Filter {
 
                 if (value instanceof MultiValue) {
                     MultiValue mval = (MultiValue) value;
-                    for (Value aval : mval.getValueArray()) {
+                    for (Value aval : mval.getRawValue()) {
                         if (isMatch(aval))
                             return true;
                     }
@@ -376,14 +405,14 @@ public class AttributeFilter extends Filter {
                     value = new StringValue(attr,"");
                 if (value instanceof MultiValue) {
                     MultiValue mval = (MultiValue) value;
-                    for (Value aval : mval.getValueArray()) {
+                    for (Value aval : mval.getRawValue()) {
                         if (isMatch(aval))
                             return true;
                     }
                     return false;
                 }
                 assert value instanceof StringValue;
-                String val = ((StringValue) value).getValueArray();
+                String val = ((StringValue) value).getRawValue();
                 switch (compOp) {
 
                     case AttributeFilter.FILTEROP_EQ: {
@@ -447,7 +476,7 @@ public class AttributeFilter extends Filter {
             case Attribute.TYPE_Boolean: {
                 assert value != null;
                 assert value instanceof BooleanValue;
-                Boolean val = ((BooleanValue) value).getValueArray();
+                Boolean val = ((BooleanValue) value).getRawValue();
                 switch (getOperator()) {
 
                     case AttributeFilter.FILTEROP_EQ:
@@ -510,7 +539,7 @@ public class AttributeFilter extends Filter {
 
             case Attribute.TYPE_Integer: {
                 assert value != null;
-                Integer ival = ((IntegerValue) value).getValueArray();
+                Integer ival = ((IntegerValue) value).getRawValue();
                 switch (getOperator()) {
 
                     case AttributeFilter.FILTEROP_EQ: {
@@ -543,7 +572,7 @@ public class AttributeFilter extends Filter {
 
             case Attribute.TYPE_Decimal: {
                 assert value != null;
-                BigDecimal bval = ((DecimalValue) value).getValueArray();
+                BigDecimal bval = ((DecimalValue) value).getRawValue();
                 switch (getOperator()) {
 
                     case AttributeFilter.FILTEROP_EQ: {
@@ -584,5 +613,7 @@ public class AttributeFilter extends Filter {
         Value value = res.getValue(attr);
         return this.isMatch(value);
     }
+
+
 
 }

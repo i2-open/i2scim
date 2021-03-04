@@ -30,9 +30,6 @@ import java.text.ParseException;
 
 public class DecimalValue extends Value {
 	public BigDecimal value;
-	
-	public DecimalValue() {
-	}
 
 	public DecimalValue(Attribute attr, JsonNode node) throws SchemaException, ParseException {
 		super(attr,node);
@@ -67,8 +64,25 @@ public class DecimalValue extends Value {
 	}
 
 	@Override
-	public BigDecimal getValueArray() {
+	public BigDecimal getRawValue() {
 		return this.value;
 	}
 
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof DecimalValue) {
+			DecimalValue obVal = (DecimalValue) obj;
+			return obVal.value.equals(value);
+		}
+		return false;
+	}
+
+	@Override
+	public int compareTo(Value o) {
+		if (o instanceof DecimalValue) {
+			DecimalValue obVal = (DecimalValue) o;
+			return value.compareTo(obVal.value);
+		}
+		throw new ClassCastException("Unable to compare Value types");
+	}
 }

@@ -17,7 +17,6 @@ package com.independentid.scim.test.sub;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.err.ConflictException;
-import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ReferenceValue;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
@@ -68,10 +67,6 @@ public class ReferenceValueTest {
 		
 		jnodetest1 = JsonUtil.getJsonTree(inputString1);
 		jnodetest2 = JsonUtil.getJsonTree(inputString2);
-	}
-
-	@AfterAll
-	static void tearDownAfterClass() throws Exception {
 	}
 
 	@Test
@@ -129,7 +124,7 @@ public class ReferenceValueTest {
 
 	@Test
 	void d_testValue() {
-		Object obj = refval1.getValueArray(); //pull the internal formatted URI
+		Object obj = refval1.getRawValue(); //pull the internal formatted URI
 		Assertions.assertThat(obj)
 			.as("Check value type is correct.")
 			.isInstanceOf(java.net.URI.class);

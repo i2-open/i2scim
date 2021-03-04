@@ -21,7 +21,6 @@ import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.schema.*;
 
-import java.net.URI;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -34,18 +33,6 @@ import java.util.Date;
  */
 public class PersistStateResource extends ScimResource {
 
-	public static String RESTYPE_CONFIG = ScimParams.PATH_SERV_PROV_CFG;
-	public static String CONFIG_ID = "ConfigState";
-	public static String FIELD_LAST_SYNC = "lastSyncDate";
-	public static String FIELD_RTYPE_CNT = "rTypeCnt";
-	public static String FIELD_SCHEMA_CNT = "schemaCnt";
-
-	static final Attribute syncDateAttr = new Attribute(FIELD_LAST_SYNC);
-	static final Attribute rTypeCntAttr = new Attribute(FIELD_RTYPE_CNT);
-	static final Attribute sCntAttr = new Attribute(FIELD_SCHEMA_CNT);
-	Schema persistSchema;
-	ResourceType persistType;
-
 	public PersistStateResource(SchemaManager schemaManager, JsonNode resourceNode, IBulkIdResolver bulkIdResolver, String container)
 			throws ParseException, ScimException {
 		super(schemaManager, resourceNode, bulkIdResolver, container);
@@ -56,63 +43,44 @@ public class PersistStateResource extends ScimResource {
 
 		initSchemas();
 		try {
-			super.addValue(new IntegerValue(rTypeCntAttr,rCnt));
-			super.addValue(new IntegerValue(sCntAttr,sCnt));
-			super.addValue(new DateValue(syncDateAttr,new Date(System.currentTimeMillis())));
+			super.addValue(new IntegerValue(SystemSchemas.rTypeCntAttr,rCnt));
+			super.addValue(new IntegerValue(SystemSchemas.sCntAttr,sCnt));
+			super.addValue(new DateValue(SystemSchemas.syncDateAttr,new Date(System.currentTimeMillis())));
 		} catch (SchemaException e) {
 			e.printStackTrace();
 		}
 	}
 
 	private void initSchemas() {
-		persistSchema = new Schema(smgr);
-		persistSchema.setName("Persisted Configuration State");
-		persistSchema.setId(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
-		persistSchema.putAttribute(syncDateAttr);
-		persistSchema.putAttribute(rTypeCntAttr);
-		persistSchema.putAttribute(sCntAttr);
+		coreSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
+		setId(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
+		type = smgr.getResourceTypeById(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 
-		syncDateAttr.setPath(persistSchema.getId(),null);
-		syncDateAttr.setType(Attribute.TYPE_Date);
-		rTypeCntAttr.setPath(persistSchema.getId(),null);
-		rTypeCntAttr.setType(Attribute.TYPE_Integer);
-		sCntAttr.setPath(persistSchema.getId(),null);
-		sCntAttr.setType(Attribute.TYPE_Integer);
-
-
-		coreSchema = persistSchema;
-		setId(CONFIG_ID);
-
-		persistType = new ResourceType(smgr);
-		persistType.setName(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
-		persistType.setSchema(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
-		this.container = PersistStateResource.RESTYPE_CONFIG;
-		type = persistType;
+		this.container = SystemSchemas.RESTYPE_CONFIG;
 
 		this.schemas = new ArrayList<>();
 		this.schemas.add(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
-		this.coreSchema = persistSchema;
 	}
 	
 	public Date getLastSyncDate() {
-		DateValue val = (DateValue) getValue(syncDateAttr);
+		DateValue val = (DateValue) getValue(SystemSchemas.syncDateAttr);
 		return val.getDateValue();
 	}
 	
 	public String getLastSync() {
-		DateValue val = (DateValue) getValue(syncDateAttr);
+		DateValue val = (DateValue) getValue(SystemSchemas.syncDateAttr);
 		return val.toString();
 	}	
 	
 	public int getResTypeCnt() {
-		IntegerValue val = (IntegerValue) getValue(rTypeCntAttr);
-		return val.getValueArray();
+		IntegerValue val = (IntegerValue) getValue(SystemSchemas.rTypeCntAttr);
+		return val.getRawValue();
 	}
 	
 	public int getSchemaCnt() {
-		IntegerValue val = (IntegerValue) getValue(sCntAttr);
+		IntegerValue val = (IntegerValue) getValue(SystemSchemas.sCntAttr);
 
-		return val.getValueArray();
+		return val.getRawValue();
 	}
 
 
@@ -128,19 +96,19 @@ public class PersistStateResource extends ScimResource {
 		if (item != null)
 			this.externalId = item.asText();
 		
-		item = node.get(FIELD_LAST_SYNC);
+		item = node.get(SystemSchemas.FIELD_LAST_SYNC);
 		if (item != null) {
-			addValue(new DateValue(syncDateAttr,item));
+			addValue(new DateValue(SystemSchemas.syncDateAttr,item));
 		}
 
 	
-		item = node.get(FIELD_RTYPE_CNT);
+		item = node.get(SystemSchemas.FIELD_RTYPE_CNT);
 		if (item != null)
-			addValue(new IntegerValue(rTypeCntAttr,item));
+			addValue(new IntegerValue(SystemSchemas.rTypeCntAttr,item));
 
-		item = node.get(FIELD_SCHEMA_CNT);
+		item = node.get(SystemSchemas.FIELD_SCHEMA_CNT);
 		if (item != null)
-			addValue(new IntegerValue(sCntAttr,item));
+			addValue(new IntegerValue(SystemSchemas.sCntAttr,item));
 
 		JsonNode meta = node.get("meta");
 		if (meta != null)

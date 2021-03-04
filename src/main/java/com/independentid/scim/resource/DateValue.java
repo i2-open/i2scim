@@ -65,7 +65,7 @@ public class DateValue extends Value {
 		return parent;
 	}
 	
-	public String getValueArray() {
+	public String getRawValue() {
 		return Meta.ScimDateFormat.format(this.value);
 	}
 	
@@ -77,4 +77,21 @@ public class DateValue extends Value {
 		return Meta.ScimDateFormat.format(this.value);
 	}
 
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof DateValue) {
+			DateValue obVal = (DateValue) obj;
+			return obVal.value.equals(value);
+		}
+		return false;
+	}
+
+	@Override
+	public int compareTo(Value o) {
+		if (o instanceof DateValue) {
+			DateValue obVal = (DateValue) o;
+			return value.compareTo(obVal.value);
+		}
+		throw new ClassCastException("Unable to compare Value types");
+	}
 }

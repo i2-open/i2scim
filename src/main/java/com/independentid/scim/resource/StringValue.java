@@ -27,6 +27,7 @@ import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class StringValue extends Value implements IBulkIdTarget {
@@ -88,7 +89,7 @@ public class StringValue extends Value implements IBulkIdTarget {
 		this.value = node.asText();
 	}
 	
-	public String getValueArray() {
+	public String getRawValue() {
 		return this.value;
 	}
 
@@ -124,4 +125,34 @@ public class StringValue extends Value implements IBulkIdTarget {
 		bulkIdAttrs.add(this);
 	}
 
+	/**
+	 * Used by indexing to generate an endswith Map
+	 * @return A the String value with the bytes in reverse order (e.g. Flip becomes pilF)
+	 */
+	public String reverseValue() {
+		byte[] valBytes = this.value.getBytes(StandardCharsets.UTF_8);
+		byte[] revBytes = new byte[valBytes.length];
+		for (int byteAt = 0; byteAt < valBytes.length; byteAt++) {
+			revBytes[byteAt] = valBytes[valBytes.length - byteAt - 1];
+		}
+		return new String(revBytes);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof StringValue) {
+			StringValue obVal = (StringValue) obj;
+			return obVal.value.equals(value);
+		}
+		return false;
+	}
+
+	@Override
+	public int compareTo(Value o) {
+		if (o instanceof StringValue) {
+			StringValue obVal = (StringValue) o;
+			return value.compareTo(obVal.value);
+		}
+		throw new ClassCastException("Unable to compare Value types");
+	}
 }

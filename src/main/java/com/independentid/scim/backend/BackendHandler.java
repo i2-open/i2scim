@@ -147,6 +147,7 @@ public class BackendHandler {
 		for (IScimProvider item : providers) {
 			String cname = item.getClass().toString();
 			if (cname.contains(providerName)) {
+
 				try {
 					item.init();
 				} catch (BackendException e) {

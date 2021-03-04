@@ -30,6 +30,7 @@ import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.SchemaManager;
+import com.independentid.scim.security.AccessControl;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.security.identity.SecurityIdentity;
 import org.slf4j.Logger;
@@ -517,8 +518,11 @@ public class Operation extends RecursiveAction {
     public String getResourceId() {
         if (isError()) return null;
         if (isDone()) {
+
             if (this.scimresp == null)
                 return null;
+            if (this instanceof DeleteOp)
+                return ctx.getPathId();
             if (this.scimresp instanceof ListResponse) {
                 ListResponse lresp = (ListResponse) this.scimresp;
                 return lresp.getId();
@@ -615,6 +619,21 @@ public class Operation extends RecursiveAction {
 
     public OpStat getStats() {
         return this.stats;
+    }
+
+    public String getScimType() {
+        String classname = this.getClass().getSimpleName();
+        switch (this.getClass().getSimpleName()) {
+            case "CreateOp":
+                return "ADD";
+            case "DeleteOp":
+                return "DEL";
+            case "PutOp":
+                return "PUT";
+            case "PatchOp":
+                return "PAT";
+        }
+        return null;
     }
 
 }

@@ -53,6 +53,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	public static Schema commonSchema;
 	protected Schema coreSchema;
 	protected ResourceType type;
+	protected String container;
 
 	// Holds the meta data about the resource
 	
@@ -114,7 +115,9 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		this.coreAttrVals = new LinkedHashMap<>();
 		this.extAttrVals = new LinkedHashMap<>();
 		commonSchema = schemaManager.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
-		setResourceType(container);
+		this.container = container;
+		if (container != null)
+			setResourceType(container);
 		this.idResolver = bulkIdResolver;
 		parseJson(resourceNode, smgr);
 		this.modified = false;
@@ -128,6 +131,8 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			// Added because serviceproviderconfig does not necessarily have a meta object
 			if (this.schemas.contains(ScimParams.SCHEMA_SCHEMA_ServiceProviderConfig))
 				return ScimParams.TYPE_SERV_PROV_CFG;
+			if (this.schemas.contains(ScimParams.SCHEMA_SCHEMA_SYNCREC))
+				return SystemSchemas.TRANS_CONTAINER;
 			return null;
 		}
 		return this.meta.getResourceType();
@@ -137,6 +142,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 * @param container The String resource type of the resource (e.g. User, Group).
 	 */
 	public void setResourceType(String container) {
+		this.container = container;
 		this.type = smgr.getResourceTypeByPath(container);
 		if (this.type != null)
 			this.coreSchema = smgr.getSchemaById(this.type.getSchema());
@@ -148,6 +154,10 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			String container = ctx.getResourceContainer();
 			setResourceType(container);
 		}
+	}
+
+	public String getContainer() {
+		return this.container;
 	}
 
 	public String getId() {
@@ -362,8 +372,19 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			this.meta = new Meta(metaNode);
 
 			if (this.type == null) {
-				this.type = smgr.getResourceTypeById(this.meta.getResourceType());
+				if (this.meta.getResourceType() != null)
+					this.type = smgr.getResourceTypeByName(this.meta.getResourceType());
+				else { // infer type by schema
+					for(String aschema : this.schemas) {
+						this.type = smgr.getResourceTypeById(aschema);
+						if (this.type != null)
+							break;
+					}
+				}
+				if (this.type == null)
+					throw new SchemaException("Unable to determine resource type: "+this.id);
 				this.coreSchema = smgr.getSchemaById(this.type.getSchema());
+				this.container = this.type.getTypePath();
 			}
 		} else
 			this.meta = new Meta();
@@ -659,19 +680,19 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		else
 			rootAttribute = attr;
 
-		if (rootAttribute.getName().equals("id"))
+		if (rootAttribute.getName().equalsIgnoreCase("id"))
 			return new StringValue(attr,getId());
-		if (rootAttribute.getName().equals("externalId"))
+		if (rootAttribute.getName().equalsIgnoreCase("externalId"))
 			return new StringValue(attr,getExternalId());
 
-		if (rootAttribute.getName().equals("schemas")) {
+		if (rootAttribute.getName().equalsIgnoreCase("schemas")) {
 			List<Value> vals = new ArrayList<>();
 			for (String uri : getSchemaURIs())
 				vals.add(new StringValue(attr,uri));
 			return new MultiValue(attr,vals);
 		}
 
-		if (rootAttribute.getName().equals("meta")) {
+		if (rootAttribute.getName().equalsIgnoreCase("meta")) {
 			if (attr.isChild())
 				return this.getMeta().getValue(attr);
 			return this.getMeta();
@@ -731,7 +752,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			if (val instanceof MultiValue) {
 				MultiValue mval = (MultiValue) val;
 				List<Value> vals = new ArrayList<>();
-				for (Value mvitem: mval.getValueArray()) {
+				for (Value mvitem: mval.getRawValue()) {
 					if (mvitem instanceof ComplexValue) {
 						ComplexValue cvalue = (ComplexValue) mvitem;
 						val = cvalue.getValue(attr.getName());
@@ -853,7 +874,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 								nval = ValueUtil.parseJson(sattr, op.value, null);
 							    if (nval instanceof BooleanValue) {
 							    	BooleanValue bval = (BooleanValue) nval;
-							    	if (bval.getValueArray() && sattr.getName().equals("primary"))
+							    	if (bval.getRawValue() && sattr.getName().equals("primary"))
 							    		mval.resetPrimary();
 							    }
 

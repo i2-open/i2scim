@@ -22,6 +22,7 @@ import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.backend.memory.MemoryProvider;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.PersistStateResource;
+import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaManager;
 import io.quarkus.test.junit.QuarkusTest;
@@ -74,16 +75,6 @@ public class MemoryConfigTest {
 
 	static Instant startTime = Instant.now();
 
-	@PostConstruct
-	public void resetMemDirectory() {
-		// Reset the memory provider
-		File memdir = new File (storeDir);
-		File[] files = memdir.listFiles();
-		if (files != null)
-			for (File afile: files)
-				afile.delete();
-	}
-
 	@Test
 	public void a_beanCheckTest() {
 
@@ -116,35 +107,43 @@ public class MemoryConfigTest {
 	@Test
 	public void b_checkForConfigState() throws ParseException, ScimException, IOException {
 		logger.info("\t* Checking for stored PersistStateResource");
-		PersistStateResource cfgState = null;
-		int cnt = 0;
-		while (cfgState==null && cnt < 5) {
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException ignored) {
-			}
-			cnt ++;
-			cfgState = provider.getConfigState();
-		}
+		PersistStateResource cfgState = waitForConfig();
 
 		assertThat(cfgState)
 			.as("Check configstate was persisted")
 			.isNotNull();
 	}
 
+	private PersistStateResource waitForConfig() throws ParseException, ScimException, IOException {
+		PersistStateResource cfgState = provider.getConfigState();
+		int cnt = 0;
+		while (cfgState==null && cnt < 5) {
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException ignored) {
+			}
+			cnt ++;
+			cfgState = provider.getConfigState();
+		}
+		return cfgState;
+	}
+
 	/**
 	 * Now that config state was persisted, check that SchemaManager and provider agree.
 	 */
 	@Test
-	public void c_compareSchemaAndTypeCounts() throws ScimException {
+	public void c_compareSchemaAndTypeCounts() throws ScimException, IOException, ParseException {
 		logger.info("\t* Checking schema and type count matches");
-		Collection<Schema> mSchemas = provider.loadSchemas();
+		int cnt = 0;
+		PersistStateResource cfgState = waitForConfig();
 
+		Collection<Schema> mSchemas = provider.loadSchemas();
+		Collection<ResourceType> mTypes = provider.loadResourceTypes();
 		assertThat(mSchemas.size())
 				.as("Schema count is the same")
 				.isEqualTo(smgr.getSchemaCnt());
 
-		assertThat(provider.loadResourceTypes().size())
+		assertThat(mTypes.size())
 				.as("Check Resource Type count matches")
 				.isEqualTo(smgr.getResourceTypeCnt());
 		
@@ -183,7 +182,7 @@ public class MemoryConfigTest {
 	 * Check that a restart (withhout reset) properly loads the configs.
 	 */
 	@Test
-	public void e_CheckRestart() throws ScimException {
+	public void e_CheckRestart() throws ScimException, IOException, ParseException {
 		logger.info("\t* Restart and re-load provider and SchemaManager");
 		provider.shutdown();
 		smgr.resetConfig();
