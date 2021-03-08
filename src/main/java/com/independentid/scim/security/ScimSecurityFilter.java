@@ -15,11 +15,12 @@
 
 package com.independentid.scim.security;
 
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
+import com.independentid.scim.schema.SchemaManager;
 import io.quarkus.security.identity.SecurityIdentity;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,18 +38,21 @@ public class ScimSecurityFilter implements Filter {
     private final static Logger logger = LoggerFactory.getLogger(ScimSecurityFilter.class);
 
     @Inject
-    ConfigMgr cmgr;
-
-    @Inject
     AccessManager amgr;
 
     @Inject
     SecurityIdentity identity;
 
+    @Inject
+    SchemaManager schemaManager;
+
+    @ConfigProperty(name = "scim.security.enable", defaultValue="true")
+    boolean isSecurityEnabled;
+
     public void init(FilterConfig filterConfig) throws ServletException {
         logger.info("SCIM Security Filter started.");
-        if (!cmgr.isSecurityEnabled())
-            logger.warn("\tSecurity filter *disabled*.");
+        if (!isSecurityEnabled)
+            logger.warn("\t** SCIM Security filter *disabled*.");
     }
 
     public void destroy() {
@@ -92,13 +96,14 @@ public class ScimSecurityFilter implements Filter {
     }
 
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-        if (logger.isDebugEnabled())
-            logger.debug("\tEvaluating request for: User=" + identity.getPrincipal().getName() + ", Type=" + identity.getPrincipal().getClass().toString());
-        if (cmgr.isSecurityEnabled()) {
+        if (isSecurityEnabled) {
+            if (logger.isDebugEnabled())
+                logger.debug("\tEvaluating request for: User=" + identity.getPrincipal().getName() + ", Type=" + identity.getPrincipal().getClass().toString());
+
             RequestCtx ctx = (RequestCtx) request.getAttribute(RequestCtx.REQUEST_ATTRIBUTE);
             if (ctx == null) {
                 try {
-                    ctx = new RequestCtx((HttpServletRequest) request, (HttpServletResponse) response, cmgr.getSchemaManager());
+                    ctx = new RequestCtx((HttpServletRequest) request, (HttpServletResponse) response, schemaManager);
                     request.setAttribute(RequestCtx.REQUEST_ATTRIBUTE, ctx);
                 } catch (ScimException e) {
                     e.printStackTrace();
