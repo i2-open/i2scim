@@ -19,14 +19,12 @@ package com.independentid.scim.test.http;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.test.misc.TestUtils;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoDatabase;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -42,8 +40,10 @@ import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,16 +78,11 @@ public class ScimAttributeQualTest {
 	@Inject
 	BackendHandler handler;
 
-	@ConfigProperty(name="scim.mongodb.dbname",defaultValue = "testSCIM")
-	String scimDbName;
-
-	@ConfigProperty(name="scim.mongodb.uri",defaultValue = "mongodb://localhost:27017")
-	String dbUrl;
+	@Inject
+	TestUtils testUtils;
 
 	@TestHTTPResource("/")
 	URL baseUrl;
-
-	private static MongoClient mclient = null;
 
 	private static String user1url = "";
 	
@@ -99,25 +94,19 @@ public class ScimAttributeQualTest {
 	 * Do test setup by re-initializes the SCIM Mongo test database.
 	 */
 	@Test
-	public  void a_initializeMongo() {
+	public  void a_initializeTestProvider() {
 		if (isInit)
 			return;
-		logger.info("\tA. Resetting and loading test database: "+scimDbName);
-		
-		if (mclient == null)
-			mclient = MongoClients.create(dbUrl);
+		logger.info("========== Attribute Qualifier Tests ==========");
+		logger.info("\tA. Resetting and loading test data");
 
-
-		MongoDatabase scimDb = mclient.getDatabase(scimDbName);
-		
-		scimDb.drop();
-		
 		try {
-			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-			loadTestUser();
-		} catch (IOException e) {
-			fail("Failed to initialize test Mongo DB: "+scimDbName);
+			testUtils.resetProvider();
+		} catch (ScimException | BackendException | IOException e) {
+			Assertions.fail("Failed to reset provider: "+e.getMessage());
 		}
+
+		loadTestUser();
 
 		if (logger.isDebugEnabled()) {
 			Attribute mname = smgr.findAttribute("User:name.middleName", null);
@@ -176,7 +165,7 @@ public class ScimAttributeQualTest {
 	 */
 	@Test
 	public void b_ScimGetUserTest() throws MalformedURLException {
-		
+
 		assertThat(isInit)
 			.as("Check test databse initialized")
 			.isTrue();
@@ -214,6 +203,12 @@ public class ScimAttributeQualTest {
 			assertThat(body)
 				.as("Contains an extension value Tour Operations")
 				.contains("Tour Operations");
+
+			Attribute middleName = smgr.findAttribute("User:name.middleName",null);
+			assertThat(middleName).isNotNull();
+			assertThat(middleName.getReturned())
+					.as("Test schema should have returnable on request")
+					.isEqualTo(Attribute.RETURNED_request);
 
 			// Now check for "middleName" which is not returned by default.
 			assertThat(body)

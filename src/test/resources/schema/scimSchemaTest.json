@@ -741,7 +741,7 @@
             "required" : false,
             "caseExact" : false,
             "mutability" : "readWrite",
-            "returned" : "default",
+            "returned" : "request",
             "uniqueness" : "none"
           },
           {
