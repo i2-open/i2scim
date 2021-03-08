@@ -53,6 +53,9 @@ public class KafkaRepEventHandler implements IEventHandler {
     @ConfigProperty (name = "scim.kafka.rep.enable", defaultValue = "false")
     boolean enabled;
 
+    @ConfigProperty (name="scim.event.enable", defaultValue = "true")
+    boolean eventsEnabled;
+
     static final List<Operation> repErrorOps = Collections.synchronizedList(new ArrayList<>());
     static final List<Operation> pendingOps = Collections.synchronizedList(new ArrayList<>());
 
@@ -88,7 +91,7 @@ public class KafkaRepEventHandler implements IEventHandler {
     @Override
     @PostConstruct
     public void init() {
-        if (!enabled)
+        if (notEnabled())
             return;
         logger.info("Kafka replication handler starting on "+bootstrapServers+" as client.id"+clientId+", using topic:"+repTopic+".");
         List<String> ctopics = null;
@@ -144,6 +147,10 @@ public class KafkaRepEventHandler implements IEventHandler {
         t.start();
 
         logger.info("Kafka replication started.");
+    }
+
+    public boolean notEnabled() {
+        return !enabled || !eventsEnabled;
     }
 
     public Properties getConsumerProps() {
@@ -240,7 +247,7 @@ public class KafkaRepEventHandler implements IEventHandler {
     @PreDestroy
     public void shutdown() {
         //repEmitter.complete();
-        if (!enabled)
+        if (notEnabled())
             return;
 
         this.inboundEventProcessor.shutdown();

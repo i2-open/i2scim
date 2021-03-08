@@ -56,6 +56,9 @@ public class KafkaLogEventHandler implements IEventHandler {
     @ConfigProperty (name = "scim.kafka.log.enable", defaultValue = "false")
     boolean enabled;
 
+    @ConfigProperty (name="scim.event.enable", defaultValue = "true")
+    boolean eventsEnabled;
+
     @ConfigProperty (name = "scim.kafka.log.pub.topic", defaultValue="log")
     String logTopic;
 
@@ -70,7 +73,7 @@ public class KafkaLogEventHandler implements IEventHandler {
     @Override
     @PostConstruct
     public void init() {
-        if (!enabled)
+        if (notEnabled())
             return;
         logger.info("Kafka event logger starting on "+bootstrapServers+" using topic:"+logTopic+".");
         Config sysconf = ConfigProvider.getConfig();
@@ -151,6 +154,10 @@ public class KafkaLogEventHandler implements IEventHandler {
 
     }
 
+    public boolean notEnabled() {
+        return !enabled || !eventsEnabled;
+    }
+
     @Override
     public boolean isProducing() {
         return !isErrorState;
@@ -159,7 +166,7 @@ public class KafkaLogEventHandler implements IEventHandler {
     @Override
     @PreDestroy
     public void shutdown() {
-        if (!enabled)
+        if (notEnabled())
             return;
         //repEmitter.complete();
         if (!pendingOps.isEmpty()) {
