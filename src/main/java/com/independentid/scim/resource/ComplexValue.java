@@ -101,14 +101,16 @@ public class ComplexValue extends Value {
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException, ScimException {
 		gen.writeStartObject();
 		
-		boolean parentRequested = ctx == null || ctx.isAttrRequested(attr);
+		//boolean parentRequested = ctx == null || ctx.isAttrRequested(attr);
+		// --> whether the parent is returnable should be resolved by the caller (scimresource)
 
 		for (Attribute sAttr : this.vals.keySet()) {
 
 
 			// if parent is returnable then return the client by normal defaults
 			// Check if the sub attribute should be returned based on request ctx
-			if (ValueUtil.isReturnable(sAttr, (parentRequested) ? null : ctx)) {
+			//if (ValueUtil.isReturnable(sAttr, (parentRequested) ? null : ctx)) {
+			if (ValueUtil.isReturnable(sAttr,  ctx)) {
 				Value val = this.vals.get(sAttr);
 				if (ctx != null && ctx.useEncodedExtensions()) {
 					if (sAttr.getName().equalsIgnoreCase("$ref"))
