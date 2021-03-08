@@ -307,10 +307,22 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
     		return schema + ":" + this.path;
     }
 
+	@Override
+	public boolean equals(Object obj) {
+    	if (obj instanceof Attribute)
+			return getPath().equals(((Attribute)obj).getPath());
+    	return false;
+	}
 
 	@Override
 	public int compareTo(Attribute attr) {
-		return this.path.compareTo(attr.getPath());
+
+		return getPath().compareTo(attr.getPath());
+	}
+
+	@Override
+	public int hashCode() {
+		return getPath().hashCode();
 	}
 
 	@Override

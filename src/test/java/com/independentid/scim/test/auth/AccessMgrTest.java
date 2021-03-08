@@ -266,7 +266,8 @@ public class AccessMgrTest {
                     .as("Check username returnable")
                     .isFalse();
             Attribute ims = smgr.findAttribute("ims",ctx);
-            assertThat(set.isAttributeNotAllowed(ims))
+            boolean excluded = set.isAttributeNotAllowed(ims);
+            assertThat(excluded)
                     .as("Check ims returnable")
                     .isTrue();
 
