@@ -142,7 +142,9 @@ public class StringValue extends Value implements IBulkIdTarget {
 	public boolean equals(Object obj) {
 		if (obj instanceof StringValue) {
 			StringValue obVal = (StringValue) obj;
-			return obVal.value.equals(value);
+			if (attr.getCaseExact())
+				return obVal.value.equals(value);
+			return obVal.value.equalsIgnoreCase(value);
 		}
 		return false;
 	}
@@ -151,7 +153,9 @@ public class StringValue extends Value implements IBulkIdTarget {
 	public int compareTo(Value o) {
 		if (o instanceof StringValue) {
 			StringValue obVal = (StringValue) o;
-			return value.compareTo(obVal.value);
+			if(attr.getCaseExact())
+				return value.compareTo(obVal.value);
+			return value.toLowerCase().compareTo(obVal.value.toLowerCase());
 		}
 		throw new ClassCastException("Unable to compare Value types");
 	}

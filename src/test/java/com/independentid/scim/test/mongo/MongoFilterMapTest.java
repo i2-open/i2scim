@@ -30,12 +30,10 @@ import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
+import com.independentid.scim.test.misc.TestUtils;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoDatabase;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -66,12 +64,11 @@ public class MongoFilterMapTest {
     SchemaManager smgr;
 
     @Inject
+    TestUtils testUtils;
+
+    @Inject
     BackendHandler handler;
 
-    @ConfigProperty(name = "scim.prov.mongo.uri", defaultValue = "mongodb://localhost:27017")
-    String dbUrl;
-    @ConfigProperty(name = "scim.prov.mongo.dbname", defaultValue = "testSCIM")
-    String scimDbName;
 
     /**
      * Test filters from RFC7644, figure 2
@@ -201,26 +198,12 @@ public class MongoFilterMapTest {
     public void a_mongoProviderInit() throws ScimException, IOException, ParseException {
         logger.info("========== MongoProvider Filter Test ==========");
 
-        if (mclient == null)
-            mclient = MongoClients.create(dbUrl);
-
-
-        MongoDatabase scimDb = mclient.getDatabase(scimDbName);
-
-        scimDb.drop();
         try {
-            handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-        } catch (IOException e) {
-            fail("Failed to initialize test Mongo DB: " + scimDbName);
+            testUtils.resetProvider();
+        } catch (ScimException | BackendException | IOException e) {
+            fail("Unable to restart test database: "+e.getMessage());
         }
-
         mp = (MongoProvider) handler.getProvider();
-
-        assertThat(mp).isNotNull();
-
-        assertThat(mp.ready()).isTrue();
-        assertThat(mp.getMongoDbName()).isEqualTo(scimDbName);
-
         logger.debug("\tLoading sample data.");
 
         Attribute loginCnt = smgr.findAttribute("loginCnt",null);
@@ -278,7 +261,7 @@ public class MongoFilterMapTest {
      * usually resolved at the SCIM layer rather than within Mongo.
      */
     @Test
-    public void b_testFilterResource() throws BackendException {
+    public void b_testFilterById() throws BackendException {
         logger.info("Testing filter match against specific resources");
         for (int i = 0; i < testArray.length; i++) {
             logger.debug("");
@@ -321,7 +304,7 @@ public class MongoFilterMapTest {
      * appiled by Mongo
      */
     @Test
-    public void c_testFilterMongoDb() throws BackendException {
+    public void c_testFilterByContainer() throws BackendException {
         logger.info("Testing filter matches against all Users");
         for (int i = 0; i < testArray.length; i++) {
             logger.debug("");

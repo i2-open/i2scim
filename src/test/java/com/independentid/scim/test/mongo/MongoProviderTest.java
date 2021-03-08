@@ -32,6 +32,7 @@ import com.independentid.scim.resource.StringValue;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
+import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -65,6 +66,9 @@ public class MongoProviderTest {
 	@Inject
 	BackendHandler handler;
 
+	@Inject
+	TestUtils testUtils;
+
 	@ConfigProperty(name="scim.mongodb.dbname",defaultValue = "testSCIM")
 	String scimDbName;
 
@@ -79,12 +83,17 @@ public class MongoProviderTest {
 	public void a_providerTest() {
 
 		logger.info("========== Mongo Provider CRUD Test ==========");
-
+		try {
+			testUtils.resetProvider();
+		} catch (ScimException | BackendException | IOException e) {
+			Assertions.fail("Failed to reset provider: "+e.getMessage());
+		}
 		mp = (MongoProvider) handler.getProvider();
 
 		assertThat(mp).isNotNull();
 
 		assertThat(mp.ready()).isTrue();
+
 
 	}
 
@@ -223,7 +232,7 @@ public class MongoProviderTest {
 		logger.info("\tD. Search using GET for user from backend with filter=UserName eq bjensen@example.com");
 
 		try {
-			RequestCtx ctx = new RequestCtx(user1url,null, URLEncoder.encode("UserName eq bjensen@example.com", StandardCharsets.UTF_8),smgr);
+			RequestCtx ctx = new RequestCtx(user1url,null, "UserName eq bjensen@example.com",smgr);
 
 			ScimResponse resp = mp.get(ctx);
 
@@ -276,7 +285,7 @@ public class MongoProviderTest {
 
 
 		try {
-			RequestCtx ctx = new RequestCtx(user1url,null,URLEncoder.encode("UserName eq bjensen@example.com and addresses[country eq \"USA\" and type eq \"home\"]",StandardCharsets.UTF_8),smgr);
+			RequestCtx ctx = new RequestCtx(user1url,null,"UserName eq bjensen@example.com and addresses[country eq \"USA\" and type eq \"home\"]",smgr);
 
 			ScimResponse resp = mp.get(ctx);
 			String body = getResponseBody(resp,ctx);

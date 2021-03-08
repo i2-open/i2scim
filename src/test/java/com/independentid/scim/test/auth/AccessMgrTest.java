@@ -36,9 +36,7 @@ import com.independentid.scim.security.AccessManager;
 import com.independentid.scim.security.AciSet;
 import com.independentid.scim.security.ScimBasicIdentityProvider;
 import com.independentid.scim.serializer.JsonUtil;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoDatabase;
+import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.security.credential.PasswordCredential;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
@@ -46,7 +44,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.apache.http.HttpStatus;
 import org.apache.http.auth.BasicUserPrincipal;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -82,25 +79,17 @@ public class AccessMgrTest {
     AccessManager amgr;
 
     @Inject
-    ScimBasicIdentityProvider idp;
-
-    @Inject
     BackendHandler handler;
 
-    @ConfigProperty(name="scim.mongodb.uri",defaultValue = "mongodb://localhost:27017")
-    String dbUrl;
-
-    @ConfigProperty(name="scim.mongodb.dbname",defaultValue = "testSCIM")
-    String scimDbName;
-
-    private MongoClient mclient = null;
+    @Inject
+    TestUtils testUtils;
 
     private static final String testUserFile1 = "/schema/TestUser-bjensen.json";
     private static final String testUserFile2 = "/schema/TestUser-jsmith.json";
     private static final String testPass = "t1meMa$heen";
 
     private static ScimResource user1,user2 = null;
-    private static SecurityIdentity idUser1,idUser2 = null;
+    private static SecurityIdentity idUser1;
 
     @Test
     public void a_AmgrInitTest() throws ScimException {
@@ -143,18 +132,15 @@ public class AccessMgrTest {
     private void loadData() {
         // Initialize the database
 
-        logger.info("\t\t Initializing test database: "+scimDbName);
-
-        if (mclient == null)
-            mclient = MongoClients.create(dbUrl);
-
-
-        MongoDatabase scimDb = mclient.getDatabase(scimDbName);
-
-        scimDb.drop();
+        logger.info("\t\tInitializing test data.");
 
         try {
-            handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
+            testUtils.resetProvider();
+        } catch (ScimException | BackendException | IOException e) {
+            fail("Unable to restart test database: "+e.getMessage());
+        }
+
+        try {
 
             InputStream userStream1 = ConfigMgr.getClassLoaderFile(testUserFile1);
             JsonNode userNode1 = JsonUtil.getJsonTree(userStream1);
@@ -176,14 +162,11 @@ public class AccessMgrTest {
             assertThat(resp.getStatus())
                     .as("User 2 added")
                     .isEqualTo(HttpStatus.SC_CREATED);
-            idUser2 = authUser("jsmith@example.com",testPass,user2);
+            authUser("jsmith@example.com", testPass, user2);
 
         } catch (IOException | ParseException | ScimException | BackendException e) {
-            fail("Failed to initialize test Mongo DB: "+scimDbName+": "+e.getLocalizedMessage());
+            fail("Failed to initialize test Mongo DB: "+e.getLocalizedMessage());
         }
-
-
-
     }
 
     private SecurityIdentity authUser(String user, String pwd,ScimResource res) {

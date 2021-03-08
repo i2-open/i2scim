@@ -114,6 +114,7 @@ public class SchemaManager {
         logger.info("SchemaManager initializing");
         generator = backendHandler.getGenerator();
 
+        loadedFromProvider = false;
         // Load the default schemas first. This allows new instances of provider ability to boot.
         loadDefaultSchema();
         loadDefaultResourceTypes();

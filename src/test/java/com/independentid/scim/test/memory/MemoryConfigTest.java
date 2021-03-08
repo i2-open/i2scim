@@ -25,6 +25,7 @@ import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaManager;
+import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -65,11 +66,8 @@ public class MemoryConfigTest {
 	@Inject
 	BackendHandler handler;
 
-	@ConfigProperty(name=MemoryProvider.PARAM_PERSIST_DIR, defaultValue=MemoryProvider.DEFAULT_PERSIST_DIR)
-	String storeDir;
-
-	@ConfigProperty(name=MemoryProvider.PARAM_PERSIST_FILE, defaultValue=MemoryProvider.DEFAULT_FILE)
-	String storeFile;
+	@Inject
+	TestUtils testUtils;
 
 	static IScimProvider provider = null;
 
@@ -77,6 +75,11 @@ public class MemoryConfigTest {
 
 	@Test
 	public void a_beanCheckTest() {
+		try {
+			testUtils.resetProvider();
+		} catch (ScimException | BackendException | IOException e) {
+			fail("Failed to reset provider: "+e.getMessage());
+		}
 
 		provider = handler.getProvider();
 		assertThat(provider).isNotNull();
@@ -187,19 +190,20 @@ public class MemoryConfigTest {
 		provider.shutdown();
 		smgr.resetConfig();
 		try {
-			provider.init();
-		} catch (BackendException e) {
-			logger.error("Error while restarting provider",e);
-			fail("Error while restarting provider",e);
-		}
-
-		try {
 			// This time, the schema should be loaded from MemoryProvider
 			smgr.init();
 		} catch (ScimException | IOException | BackendException e) {
 			logger.error("Error while restarting SchemaManager",e);
 			fail("Error while restarting SchemaManager",e);
 		}
+		try {
+			provider.init();
+		} catch (BackendException e) {
+			logger.error("Error while restarting provider",e);
+			fail("Error while restarting provider",e);
+		}
+
+
 
 		assertThat(smgr.isSchemaLoadedFromProvider())
 				.as("Confirm schema was loaded from provider")

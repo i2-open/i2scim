@@ -72,8 +72,6 @@ public class MongoProvider implements IScimProvider {
 	
 	private static com.mongodb.client.MongoClient mclient;
 
-	// private ServletConfig scfg = null;
-	// private DB sDb = null;
 	private boolean ready = false;
 
 	@Inject
@@ -97,33 +95,19 @@ public class MongoProvider implements IScimProvider {
 	
 	//@Value("${scim.mongodb.indexes: User:userName,User:emails.value,Group:displayName}")
 
-
-	/**
-	 *  When set true, causes the configuration stored to be erased
-	 *  to ensure full reset to configuration and test data.
-	 */
-	//@Value("${scim.mongodb.test: false}")
-	@ConfigProperty(name = "scim.prov.mongo.test", defaultValue="false")
-	boolean resetDb;
-	
 	private MongoDatabase scimDb = null;
-	
-	//private PersistStateResource stateResource = null;
 	
 	public MongoProvider() {
 	}
 	
-	public static IScimProvider getProvider()  {
+	public static IScimProvider getProvider() {
 		if (singleton == null)
 			singleton = new MongoProvider();
 		// singleton.init();
 		return singleton;
 	}
 
-
-
-	//We don't want auto start.  Backendhandler will do this.
-	//@PostConstruct
+	//Note: We don't want auto start. Normally Backendhandler invokes this.
 	public synchronized void init() {
 
 		if (singleton == null)
@@ -137,17 +121,9 @@ public class MongoProvider implements IScimProvider {
 		// Connect to the instance define by injected dbUrl value
 		if (mclient == null)
 			mclient = MongoClients.create(this.dbUrl);
-		
-		
+
 		this.scimDb = mclient.getDatabase(this.scimDbName);
 
-
-		if (resetDb) {
-			logger.warn("\tRESETTING DATABASE per scim.mongodb.test configuration!");
-			this.scimDb.drop();
-			this.resetDb = false;
-		}
-		
 		MongoIterable<String> colIter =  this.scimDb.listCollectionNames();
 		if (colIter.first() == null) {
 			logger.info("\tPreparing new database instance.");
@@ -715,7 +691,7 @@ public class MongoProvider implements IScimProvider {
 		// Process the schemas
 		
 		MongoCollection<Document> col = getDbConnection().getCollection(ScimParams.PATH_TYPE_SCHEMAS);
-		logger.debug("Clearing existing schemas from DB");
+		logger.debug("Clearing existing schemas from DB and re-writing");
 		col.drop();
 		while (siter.hasNext()) {
 			Schema entry = siter.next();
@@ -738,7 +714,7 @@ public class MongoProvider implements IScimProvider {
 		
 		col = getDbConnection().getCollection(ScimParams.PATH_TYPE_RESOURCETYPE);
 		
-		logger.debug("Clearing existing resource types from DB");
+		logger.debug("Clearing and initalizing resource types to DB");
 		col.drop();
 		while (riter.hasNext()) {
 			ResourceType entry = riter.next();

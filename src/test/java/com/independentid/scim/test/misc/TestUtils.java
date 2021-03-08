@@ -15,18 +15,59 @@
 
 package com.independentid.scim.test.misc;
 
+import com.independentid.scim.backend.BackendException;
+import com.independentid.scim.backend.BackendHandler;
+import com.independentid.scim.backend.IScimProvider;
+import com.independentid.scim.backend.memory.MemoryProvider;
+import com.independentid.scim.backend.mongo.MongoProvider;
+import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.schema.SchemaManager;
+import com.independentid.scim.test.mongo.MongoConfigTest;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoDatabase;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.junit.jupiter.api.Assertions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
+import javax.inject.Singleton;
+import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 
 import static org.assertj.core.api.Assertions.fail;
 
+@Singleton
 public class TestUtils {
+
+    private static final Logger logger = LoggerFactory.getLogger(TestUtils.class);
+
+    @Inject
+    BackendHandler handler;
+
+    @Inject
+    SchemaManager smgr;
+
+    @ConfigProperty(name = "scim.prov.memory.persist.dir", defaultValue = "./scimdata")
+    String storeDir;
+
+    @ConfigProperty(name = "scim.prov.memory.persist.file", defaultValue="scimdata.json")
+    String storeFile;
+
+    @ConfigProperty(name="scim.prov.mongo.uri",defaultValue = "mongodb://localhost:27017")
+    String dbUrl;
+
+    @ConfigProperty(name="scim.prov.mongo.dbname",defaultValue = "testSCIM")
+    String scimDbName;
+
+    private MongoClient mclient = null;
 
     public static String mapPathToReqUrl(URL baseUrl, String path) throws MalformedURLException {
         URL rUrl = new URL(baseUrl,path);
@@ -43,5 +84,70 @@ public class TestUtils {
             fail("Failed request: " + req + "\n" + e.getLocalizedMessage(), e);
         }
         return null;
+    }
+
+    public static HttpResponse executeRequest(HttpUriRequest req) throws IOException {
+        //if (req.startsWith("/"))
+
+        return HttpClientBuilder.create().build().execute(req);
+
+    }
+
+    public void resetProvider() throws ScimException, BackendException, IOException {
+        IScimProvider provider = handler.getProvider();
+        if (provider instanceof MongoProvider)
+            resetMongoDb((MongoProvider) provider);
+        if (provider instanceof MemoryProvider)
+            resetMemoryDb((MemoryProvider) provider);
+    }
+
+    void resetMongoDb(MongoProvider mongoProvider) throws ScimException, BackendException, IOException {
+        logger.warn("\t*** Resetting Mongo database "+scimDbName+" ***");
+        if (mclient == null)
+            mclient = MongoClients.create(dbUrl);
+        MongoDatabase scimDb = mclient.getDatabase(scimDbName);
+
+        // Shut the provider down
+        if (mongoProvider.ready())
+            mongoProvider.shutdown();
+        smgr.resetConfig();
+
+        // Reset the database
+
+        scimDb.drop();
+        mclient.close(); // gracefully close so the drop commits.
+        mclient = null;
+
+        // restart and reload
+        smgr.init();
+        mongoProvider.init();
+
+
+    }
+
+    void resetMemoryDb(MemoryProvider provider) throws ScimException, BackendException, IOException {
+
+        // Shut the provider down
+        if (provider.ready())
+            provider.shutdown();
+        smgr.resetConfig();
+
+        resetMemDirectory();
+
+        // restart and reload
+        smgr.init();
+        provider.init();
+
+    }
+
+    private void resetMemDirectory() {
+        // Reset the memory provider
+        logger.warn("\t*** Resetting Memory database files in "+storeDir+" ***");
+        File memdir = new File (storeDir);
+        File[] files = memdir.listFiles();
+        if (files != null)
+            for (File afile: files)
+                afile.delete();
+
     }
 }

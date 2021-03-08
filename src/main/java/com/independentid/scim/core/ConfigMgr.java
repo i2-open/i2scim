@@ -183,10 +183,8 @@ public class ConfigMgr {
 	private static ConfigMgr self=null;
 	
 	public ConfigMgr() {
-			System.out.println("Config Mgr created");
-			if (self != null)
-				System.err.println("...multiple instances of ConfigMgr detected!");
-			else
+
+			if (self == null)
 				self = this;
 	}
 	
@@ -209,7 +207,7 @@ public class ConfigMgr {
 			}
 			//self = new ConfigMgr();
 			try {
-				self.initializeConfiguration();
+				self.init();
 			} catch (ScimException | IOException e) {
 				e.printStackTrace();
 			}
@@ -222,7 +220,7 @@ public class ConfigMgr {
 	}
 	
 	@PostConstruct
-	public synchronized void initializeConfiguration() throws ScimException,IOException {
+	public synchronized void init() throws ScimException,IOException {
 
 		logger.info("======Initializing SCIM Config Mangaer=====");
 		

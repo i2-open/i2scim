@@ -32,6 +32,7 @@ import com.independentid.scim.resource.StringValue;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
+import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.junit.jupiter.api.Assertions;
@@ -65,6 +66,9 @@ public class MemoryProviderTest {
 	@Inject
 	BackendHandler handler;
 
+	@Inject
+	TestUtils testUtils;
+
 	static MemoryProvider mp = null;
 
 	private static final String testUserFile1 = "classpath:/schema/TestUser-bjensen.json";
@@ -77,6 +81,11 @@ public class MemoryProviderTest {
 
 		logger.info("========== Memory Provider CRUD Test ==========");
 
+		try {
+			testUtils.resetProvider();
+		} catch (ScimException | BackendException | IOException e) {
+			Assertions.fail("Failed to reset provider: "+e.getMessage());
+		}
 		mp = (MemoryProvider) handler.getProvider();
 
 		assertThat(mp).isNotNull();

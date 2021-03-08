@@ -24,8 +24,10 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaManager;
+import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -60,13 +62,20 @@ public class MongoConfigTest {
 	@Resource(name="SchemaMgr")
 	SchemaManager smgr;
 
+	@Inject
+	TestUtils testUtils;
+
 	static IScimProvider provider = null;
 
 	static Instant startTime = Instant.now();
 
 	@Test
 	public void a_beanCheckTest() {
-
+		try {
+			testUtils.resetProvider();
+		} catch (ScimException | BackendException | IOException e) {
+			Assertions.fail("Failed to reset provider: "+e.getMessage());
+		}
 		provider = handler.getProvider();
 		assertThat(provider).isNotNull();
 
@@ -173,18 +182,17 @@ public class MongoConfigTest {
 		provider.shutdown();
 		smgr.resetConfig();
 		try {
-			provider.init();
-		} catch (BackendException e) {
-			logger.error("Error while restarting provider",e);
-			fail("Error while restarting provider",e);
-		}
-
-		try {
 			// This time, the schema should be loaded from MongoProvider
 			smgr.init();
 		} catch (ScimException | IOException | BackendException e) {
 			logger.error("Error while restarting SchemaManager",e);
 			fail("Error while restarting SchemaManager",e);
+		}
+		try {
+			provider.init();
+		} catch (BackendException e) {
+			logger.error("Error while restarting provider",e);
+			fail("Error while restarting provider",e);
 		}
 
 		assertThat(smgr.isSchemaLoadedFromProvider())

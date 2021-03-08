@@ -70,16 +70,12 @@ public class MemoryProvider implements IScimProvider {
 	protected final HashMap<String,Map<String,ScimResource>> containerMaps;
 	//protected final HashMap<Attribute,Map<Object,String>> indexes;
 	protected final List<Attribute> indexAttrs = new ArrayList<>();
-	protected final List<Attribute> uniqueAttrs = new ArrayList<>();
 
 	@Inject
 	SchemaManager schemaManager;
 
 	@Inject
 	MemoryIdGenerator generator;
-
-	@Inject
-	SystemSchemas systemSchemas;
 	
 	private boolean ready;
 
@@ -99,9 +95,6 @@ public class MemoryProvider implements IScimProvider {
 
 	@ConfigProperty(name = "scim.prov.memory.backup.mins", defaultValue = "60")
 	protected int backupMins;
-
-	@ConfigProperty(name = "scim.prov.memory.test", defaultValue="false")
-	boolean resetDb;
 
 	@ConfigProperty(name = "scim.prov.memory.indexes", defaultValue = "User:userName,User:emails.value,Group:displayName")
 	String[] indexCfg;
@@ -125,25 +118,13 @@ public class MemoryProvider implements IScimProvider {
 		this.ready = false;
 	}
 
-	private void resetMemDirectory() {
-		// Reset the memory provider
-		logger.warn("*** Resetting Memory database files ***");
-		File memdir = new File (storeDir);
-		File[] files = memdir.listFiles();
-		if (files != null)
-			for (File afile: files)
-				afile.delete();
-		resetDb = false;  // we only do it the first time.
-	}
-
 	public Map<String,IndexResourceType> getIndexes() {
 		return containerIndexes;
 	}
 
 	public Map<String,ScimResource> getData() {
-		if (resetDb)
-			return mainMap;
-		return new HashMap<>();  // This method only available during test
+		return mainMap;
+
 	}
 
 	@Override
@@ -163,8 +144,6 @@ public class MemoryProvider implements IScimProvider {
 		if (!directory.exists()) {
 			directory.mkdir();
 		}
-		if (resetDb)
-			resetMemDirectory();
 
 		dataFile = new File(storeDir,storeFile);
 
@@ -174,31 +153,40 @@ public class MemoryProvider implements IScimProvider {
 
 		if (!dataFile.exists()) {
 			logger.warn("\tMemory store file not found. Initializing new file: " + dataFile.toString());
+			initializeIndexes();
 			syncConfig(schemaManager.getSchemas(), schemaManager.getResourceTypes());
-			initializeIndexes();
+
 		} else {
-			// load the existing data
+			JsonNode node;
 			try {
-				schemaManager.loadConfigFromProvider();
-			} catch (ScimException e) {
-				logger.error("Error loading schema from MemoryProvider. Using default schema.");
-			}
-			initializeIndexes();
+				node = JsonUtil.getJsonTree(dataFile);
+				if (node == null || node.isEmpty()) {  // file exists but was empty
+					logger.warn("\tMemory store file empty/invalid. Initializing new file: " + dataFile.toString());
+					initializeIndexes();
+					syncConfig(schemaManager.getSchemas(), schemaManager.getResourceTypes());
 
-			try {
-				logger.debug("\tLoading data file");
-				JsonNode node = JsonUtil.getJsonTree(dataFile);
-				try {
-				if (node.isArray())
-					for (JsonNode resNode : node)
-							parseResource(resNode);
-				else
-					parseResource(node);
-				} catch (ScimException | ParseException e) {
-					logger.error("Unexpected error parsing SCIM JSON database: " + e.getMessage(), e);
-					this.ready = false;
+				} else {
+					initializeIndexes();
+					// load the existing data
+					try {
+						schemaManager.loadConfigFromProvider();
+					} catch (ScimException e) {
+						logger.error("Error loading schema from MemoryProvider. Using default schema.");
+					}
+
+					logger.debug("\tLoading data file");
+
+					try {
+						if (node.isArray())
+							for (JsonNode resNode : node)
+								parseResource(resNode);
+						else
+							parseResource(node);
+					} catch (ScimException | ParseException e) {
+						logger.error("Unexpected error parsing SCIM JSON database: " + e.getMessage(), e);
+						this.ready = false;
+					}
 				}
-
 			} catch (IOException e) {
 				logger.error("Unexpected IO error reading SCIM JSON database: " + e.getMessage(), e);
 				this.ready = false;
@@ -380,7 +368,7 @@ public class MemoryProvider implements IScimProvider {
 	public ScimResponse get(RequestCtx ctx) throws ScimException {
 
 		if (ctx.getPathId() == null) {
-			String type = ctx.getResourceContainer();
+
 			Filter filter = ctx.getFilter();
 
 			ArrayList<ScimResource> results = new ArrayList<>();
@@ -401,9 +389,6 @@ public class MemoryProvider implements IScimProvider {
 						break;
 				}
 			}
-
-			if (results.isEmpty())
-				return new ScimResponse(ScimResponse.ST_NOTFOUND,null,null);
 
 			return new ListResponse(results,ctx, maxResults);
 
@@ -463,7 +448,7 @@ public class MemoryProvider implements IScimProvider {
 			return new ScimResponse(new PreconditionFailException(
 					"ETag predcondition does not match"));
 
-		ScimResource temp = null;
+		ScimResource temp ;
 		try {
 			temp = origRes.copy(ctx);
 		} catch (ParseException e) {
@@ -494,7 +479,7 @@ public class MemoryProvider implements IScimProvider {
 
 		if (origRes == null)
 			return new ScimResponse(ScimResponse.ST_NOTFOUND, null, null);
-		ScimResource temp = null;
+		ScimResource temp;
 		try {
 			temp = origRes.copy(ctx);
 		} catch (ParseException e) {

@@ -19,7 +19,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.memory.MemoryProvider;
-
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.ListResponse;
@@ -31,10 +30,10 @@ import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
-
+import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -66,6 +65,9 @@ public class MemoryFilterMapTest {
 
     @Inject
     BackendHandler handler;
+
+    @Inject
+    TestUtils testUtils;
 
     /**
      * Test filters from RFC7644, figure 2
@@ -195,6 +197,11 @@ public class MemoryFilterMapTest {
     public void a_memProviderInit() throws ScimException, IOException, ParseException, BackendException {
         logger.info("========== MemoryProvider Filter Test ==========");
 
+        try {
+            testUtils.resetProvider();
+        } catch (ScimException | BackendException | IOException e) {
+            Assertions.fail("Failed to reset provider: "+e.getMessage());
+        }
         mp = (MemoryProvider) handler.getProvider();
 
         logger.info("\t* Running initial persistance provider checks");
@@ -260,7 +267,7 @@ public class MemoryFilterMapTest {
      * usually resolved at the SCIM layer rather than within Mongo.
      */
     @Test
-    public void b_testFilterResource() {
+    public void b_testFilterById() {
         logger.info("Testing filter match against specific resources");
         for (int i = 0; i < testArray.length; i++) {
             logger.debug("");
@@ -303,7 +310,7 @@ public class MemoryFilterMapTest {
      * appiled by Mongo
      */
     @Test
-    public void c_testFilterMongoDb() {
+    public void c_testFilterByContainer() {
         logger.info("Testing filter matches against all Users");
         for (int i = 0; i < testArray.length; i++) {
             logger.debug("");
