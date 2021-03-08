@@ -14,7 +14,6 @@
  */
 package com.independentid.scim.test.auth;
 
-
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.protocol.ScimResponse;
@@ -49,7 +48,6 @@ import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
-
 
 @QuarkusTest
 @TestProfile(ScimAuthTestProfile.class)
@@ -117,7 +115,7 @@ public class ScimAuthTest {
 		String req = TestUtils.mapPathToReqUrl(baseUrl,
 				"/Schemas");
 		
-		logger.info("\n\n]rRetrieving /Schemas using Basic Auth using: "+req);
+		logger.info("\n\n\tRetrieving /Schemas using Basic Auth using: "+req);
 		
 		CloseableHttpClient client = HttpClients.createDefault();
 		

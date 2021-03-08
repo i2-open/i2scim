@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * Confidential and Proprietary
  *
@@ -13,12 +13,12 @@
  * subject to the terms of such agreement.
  */
 
-package com.independentid.scim.plugin;
+package com.independentid.scim.security;
 
 import com.independentid.scim.core.err.NotImplementedException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.*;
-import com.independentid.scim.security.AccessManager;
+import com.independentid.scim.plugin.IScimPlugin;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +31,7 @@ import javax.servlet.ServletException;
 
 @ApplicationScoped
 @Priority(2)
-public class AccessPlugin implements IScimPlugin{
+public class AccessPlugin implements IScimPlugin {
     private final static Logger logger = LoggerFactory
             .getLogger(AccessPlugin.class);
 

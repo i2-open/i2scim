@@ -28,17 +28,18 @@ public class ScimDevOpsTestProfile implements QuarkusTestProfile {
                 "scim.prov.mongo.dbname", "secTestSCIM",
                 "scim.prov.mongo.uri", "mongodb://localhost:27017",
 
-                "scim.security.enable", "true",
-
                 "quarkus.http.test-port", "0",
+                "quarkus.log.min-level","DEBUG",
                 "quarkus.log.category.\"com.independentid.scim\".level", "DEBUG",
-                "quarkus.http.auth.basic", "true",
+
+                "scim.security.enable", "true",
                 "scim.security.authen.basic", "true",
                 "scim.security.authen.jwt", "true",
                 "scim.security.acis","classpath:/schema/aciSecurityTest.json"
         ));
         cmap.putAll(Map.of(
-
+                "scim.kafka.log.bootstrap","10.1.10.101:9092",
+                "scim.kafka.rep.bootstrap","10.1.10.101:9092"
 
         ));
         return cmap;

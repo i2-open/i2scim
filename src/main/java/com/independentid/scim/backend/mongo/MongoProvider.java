@@ -508,18 +508,6 @@ public class MongoProvider implements IScimProvider {
 		return new ScimResponse(ScimResponse.ST_NOCONTENT, null, null);
 	}
 
-	public void eraseDatabase() {
-		System.err.println("  Initiating reset of database collection: "
-				+ getMongoDbName());
-		logger.warn("Database provider reset requested. Dropping");
-		
-		MongoDatabase db = mclient.getDatabase(this.getMongoDbName());
-		db.drop();
-		
-		System.err.println("  **Reset was requested by:");
-		Thread.dumpStack();
-	}
-
 	public String getMongoDbName() {
 		return this.scimDbName;
 	}

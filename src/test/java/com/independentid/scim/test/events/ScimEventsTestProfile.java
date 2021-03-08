@@ -15,6 +15,7 @@
 
 package com.independentid.scim.test.events;
 
+import com.independentid.scim.backend.mongo.MongoProvider;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 import java.util.HashMap;
@@ -24,6 +25,7 @@ public class ScimEventsTestProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
         Map<String, String> cmap = new HashMap<>(Map.of(
+                "scim.prov.providerClass", MongoProvider.class.getName(),
                 "scim.prov.mongo.test", "true",
                 "scim.prov.mongo.dbname", "secTestSCIM",
                 "scim.prov.mongo.uri", "mongodb://localhost:27017",
@@ -35,7 +37,8 @@ public class ScimEventsTestProfile implements QuarkusTestProfile {
                 "scim.kafka.rep.enable","true"
                  ));
         cmap.putAll(Map.of(
-
+                "scim.kafka.log.bootstrap","10.1.10.101:9092",
+                "scim.kafka.rep.bootstrap","10.1.10.101:9092"
 
         ));
         return cmap;

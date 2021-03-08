@@ -48,7 +48,8 @@ import java.net.URL;
 import java.util.*;
 
 //@Startup
-@ApplicationScoped
+//@ApplicationScoped
+@Singleton
 @Named("AccessMgr")
 public class AccessManager {
 

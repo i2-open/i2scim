@@ -27,9 +27,7 @@ import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoDatabase;
+import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -43,7 +41,6 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -85,13 +82,8 @@ public class ScimLoadSampleTest {
 	@Inject
 	BackendHandler handler;
 
-	@ConfigProperty(name="scim.mongodb.uri",defaultValue = "mongodb://localhost:27017")
-	String dbUrl;
-
-	@ConfigProperty(name="scim.mongodb.dbname",defaultValue = "SCIMsample")
-	String scimDbName;
-	
-	private static MongoClient mclient = null;
+	@Inject
+	TestUtils testUtils;
 
 	@TestHTTPResource("/")
 	URL baseUrl;
@@ -99,14 +91,15 @@ public class ScimLoadSampleTest {
 	//private final static String dataSet = "classpath:/data/user-10pretty.json";
 	private final static String dataSet = "classpath:/data/user-5000.json";
 
-	private final static ArrayList<ScimResource> data = new ArrayList<>();
+	private static ArrayList<ScimResource> data;
 	private final static ArrayList<String> paths = new ArrayList<>();
 	
 	private static String readTime = null;
 	
 	//private static ScimResource user1,user2 = null;
 
-	private void readSampleData() throws IOException, ParseException, ScimException {
+	protected static ArrayList<ScimResource> readSampleData(SchemaManager smgr, String dataSet) throws IOException, ParseException, ScimException {
+		ArrayList<ScimResource> data = new ArrayList<>();
 		logger.debug("\t\tReading sample data from: "+dataSet);
 		Instant start = Instant.now();
 		File dataFile = ConfigMgr.findClassLoaderResource(dataSet);
@@ -124,16 +117,17 @@ public class ScimLoadSampleTest {
 		Iterator<JsonNode> iter = dataNode.elements();
 		int cnt=0;
 		while (iter.hasNext()) {
-			parseUser(iter.next());
+			data.add(parseUser(smgr,iter.next()));
 			cnt++;
 		}
 		Instant end = Instant.now();
 		Duration dur = Duration.between(start, end);
 		readTime = dur.getSeconds()+"."+dur.getNano()+"secs"; 
 		logger.info("\t\tMapping complete. "+cnt+" records mapped to SCIM Resource in "+readTime);
+		return data;
 	}
 	
-	private void parseUser(JsonNode mapNode) throws IOException, ParseException, ScimException {
+	protected static ScimResource parseUser(SchemaManager smgr, JsonNode mapNode) throws IOException, ParseException, ScimException {
 		StringWriter writer = new StringWriter();
 
 		JsonGenerator gen = JsonUtil.getGenerator(writer, true);
@@ -234,32 +228,24 @@ public class ScimLoadSampleTest {
 		writer.close();
 		
 		JsonNode scimjnode = JsonUtil.getJsonTree(writer.toString());
-		ScimResource user = new ScimResource(smgr,scimjnode,null,"Users");
-		data.add(user);
+		return new ScimResource(smgr,scimjnode,null,"Users");
 			
 	}
 
 	@Test
-	public void a_initializeMongo()  {
+	public void a_initializeProvidero()  {
 	
-		logger.info("========== Scim Sample Data ==========");
-		logger.info("\tA. Initializing test database: "+scimDbName);
-		
-		if (mclient == null)
-			mclient = MongoClients.create(dbUrl);
+		logger.info("========== Scim Load Test Sample Data ==========");
+		logger.info("\tA. Initializing data set");
 
-
-		MongoDatabase scimDb = mclient.getDatabase(scimDbName);
-		
-		scimDb.drop();  // reset the database.
-		
 		try {
-			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-		} catch (IOException e) {
-			fail("Failed to initialize test Mongo DB: "+scimDbName);
+			testUtils.resetProvider();
+		} catch (ScimException | BackendException | IOException e) {
+			Assertions.fail("Failed to reset provider: "+e.getMessage());
 		}
+
 		try {
-			readSampleData();
+			data = readSampleData(smgr,dataSet);
 		} catch (IOException | ParseException | ScimException e) {
 			fail("Unable to read in sample data: "+e.getLocalizedMessage(),e);
 		}

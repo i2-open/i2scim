@@ -19,7 +19,6 @@ package com.independentid.scim.test.auth;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.ScimParams;
@@ -31,25 +30,19 @@ import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.test.misc.TestUtils;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoDatabase;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpStatus;
+import org.apache.http.*;
 import org.apache.http.client.methods.*;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,6 +54,7 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
+import java.util.Arrays;
 import java.util.Base64;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -84,15 +78,7 @@ public class ScimAuthZCRUDTest {
 	ConfigMgr cmgr;
 
 	@Inject
-	BackendHandler handler;
-	
-	@ConfigProperty(name="scim.mongodb.uri",defaultValue = "mongodb://localhost:27017")
-	String dbUrl;
-
-	@ConfigProperty(name="scim.mongodb.dbname",defaultValue = "testSCIM")
-	String scimDbName;
-	
-	private MongoClient mclient = null;
+	TestUtils testUtils;
 
 	@TestHTTPResource("/")
 	URL baseUrl;
@@ -105,44 +91,29 @@ public class ScimAuthZCRUDTest {
 
 	private static String bJensonUrl = null;
 	private static String jSmithUrl = null;
-
-	static CloseableHttpClient htclient ;
 	
-	private synchronized CloseableHttpResponse execute(HttpUriRequest req) throws IOException {
-		return htclient.execute(req);
-	}
+	private synchronized HttpResponse execute(HttpUriRequest req) throws IOException {
 
-	@BeforeAll
-	public static void init() {
-		htclient = HttpClients.createDefault();
+		return TestUtils.executeRequest(req);
 	}
-
-	@AfterAll
-	public static void shutdown() throws IOException {
-		htclient.close();
-	}
+	
 	/**
 	 * This test actually resets and re-initializes the SCIM Mongo test database.
 	 */
 	@Test
-	public void a_initializeMongo() {
+	public void a_initializeAuthTests() {
 	
-		logger.info("========== Scim Mongo CRUD Test ==========");
-		logger.info("\tA. Initializing test database: "+scimDbName);
-		
-		if (mclient == null)
-			mclient = MongoClients.create(dbUrl);
+		logger.info("========== Scim Authorize CRUD Test ==========");
+		logger.info("\tA. Initializing test database.");
 
 
-		MongoDatabase scimDb = mclient.getDatabase(scimDbName);
-		
-		scimDb.drop();
-		
+		// Reset the Mongo database
 		try {
-			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-		} catch (IOException e) {
-			fail("Failed to initialize test Mongo DB: "+scimDbName);
+			testUtils.resetProvider();
+		} catch (ScimException | BackendException | IOException e) {
+			fail("Unable to restart test database: "+e.getMessage());
 		}
+
 		
 	}
 	/**
@@ -160,8 +131,7 @@ public class ScimAuthZCRUDTest {
 
 			URL rUrl = new URL(baseUrl,"/Users");
 			String req = rUrl.toString();
-			
-			
+
 			HttpPost post = new HttpPost(req);
 
 			// This section should fail, anonymous request
@@ -174,15 +144,13 @@ public class ScimAuthZCRUDTest {
 			logger.debug("Executing test add for bjensen: "+post.getRequestLine());
 			//logger.debug(EntityUtils.toString(reqEntity));
 		
-			CloseableHttpResponse resp = execute(post);
+			HttpResponse resp = execute(post);
 			int statcode = resp.getStatusLine().getStatusCode();
 			assertThat(statcode)
 					.as("Anonymous request should be unauthorized")
 					.isEqualTo(HttpStatus.SC_UNAUTHORIZED);
 			userStream.close();
-			resp.close();
-
-
+			
 
 		} catch (IOException e) {
 			logger.error("Unexpected error: "+e.getLocalizedMessage(),e);
@@ -204,6 +172,7 @@ public class ScimAuthZCRUDTest {
 
 		URL rUrl = new URL(baseUrl,"/Users");
 		String req = rUrl.toString();
+		logger.info("\tRequest URI for add: "+req);
 
 		HttpPost post = new HttpPost(req);
 		userStream = new FileInputStream(user1File);
@@ -213,13 +182,19 @@ public class ScimAuthZCRUDTest {
 		post.setEntity(reqEntity);
 		post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
-		CloseableHttpResponse resp = execute(post);
+		Header[] heads = post.getAllHeaders();
 
-		logger.debug("Response is: "+resp.getStatusLine());
+		System.err.println("Request:\n"+post.toString());
+		System.err.println("Headers:\n"+ Arrays.toString(heads));
+		//System.out.println("Body:\n"+EntityUtils.toString(post.getEntity()));
+
+		HttpResponse resp = execute(post);
+
+		logger.info("\tResponse is: "+resp.getStatusLine());
 		String body = EntityUtils.toString(resp.getEntity());
 		logger.debug("Body:\n"+body);
 
-		Header[] heads = resp.getAllHeaders();
+		heads = resp.getAllHeaders();
 		for (Header head : heads) {
 			logger.debug(head.getName() + "\t" + head.getValue());
 		}
@@ -257,8 +232,6 @@ public class ScimAuthZCRUDTest {
 				.as("Contains an extension value Tour Operations")
 				.contains("Tour Operations");
 
-		resp.close();
-
 	}
 
 	@Test
@@ -294,7 +267,7 @@ public class ScimAuthZCRUDTest {
 		reqEntity.setChunked(false);
 		post.setEntity(reqEntity);
 
-		CloseableHttpResponse resp = execute(post);
+		HttpResponse resp = execute(post);
 
 		assertThat(resp.getStatusLine().getStatusCode())
 				.as("Confirm error 400 occurred (uniqueness)")
@@ -305,7 +278,7 @@ public class ScimAuthZCRUDTest {
 				.contains(ScimResponse.ERR_TYPE_UNIQUENESS);
 
 		userStream.close();
-		resp.close();
+		
 	}
 
 	@Test
@@ -327,7 +300,7 @@ public class ScimAuthZCRUDTest {
 				userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
 		reqEntity.setChunked(false);
 		post.setEntity(reqEntity);
-		CloseableHttpResponse resp = execute(post);
+		HttpResponse resp = execute(post);
 		assertThat(resp.getStatusLine().getStatusCode())
 				.as("Check JSmith added")
 				.isEqualTo(ScimResponse.ST_CREATED);
@@ -348,12 +321,12 @@ public class ScimAuthZCRUDTest {
 		//request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
 		try {
-			CloseableHttpResponse resp = execute(request);
+			HttpResponse resp = execute(request);
 
 			assertThat(resp.getStatusLine().getStatusCode())
 					.as("GET User - Check for status unauthorized.")
 					.isEqualTo(ScimResponse.ST_UNAUTHORIZED);
-			resp.close();
+
 
 		} catch (IOException e) {
 			fail("Exception occured making GET request for bjensen",e);
@@ -373,7 +346,7 @@ public class ScimAuthZCRUDTest {
 		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		
 		try {
-			CloseableHttpResponse resp = execute(request);
+			HttpResponse resp = execute(request);
 			HttpEntity entity = resp.getEntity();
 			
 			assertThat(resp.getStatusLine().getStatusCode())
@@ -395,7 +368,7 @@ public class ScimAuthZCRUDTest {
 				.as("Contains an extension value Tour Operations")
 				.contains("Tour Operations");
 
-			resp.close();
+
 			logger.debug("Entry retrieved:\n"+body);
 			
 			// Check that the result can be parsed as a SCIM object
@@ -411,7 +384,7 @@ public class ScimAuthZCRUDTest {
 				.as("Check value of division is 'Theme Park'.")
 				.isEqualTo("Theme Park");
 			
-			resp.close();
+
 			
 		} catch (IOException | ParseException | ScimException e) {
 			fail("Exception occured making GET request for bjensen",e);
@@ -437,7 +410,7 @@ public class ScimAuthZCRUDTest {
 		request.addHeader(HttpHeaders.AUTHORIZATION, auth);
 
 		try {
-			CloseableHttpResponse resp = execute(request);
+			HttpResponse resp = execute(request);
 			HttpEntity entity = resp.getEntity();
 
 			assertThat(resp.getStatusLine().getStatusCode())
@@ -462,7 +435,7 @@ public class ScimAuthZCRUDTest {
 					.as("Contains an extension value Tour Operations")
 					.contains("Tour Operations");
 
-			resp.close();
+
 			logger.debug("Entry retrieved:\n"+body);
 
 			// Check that the result can be parsed as a SCIM object
@@ -478,7 +451,6 @@ public class ScimAuthZCRUDTest {
 					.as("Check value of division is 'Theme Park'.")
 					.isEqualTo("Theme Park");
 
-			resp.close();
 
 		} catch (IOException | ParseException | ScimException e) {
 			fail("Exception occured making GET request for bjensen",e);
@@ -499,7 +471,7 @@ public class ScimAuthZCRUDTest {
 		request.addHeader(HttpHeaders.AUTHORIZATION, auth);
 
 		try {
-			CloseableHttpResponse resp = execute(request);
+			HttpResponse resp = execute(request);
 			HttpEntity entity = resp.getEntity();
 
 			assertThat(resp.getStatusLine().getStatusCode())
@@ -522,10 +494,10 @@ public class ScimAuthZCRUDTest {
 					.as("Check that unauthorized attributes not returned (e.g. \"ims\"")
 					.doesNotContain("\"ims\"");
 
-			resp.close();
+
 			logger.debug("Entry retrieved:\n"+body);
 
-			resp.close();
+
 
 			//try without authorization (should fail)
 			req = TestUtils.mapPathToReqUrl(baseUrl, jSmithUrl);
@@ -540,7 +512,6 @@ public class ScimAuthZCRUDTest {
 			assertThat(resp.getStatusLine().getStatusCode())
 					.as("GET User - Check for status response 401 unauthorized")
 					.isEqualTo(ScimResponse.ST_UNAUTHORIZED);
-			resp.close();
 
 			req = TestUtils.mapPathToReqUrl(baseUrl, jSmithUrl);
 
@@ -577,7 +548,7 @@ public class ScimAuthZCRUDTest {
 					.as("Contains userName value as permitted by aci")
 					.contains("\"userName\"");
 
-			resp.close();
+
 			logger.debug("Entry retrieved:\n"+body);
 
 		} catch (IOException e) {
@@ -599,7 +570,7 @@ public class ScimAuthZCRUDTest {
 		HttpUriRequest request = new HttpGet(req);
 		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		try {
-			CloseableHttpResponse resp = execute(request);
+			HttpResponse resp = execute(request);
 			HttpEntity entity = resp.getEntity();
 			
 			assertThat(resp.getStatusLine().getStatusCode())
@@ -637,9 +608,7 @@ public class ScimAuthZCRUDTest {
 			StringValue val = (StringValue) ext.getValue("division");
 			assertThat(val.toString())
 				.as("Check value of division is 'Theme Park'.")
-				.isEqualTo("Theme Park");			
-				
-			resp.close();
+				.isEqualTo("Theme Park");
 			
 		} catch (IOException | ParseException | ScimException e) {
 			fail("Exception occured making GET filter request for bjensen",e);
@@ -687,7 +656,7 @@ public class ScimAuthZCRUDTest {
 			
 			request.setEntity(sEntity);
 			
-			CloseableHttpResponse resp = execute(request);
+			HttpResponse resp = execute(request);
 			HttpEntity entity = resp.getEntity();
 		
 			assertThat(resp.getStatusLine().getStatusCode())
@@ -708,9 +677,6 @@ public class ScimAuthZCRUDTest {
 				.as("Is user bjensen")
 				.contains("bjensen@example.com");
 			logger.debug("Entry retrieved:\n"+body);
-					
-				
-			resp.close();
 			
 		} catch (IOException e) {
 			fail("Exception occured making POST Search filter request for bjensen",e);
@@ -729,7 +695,7 @@ public class ScimAuthZCRUDTest {
 		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		
 		try {
-			CloseableHttpResponse resp = execute(request);
+			HttpResponse resp = execute(request);
 			HttpEntity entity = resp.getEntity();
 			
 			assertThat(resp.getStatusLine().getStatusCode())
@@ -767,9 +733,7 @@ public class ScimAuthZCRUDTest {
 			StringValue val = (StringValue) ext.getValue("division");
 			assertThat(val.toString())
 				.as("Check value of division is 'Theme Park'.")
-				.isEqualTo("Theme Park");			
-				
-			resp.close();
+				.isEqualTo("Theme Park");
 			
 		} catch (IOException | ParseException | ScimException e) {
 			fail("Exception occured making GET filter request for bjensen",e);
@@ -788,13 +752,11 @@ public class ScimAuthZCRUDTest {
 		try {
 			// first try anonymous test
 			logger.debug("\t\tAnonymous sub-test");
-			CloseableHttpResponse resp = execute(request);
+			HttpResponse resp = execute(request);
 
 			assertThat(resp.getStatusLine().getStatusCode())
 					.as("Confirm annonymous is unauthorized")
 					.isEqualTo(ScimResponse.ST_UNAUTHORIZED);
-
-			resp.close();
 
 			logger.debug("\t\tBJsensen self-update sub-test");
 			request = new HttpGet(req);
@@ -822,7 +784,6 @@ public class ScimAuthZCRUDTest {
 			// Check that the result can be parsed as a SCIM object
 			JsonNode jres = JsonUtil.getJsonTree(body);
 			ScimResource res = new ScimResource(smgr,jres, "Users");
-			resp.close();
 			
 			Attribute name = res.getAttribute("displayName", null);
 			
@@ -854,7 +815,6 @@ public class ScimAuthZCRUDTest {
 				.as("Contains test value")
 				.contains("Babs (TEST)");
 			logger.debug("Entry retrieved:\n"+body);
-			resp.close();
 		} catch (IOException | ParseException | ScimException e) {
 			fail("Exception occured making GET request for bjensen",e);
 		}
@@ -870,13 +830,12 @@ public class ScimAuthZCRUDTest {
 		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		
 		try {
-			CloseableHttpResponse resp = execute(request);
+			HttpResponse resp = execute(request);
 			
 			// confirm status 204 per RFC7644 Sec 3.6
 			assertThat(resp.getStatusLine().getStatusCode())
 				.as("Confirm succesfull deletion of user")
 				.isEqualTo(ScimResponse.ST_NOCONTENT);
-			resp.close();
 
 			// Try to retrieve the deleted object. Should return 404
 			request = new HttpGet(req);
@@ -885,7 +844,6 @@ public class ScimAuthZCRUDTest {
 			assertThat(resp.getStatusLine().getStatusCode())
 				.as("Confirm deleted user was not findable")
 				.isEqualTo(ScimResponse.ST_NOTFOUND);
-			resp.close();
 
 			// Try delete of non-existent object, should be 404
 			request = new HttpDelete(req);
@@ -895,7 +853,7 @@ public class ScimAuthZCRUDTest {
 				.as("Confirm not found when deleting non-existent resource")
 				.isEqualTo(ScimResponse.ST_NOTFOUND);
 			
-			resp.close();
+
 		} catch (IOException  e) {
 			fail("Exception occured in DELETE test for bjensen",e);
 		}

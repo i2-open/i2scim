@@ -15,6 +15,7 @@
 
 package com.independentid.scim.test.auth;
 
+import com.independentid.scim.backend.mongo.MongoProvider;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 import java.util.HashMap;
@@ -24,6 +25,7 @@ public class ScimAuthTestProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
         Map<String, String> cmap = new HashMap<>(Map.of(
+                "scim.prov.providerClass", MongoProvider.class.getName(),
                 "scim.prov.mongo.test", "true",
                 "scim.prov.mongo.dbname", "secTestSCIM",
                 "scim.prov.mongo.uri", "mongodb://localhost:27017",
@@ -31,14 +33,20 @@ public class ScimAuthTestProfile implements QuarkusTestProfile {
                 "scim.security.enable", "true",
 
                 "quarkus.http.test-port", "0",
+                "quarkus.log.level","INFO",
+                "logging.level.com.independentid.scim","DEBUG",
                 "quarkus.log.category.\"com.independentid.scim\".level", "DEBUG",
-                "quarkus.http.auth.basic", "true",
-                "scim.security.authen.basic", "true",
-                "scim.security.authen.jwt", "true",
+
                 "scim.security.acis","classpath:/schema/aciSecurityTest.json"
         ));
         cmap.putAll(Map.of(
+                "quarkus.http.auth.basic", "true",
+                "scim.security.authen.basic", "true",
+                "scim.security.authen.jwt", "true",
+                "scim.event.enable","false",
 
+                "scim.kafka.log.bootstrap","10.1.10.101:9092",
+                "scim.kafka.rep.bootstrap","10.1.10.101:9092"
 
         ));
         return cmap;

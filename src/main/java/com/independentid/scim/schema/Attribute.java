@@ -189,7 +189,12 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 			return true;
     	}
 
-		boolean isReturnable = ctx.isAttrRequested(this);
+    	// added logic to account for parent requested (which would then enable default returns of sub attrs)
+		boolean parentRequested = (this.getParent() != null && ctx.isAttrRequested(getParent()));
+
+		boolean isReturnable =  ctx.isAttrRequested(this) ||
+				(parentRequested &&
+						(getReturned().equals(RETURNED_default) || getReturned().equals(RETURNED_always)));
     	if (this.getSubAttributesMap().isEmpty())
     		return isReturnable;
     
