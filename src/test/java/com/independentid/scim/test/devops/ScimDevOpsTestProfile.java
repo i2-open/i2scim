@@ -24,8 +24,7 @@ public class ScimDevOpsTestProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
         Map<String, String> cmap = new HashMap<>(Map.of(
-                "scim.prov.mongo.test", "true",
-                "scim.prov.mongo.dbname", "secTestSCIM",
+                "scim.prov.mongo.dbname", "healthTestSCIM",
                 "scim.prov.mongo.uri", "mongodb://localhost:27017",
 
                 "quarkus.http.test-port", "0",
@@ -38,8 +37,7 @@ public class ScimDevOpsTestProfile implements QuarkusTestProfile {
                 "scim.security.acis","classpath:/schema/aciSecurityTest.json"
         ));
         cmap.putAll(Map.of(
-                "scim.kafka.log.bootstrap","10.1.10.101:9092",
-                "scim.kafka.rep.bootstrap","10.1.10.101:9092"
+                "scim.event.enable","false"
 
         ));
         return cmap;

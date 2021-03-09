@@ -224,11 +224,14 @@ public class ScimResourceTest {
 			logger.info("\n\nComparing toJsonNode.toString vs serialize outputs:\n");
 			DiffMatchPatch dmp = new DiffMatchPatch();
 			LinkedList<DiffMatchPatch.Diff> diff = dmp.diffMain(result,result2,false);
+			int differenceCount = 0;
 			for (DiffMatchPatch.Diff adif : diff) {
-				if (!adif.operation.equals(DiffMatchPatch.Operation.EQUAL))
-					logger.info("Difference: "+adif.toString());
+				if (!adif.operation.equals(DiffMatchPatch.Operation.EQUAL)) {
+					differenceCount++;
+					logger.info("Difference: " + adif.toString());
+				}
 			}
-			assertThat(diff.size())
+			assertThat(differenceCount)
 					.as("Difference analysis returns 1 result").isEqualTo(1);
 			DiffMatchPatch.Diff thediff = diff.get(0);
 			assertThat(thediff.operation)

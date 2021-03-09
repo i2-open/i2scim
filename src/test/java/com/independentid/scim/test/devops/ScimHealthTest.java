@@ -19,9 +19,11 @@ package com.independentid.scim.test.devops;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.SchemaManager;
+import com.independentid.scim.test.misc.TestUtils;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
@@ -72,14 +74,9 @@ public class ScimHealthTest {
 
 	@Inject
 	BackendHandler handler;
-	
-	@ConfigProperty(name="scim.mongodb.uri",defaultValue = "mongodb://localhost:27017")
-	String dbUrl;
 
-	@ConfigProperty(name="scim.mongodb.dbname",defaultValue = "testSCIM")
-	String scimDbName;
-	
-	private MongoClient mclient = null;
+	@Inject
+	TestUtils testUtils;
 
 	@TestHTTPResource("/")
 	URL baseUrl;
@@ -112,23 +109,15 @@ public class ScimHealthTest {
 	 * This test actually resets and re-initializes the SCIM Mongo test database.
 	 */
 	@Test
-	public void a_initializeMongo() {
+	public void a_initializeProvider() {
 	
 		logger.info("========== Scim Mongo CRUD Test ==========");
-		logger.info("\tA. Initializing test database: "+scimDbName);
-		
-		if (mclient == null)
-			mclient = MongoClients.create(dbUrl);
+		logger.info("\tA. Initializing test dataset");
 
-
-		MongoDatabase scimDb = mclient.getDatabase(scimDbName);
-		
-		scimDb.drop();
-		
 		try {
-			handler.getProvider().syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
-		} catch (IOException e) {
-			fail("Failed to initialize test Mongo DB: "+scimDbName);
+			testUtils.resetProvider();
+		} catch (ScimException | BackendException | IOException e) {
+			Assertions.fail("Failed to reset provider: "+e.getMessage());
 		}
 		
 	}

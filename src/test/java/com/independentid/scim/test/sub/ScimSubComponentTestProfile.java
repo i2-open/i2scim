@@ -24,6 +24,7 @@ public class ScimSubComponentTestProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
         return Map.of(
+                "scim.schema.path","/schema/scimSchemaTest.json",
                 "scim.test.configOnly","true",
                 "scim.json.pretty","true",
 
@@ -34,8 +35,7 @@ public class ScimSubComponentTestProfile implements QuarkusTestProfile {
                 "scim.prov.providerClass", MemoryProvider.class.getName(),
                 "scim.prov.persist.schema","false",
                 "scim.security.enable", "false",
-                "scim.kafka.rep.enable","false",
-                "scim.kafka.log.enable","false"
+                "scim.event.enable","false"
         );
     }
 

@@ -43,11 +43,7 @@ public class ScimAuthTestProfile implements QuarkusTestProfile {
                 "quarkus.http.auth.basic", "true",
                 "scim.security.authen.basic", "true",
                 "scim.security.authen.jwt", "true",
-                "scim.event.enable","false",
-
-                "scim.kafka.log.bootstrap","10.1.10.101:9092",
-                "scim.kafka.rep.bootstrap","10.1.10.101:9092"
-
+                "scim.event.enable","false"
         ));
         return cmap;
 
