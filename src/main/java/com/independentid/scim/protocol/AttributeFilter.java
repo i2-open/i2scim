@@ -244,6 +244,8 @@ public class AttributeFilter extends Filter {
      * @return The SCIM Value representation of the filter value
      */
     public Value getValue()  {
+        if (getOperator().equals(FILTEROP_PRESENCE))
+            return null;
         switch (attr.getType()) {
             case Attribute.TYPE_String:
                 return new StringValue(attr,this.valString);
