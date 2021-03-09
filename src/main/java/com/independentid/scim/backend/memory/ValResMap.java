@@ -23,7 +23,7 @@ public class ValResMap implements Comparable<ValResMap>{
 
     Value val;
 
-    List<String> idList = Collections.synchronizedList(new ArrayList<>());
+    Set<String> idList = new HashSet<>();
 
     public ValResMap(Value value) {
         this.val = value;
@@ -42,7 +42,7 @@ public class ValResMap implements Comparable<ValResMap>{
     }
 
     public Set<String> getIds() {
-        return new HashSet<>(idList);
+        return idList;
     }
 
     public Value getKey() { return val;}
