@@ -30,6 +30,7 @@ import com.independentid.scim.op.Operation;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
+import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -38,6 +39,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -77,6 +79,9 @@ public class TestProducer {
     @Inject
     EventManager eventManager;
 
+    @Inject
+    TestUtils testUtils;
+
     @ConfigProperty(name = KafkaRepEventHandler.KAFKA_PUB_PREFIX+"topic", defaultValue = "rep")
     String repTopic;
 
@@ -89,8 +94,21 @@ public class TestProducer {
     static KafkaConsumer<String, JsonNode> consumer = null;
     Set<TopicPartition> tparts = null;
 
+    @BeforeAll
+    static void resetData() throws ScimException, BackendException, IOException {
+
+    }
+
     @Test
-    public void a_initConsumer() {
+    public void a_initProvider() {
+        try {
+            testUtils.resetProvider();
+        } catch (ScimException | BackendException | IOException e) {
+            fail("Unable to reset provider: "+e.getMessage(),e);
+        }
+    }
+    @Test
+    public void b_initConsumer() {
         Properties props = new Properties();
         props.setProperty("bootstrap.servers", "10.1.10.101:9092");
         props.setProperty("group.id", "testGroup");
@@ -118,7 +136,7 @@ public class TestProducer {
     }
 
     @Test
-    public void b_testMessageProducer() throws IOException, ScimException, ParseException, ClassNotFoundException, BackendException, InstantiationException {
+    public void c_testMessageProducer() throws IOException, ScimException, ParseException, ClassNotFoundException, BackendException, InstantiationException {
         Operation.initialize(configMgr);
         handler.getProvider().init();
        // KafkaProducer<String,JsonNode> producer = KafkaProducer.create(vertx, producerProps);
@@ -138,7 +156,7 @@ public class TestProducer {
 
     @SuppressWarnings("CatchMayIgnoreException")
     @Test
-    public void c_checkServerMessageRead()  {
+    public void d_checkServerMessageRead()  {
         int waitCnt = 0;
         while (eventHandler.hasNoReceivedEvents() && waitCnt < 5) {
             try {
@@ -162,15 +180,15 @@ public class TestProducer {
     }
 
     @Test
-    public void d_readRepStream() {
+    public void e_readRepStream() {
 
         final int minBatchSize = 1;
         List<ConsumerRecord<String, JsonNode>> buffer = new ArrayList<>();
         int loopCnt = 0;
         boolean received = false;
-        while (loopCnt < 25) {
+        while (loopCnt < 12 && !received) {
             loopCnt++;
-            ConsumerRecords<String, JsonNode> records = consumer.poll(Duration.ofMillis(1000));
+            ConsumerRecords<String, JsonNode> records = consumer.poll(Duration.ofMillis(5000));
             for (ConsumerRecord<String, JsonNode> record : records) {
                 buffer.add(record);
             }
