@@ -1,18 +1,17 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 package com.independentid.scim.op;
 
 import java.time.Duration;
@@ -87,7 +86,7 @@ public class OpStat {
 	
 	/**
 	 * Marks that the operation is now complete, a finish time, and assigned a system execution number
-	 * @param execNum The system execution number (regardless of completion state)
+	 * @param completionError A flag indicating if there was an error on completion
 	 */
 	public void completeOp(boolean completionError) {
 		this.executionNum = OpStat.getExecutionNum();
@@ -99,11 +98,11 @@ public class OpStat {
 		return this.completionError;
 	}
 	
-	public String getStartDate() {
+	public String getStartDateStr() {
 		return this.receiveDate.toString();
 	}
 	
-	public String getFinishDate() {
+	public String getFinishDateStr() {
 		return (this.finishDate == null)?"":this.finishDate.toString();
 	}
 	
@@ -122,12 +121,12 @@ public class OpStat {
 	}
 	
 	public String toString() {
-		StringBuffer buf = new StringBuffer("RequestNum: ");
+		StringBuilder buf = new StringBuilder("RequestNum: ");
 		buf.append(this.requestNum);
 		buf.append(",\tCompleted: ").append(!this.completionError);
 		buf.append("\nExec Num: ").append(this.executionNum);
-		buf.append(",\tReceived: ").append(getStartDate());
-		buf.append(",\tFinished: ").append(getFinishDate());
+		buf.append(",\tReceived: ").append(getStartDateStr());
+		buf.append(",\tFinished: ").append(getFinishDateStr());
 		buf.append(",\tElapsed: ").append(getElapsed());
 		if (this.bulkRequestNum != -1) {
 			buf.append("\nBulk Req Num: ").append(this.bulkRequestNum);
@@ -135,8 +134,14 @@ public class OpStat {
 		}
 		return buf.toString();
 	}
-	
-	public static synchronized int getRequestNum() {
+
+	public Integer getRequestNumber() { return this.requestNum; }
+
+	public Date getStartDate() { return Date.from(this.receiveDate);}
+
+	public Date getFinishDate() { return Date.from(this.finishDate);}
+
+	protected static synchronized int getRequestNum() {
 		return OpStat.requestCounter++;
 	}
 	

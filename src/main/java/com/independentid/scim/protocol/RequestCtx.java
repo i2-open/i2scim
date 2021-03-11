@@ -1,60 +1,56 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.protocol;
 
-import java.io.IOException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.core.err.InvalidSyntaxException;
+import com.independentid.scim.core.err.InvalidValueException;
+import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.op.BulkOps;
+import com.independentid.scim.op.Operation;
+import com.independentid.scim.security.AccessControl;
+import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.schema.SchemaManager;
+import com.independentid.scim.security.AciSet;
+import com.independentid.scim.security.ScimBasicIdentityProvider;
+import com.independentid.scim.serializer.JsonUtil;
+import io.quarkus.security.identity.SecurityIdentity;
+
+import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.validation.constraints.NotNull;
 import java.io.InputStream;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.StringTokenizer;
-import java.util.TreeMap;
-
-import javax.servlet.ServletContext;
-import javax.servlet.ServletInputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.op.Operation;
-import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.serializer.JsonUtil;
-import com.independentid.scim.server.ConfigMgr;
-import com.independentid.scim.server.InvalidSyntaxException;
-import com.independentid.scim.server.InvalidValueException;
-import com.independentid.scim.server.ScimException;
+import java.util.*;
 
 /**
  * @author pjdhunt
  * POJO RequestCtx is use to pass the SCIM request parameters between components
  */
+@SuppressWarnings("FieldCanBeLocal")
 public class RequestCtx {
-	
+	public static String REQUEST_ATTRIBUTE = "ScimRequest";
+
+	//ConfigMgr cmgr;
+
+	SchemaManager smgr;
+
 	//private static final Logger logger = LoggerFactory.getLogger(RequestCtx.class);
 
 	final static SimpleDateFormat headDate = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");
@@ -63,7 +59,7 @@ public class RequestCtx {
 	
 	//protected ServletContext sctx;
 	
-	protected String path = null;
+	protected String path;
 	
 	// the top level path element
 	protected String endpoint = null;
@@ -75,11 +71,12 @@ public class RequestCtx {
 	
 	protected String child = null;
 	
-	protected TreeMap<String,Attribute> attrs = new TreeMap<String,Attribute>(String.CASE_INSENSITIVE_ORDER);  // attributes requested
+	protected TreeMap<String,Attribute> attrs = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);  // attributes requested
 
-	protected TreeMap<String,Attribute> excluded = new TreeMap<String,Attribute>(String.CASE_INSENSITIVE_ORDER); // attributes to be excluded
+	protected TreeMap<String,Attribute> excluded = new TreeMap<>(String.CASE_INSENSITIVE_ORDER); // attributes to be excluded
 	
 	protected Filter filter = null; // request filter
+	protected boolean clientNoFilterSpecd = true;
 
 	protected String sortBy = null; // sort order attribute
 
@@ -94,52 +91,46 @@ public class RequestCtx {
 	protected String match = null;
 	protected String nmatch = null;
 	protected String since = null;
+
+	protected AccessControl.Rights right;
 		
 	// This can be used by a provider to request URL encoded extension names be used
 	// Used to address field name and length restrictions in some dbs
 	protected boolean encodeFields = false;
-	
+
+	HttpServletRequest req = null;
 	HttpServletResponse hresp = null;
 	
 	ServletContext sctx;
 	
-	ConfigMgr cmgr = null;
-	
-	private boolean hasSecAuth = false;
-	private String secSubject = null;
+	private final boolean hasSecAuth = false;
+	private SecurityIdentity identity = null;
 	private ArrayList<String> secRoles = null;
-	private Authentication secAuth = null;
-	
+	private AciSet acis = null;
 
+	boolean isMe = false;
 
+	private boolean postSearch = false;
 
-	/**
-	 * Generates a SCIM request context by parsing the HttpServletRequest.
-	 * @param request
-	 * @param resp TODO
-	 * @throws ScimException
-	 * @throws IOException
-	 */
-	public RequestCtx(HttpServletRequest request, HttpServletResponse resp) throws ScimException, IOException {
-		this(request, null, false);  
-		cmgr = ConfigMgr.getInstance();
-	}
-	
+	protected String tid;
+
 	/**
 	 * Used to create a request context that exists within a single SCIM Bulk operation
-	 * @param request A parsed JSON structure representing a single SCIM bulk operation
-	 * @throws SchemaException 
+	 * @param bulkReqOp A parsed JSON structure representing a single SCIM bulk operation
+	 * @param schemaManager A pointer to the server ConfigMgr object (for schema)
+	 * @throws SchemaException thrown when the bulk request JSON structure is invalid
+	 * @throws ScimException thrown due to a schema or other Scim related issue
 	 */
-	public RequestCtx(JsonNode bulkReqOp) throws ScimException, SchemaException {
+	public RequestCtx(JsonNode bulkReqOp, SchemaManager schemaManager) throws ScimException, SchemaException {
 		if (!bulkReqOp.isObject()) {
 			throw new SchemaException(
 					"Expecting an object element of 'Operations' array.");
 		}
-		cmgr = ConfigMgr.getInstance();
+		this.smgr = schemaManager;
 		this.sctx = null;
-	
+		this.tid = schemaManager.generateTransactionId();
 
-		JsonNode item = bulkReqOp.get("method");
+		JsonNode item = bulkReqOp.get(BulkOps.PARAM_METHOD);
 		if (item == null)
 			throw new InvalidValueException(
 					"Bulk request operation missing required attribute 'method'.");
@@ -155,10 +146,10 @@ public class RequestCtx {
 					"Unsupported bulk method specified: " + this.bulkMethod);
 		}
 
-		item = bulkReqOp.get("bulkId");
+		item = bulkReqOp.get(BulkOps.PARAM_BULKID);
 		this.bulkId = (item == null) ? null : item.asText();
 
-		item = bulkReqOp.get("version");
+		item = bulkReqOp.get(BulkOps.PARAM_VERSION);
 		this.etag = (item == null) ? null : item.asText();
 
 		
@@ -166,11 +157,11 @@ public class RequestCtx {
 		//this.req = req;
 		
 		
-		item = bulkReqOp.get("path");
+		item = bulkReqOp.get(BulkOps.PARAM_PATH);
 		if (item == null)
 			throw new SchemaException(
 					"Bulk request operation missing required attribute 'path'.");
-		this.path = (item == null) ? null : item.asText();
+		this.path = item.asText();
 		parsePath();
 		
 		// The following SCIM parameters not used in Bulk Ops
@@ -193,13 +184,15 @@ public class RequestCtx {
 	 * @param resEndpoint A String containing the top level container or resource type path element
 	 * @param id A String that is the resource identifier (typically a GUID).
 	 * @param filter A String representation of a SCIM query filter or null.
+	 * @param schemaManager A pointer to the server ConfigMgr object (for schema)
 	 * @throws ScimException for invalid filter, invalid parameters etc.
 	 */
-	public RequestCtx(String resEndpoint, String id, String filter) throws ScimException {
-		cmgr = ConfigMgr.getInstance();
+	public RequestCtx(String resEndpoint, String id, String filter, SchemaManager schemaManager) throws ScimException {
+		this.smgr = schemaManager;
 		this.endpoint = resEndpoint;
 		this.id = id;
-		StringBuffer buf = new StringBuffer();
+		this.tid = schemaManager.generateTransactionId();
+		StringBuilder buf = new StringBuilder();
 		
 		if (resEndpoint != null) {
 			if (!resEndpoint.startsWith("/"))
@@ -212,8 +205,10 @@ public class RequestCtx {
 		}
 		this.path = buf.toString();
 		parsePath();
-		if (filter != null)
+		if (filter != null) {
 			this.filter = Filter.parseFilter(filter, this);
+			clientNoFilterSpecd = false;
+		}
 		this.sctx = null;
 	}
 	
@@ -225,14 +220,16 @@ public class RequestCtx {
 	 * @param allParams All parameters after "?" e.g. as provided by @RequestParam Map<String,String> allParams
 	 * @param allHeaders All HTTP request headers e,g, as orovided by @RequestHeader MultiValueMap<String, String> headers
 	 * @param body Optional, the request body (e.g. from PATCH or PUT)
+	 * @param schemaManager A pointer to the server ConfigMgr object (for schema)
 	 * @throws ScimException for invalid filter, invalid parameters etc.
 	 */
-	public RequestCtx(ServletContext sctx, String resType, String id, 
-			Map<String,String> allParams, Map<String, String> allHeaders, String body) throws ScimException {
-		cmgr = ConfigMgr.getInstance();
+	public RequestCtx(ServletContext sctx, String resType, String id,
+					  Map<String, String> allParams, Map<String, String> allHeaders, String body, SchemaManager schemaManager) throws ScimException {
+		this.smgr = schemaManager;
 		this.endpoint = resType;
 		this.id = id;
-		StringBuffer buf = new StringBuffer('/');
+		this.tid = schemaManager.generateTransactionId();
+		StringBuilder buf = new StringBuilder("/");
 		if (resType != null) {
 			buf.append(resType).append('/');
 			if (id !=null)
@@ -243,7 +240,7 @@ public class RequestCtx {
 		this.path = buf.toString();
 		parsePath();
 		
-		String param = null;
+		String param;
 		param = allParams.get(ScimParams.QUERY_attributes);
 		if (param != null)
 			setAttributes(param);
@@ -256,6 +253,7 @@ public class RequestCtx {
 		
 		if (param != null) {
 			this.filter = Filter.parseFilter(param, this);
+			clientNoFilterSpecd = false;
 		}
 		
 		this.sortBy = allParams.get(ScimParams.QUERY_sortby);
@@ -272,7 +270,7 @@ public class RequestCtx {
 		this.since = allHeaders.get(ScimParams.HEADER_IFUNMODSINCE);
 		
 		if (body != null) {
-			parseBody(body);
+			parseSearchBody(body);
 			
 		}
 		
@@ -284,40 +282,29 @@ public class RequestCtx {
 
 	/**
 	 * Constructor uses HTTPSevletRequest to capture the relevant SCIM Parameters from the URL and optionally from the request body.
-	 * @param req
+	 * @param req The {@link HttpServletRequest} provided by the Scim Servlet
 	 * @param resp The HTTPServletResponse object (used to set status and headers)
-	 * @param parseBody Set to true when the HTTP body contains parameters (e.g. for POST Search)
-	 * @throws ScimException
-	 * @throws IOException
+	 * @param schemaManager A pointer to the server ConfigMgr object (for schema)
+	 * @throws ScimException for invalid filter, invalid parameters etc.
 	 */
-	public RequestCtx(HttpServletRequest req, HttpServletResponse resp, boolean parseBody) throws ScimException, IOException {
+	public RequestCtx(HttpServletRequest req, HttpServletResponse resp, SchemaManager schemaManager) throws ScimException {
 		//this.req = request;
 		//sctx = request.getServletContext();
-		cmgr = ConfigMgr.getInstance();
+		this.req = req;
+		this.tid = schemaManager.generateTransactionId();
+		this.smgr = schemaManager;
 		path = req.getPathInfo();
+		if (path == null)
+			path = req.getRequestURI();   // This seems to be needed for Quarkus
 		
 		// This added because SpringBoot MVC does not seem to use PathInfo in the same way.
 		if (path == null)
 			path = req.getServletPath();
 		
 		this.sctx = req.getServletContext();
-		
-		parseSecurityContext();
-		
-		
-		//.forEach(role -> logger.debug("User: "+curUser+", Role: "+role.getAuthority()));
-		//boolean hasUserRole = authentication.getAuthorities().stream()
-		//          .anyMatch(r -> r.getAuthority().equals("ROLE_USER"));
-		
-		//Object pobj = req.getAttribute(HandlerMapping.PATH_WITHIN_HANDLER_MAPPING_ATTRIBUTE);
-		//if (pobj != null) logger.debug("path withing mapping:\t"+pobj);
-		//logger.debug("Ctx.ContextPath:\t"+this.sctx.getContextPath()); 
-		//logger.debug("ServletPath:\t"+req.getServletPath());
-		//logger.debug("ContextPath:\t"+req.getContextPath());
-		//logger.debug("Path Trans:\t"+req.getPathTranslated());
-		//logger.debug("PathInfo:\t"+req.getPathInfo());
-		
-		//String path = request.getRequestURI().substring(request.getContextPath().length());
+
+		parseSecurityContext(req);
+
 		this.hresp = resp;
 		
 		this.bulkId = null;
@@ -332,8 +319,10 @@ public class RequestCtx {
 		
 		String filt = req.getParameter(ScimParams.QUERY_filter);
 		if (filt == null) filter=null;
-		else
+		else {
 			filter = Filter.parseFilter(filt, this);
+			clientNoFilterSpecd = false;
+		}
 		
 		this.sortBy = req.getParameter(ScimParams.QUERY_sortby);
 		
@@ -347,16 +336,19 @@ public class RequestCtx {
 		
 		//Preconditions
 		this.etag = req.getParameter(ScimParams.HEADER_ETAG);
-		
+
 		this.match = req.getParameter(ScimParams.HEADER_IFMATCH);
 		this.nmatch = req.getParameter(ScimParams.HEADER_IFNONEMATCH);
 		this.since = req.getParameter(ScimParams.HEADER_IFUNMODSINCE);
 		
 		// If this was a POST search request, parse the body for parameters
+		//* this can't be invoked here becaues cmgr will not be ready. Moved to SearchOp doPreOperation
+		/*
 		if (parseBody) {
 			ServletInputStream input = req.getInputStream();
-			parseBody(input);
+			parseSearchBody(input);
 		}
+		 */
 		
 		if (this.sortOrder != null && !(this.sortOrder.equals("ascending")
 				|| this.sortOrder.equals("descending")))
@@ -366,7 +358,11 @@ public class RequestCtx {
 		//	logger.debug((parseBody?"Body ":"URL ")+"RequestCtx parsed path: "+this.getPath());
 
 	}
-	
+
+	protected void parseSecurityContext(HttpServletRequest req) {
+		//TODO to be implemented.
+	}
+	/*
 	protected void parseSecurityContext() {
 		secAuth = SecurityContextHolder.getContext().getAuthentication();
 		if (secAuth != null) {
@@ -387,9 +383,13 @@ public class RequestCtx {
 		}
 	
 	}
+	*/
 
-	private void parseBody(Object body) throws ScimException {
-		
+	public boolean isPostSearch() {
+		return this.postSearch;
+	}
+
+	public void parseSearchBody(Object body) throws ScimException {
 		
 		JsonNode node;
 		try {
@@ -430,13 +430,13 @@ public class RequestCtx {
 				Iterator<JsonNode> iter = vnode.elements();
 				while (iter.hasNext()) {
 					String name = iter.next().asText();
-					Attribute attr = cmgr.findAttribute(name, this);
+					Attribute attr = smgr.findAttribute(name, this);
 					if (attr != null)
 						this.attrs.put(attr.getPath(),attr);
 				}
 			} else {
 				String name = vnode.asText();
-				Attribute attr = cmgr.findAttribute(name, this);
+				Attribute attr = smgr.findAttribute(name, this);
 				if (attr != null)
 					this.attrs.put(attr.getPath(),attr);
 				
@@ -450,20 +450,21 @@ public class RequestCtx {
 				Iterator<JsonNode> iter = vnode.elements();
 				while (iter.hasNext()) {
 					String name = iter.next().asText();
-					Attribute attr = cmgr.findAttribute(name, this);
+					Attribute attr = smgr.findAttribute(name, this);
 					if (attr != null)
 						this.excluded.put(attr.getPath(),attr);
 				}
 			} else {
 				String name = vnode.asText();
-				Attribute attr = cmgr.findAttribute(name, this);
+				Attribute attr = smgr.findAttribute(name, this);
 				if (attr != null)
 					this.excluded.put(attr.getPath(),attr);
 			}
 		}			
 		vnode = node.get("filter");
 		if (vnode != null) {
-			this.filter = Filter.parseFilter(vnode.asText(), this);					
+			this.filter = Filter.parseFilter(vnode.asText(), this);
+			this.clientNoFilterSpecd = false;
 		}
 		
 		vnode = node.get("sortBy");
@@ -482,9 +483,10 @@ public class RequestCtx {
 		vnode = node.get("count");
 		if (vnode != null)
 			this.count = vnode.asInt();
-		
-	}	
-	
+
+		this.postSearch = true;
+	}
+
 	public void setAttributes(String attrList) {
 		this.attrs.clear();
 		if (attrList == null) return;
@@ -492,12 +494,19 @@ public class RequestCtx {
 		StringTokenizer tkn = new StringTokenizer(attrList,",");
 		while (tkn.hasMoreTokens()) {
 			String name = tkn.nextToken();
-			Attribute attr = cmgr.findAttribute(name, this);
+			Attribute attr = smgr.findAttribute(name, this);
 			if (attr != null)
 				this.attrs.put(attr.getPath(),attr);
 		}
 	}
-	
+
+	public void addExcludeAttribute(Set<Attribute> excludedAttrs) {
+		for (Attribute attr : excludedAttrs ) {
+			excluded.put(attr.getPath(),attr);
+		}
+
+	}
+
 	public void setExcludedAttrs(String exclList) {
 		this.excluded.clear();
 		if (exclList == null) return;
@@ -505,7 +514,7 @@ public class RequestCtx {
 		StringTokenizer tkn = new StringTokenizer(exclList,",");
 		while (tkn.hasMoreTokens()) {
 			String name = tkn.nextToken();
-			Attribute attr = cmgr.findAttribute(name, this);
+			Attribute attr = smgr.findAttribute(name, this);
 			if (attr != null)
 				this.excluded.put(attr.getPath(),attr);	
 		}
@@ -534,42 +543,57 @@ public class RequestCtx {
 			endpoint = path;
 			return;
 		}
-		if (path.equals(ScimParams.PATH_SEARCH))
+		if (path.equals(ScimParams.PATH_GLOBAL_SEARCH)) {
+			this.postSearch = true;
 			return;
+		}
 		String[] elems = path.split("/");
-		endpoint = elems[1];
-		
-		if (elems.length > 2) {
-			if (elems[2].equals(ScimParams.PATH_SUBSEARCH))
-				id = null;
-			else
-				id = elems[2];
-		}
-		if (elems.length > 3) {
-			if (elems[3].equals(ScimParams.PATH_SUBSEARCH))
-				child= null;
-			else
-				child = elems[3];
-		}
-		
-		/*(
-		StringTokenizer tkn = new StringTokenizer(path, "/");
-		if (tkn.hasMoreTokens()) {
-			endpoint = tkn.nextToken();
-			if (endpoint.equals(".search"))
-				endpoint = null;
-			if (tkn.hasMoreTokens()) {
-				id = tkn.nextToken();
-				if (id.equals(".search"))
+		//System.out.println("\nPath=["+path+"]\n");
+		switch (elems.length) {
+			case 0:
+				endpoint = "/";
+				break;
+
+			case 1:
+				endpoint = elems[0];
+				break;
+
+			case 2:
+				endpoint = elems[1];
+				break;
+
+			case 3:
+				endpoint = elems[1];
+				if (elems[2].equals(ScimParams.PATH_SUBSEARCH)) {
 					id = null;
-				if (tkn.hasMoreTokens()) {
-					child = tkn.nextToken();
-					if (child.equals(".search"))
-						child = null;
-				}
+					postSearch = true;
+				} else
+					id = elems[2];
+				break;
+
+			default: //3 or more
+				endpoint = elems[1];
+				if (elems[3].equals(ScimParams.PATH_SUBSEARCH)) {
+					child = null;
+					postSearch = true;
+				} else
+					child = elems[3];
+				break;
+		}
+
+		if (endpoint.equals(ScimParams.PATH_TYPE_ME)) {
+			this.isMe = true;
+			SecurityIdentity identity = getSecSubject();
+			if (identity != null) {
+				id = identity.getAttribute(ScimBasicIdentityProvider.ATTR_SELF_ID);
+				if (id != null) endpoint = "Users";
 			}
-		}*/
+		}
+
 	}
+
+	public boolean isMe() { return isMe; }
+
 	
 	/**
 	 * @return The first level path within the Scim server.  E.g. "Users" or "Groups". For root level, a "/" is returned.
@@ -579,7 +603,7 @@ public class RequestCtx {
 	}
 	
 	/**
-	 * @param Specify the endpoint/resource type minus the initial slash. Use "/" to indicate root level.
+	 * @param endpoint the endpoint/resource type minus the initial slash. Use "/" to indicate root level.
 	 */
 	public void setResourceContainer(String endpoint) {
 		this.endpoint = endpoint;
@@ -614,10 +638,8 @@ public class RequestCtx {
     			return true;
     		if (this.excluded.containsValue(attr))
     			return false;
-    		if (this.attrs.isEmpty())
-    			return true;
-    		return false;
-    	}
+			return this.attrs.isEmpty();
+		}
 		return true;
 	}
 	
@@ -681,6 +703,13 @@ public class RequestCtx {
 	public Filter getFilter() {
 		return this.filter;
 	}
+
+	/**
+	 * Because ACIs can modify a request filter (tartgetFilter param), it is important to track whether client
+	 * originally requested a filter as the presence of a client filter is used to determine output format per RFC7644 Sec 3.4.2.
+	 * @return True if no filter was originally requested.
+	 */
+	public boolean hasNoClientFilter() { return this.clientNoFilterSpecd; }
 	
 	/*
 	public HttpServletRequest getHttpRequest() {
@@ -694,14 +723,18 @@ public class RequestCtx {
 	public HttpServletResponse getHttpServletResponse() {
 		return this.hresp;
 	}
+
+	public HttpServletRequest getHttpServletRequest() {
+		return this.req;
+	}
 	
 	
 	public String toString() {
 		return this.path;
 	}
 	
-	public ConfigMgr getConfigMgr() {
-		return this.cmgr;
+	public SchemaManager getSchemaMgr() {
+		return smgr;
 	}
 	
 	public void setEncodeExtensions(boolean mode) {
@@ -722,8 +755,8 @@ public class RequestCtx {
 	/**
 	 * @return the secSubject
 	 */
-	public String getSecSubject() {
-		return secSubject;
+	public SecurityIdentity getSecSubject() {
+		return this.identity;
 	}
 
 	/**
@@ -735,16 +768,98 @@ public class RequestCtx {
 	
 	public boolean hasRole(String role) {
 		if (secRoles == null)
-			return true;
+			return false;
 		
 		return secRoles.contains(role.toLowerCase());
 	}
 
-	/**
-	 * @return the secAuth
-	 */
-	public Authentication getSecAuth() {
-		return secAuth;
+	public void setSecSubject(@NotNull SecurityIdentity identity) {
+
+		this.identity = identity;
+		this.secRoles = new ArrayList<>();
+		this.secRoles.addAll(
+				identity.getRoles());
 	}
-	
+
+	public void setAciSet(AciSet acis) {
+		this.acis = acis;
+	}
+
+	public void setAccessContext(@NotNull SecurityIdentity identity, AciSet acis) {
+
+		this.identity = identity;
+		this.secRoles = new ArrayList<>();
+		this.secRoles.addAll(
+				identity.getRoles());
+		this.acis = acis;
+
+	}
+
+	public AciSet getAcis() {
+		return this.acis;
+	}
+
+	public void setAcis(AciSet acis) {
+		this.acis = acis;
+	}
+
+	/**
+	 * Takes the provided filter and adds it to an existing filter using an "and" clause. If there is no existing
+	 * filter, the provided filter becomes the filter. For example for many SCIM requests, the accesscontrol system
+	 * may wish to append the request with a targetFilter requirement.
+	 * @param appendfilter The filter to be added to the requested filter.
+	 */
+	public void appendFilter(@NotNull Filter appendfilter) {
+		if (this.filter == null)
+			this.filter = appendfilter;
+		else
+			this.filter = new LogicFilter(true,this.filter,appendfilter);
+
+	}
+
+	/**
+	 * The existing filter is combined with an and clause with a list of filters provided which are combined in an OR clause.
+	 * This is done when more than one ACI is active with a targetFilter expression. E.g. ((targetFilter1 OR targetFilter2) and (requestFilter))
+	 * @param filters A List of filters to be combined with OR and then appended with the original requestFilter.
+	 */
+	public void combineFilters(@NotNull List<Filter> filters) {
+		if (filters.isEmpty())
+			return;
+
+		if (filters.size() == 1) {
+			appendFilter(filters.get(0));
+			return;
+		}
+
+		Filter orClause;
+		Iterator<Filter> iter = filters.iterator();
+		orClause = iter.next();
+		while (iter.hasNext())
+			orClause = new LogicFilter(false,orClause,iter.next());
+
+		// Take the "or" filter terms and combine with an and to the original filter.
+		appendFilter(orClause);
+	}
+
+	public AccessControl.Rights getRight() {
+		return this.right;
+	}
+
+	public void setRight(AccessControl.Rights right) {
+		this.right = right;
+	}
+
+	public String getTranId() {
+		return this.tid;
+	}
+
+	/**
+	 * Used to override the transaction identifier. Typically used when executing a replication transaction and the
+	 * original TID is to be maintained
+	 * @param tranUuid The transaction id (a UUID) to be set.
+	 */
+	public void setTranId(String tranUuid) {
+		this.tid = tranUuid;
+	}
+
 }

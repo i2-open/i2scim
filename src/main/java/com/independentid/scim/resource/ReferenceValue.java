@@ -1,19 +1,30 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 package com.independentid.scim.resource;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.independentid.scim.core.err.ConflictException;
+import com.independentid.scim.op.IBulkIdResolver;
+import com.independentid.scim.op.IBulkIdTarget;
+import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -23,39 +34,26 @@ import java.net.URL;
 import java.text.ParseException;
 import java.util.List;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeType;
-import com.independentid.scim.op.IBulkIdResolver;
-import com.independentid.scim.op.IBulkIdTarget;
-import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.server.ConflictException;
-
 public class ReferenceValue extends Value implements IBulkIdTarget  {
 
 	URI value;
 	IBulkIdResolver resolver;
 	
-	public ReferenceValue() {
-		
-	}
-
 	public ReferenceValue(Attribute attr, JsonNode node) throws ConflictException, SchemaException, ParseException {
 		this(attr, node, null);
 	}
 	
-	public ReferenceValue(Attribute attr, String uri) throws ConflictException, SchemaException, ParseException {
+	public ReferenceValue(Attribute attr, String uri) throws SchemaException {
 		super();
 		this.jtype = JsonNodeType.STRING;
 		setUri(attr,uri);
 	}
 	
-	public ReferenceValue(Attribute attr, URI uri) throws ConflictException, SchemaException, ParseException {
+	public ReferenceValue(Attribute attr, URI uri) {
 		super();
 		this.jtype = JsonNodeType.STRING;
 		this.value = uri;
+		this.attr = attr;
 	}
 
 
@@ -63,7 +61,7 @@ public class ReferenceValue extends Value implements IBulkIdTarget  {
 		super(attr, node);
 		this.resolver = bulkIdResolver;
 		
-		parseJson(attr,node);
+		parseJson(node);
 	}
 
 	public String toString() {
@@ -84,9 +82,17 @@ public class ReferenceValue extends Value implements IBulkIdTarget  {
 	}
 
 	@Override
-	public void parseJson(Attribute attr, JsonNode node)
+	public void parseJson(JsonNode node)
 			throws ConflictException, SchemaException, ParseException {
 		setUri(attr,node.asText());
+	}
+
+	@Override
+	public JsonNode toJsonNode(ObjectNode parent, String aname) {
+		if (parent == null)
+			parent = JsonUtil.getMapper().createObjectNode();
+		parent.put(aname,toString());
+		return parent;
 	}
 	
 	private void setUri(Attribute attr,String newUri) throws SchemaException {
@@ -110,7 +116,7 @@ public class ReferenceValue extends Value implements IBulkIdTarget  {
 	}
 
 	@Override
-	public URI getValueArray() {
+	public URI getRawValue() {
 		return this.value;
 	}
 
@@ -147,15 +153,19 @@ public class ReferenceValue extends Value implements IBulkIdTarget  {
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof ReferenceValue) {
-			ReferenceValue val = (ReferenceValue) obj;
-			// equality is based on the java.net.URL based equality
-			return
-				val.value.equals(this.value);
+			ReferenceValue obVal = (ReferenceValue) obj;
+			return obVal.value.equals(value);
 		}
-		// types don't match,so not equal
 		return false;
 	}
-	
-	
+
+	@Override
+	public int compareTo(Value o) {
+		if (o instanceof ReferenceValue) {
+			ReferenceValue obVal = (ReferenceValue) o;
+			return value.compareTo(obVal.value);
+		}
+		throw new ClassCastException("Unable to compare Value types");
+	}
 
 }

@@ -1,32 +1,33 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 package com.independentid.scim.schema;
+
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.protocol.ScimParams;
+import com.independentid.scim.resource.Meta;
+import com.independentid.scim.serializer.JsonUtil;
+import com.independentid.scim.serializer.ScimSerializer;
 
 import java.io.IOException;
 import java.io.StringWriter;
 import java.util.Iterator;
 import java.util.TreeMap;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.protocol.ScimParams;
-import com.independentid.scim.serializer.JsonUtil;
-import com.independentid.scim.serializer.ScimSerializer;
 
 /*
  * Schema defines a SCIM schema, its attributes and associated meta data. 
@@ -43,25 +44,25 @@ public class Schema implements ScimSerializer  {
 	
     private String description;
     
-    private TreeMap<String,Attribute> attributes;
+    private final TreeMap<String,Attribute> attributes;
+
+    private final SchemaManager smgr;
     
     
-	public Schema () {
-		this.attributes = new TreeMap<String,Attribute>(String.CASE_INSENSITIVE_ORDER);
-		
+	public Schema (SchemaManager schemaManager) {
+		this.attributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+		this.smgr = schemaManager;
 	}	
         
 	/**
 	 * Create a new <code>Schema</code> object based on Json Parser
-	 * @param jp A <JsonMode> parser handle containing a SCIM Schema object
-	 * @throws JsonProcessingException
-	 * @throws IOException
-	 * @throws SchemaException 
+	 * @param node A <JsonMode> parser handle containing a SCIM Schema object
+	 * @throws SchemaException May be thrown when parsing an invalid JSON representation of SCIM Schema
 	 */
-	public Schema (JsonNode node) throws JsonProcessingException, IOException, SchemaException {
+	public Schema (SchemaManager schemaManager,JsonNode node) throws SchemaException {
 		
-		this.attributes = new TreeMap<String,Attribute>(String.CASE_INSENSITIVE_ORDER);
-		
+		this.attributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+		this.smgr = schemaManager;
 		this.parseJson(node);
 	}
 	    
@@ -123,7 +124,7 @@ public class Schema implements ScimSerializer  {
 
     public Attribute[] getAttributes() {
         return this.attributes.values()
-        		.toArray(new Attribute[this.attributes.size()]);
+        		.toArray(new Attribute[0]);
     }
     
     
@@ -181,9 +182,24 @@ public class Schema implements ScimSerializer  {
 		return false;
 	}
 
-	public JsonNode toJsonNode() throws IOException {
-    	
-    	return JsonUtil.getJsonTree(toJsonString());
+	public JsonNode toJsonNode() {
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+		node.putArray("schemas").add(SCHEMA_ID);
+		node.put("id",id);
+
+		if (this.name != null)
+			node.put("name",name);
+		if (this.description != null)
+			node.put("description",description);
+		if (!attributes.values().isEmpty()){
+			ArrayNode anode = node.putArray("attributes");
+			for (Attribute attr : this.attributes.values()) {
+				anode.add(attr.toJsonNode());
+			}
+		}
+		node.set("meta",meta.toJsonNode());
+		return node;
+
     }
     
 	@Override
@@ -191,6 +207,7 @@ public class Schema implements ScimSerializer  {
 		
 		serialize(gen, ctx, false);
 	}
+
 
 	@Override
 	public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException {
@@ -210,9 +227,7 @@ public class Schema implements ScimSerializer  {
 			gen.writeStringField("description", this.description);
 		
 		gen.writeArrayFieldStart("attributes");
-		Iterator<Attribute> iter = this.attributes.values().iterator();
-		while (iter.hasNext()) {
-			Attribute attr = iter.next();
+		for (Attribute attr : this.attributes.values()) {
 			attr.serialize(gen, ctx, false);
 		}
 		gen.writeEndArray();
@@ -245,7 +260,10 @@ public class Schema implements ScimSerializer  {
 			this.meta = new Meta(item);
 		else {
 			this.meta = new Meta();
+			// Set default location and type
 			this.meta.setResourceType(ScimParams.TYPE_SCHEMA);
+			String loc = "/"+ScimParams.PATH_TYPE_SCHEMAS+"/"+getId();
+			this.meta.setLocation(loc);
 		}
 		JsonNode attrs = node.get("attributes");
 		if (attrs != null) {
@@ -264,6 +282,4 @@ public class Schema implements ScimSerializer  {
 		
 	}
 
-
-    
 }

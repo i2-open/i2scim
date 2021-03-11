@@ -1,31 +1,29 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 package com.independentid.scim.schema;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
+
+import java.io.IOException;
+import java.util.*;
 /*
  * Attributes defines the set of attributes for a SCIM <code>Schema</code> object
  * 
@@ -33,12 +31,13 @@ import com.independentid.scim.serializer.ScimSerializer;
 public class Attribute implements ScimSerializer,Comparable<Attribute> {
 	
 	public final static String TYPE_String = "string";
-	public final static String TYPE_Date = "dateTime";
+	public final static String TYPE_Date = "datetime";
 	public final static String TYPE_Boolean = "boolean";
 	public final static String TYPE_Decimal = "decimal";
-	public final static String TYPE_Number = "number";
+	public final static String TYPE_Integer = "integer";
 	public final static String TYPE_Complex = "complex";
 	public final static String TYPE_Reference = "reference";
+	public final static String TYPE_Binary = "binary";
 	
 	public final static String MUTABILITY_readWrite = "readWrite";
 	public final static String MUTABILITY_writeOnly = "writeOnly";
@@ -72,7 +71,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 	
 	private ArrayList<String> referenceTypes;
 
-	private TreeMap<String,Attribute> subAttributes;
+	private final TreeMap<String,Attribute> subAttributes;
 
     private String returned;
 	
@@ -85,11 +84,11 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 	private Attribute parent;   
     
 	public Attribute () {
-		this.subAttributes = new TreeMap<String,Attribute>(String.CASE_INSENSITIVE_ORDER);
+		this.subAttributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 	}	
 	
 	public Attribute(String name) {
-		this.subAttributes = new TreeMap<String,Attribute>(String.CASE_INSENSITIVE_ORDER);
+		this.subAttributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 		this.name = name;
 		setPath(null,name);
 	}
@@ -99,7 +98,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 	}
 
 	public Attribute(JsonNode node, Attribute parent) throws SchemaException {
-		this.subAttributes = new TreeMap<String,Attribute>(String.CASE_INSENSITIVE_ORDER);
+		this.subAttributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 		this.parent = parent;
 		this.parseJson(node);
 	}
@@ -175,20 +174,27 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
      */
     public boolean isReturnable(RequestCtx ctx) {
     	if (ctx == null) {
+    		/*
     		switch (this.getReturned()) {
-    		case Attribute.RETURNED_always:
-        		return true;
-        	case Attribute.RETURNED_never:
-        		return false;
-        	case Attribute.RETURNED_request:
-        		// is only returned when specifically requested
-        		return false;
-        	case Attribute.RETURNED_default:
-        		return true;
+    			case Attribute.RETURNED_default:
+    			case Attribute.RETURNED_always:
+        			return true;
+        		case Attribute.RETURNED_never:
+        		case Attribute.RETURNED_request:
+        			// is only returned when specifically requested
+        			return false;
     		}
+    		 */
+			// If no RequestCtx, this is an internal call. Always return all values!
+			return true;
     	}
-        	
-    	boolean isReturnable = ctx.isAttrRequested(this);
+
+    	// added logic to account for parent requested (which would then enable default returns of sub attrs)
+		boolean parentRequested = (this.getParent() != null && ctx.isAttrRequested(getParent()));
+
+		boolean isReturnable =  ctx.isAttrRequested(this) ||
+				(parentRequested &&
+						(getReturned().equals(RETURNED_default) || getReturned().equals(RETURNED_always)));
     	if (this.getSubAttributesMap().isEmpty())
     		return isReturnable;
     
@@ -201,17 +207,19 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
     	boolean subreturn = false;
     	Iterator<Attribute> sattrIter = this.getSubAttributesMap().values().iterator();
     	while (!subreturn && sattrIter.hasNext()) {
-    		if (ctx.isAttrRequested(sattrIter.next()))
+    		Attribute next = sattrIter.next();
+    		if (ctx.isAttrRequested(next))
     			subreturn = true;
     	}
     	
     	return subreturn;
     }
-    
+
+    /*
     public boolean isSubAttrReturnable(RequestCtx ctx) {
     	
     	return false;
-    }
+    }*/
 
     public void setReturned(String returned) {
         this.returned = returned;
@@ -246,7 +254,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
     }
 
     public void setCanonicalValues(List<String> canonicalValues) {
-        this.canonicalValues = new ArrayList<String>(canonicalValues);
+        this.canonicalValues = new ArrayList<>(canonicalValues);
     }
     
     public ArrayList<String> getReferenceTypes() {
@@ -254,7 +262,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
     }
     
     public void setReferenceTypes(List<String> types) {
-    	this.referenceTypes = new ArrayList<String>(types);
+    	this.referenceTypes = new ArrayList<>(types);
     }
     
     public void setPath(String schema, String relPath) {
@@ -268,13 +276,11 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
     		this.path = relPath + "." + this.name;
 
     	if (this.subAttributes == null) return;
-    	
-    	Iterator<String> saiter = this.subAttributes.keySet().iterator();
-    	while (saiter.hasNext()) {
-    		String sname = saiter.next();
-    		Attribute attr = this.subAttributes.get(sname);
-    		attr.setPath(schema, this.path+"."+sname);
-    	}
+
+		for (String sname : this.subAttributes.keySet()) {
+			Attribute attr = this.subAttributes.get(sname);
+			attr.setPath(schema, this.path + "." + sname);
+		}
     }
     
     /**
@@ -287,6 +293,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
     /**
      * @return The relative path (without schema) of the attribute
      */
+
     public String getRelativePath() {
     	return this.path;
     }
@@ -300,15 +307,55 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
     		return schema + ":" + this.path;
     }
 
+	@Override
+	public boolean equals(Object obj) {
+    	if (obj instanceof Attribute)
+			return getPath().equals(((Attribute)obj).getPath());
+    	return false;
+	}
 
 	@Override
 	public int compareTo(Attribute attr) {
-		return this.path.compareTo(attr.getPath());
+
+		return getPath().compareTo(attr.getPath());
+	}
+
+	@Override
+	public int hashCode() {
+		return getPath().hashCode();
 	}
 
 	@Override
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
 		serialize(gen, ctx, false);
+	}
+
+	@Override
+	public JsonNode toJsonNode() {
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+		node.put("name",name);
+		node.put("type",type);
+		if (description != null)
+			node.put("description",description);
+		if (returned != null)
+			node.put("returned",returned);
+		if (mutability != null)
+			node.put("mutability",mutability);
+		if (type.equals(TYPE_String)) {
+			node.put("caseExact",caseExact);
+			if (uniqueness != null)
+				node.put("uniqueness",uniqueness);
+			if (canonicalValues != null && canonicalValues.size() > 0) {
+				ArrayNode anode = node.putArray("canonicalValues");
+				for (String val: canonicalValues)
+					anode.add(val);
+			}
+
+
+		}
+		return node;
+
+
 	}
 
 	@Override
@@ -340,9 +387,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 			if (this.canonicalValues != null &&
 					this.canonicalValues.size() > 0) {
 				gen.writeArrayFieldStart("canonicalValues");
-				Iterator<String> iter = this.canonicalValues.iterator();
-				while (iter.hasNext()) {
-					String value = iter.next();
+				for (String value : this.canonicalValues) {
 					gen.writeString(value);
 				}
 				gen.writeEndArray();
@@ -350,11 +395,9 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 		}
 		
 		if (this.type.equals(TYPE_Reference)) {
-			if (this.referenceTypes != null & this.referenceTypes.size()>0) {
+			if (this.referenceTypes != null && this.referenceTypes.size()>0) {
 				gen.writeArrayFieldStart("referenceTypes");
-				Iterator<String> iter = this.referenceTypes.iterator();
-				while (iter.hasNext()) {
-					String value = iter.next();
+				for (String value : this.referenceTypes) {
 					gen.writeString(value);
 				}
 				gen.writeEndArray();
@@ -367,9 +410,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 		
 		if (this.subAttributes.size() > 0) {
 			gen.writeArrayFieldStart("subAttributes");
-			Iterator<Attribute> iter = this.subAttributes.values().iterator();
-			while (iter.hasNext()) {
-				Attribute attr = iter.next();
+			for (Attribute attr : this.subAttributes.values()) {
 				attr.serialize(gen, ctx, forHash);
 			}
 			gen.writeEndArray();
@@ -393,7 +434,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 		if (item == null)
 			throw new SchemaException("Attribute " + this.name
 					+ " has no type defined.");
-		this.type = item.asText();
+		this.type = item.asText().toLowerCase();
 
 		item = node.get("description");
 		if (item != null)
@@ -414,7 +455,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 
 			item = node.get("canonicalValues");
 			if (item != null) {
-				this.canonicalValues = new ArrayList<String>();
+				this.canonicalValues = new ArrayList<>();
 				Iterator<JsonNode> iter = item.elements();
 				while (iter.hasNext()) {
 					JsonNode term = iter.next();
@@ -425,7 +466,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 
 		if (this.type.equals(Attribute.TYPE_Reference)) {
 			item = node.get("referenceTypes");
-			this.referenceTypes = new ArrayList<String>();
+			this.referenceTypes = new ArrayList<>();
 			if (item != null) {
 				Iterator<JsonNode> iter = item.elements();
 				while (iter.hasNext()) {
@@ -467,7 +508,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 		}
 
 	}
-	
+
 	public boolean isModifiable() {
 		return (this.mutability.equalsIgnoreCase(MUTABILITY_readWrite)
 				|| this.mutability.equalsIgnoreCase(MUTABILITY_writeOnly));

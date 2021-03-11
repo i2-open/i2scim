@@ -1,41 +1,38 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 package com.independentid.scim.op;
 
-import java.io.IOException;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
+import com.independentid.scim.backend.BackendException;
+import com.independentid.scim.core.err.InternalException;
+import com.independentid.scim.core.err.NotFoundException;
+import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.protocol.ConfigResponse;
+import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.schema.ResourceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.protocol.ConfigResponse;
-import com.independentid.scim.schema.ResourceType;
-import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.server.InternalException;
-import com.independentid.scim.server.NotFoundException;
-import com.independentid.scim.server.ScimException;
+import javax.enterprise.context.RequestScoped;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 /**
  * @author pjdhunt
  *
  */
+@RequestScoped
 public class GetOp extends Operation {
 
 	/**
@@ -44,69 +41,57 @@ public class GetOp extends Operation {
 	private static final long serialVersionUID = 2919810859040965128L;
 	private final static Logger logger = LoggerFactory.getLogger(GetOp.class);
 
+	private final static int CONFIG_MAX_RESULTS = 1000;
 	/**
-	 * @param req
-	 * @param resp
-	 * @throws IOException
+	 * @param req The {@link HttpServletRequest} object received by the SCIM Servlet
+	 * @param resp The {@link HttpServletResponse} to be returned by the SCIM Servlet
 	 */
-	public GetOp(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-		super(req, resp, false);
-		
-		if (this.state != OpState.invalid &&
-				ctx.getResourceContainer() == null)
-			ctx.setResourceContainer("/");
+	public GetOp(HttpServletRequest req, HttpServletResponse resp) {
+		super(req, resp);
+
+	}
+
+	public GetOp(RequestCtx ctx, int requestNum) {
+		super(ctx,requestNum);
 	}
 
 	/* (non-Javadoc)
 	 * @see com.independentid.scim.op.Operation#doOperation()
 	 */
 	@Override
-	protected void doOperation() throws ScimException {
-		if (this.state == OpState.invalid)
+	protected void doOperation() {
+		if (this.opState == OpState.invalid)
 			return;
 		String container = ctx.getResourceContainer();
 		// If this is a query to the Schema or ResourceType end points use ConfigResponse
 		if (ConfigResponse.isConfigEndpoint(container)) {
-			this.scimresp = new ConfigResponse(ctx);
-			
+			this.scimresp = new ConfigResponse(ctx, configMgr,CONFIG_MAX_RESULTS);
 			return;
 		} 
 		
 		// Check if an undefined endpoint was requested.
-		if (container != null) {
-			ResourceType type = sconfig.getResourceTypeByPath(container);
-			if (type == null) {
-				setCompletionError(new NotFoundException("Undefined resource endpoint."));
-				return;
-			}
+		ResourceType type = schemaManager.getResourceTypeByPath(container);
+		if (type == null) {
+			setCompletionError(new NotFoundException("Undefined resource endpoint."));
+			return;
 		}
-		
+
 		// Pass the request to the backend database handler
 		try {
-			this.scimresp = getHandler().get(ctx);
+			this.scimresp = backendHandler.get(ctx);
 			
 			//TODO: In theory ScimResponse should handle the error and this should not be caught
 		} catch (ScimException e) {
 			setCompletionError(e);
-			return;
+
 		} catch (BackendException e) {
 			ScimException se = new InternalException("Unknown backend exception during SCIM Get: "+e.getLocalizedMessage(),e);
 			setCompletionError(se);
 			logger.error(
 					"Received backend error while processing SCIM Search for: ["
 							+ this.ctx.getPath() + "] " + e.getMessage(), e);
-			return;
 		}
 	}
 
-	/* (non-Javadoc)
-	 * @see com.independentid.scim.op.Operation#parseJson(com.fasterxml.jackson.databind.JsonNode)
-	 */
-	@Override
-	protected void parseJson(JsonNode node, ResourceType type) throws ScimException,
-			SchemaException {
-		// Nothing to be done.
-		
-	}
 
 }

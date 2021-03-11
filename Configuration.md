@@ -34,13 +34,18 @@ As currently implemented, I2 SCIM supports the MongoDB as its persistence databa
 **scim.mongodb.test** - When enabled, the I2 SCIM Server will re-initialize the database including re-loading the default schema from json files. CAUTION: This will destroy all data identified by scim.mongodb.dbname. (Default: false) 
 
 ## Security
+
+**scim.security.acis.path** - The path to JSON file containing the server access control instructions (acis).
+
 **scim.security.enable** - This parameter be used to disable authentication and authorization in the server. This is most often used for protocol testing and in certain deployment configurations where security is applied by another component. (DEFAULT: true)
 
 **scim.security.authen.jwt** - This parameter is used to turn on support for JWT Bearer tokens. See spring.security.oauth2.jwt
 
-**spring.security.oauth2.resourceserver.jwt.issuer-uri** - The URI used for JWT Bearer tokens.
+**smallrye.jwt.always-check-authorization** - Set to true when JWT enabled.
 
-**spring.security.oauth2.resourceserver.jwt.jwk-set-uri** - The URI used to locate the JWKS public key set for the token issuer.  This method is preferred as the server can load new keys automatically should the issuer change keys.
+**mp.jwt.verify.issuer** - The beaer token issuer value
+
+**smallrye.jwt.verify.key.location** - The URI used to locate the JWKS public key set for the token issuer.  This method is preferred as the server can load new keys automatically should the issuer change keys.
 
 
 ## SCIM Protocol

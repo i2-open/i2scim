@@ -1,34 +1,35 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.protocol;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.security.AciSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-
-import javax.servlet.http.HttpServletResponse;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.independentid.scim.resource.ScimResource;
-import com.independentid.scim.server.ScimException;
+import java.util.Set;
 
 /**
  * ResourceResponse is used to generate a SCIM response per RFC7644. This response
@@ -39,24 +40,20 @@ import com.independentid.scim.server.ScimException;
 public class ResourceResponse extends ScimResponse {
 	private static final Logger logger = LoggerFactory.getLogger(ListResponse.class);
 	final static SimpleDateFormat headDate = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");
-	
+
 	protected Date lastMod;
 	protected int totalRes;
 	protected RequestCtx ctx;
 	protected int smax;  // max server response size
 	protected String id;
 
-	protected ArrayList<ScimResource> entries = new ArrayList<ScimResource>();
+	protected ArrayList<ScimResource> entries = new ArrayList<>();
 	
 	
 	public ResourceResponse(ScimResource val, RequestCtx ctx) {
 		super();
 		this.ctx = ctx;
-		
-		this.smax = this.ctx.getConfigMgr().getMaxResults();
-		if (this.ctx.count == 0 || this.ctx.count > this.smax)  
-			this.ctx.count = this.smax;
-		
+
 		if (val.getMeta() == null) {
 			// This typically happens in server config endpoints
 			String cp = ctx.sctx.getContextPath();
@@ -106,23 +103,39 @@ public class ResourceResponse extends ScimResponse {
 		
 		
 		// For single results, just return the object itself.
-		ScimResource resource = this.entries.get(0);
+		ScimResource resource = getResultResource();
 		try {
 			resource.serialize(gen, ctx, false);
 		} catch (ScimException e) {
 			//TODO This should not happen
 			logger.error("Unexpected exception serializing a response value: "+e.getMessage(),e);
 		}
-		
-		resp.setStatus(getStatus());
-		if (this.lastMod != null)
-			resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
-		if (this.getLocation() != null)	
-			resp.setHeader("Location", this.getLocation());
-		if (this.etag != null) {
-			resp.setHeader("ETag", "\""+this.etag+"\"");
+		if (resp != null) {
+			resp.setStatus(getStatus());
+			if (this.lastMod != null)
+				resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
+			if (this.getLocation() != null)
+				resp.setHeader("Location", this.getLocation());
+			if (this.etag != null) {
+				resp.setHeader("ETag", "\"" + this.etag + "\"");
+			}
 		}
 		
 	}
-	
+
+	@Override
+	protected void processReadableResult(AciSet set) {
+		for (ScimResource res : this.entries) {
+			Set<Attribute> attrs = res.getAttributesPresent();
+			for (Attribute attr: attrs) {
+				if (set.isAttrNotReturnable(attr))
+					res.blockAttribute(attr);
+			}
+		}
+	}
+
+	public ScimResource getResultResource() {
+		if(this.entries.isEmpty()) return null;
+		return this.entries.get(0);
+	}
 }

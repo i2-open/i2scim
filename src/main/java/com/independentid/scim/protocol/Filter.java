@@ -1,56 +1,62 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.protocol;
 
-import java.util.ArrayList;
-
+import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
-import com.independentid.scim.server.BadFilterException;
-import com.independentid.scim.server.ConfigMgr;
+import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.SchemaManager;
 
+import javax.transaction.Transactional;
+import javax.validation.constraints.NotNull;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
+
+@Transactional
 public abstract class Filter {
 
-	private String filter;
+	public static SchemaManager smgr;
+
+	private final String filter;
+
+	//cfg = ConfigMgr.getConfig();
 	
-	protected static ConfigMgr cfg = ConfigMgr.getInstance();
-	
-	
-	protected final static String URN = 
+	public final static String REGX_URN =
 			"urn:[a-zA-Z0-9][a-zA-Z0-9-]{1,31}:([a-zA-Z0-9()+,.:=@;$_!*'-]|%[0-9A-Fa-f]{2})+";
-	protected final static String ATTRNAME = 
+	public final static String REGX_ATTRNAME =
 			"[a-zA-Z][a-zA-Z0-9-]*"; 
 	
-	protected final static String VALUEPATH =
+	public final static String REGX_VALUEPATH =
 			"\\[.*\\]";
 	
-	protected final static String LOGICFILTER = 
+	public final static String REGX_LOGICFILTER =
 			"(eq|ne|sw|ew|gt|lt|ge|le|co)";
 	
-	protected final static String LOGICEXPR = 
-			ATTRNAME+"\\s"+LOGICFILTER+"\\s"+"\\S+";
+	public final static String LOGICEXPR =
+			REGX_ATTRNAME +"\\s"+ REGX_LOGICFILTER +"\\s"+"\\S+";
 	
-	protected final static String PRESEXPR = 
-			ATTRNAME+"\\spr";
+	public final static String REGX_PRESEXPR =
+			REGX_ATTRNAME +"\\spr";
 	
-	protected final static String PRECEDENTEXPR = 
+	public final static String REGX_PRECEDENTEXPR =
 			"(not){0,1}\\s{0,1}(.+)";
 	
-	protected final static String SUBATTR = "\\."+ATTRNAME;
+	public final static String REGX_SUBATTR = "\\."+ REGX_ATTRNAME;
 	
 	//protected final static String PATH = URI + ATTR
 	
@@ -60,7 +66,6 @@ public abstract class Filter {
 	
 	public Filter() {
 		this.filter = null;
-		
 	}
 	
 	
@@ -68,27 +73,38 @@ public abstract class Filter {
 		return this.filter;
 	} 
 	
-	public static Filter parseFilter(String filterStr, RequestCtx ctx) throws BadFilterException {
+	public static Filter parseFilter(String filterStr, @NotNull RequestCtx ctx) throws BadFilterException {
 		return parseFilter(filterStr, null, ctx);
 	}
+
+	/**
+	 * For the given filter, returns the set of attributes used in the filter.
+	 * @param filter The Filter object to be evaluated
+	 * @return The set of {@link Attribute} used in the filter.
+	 */
+	public static Set<Attribute> filterAttributes(Filter filter) {
+		HashSet<Attribute> attrSet = new HashSet<>();
+		if (filter != null)
+			filter.filterAttributes(attrSet);
+		return attrSet;
+	}
+
+	protected abstract void filterAttributes(@NotNull Set<Attribute> attrSet);
 
 	/**
 	 * Parses the provided filterStr and returns a Filter object
 	 * @param filterStr A SCIM filter expressed in string form
 	 * @param parentAttr Optional parent attribute, used when parsing Value Filters.
-	 * @param ctx Optional RequestCtx that provides additional context for matching 
-	 * short attribute names. For example, ambiguous attribute "name" can be matched to User schema if 
-	 * searching within the Users container.
+	 * @param ctx The RequestCtx which may be used for detecting attribute names using request Path
 	 * @return A Filter object containing the parsed filter.
 	 * @throws BadFilterException Thrown if the filter is an invalid SCIM filter.
 	 */
-	public static Filter parseFilter(String filterStr, String parentAttr, RequestCtx ctx) throws BadFilterException {
-
-		int i = 0;
+	public static Filter parseFilter(String filterStr, String parentAttr, @NotNull RequestCtx ctx) throws BadFilterException {
+		smgr = ctx.getSchemaMgr();
 		int bCnt = 0;  int bIndex = -1;
-		int vCnt = 0;  int vIndex = -1;
-		int wIndex = -1;
-		ArrayList<Filter> clauses = new ArrayList<Filter>();
+		int valPathCnt = 0;  int vPathStartIndex = -1;
+		int wordIndex = -1;
+		ArrayList<Filter> clauses = new ArrayList<>();
 		
 		boolean isLogic = false;
 		boolean isAnd = false;
@@ -98,9 +114,11 @@ public abstract class Filter {
 		boolean isExpr = false;
 		String cond = null;
 		boolean isValue = false;
-		String value = null;
+
+		String value;
 		boolean isQuote = false;
 
+		int i;
 		
 		for (i = 0; i < filterStr.length(); i++) {
 			char c = filterStr.charAt(i);
@@ -154,13 +172,13 @@ public abstract class Filter {
 			case '[':
 				if (isQuote || isValue)
 					break;
-				vCnt++;
-				if (vCnt == 1)
-					vIndex = i;
+				valPathCnt++;
+				if (valPathCnt == 1)
+					vPathStartIndex = i;
 				
 				i++;
 				boolean quotedSqBracket = false;
-				while (i < filterStr.length() && vCnt > 0) {
+				while (i < filterStr.length() && valPathCnt > 0) {
 					char cc = filterStr.charAt(i);
 					switch (cc) {
 					case '\"':
@@ -169,32 +187,32 @@ public abstract class Filter {
 					case '[':
 						if (quotedSqBracket)
 							break;
-						if (vCnt > 0)
+						if (valPathCnt > 1)
 							throw new BadFilterException("Invalid filter: A second '[' was detected while loocking for a ']' in an attribute value filter.");
-						vCnt++;
+						valPathCnt++;
 						break;
 					case ']':
 						if (quotedSqBracket)
 							break;
-						vCnt--;
-						if (vCnt == 0) {
-							String aname = filterStr.substring(wIndex,vIndex);
-							String valueFilterStr = filterStr.substring(vIndex+1,i);
-							Filter clause = new ValuePathFilter(aname,valueFilterStr);
+						valPathCnt--;
+						if (valPathCnt == 0) {
+							String aname = filterStr.substring(wordIndex,vPathStartIndex);
+							String valueFilterStr = filterStr.substring(vPathStartIndex+1,i);
+							Filter clause = new ValuePathFilter(aname,valueFilterStr,ctx);
 							clauses.add(clause);
 							//reset for next phrase
-							vIndex = -1;
-							wIndex = -1;
+							vPathStartIndex = -1;
+							wordIndex = -1;
 							isAttr = false;
 						}
 					default:
 						
 					}
 					// only increment if we are still processing ( ) phrases
-					if (vCnt > 0) 
+					if (valPathCnt > 0)
 						i++;
 				}
-				if (i == filterStr.length() && vCnt > 0)
+				if (i == filterStr.length() && valPathCnt > 0)
 					throw new BadFilterException("Invalid filter: missing close ']' bracket");
 				break;
 				
@@ -202,37 +220,37 @@ public abstract class Filter {
 				if (isQuote)
 					break;
 				//end of phrase
-				if (wIndex > -1) {
-					String phrase = filterStr.substring(wIndex,i);
+				if (wordIndex > -1) {
+					String phrase = filterStr.substring(wordIndex,i);
 					if (phrase.equalsIgnoreCase("or") || phrase.equalsIgnoreCase("and")) {
 						isLogic = true;
 						isAnd = phrase.equalsIgnoreCase("and");
-						wIndex=-1;
+						wordIndex=-1;
 						break;
 					}
 					
 					if(isAttr && attr == null) {
 						attr = phrase;
-						wIndex = -1;
+						wordIndex = -1;
 					} else 
 						if (isExpr && cond == null) {
 							cond = phrase;
-							wIndex = -1;
+							wordIndex = -1;
 							if (cond.equalsIgnoreCase(AttributeFilter.FILTEROP_PRESENCE)) {
 								Filter attrExp = new AttributeFilter(attr,cond,null,parentAttr, ctx);
 								attr = null; isAttr = false;
 								cond = null; isExpr = false;
-								value = null; isValue = false;
+								isValue = false;
 								clauses.add(attrExp);
 							}
 						} else
-							if (isValue && value == null) {
+							if (isValue) {
 								value = phrase;
-								wIndex = -1;
+								wordIndex = -1;
 								Filter attrExp = new AttributeFilter(attr,cond,value,parentAttr, ctx);
 								attr = null; isAttr = false;
 								cond = null; isExpr = false;
-								value = null; isValue = false;
+								isValue = false;
 								clauses.add(attrExp);
 							}
 					
@@ -250,7 +268,7 @@ public abstract class Filter {
 				// ignore brackets in value strings
 				if (isQuote || isValue)
 					break;
-				if (vCnt == 0)
+				if (valPathCnt == 0)
 					throw new BadFilterException("Invalid filter: missing open '[' bracket");
 			case 'n': case 'N':
 				if (!isValue) {
@@ -264,12 +282,9 @@ public abstract class Filter {
 				// let the default mode execute
 			default:
 				if (c == '\"')
-					if (isQuote)
-						isQuote = false;
-					else 
-						isQuote = true;
-				if (wIndex == -1)
-					wIndex = i;
+					isQuote = !isQuote; //toggle quote state
+				if (wordIndex == -1)
+					wordIndex = i;
 				if (!isAttr)
 					isAttr = true;
 				else if (!isExpr && attr != null)
@@ -282,13 +297,13 @@ public abstract class Filter {
 		}
 		if (bCnt > 0) 
 			throw new BadFilterException("Invalid filter: missing close ')' bracket");
-		if (vCnt > 0)
+		if (valPathCnt > 0)
 			throw new BadFilterException("Invalid filter: missing ']' bracket");
 		
-		if (wIndex > -1 && i == filterStr.length()) {
+		if (wordIndex > -1 && i == filterStr.length()) {
 			if (isAttr && cond != null) {
 				// a value match at the end of the filter input string
-				value = filterStr.substring(wIndex);
+				value = filterStr.substring(wordIndex);
 				if (value.startsWith("\"") && value.endsWith("\"")) {
 					value = value.substring(1, value.length()-1);
 				}
@@ -297,9 +312,10 @@ public abstract class Filter {
 				clauses.add(attrExp);
 			} else {
 				// a presence match at the end of the filter input string
-				if (isAttr) 
-					cond = filterStr.substring(wIndex);
-				Filter attrExp = new AttributeFilter(attr,cond,value,parentAttr,ctx);
+ 				if (isAttr)
+					cond = filterStr.substring(wordIndex);
+				// in a presence filter the value is always null.
+				Filter attrExp = new AttributeFilter(attr,cond,null,parentAttr, ctx);
 				clauses.add(attrExp);
 			}
 		}

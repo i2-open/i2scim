@@ -1,29 +1,33 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.protocol;
 
+import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
-import com.independentid.scim.server.BadFilterException;
+import com.independentid.scim.schema.Attribute;
+
+import javax.validation.constraints.NotNull;
+import java.util.Set;
 
 public class LogicFilter extends Filter {
 
-	boolean isAnd = false;
-	Filter value1, value2;
+	boolean isAnd;
+	Filter value1;
+	Filter value2;
 	
 	public LogicFilter(boolean isAnd, Filter filter1,Filter filter2) {
 		super();
@@ -45,7 +49,7 @@ public class LogicFilter extends Filter {
 	}
 	
 	public String toString() {
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		if (value1 != null)
 			buf.append(value1.toString());
 		if (isAnd)
@@ -58,7 +62,7 @@ public class LogicFilter extends Filter {
 	}
 	
 	public String toValuePathString() {
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		if (value1 != null)
 			buf.append(value1.toValuePathString());
 		if (isAnd)
@@ -85,4 +89,9 @@ public class LogicFilter extends Filter {
 		return value1.isMatch(value) || value2.isMatch(value);
 	}
 
+	@Override
+	protected void filterAttributes(@NotNull Set<Attribute> attrSet) {
+		value1.filterAttributes(attrSet);
+		value2.filterAttributes(attrSet);
+	}
 }

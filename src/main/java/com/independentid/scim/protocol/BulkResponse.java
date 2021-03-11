@@ -1,40 +1,37 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 package com.independentid.scim.protocol;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Iterator;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.independentid.scim.op.Operation;
-import com.independentid.scim.schema.SchemaException;
+
+import java.io.IOException;
+import java.util.ArrayList;
 
 /**
  * @author pjdhunt
- *
+ * The BulkResponse contains one or more operations to be included in a SCIM Bulk Response per Section 3.7.3 RFC7644
  */
 public class BulkResponse extends ScimResponse {
-
-	protected RequestCtx ctx;
-	protected ArrayList<Operation> ops;
+//TODO: This code has not JUnit code and is not fully implemented.
+	protected final RequestCtx ctx;
+	protected final ArrayList<Operation> ops;
 	protected int httpstat = 200;
 	protected String stype = null;
 	protected String detail = null;
-	protected int failOnErrors = 0;
+	//protected int failOnErrors = 0; //the count of maximum errors before failing.
 	
 	/**
 	 * 
@@ -42,21 +39,24 @@ public class BulkResponse extends ScimResponse {
 	public BulkResponse(RequestCtx ctx) {
 		
 		this.ctx = ctx;
-		this.ops = new ArrayList<Operation>();
+		this.ops = new ArrayList<>();
 		
 	}
 
 	/**
 	 * 
 	 */
-	public BulkResponse(RequestCtx ctx,Operation resp) throws SchemaException {
+	public BulkResponse(RequestCtx ctx,Operation resp) {
 		
 		this.ctx = ctx;
-		this.ops = new ArrayList<Operation>();
+		this.ops = new ArrayList<>();
 		this.ops.add(resp);
 	
 	}
-	
+
+	/**
+	 * @param resp a completed <Operation> object to be added to the response.
+	 */
 	public void addOpResp(Operation resp) {
 		this.ops.add(resp);
 	}
@@ -67,6 +67,7 @@ public class BulkResponse extends ScimResponse {
 	
 	public void setScimTypeError(String scimType, String detail) {
 		this.stype = scimType;
+		this.detail = detail;
 	}
 	
 	public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException {
@@ -93,19 +94,16 @@ public class BulkResponse extends ScimResponse {
 		gen.writeArrayFieldStart("Operations");
 		
 		// Write all the operations out.
-		Iterator<Operation> iter = this.ops.iterator();
-		while (iter.hasNext()) {
-			Operation op = iter.next();
+		for (Operation op : this.ops) {
 			if (!op.isDone())
-				throw new IOException("Not all operations are done: "+op.toString());
-				//TODO is this the correct response
+				throw new IOException("Not all operations are done: " + op.toString());
+			//TODO is this the correct response
 			op.doResponse(gen);
 		}
 		
 		gen.writeEndArray();
 		gen.writeEndObject();
-		
-		return;
+
 	}
 
 

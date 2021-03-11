@@ -1,39 +1,39 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 package com.independentid.scim.protocol;
 
-import java.util.StringTokenizer;
-
+import com.independentid.scim.core.err.InvalidSyntaxException;
+import com.independentid.scim.core.err.NoTargetException;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.server.InvalidSyntaxException;
-import com.independentid.scim.server.NoTargetException;
-import com.independentid.scim.server.ScimException;
+
+import java.util.StringTokenizer;
 
 /**
  * @author pjdhunt
  *
  */
 public class JsonPath {
-	protected String aname;
+	protected final String aname;
+	protected final Attribute targAttr;
+
 	protected String vpath;
 	protected String subAttr;
 	protected Filter filter;
-	protected Attribute targAttr;
-	
+
 	public JsonPath(ScimResource res, JsonPatchOp op, RequestCtx ctx) throws ScimException {
 		StringTokenizer tkn = new StringTokenizer(op.path,"[]");
 		
@@ -55,7 +55,7 @@ public class JsonPath {
 		
 		filter = null;
 		if (vpath != null)
-			filter = Filter.parseFilter(vpath,aname, null);
+			filter = Filter.parseFilter(vpath,aname, ctx);
 		
 		// check to see if attribute has a multi-value parent
 		if (targAttr.isChild()){
@@ -107,9 +107,13 @@ public class JsonPath {
 	public String getSubAttrName() {
 		return this.subAttr;
 	}
+
+	public Attribute getSubAttribute() {
+		return targAttr.getSubAttribute(this.subAttr);
+	}
 	
 	public String toString() {
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		buf.append("Path: ");
 		buf.append(this.aname);
 		if (this.vpath != null) {

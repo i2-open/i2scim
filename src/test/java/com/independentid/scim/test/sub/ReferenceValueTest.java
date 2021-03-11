@@ -1,29 +1,35 @@
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
+
 package com.independentid.scim.test.sub;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.fail;
-
-import java.text.ParseException;
-
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.MethodOrderer.Alphanumeric;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
-import org.junit.jupiter.api.TestMethodOrder;
-
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.resource.ReferenceValue;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
-import com.independentid.scim.server.ConflictException;
-import com.independentid.scim.server.ScimException;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.*;
 
-@TestMethodOrder(Alphanumeric.class)
-@TestInstance(Lifecycle.PER_CLASS)
+import java.text.ParseException;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.fail;
+
+@TestMethodOrder(MethodOrderer.MethodName.class)
 public class ReferenceValueTest {
 
 	//private Logger logger = LoggerFactory.getLogger(ReferenceValueTest.class);
@@ -63,10 +69,6 @@ public class ReferenceValueTest {
 		jnodetest2 = JsonUtil.getJsonTree(inputString2);
 	}
 
-	@AfterAll
-	static void tearDownAfterClass() throws Exception {
-	}
-
 	@Test
 	void a_testReferenceValueAttributeJsonNode() {
 		assertThat(jnodetest1).isNotNull();
@@ -104,25 +106,25 @@ public class ReferenceValueTest {
 	}
 	
 	@Test
-	void c_testSerialize() {
+	void c_testJsonOut() {
 		//This exercises toString and the serialize function
 		JsonNode jout;
 		JsonNode valueComp = jnodetest1.get("$ref");
-		try {
-			jout = refval1.toJsonNode();
-			
-			assertThat(jout)
-				.as("Serialized JsonNode out matches input test.")
-				.isEqualTo(valueComp);
-		} catch (ScimException e) {
-			fail("ScimException while serializing to JSON. "+e.getMessage(),e);
-		}
-		
+		jout = refval1.toJsonNode(null,"$ref");
+
+		assertThat(jout.get("$ref"))
+			.as("JsonNode value objects match.")
+			.isEqualTo(valueComp);
+
+		assertThat(jout)
+				.as("Reference value JsonNodes match")
+				.isEqualTo(jnodetest1);
+
 	}
 
 	@Test
 	void d_testValue() {
-		Object obj = refval1.getValueArray(); //pull the internal formatted URI
+		Object obj = refval1.getRawValue(); //pull the internal formatted URI
 		Assertions.assertThat(obj)
 			.as("Check value type is correct.")
 			.isInstanceOf(java.net.URI.class);

@@ -1,18 +1,17 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.protocol;
 
@@ -48,6 +47,11 @@ public class ScimParams {
 	public final static String SCHEMA_SCHEMA_Schema = "urn:ietf:params:scim:schemas:core:2.0:Schema";
 	public final static String SCHEMA_SCHEMA_Common = "urn:ietf:params:scim:schemas:core:2.0:Common";
 
+	public final static String SCHEMA_SCHEMA_PERSISTEDSTATE = "ConfigState";
+	public final static String SCHEMA_SCHEMA_SYNCREC = "SyncRec";
+
+	public final static String PATH_TYPE_ME = "Me";
+
 	public final static String PATH_TYPE_SCHEMAS = "Schemas";
 	public final static String TYPE_SCHEMA = "Schema";
 	
@@ -57,10 +61,17 @@ public class ScimParams {
 	public final static String PATH_SERV_PROV_CFG = "ServiceProviderConfig";
 	public final static String TYPE_SERV_PROV_CFG = "ServiceProviderConfig";
 	
-	public final static String PATH_SEARCH = "/.search";
+	public final static String PATH_GLOBAL_SEARCH = "/.search";
 	public final static String PATH_SUBSEARCH = ".search";
 	public final static String PATH_BULK = "/Bulk";
 	
 	public final static String SCIM_MIME_TYPE = "application/scim+json";
-	
+
+	public static final String ATTR_SCHEMAS = "schemas";
+	public static final String ATTR_ID = "id";
+	public static final String ATTR_META = "meta";
+	public static final String ATTR_EXTID = "externalId";
+	public static final String ATTR_PATCH_OPS = "Operations";
+
+
 }

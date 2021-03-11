@@ -644,5 +644,67 @@
             ]
         }
         ]
-        }
+    },
+    {
+        "id" : "SyncRec",
+        "name" : "Transaction Sync Record",
+        "description" : "Records transactions processed in the current database",
+        "attributes" : [
+            {
+                "name" : "id",
+                "type" : "string",
+                "multiValued" : false,
+                "description" : "A unique transaction id (a UUID) for the create, modify or delete",
+                "required" : true,
+                "caseExact" : true,
+                "mutability" : "immutable",
+                "returned" : "default",
+                "uniqueness" : "global"
+            },
+            {
+                "name" : "date",
+                "type" : "dateTime",
+                "multiValued" : false,
+                "description" : "The date the transaction was applied",
+                "required" : true,
+                "mutability" : "immutable",
+                "returned" : "default",
+                "uniqueness" : "none"
+            },
+            {
+                "name" : "source",
+                "type" : "string",
+                "multiValued" : false,
+                "description" : "The client.id/group.id of the server originating the change.",
+                "required" : false,
+                "caseExact" : false,
+                "mutability" : "immutable",
+                "returned" : "default",
+                "uniqueness" : "none"
+            },
+            {
+                "name" : "actor",
+                "type" : "string",
+                "multiValued" : false,
+                "description" : "The subject initiating the original request.",
+                "required" : false,
+                "caseExact" : false,
+                "mutability" : "immutable",
+                "returned" : "default",
+                "uniqueness" : "none"
+            },
+            {
+                "name" : "refs",
+                "type" : "reference",
+                "referenceTypes" : ["uri"],
+                "multiValued" : true,
+                "description" : "The resources affected",
+                "required" : false,
+                "caseExact" : false,
+                "mutability" : "immutable",
+                "returned" : "default",
+                "uniqueness" : "none"
+            }
+         ]
+    }
 ]

@@ -1,32 +1,36 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.resource;
-
-import java.io.IOException;
-import java.text.ParseException;
-
-import org.bson.internal.Base64;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.serializer.JsonUtil;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.Base64.Decoder;
+import java.util.Base64.Encoder;
 
 /**
  * This Value type handles SCIM Binary Value types which are base64 encoded values.
@@ -35,41 +39,47 @@ import com.independentid.scim.schema.SchemaException;
  */
 public class BinaryValue extends Value {
 
-	byte[] value;
+	static final Decoder decoder = Base64.getDecoder();
+	static final Encoder encoder = Base64.getEncoder();
 	
-	public BinaryValue() {
-		
-	}
+	byte[] value;
+
 
 	public BinaryValue(Attribute attr, JsonNode node) throws SchemaException, ParseException {
 		super(attr, node);
-		parseJson(attr,node);
+		parseJson(node);
 	}
 	
+	/**
+	 * @param attr The <Attribute> type definition for the value.
+	 * @param bval The unencoded value as an array of <byte>.
+	 */
 	public BinaryValue(Attribute attr, byte[] bval) {
 		this.value = bval;
 		this.jtype = JsonNodeType.BINARY;
+		this.attr = attr;
 	}
 
 	public BinaryValue(Attribute attr, String b64string) {
-		this.value = Base64.decode(b64string);
+		this.value = decoder.decode(b64string.getBytes());  
 		this.jtype = JsonNodeType.BINARY;
+		this.attr = attr;
 	}
 
 	@Override
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
-		gen.writeString(Base64.encode(this.value));
+		gen.writeString(encoder.encodeToString(this.value));
 
 	}
 
 	@Override
-	public void parseJson(Attribute attr, JsonNode node)
+	public void parseJson(JsonNode node)
 			throws SchemaException, ParseException {
 		//The value should be actually a base64 encoded string (DER)
 		if (node == null)
 			throw new SchemaException("Was expecting a JSON string (Base64 encoded) value but encountered null");
-		
-		this.value = Base64.decode(node.asText());
+
+		this.value = decoder.decode(node.asText().getBytes(StandardCharsets.UTF_8));
 		
 		//TODO:  SHould the DER Value encoding be validated?
 		
@@ -86,12 +96,43 @@ public class BinaryValue extends Value {
 	}
 
 	@Override
-	public byte[] getValueArray() {
+	public JsonNode toJsonNode(ObjectNode parent, String aname) {
+		if (parent == null)
+			parent = JsonUtil.getMapper().createObjectNode();
+		parent.put(aname,toString());
+		return parent;
+	}
+
+	/**
+	 * Returns the unencoded raw binary as byte[]
+	 */
+	@Override
+	public byte[] getRawValue() {
 		return this.value;
 	}
 	
+	/**
+	 * Returns the base64 encoded binary value
+	 */
 	public String toString() {
-		return Base64.encode(this.value);
+		return encoder.encodeToString(this.value);
 	}
 
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof BinaryValue) {
+			BinaryValue obVal = (BinaryValue) obj;
+			return Arrays.equals(value,obVal.value);
+		}
+		return false;
+	}
+
+	@Override
+	public int compareTo(Value o) {
+		if (o instanceof BinaryValue) {
+			BinaryValue obVal = (BinaryValue) o;
+			return Arrays.compare(value,obVal.value);
+		}
+		throw new ClassCastException("Unable to compare Value types");
+	}
 }

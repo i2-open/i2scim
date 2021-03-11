@@ -1,30 +1,33 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.protocol;
 
-import java.io.IOException;
-
-import javax.servlet.http.HttpServletResponse;
-
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.schema.SchemaException;
+import com.independentid.scim.security.AciSet;
+import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
-import com.independentid.scim.server.ScimException;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
 /**
  * @author pjdhunt
@@ -74,7 +77,7 @@ public class ScimResponse implements ScimSerializer {
 	public static final String DESCR_TYPE_TARGET     = "The specified path did not yield an attribute or value that could be operated on.";
 	public static final String DESCR_TYPE_BADVAL     = "A required value is missing, or the supplied value is not compatible.";
 	public static final String DESCR_TYPE_BADVERS    = "The specified SCIM protocol version is not supported.";
-	
+
 	private int status;
 	private String stype;
 	private String location;
@@ -124,10 +127,11 @@ public class ScimResponse implements ScimSerializer {
 	 * generating a JSON body response if required (e.g. for SCIM Errors HTTP Status 400).
 	 * @param gen A <JsonGenerator> object usually bound to an <HttpResponse> object writer.
 	 * @param ctx A <RequestCtx> object containing the original request/response.
-	 * @throws IOException
+	 * @throws IOException may be thrown when attempting to write to generator
 	 */
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
-		ctx.getHttpServletResponse().setStatus(getStatus());
+		if (ctx.getHttpServletResponse() != null)
+			ctx.getHttpServletResponse().setStatus(getStatus());
 
 		if (this.status >= 400) {
 			gen.writeStartObject();
@@ -140,9 +144,20 @@ public class ScimResponse implements ScimSerializer {
 				gen.writeStringField("detail",this.detail);
 			gen.writeNumberField("status", this.status);
 			gen.writeEndObject();
-		
-			return;
+
 		}
+	}
+
+	@Override
+	public JsonNode toJsonNode() {
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+		if (this.status >= 500) {
+			node.putArray("schemas").add(SCHEMA_ERROR);
+			node.put("scimType", stype);
+			node.put("detail", detail);
+			node.put("status", status);
+		}
+		return node;
 	}
 
 	/*
@@ -156,8 +171,6 @@ public class ScimResponse implements ScimSerializer {
 		
 		if (this.status >= 400) {
 			serialize(gen,ctx);
-			//resp.setStatus(this.status);
-			return;
 		}
 	}
 
@@ -235,6 +248,23 @@ public class ScimResponse implements ScimSerializer {
 		setStatus(e.getStatus());
 		setScimErrorType(e.getScimType());
 		setDetail(e.getDetail());
+	}
+
+	/**
+	 * Applies a given ACI to the results. It looks at the rights and targetAttr specifications
+	 * and removes attributes which are not returnable.
+	 * @param set The {@link AciSet} to be applied.
+	 */
+	public void applyAciSet(AciSet set) {
+		processReadableResult(set);
+	}
+
+	/**
+	 * Process the targetAttrs list if provided
+	 * @param set The access control set specifying the targetAttr to return if any.
+	 */
+	protected void processReadableResult(AciSet set) {
+		// for ScimResponse there is nothing to process!
 	}
 	
 }

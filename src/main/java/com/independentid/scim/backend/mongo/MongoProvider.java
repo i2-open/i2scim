@@ -1,180 +1,185 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                   *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.backend.mongo;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.backend.BackendException;
+import com.independentid.scim.backend.IScimProvider;
+import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.*;
+import com.independentid.scim.protocol.*;
+import com.independentid.scim.resource.Meta;
+import com.independentid.scim.resource.PersistStateResource;
+import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.resource.TransactionRecord;
+import com.independentid.scim.schema.*;
+import com.mongodb.MongoWriteException;
+import com.mongodb.client.*;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.IndexOptions;
+import com.mongodb.client.model.Indexes;
+import com.mongodb.client.model.ReplaceOptions;
+import org.bson.Document;
+import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.annotation.Priority;
+import javax.inject.Inject;
+import javax.inject.Singleton;
 import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
-
-import org.bson.Document;
-import org.bson.types.ObjectId;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Repository;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.backend.IScimProvider;
-import com.independentid.scim.protocol.ConfigResponse;
-import com.independentid.scim.protocol.Filter;
-import com.independentid.scim.protocol.JsonPatchRequest;
-import com.independentid.scim.protocol.ListResponse;
-import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.protocol.ResourceResponse;
-import com.independentid.scim.protocol.ScimParams;
-import com.independentid.scim.protocol.ScimResponse;
-import com.independentid.scim.resource.PersistStateResource;
-import com.independentid.scim.resource.ScimResource;
-import com.independentid.scim.schema.Attribute;
-import com.independentid.scim.schema.Meta;
-import com.independentid.scim.schema.ResourceType;
-import com.independentid.scim.schema.Schema;
-import com.independentid.scim.schema.SchemaException;
-import com.independentid.scim.serializer.JsonUtil;
-import com.independentid.scim.server.ConfigMgr;
-import com.independentid.scim.server.InternalException;
-import com.independentid.scim.server.InvalidValueException;
-import com.independentid.scim.server.NotImplementedException;
-import com.independentid.scim.server.PreconditionFailException;
-import com.independentid.scim.server.ScimException;
-
-import com.mongodb.MongoWriteException;
-import com.mongodb.client.FindIterable;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
-import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.MongoIterable;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.IndexOptions;
-import com.mongodb.client.model.Indexes;
-import com.mongodb.client.model.ReplaceOptions;
-
-
-@Repository("MongoDao")
+//@ApplicationScoped
+@Singleton
+@Priority(10)
 public class MongoProvider implements IScimProvider {
 	private final static Logger logger = LoggerFactory
 			.getLogger(MongoProvider.class);
 
-	private com.mongodb.client.MongoClient mclient;
+	public final static String PARAM_MONGO_URI = "scim.prov.mongo.uri";
+	public final static String DEFAULT_MONGO_URI = "mongodb://localhost:27017";
 
-	// private ServletConfig scfg = null;
-	// private DB sDb = null;
+	public final static String PARAM_MONGO_DBNAME = "scim.prov.mongo.dbname";
+	public final static String DEFAULT_MONGO_DBNAME = "SCIM";
+
+	public final static String PARAM_MONGO_INDEXES = "scim.prov.mongo.indexes";
+	public final static String DEFAULT_MONGO_INDEXES = "User:userName,User:emails.value,Group:displayName";
+
+	private static MongoProvider singleton = null;
+	
+	private static com.mongodb.client.MongoClient mclient;
+
 	private boolean ready = false;
 
-	@Resource(name="ConfigMgr")
-	private ConfigMgr cfg;
-	
-	@Value("${scim.mongodb.uri: mongodb://localhost:27017}")
-	private String dbUrl;
+	@Inject
+	SchemaManager schemaManager;
 
-	@Value("${scim.mongodb.dbname: SCIM}")
-	private String scimDbName;
+	@Inject
+	MongoMapUtil mapUtil;
+
+	@Inject
+	MongoIdGenerator generator;
+
+	@ConfigProperty(name = "scim.prov.mongo.uri", defaultValue="mongodb://localhost:27017")
+	String dbUrl;
+
+	//@Value("${scim.mongodb.dbname: SCIM}")
+	@ConfigProperty(name = "scim.prov.mongo.dbname", defaultValue="SCIM")
+	String scimDbName;
+
+	@ConfigProperty(name = ConfigMgr.SCIM_QUERY_MAX_RESULTSIZE, defaultValue= ConfigMgr.SCIM_QUERY_MAX_RESULTS_DEFAULT)
+	protected int maxResults;
 	
-	@Value("${scim.mongodb.indexes: User:userName,User:emails.value,Group:displayName}")
-	private String[] indexes;
-	
-	/**
-	 *  When set true, causes the configuration stored to be erased
-	 *  to ensure full reset to configuration and test data.
-	 */
-	@Value("${scim.mongodb.test: false}")
-	private boolean resetDb;
-	
+	//@Value("${scim.mongodb.indexes: User:userName,User:emails.value,Group:displayName}")
+
 	private MongoDatabase scimDb = null;
-	
-	private PersistStateResource config = null;
 	
 	public MongoProvider() {
 	}
+	
+	public static IScimProvider getProvider() {
+		if (singleton == null)
+			singleton = new MongoProvider();
+		// singleton.init();
+		return singleton;
+	}
 
-	@PostConstruct
-	public void init() throws BackendException {
+	//Note: We don't want auto start. Normally Backendhandler invokes this.
+	public synchronized void init() {
+
+		if (singleton == null)
+			singleton = this;
 		if (this.ready)
 			return; // only run once
 		// this.scfg = cfg;
 		logger.info("======Initializing SCIM MongoDB Provider======");
+		logger.info("\tUsing MongoDB: "+this.dbUrl+", Database: "+this.scimDbName);
+
 		// Connect to the instance define by injected dbUrl value
-		if (this.mclient == null)
-			this.mclient = MongoClients.create(this.dbUrl);
-		
-		
+		if (mclient == null)
+			mclient = MongoClients.create(this.dbUrl);
+
 		this.scimDb = mclient.getDatabase(this.scimDbName);
-		
-		if (resetDb) {
-			this.scimDb.drop();
-			this.resetDb = false;
-		}
-		
+
 		MongoIterable<String> colIter =  this.scimDb.listCollectionNames();
-		if (colIter.first() == null)
-			logger.info("Initializing new SCIM database.");
-		else {
+		if (colIter.first() == null) {
+			logger.info("\tPreparing new database instance.");
 			try {
-				PersistStateResource cres = this.getConfig();
-				if (cres == null) 
-					logger.warn("Missing configuration state resource. Recommend reseting database.");
-				else {
-					logger.info("Restoring configuration data from "+cres.getLastSync());
-					logger.debug("  PState Resource Type Count: "+cres.getResTypeCnt());
-					logger.debug("  PState Schema Count:        "+cres.getSchemaCnt());
-				}
-			} catch (ScimException | IOException | SchemaException | ParseException e) {
-				logger.error("Unexpected error processing Persisted State Resource: "+e.getLocalizedMessage(),e);
+				syncConfig(schemaManager.getSchemas(), schemaManager.getResourceTypes());
+			} catch (IOException e) {
+				logger.error("Error storing schema in Mongo: "+e.getMessage(),e);
 			}
-			logger.info("Existing Persisted SCIM Types: ");
-			colIter.forEach(name -> {
-				logger.info("Resource Type: "+name);
-			});
+		} else {
+			try {
+				if (getConfigState() != null)
+					schemaManager.loadConfigFromProvider();
+			} catch (ScimException | IOException | ParseException e) {
+				logger.error("Error loading schema from MemoryProvider. Using default schema. "+e.getMessage());
+			}
 		}
-		if (this.mclient != null) {
+
+		if (mclient != null) {
 			this.ready = true;
-			logger.info("================ SCIM Mongo Provider initialized ================");
+			logger.info("====== SCIM Mongo Provider initialized =======");
 		}
 	}
 	
 	@Override
 	public ScimResponse create(RequestCtx ctx,final ScimResource res)
-			throws ScimException, BackendException {
+			throws ScimException {
 
-		String type = ctx.getResourceContainer();
-		
-		res.setId((new ObjectId()).toString());
+		String container = ctx.getResourceContainer();
+		if (container == null || container.equals("/")) {
+			return new ScimResponse(ScimResponse.ST_NOSUPPORT,"Creating resource at root not supported",null);
+		}
+
+		if (res.getId() == null)  // in the case of replication, the id is already set
+			res.setId(generator.getNewIdentifier());
+
 		Meta meta = res.getMeta();
-		Date created = new Date(System.currentTimeMillis());
-		meta.setCreatedDate(created);
-		meta.setLastModifiedDate(created);
-		StringBuffer buf = new StringBuffer();
-		buf.append('/').append(type).append('/').append(res.getId());
-		meta.setLocation(buf.toString());
-		buf = null;
-		
-		String etag = res.calcVersionHash();
-		meta.setVersion(etag);
-		/*
+        if (meta == null) {
+            meta = new Meta();
+            res.setMeta(meta);
+        }
+        // Not needed for TransactionRecord type
+        Date created = Date.from(Instant.now());
+        if (meta.getCreatedDate() == null) // only set the created date if it does not already exist.
+            meta.setCreatedDate(created);
+        meta.setLastModifiedDate(created); // always set the modify date upon create.
+        if (!container.equals(SystemSchemas.TRANS_CONTAINER))
+            try {
+                meta.addRevision(ctx, this, created);
+            } catch (BackendException e) {
+                return handleUnexpectedException(e);
+            }
+        meta.setLocation('/' + container + '/' + res.getId());
+
+        String etag = res.calcVersionHash();
+        meta.setVersion(etag);
+        /*
 		 * StringBuffer buf = new StringBuffer(); buf.append('/');
 		 * buf.append(ctx.endpoint); buf.append('/'); buf.append(id);
 		 * meta.setLocation(buf.toString());
@@ -193,11 +198,8 @@ public class MongoProvider implements IScimProvider {
 
 		MongoDatabase sDb = getDbConnection();
 
-		MongoCollection<Document> col = sDb.getCollection(type);
+		MongoCollection<Document> col = sDb.getCollection(container);
 		
-		if (col == null)
-			throw new BackendException(
-					"Mongo: Unable to locate database collection for: " + type);
 		try {
 			col.insertOne(doc);  
 		
@@ -213,8 +215,7 @@ public class MongoProvider implements IScimProvider {
 			
 			if (e.getCode() == 11000)
 				return new ScimResponse(ScimResponse.ST_BAD_REQUEST,e.getLocalizedMessage(),ScimResponse.ERR_TYPE_UNIQUENESS);
-			logger.error("Unhandled exception: "+e.getLocalizedMessage(),e);
-			return new ScimResponse(ScimResponse.ST_INTERNAL,e.getLocalizedMessage(),null);
+			return handleUnexpectedException(e);
 		}
 		ctx.setEncodeExtensions(false);
 		ResourceResponse resp = new ResourceResponse(res, ctx);
@@ -225,42 +226,47 @@ public class MongoProvider implements IScimProvider {
 		return resp;
 	}
 
+	private ScimResponse handleUnexpectedException(Exception e) {
+		logger.error("Unhandled exception: "+e.getLocalizedMessage(),e);
+		return new ScimResponse(ScimResponse.ST_INTERNAL,e.getLocalizedMessage(),null);
+	}
+
 	/**
 	 * Internal PUT operation takes the ScimResource in its final state and
 	 * replaces the existing document in the database.
 	 * 
 	 * @param replacementResource The new Mongo Resource document to be used to replace the existing Document
 	 * @param ctx The request CTX which is used to locate the appropriate container (endpoint)
-	 * @return
-	 * @throws ScimException
-	 * @throws BackendException
+	 * @return ScimResponse The resulting resource response after put logic applied.
+	 * @throws ScimException Thrown if Mongo returns an illegal arguement exception
 	 */
 	protected ScimResponse putResource(MongoScimResource replacementResource, RequestCtx ctx)
-			throws ScimException, BackendException {
+			throws ScimException {
 	
 		//Document orig = replacementResource.getOriginalDBObject();
 		ctx.setEncodeExtensions(true);
+		// Locate the correct Mongo Collection
+		String type = ctx.getResourceContainer();
 
 		// Update the modification date to now and set Etag version
 		Meta meta = replacementResource.getMeta();
 		Date modDate = new Date();
 		meta.setLastModifiedDate(modDate);
+		if (!type.equals(SystemSchemas.TRANS_CONTAINER)) // transaction records are not revisioned
+			try {
+				meta.addRevision(ctx, this, modDate);
+			} catch (BackendException e) {
+				return handleUnexpectedException(e);
+			}
 		// res.setId(id);
 		//meta.setLocation(null);
 		String etag = replacementResource.calcVersionHash();
 		meta.setVersion(etag);
 
-		// Locate the correct Mongo Collection
-		String type = ctx.getResourceContainer();
-
 		MongoDatabase sDb = getDbConnection();
 
 		MongoCollection<Document> col = sDb.getCollection(type);
 
-		if (col == null)
-			throw new BackendException(
-					"Mongo: Unable to locate database collection for: " + type);
-		
 		// Convert the MongoScimResource back to a DB Object
 
 		Document replaceDoc = replacementResource.toMongoDocument(ctx);
@@ -284,35 +290,39 @@ public class MongoProvider implements IScimProvider {
 		return resp;
 	}
 	
-	public PersistStateResource getConfig() throws ScimException, IOException, SchemaException, ParseException {
-		if (config == null) {
+	public PersistStateResource getConfigState() throws ScimException, IOException, ParseException {
+
 		
-			Document query = new Document();
-			query.put("id",PersistStateResource.CONFIG_ID);
-			
-			MongoCollection<Document> col =  getDbConnection().getCollection(PersistStateResource.RESTYPE_CONFIG);
-			
-			// If this is a brand new databse, return null
-			if (col.countDocuments() == 0)
-				return null;
-			
-			FindIterable<Document> iter = col.find(query);
-			Document pdoc = iter.first();  // there should be only one document!
-			
-			String jsonstr = pdoc.toJson();
-			JsonNode jdoc = JsonUtil.getJsonTree(jsonstr);
-			
-			config = new PersistStateResource(cfg,jdoc,null, PersistStateResource.RESTYPE_CONFIG);
-		}
-		
-		return config;
+		Document query = new Document();
+		query.put("id", ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
+
+		MongoCollection<Document> col =  getDbConnection().getCollection(SystemSchemas.RESTYPE_CONFIG);
+
+		// If this is a brand new databse, return null
+		if (col.countDocuments() == 0)
+			return null;
+
+		FindIterable<Document> iter = col.find(query);
+		Document pdoc = iter.first();  // there should be only one document!
+
+
+		return mapUtil.mapConfigState(pdoc);
 	}
 
+	/**
+	 * The Mongo Provider implementation processes filter matching *after* the resource is returned.
+	 * @param ctx The SCIM request context (includes HTTP Context). Defines the search filter (if any) along with other
+	 *            search parameters like attributes requested. Filter matching is done after the resource is located and
+	 *            converted.  Use get(ResourceCtx) to apply filter at the database level.
+	 * @return The requested ScimResource or null if not matched
+	 * @throws ScimException thrown if a SCIM protocol mapping error occurs (e.g. mapping filter)
+	 * @throws BackendException thrown if a database exception occurs.
+	 */
 	@Override
 	public ScimResource getResource(RequestCtx ctx) throws ScimException,
 			BackendException {
 		//ctx.setEncodeExtensions(true);
-		Document query = null;
+		Document query;
 				
 		String type = ctx.getResourceContainer();
 		if (type == null || type.equals("/"))
@@ -326,10 +336,10 @@ public class MongoProvider implements IScimProvider {
 		MongoCollection<Document> col = this.scimDb.getCollection(type);
 
 		if (ConfigResponse.isConfigEndpoint(ctx.getResourceContainer())) {
-			query.put("id",new String(ctx.getPathId()));
+			query.put("id",ctx.getPathId());
 		} else
 			query.put("_id", new ObjectId(ctx.getPathId()));
-		FindIterable<Document> iter = col.find(); 
+		FindIterable<Document> iter = col.find(query);
 		Document res = iter.first();
 
 		if (res == null) {
@@ -338,18 +348,10 @@ public class MongoProvider implements IScimProvider {
 
 		//String json = JSON.serialize(res);
 		
-		try {
-			ScimResource sres = new MongoScimResource(this.cfg, res, type);
-			//sres.getMeta().setLocation(ctx.getPath());
-			
+		ScimResource sres = mapUtil.mapScimResource(res,type);
+		if (Filter.checkMatch(sres,ctx))
 			return sres;
-			
-		} catch (IOException | SchemaException | ParseException e) {
-			throw new BackendException(
-					"Unknown parsing exception parsing data from MongoDB."
-							+ e.getMessage(), e);
-		}
-
+		return null;
 	}
 
 	@Override
@@ -362,21 +364,29 @@ public class MongoProvider implements IScimProvider {
 			// Query for 1 object
 
 			ScimResource res = getResource(ctx);
-			if (res == null) {
+			if (res == null && ctx.hasNoClientFilter()) {
 				return new ScimResponse(ScimResponse.ST_NOTFOUND,null,null);
 			}
 
 			//String json = JSON.serialize(res);
 			
 			// if this is a get of a specific resource return the object
-			if (ctx.getFilter() == null)
-				return new ResourceResponse(res,ctx);
-			
+			if (res != null && ctx.hasNoClientFilter()) {
+				if (ctx.getFilter() != null) {
+					//Apply the targetFilter
+					if (Filter.checkMatch(res,ctx))
+						return new ResourceResponse(res, ctx);
+					else
+						return new ScimResponse(ScimResponse.ST_NOTFOUND,null,null);
+				}
+				return new ResourceResponse(res, ctx);
+			}
+
 			// if this is a filtered request, must return a list response per RFC7644 Sec 3.4.2
-			if (Filter.checkMatch(res, ctx)) 
+			if (res != null)
 				return new ListResponse(res, ctx);  // return the single item
 			else
-				return new ListResponse(ctx);  // return an empty response			
+				return new ListResponse(ctx, maxResults);  // return an empty response
 		}
 		
 		String type = ctx.getResourceContainer();
@@ -385,41 +395,37 @@ public class MongoProvider implements IScimProvider {
 		
 		MongoCollection<Document> col = this.scimDb.getCollection(type);
 
-		if (logger.isDebugEnabled())
-			logger.debug(type + " record count: " + col.countDocuments());
-
-		Document query = null;
+		Bson query;
 		Filter filt = ctx.getFilter();
 		
 		if (filt == null)
 			query = new Document();
 		else
-			query = FilterMapper.mapFilter(ctx.getFilter(), false);
+			query = MongoFilterMapper.mapFilter(filt, false, false);
 		
 		if (logger.isDebugEnabled())
-			logger.debug("Query: "+query.toJson());
+			logger.debug("Query: "+query.toString());
 		// TODO mapFilter could do imprecise mapping to handle unindexed
 		// data since filter is checked after
-		
+
 		FindIterable<Document> fiter = col.find(query);
 		MongoCursor<Document> iter = fiter.iterator();
 		// If there are no results return empty set.
-		if (iter == null || 
-				!iter.hasNext())
-			return new ListResponse(ctx);
+		if (!iter.hasNext())
+			return new ListResponse(ctx, maxResults);
 
 		// Multi-object response.
-		ArrayList<ScimResource> vals = new ArrayList<ScimResource>();
+		ArrayList<ScimResource> vals = new ArrayList<>();
 
 		while (iter.hasNext()) {
 			Document res = iter.next();
 
 			try {
-				ScimResource sres = new MongoScimResource(this.cfg, res, type);
+				ScimResource sres = mapUtil.mapScimResource(res, type);
 			
 				// if (Filter.checkMatch(sres, ctx))
 				vals.add(sres);
-			} catch (IOException | SchemaException | ParseException e) {
+			} catch (SchemaException e) {
 				logger.warn("Unhandled exception: "+e.getLocalizedMessage(),e);
 				return new ScimResponse(ScimResponse.ST_INTERNAL,e.getLocalizedMessage(),null);
 				/*
@@ -429,14 +435,16 @@ public class MongoProvider implements IScimProvider {
 								*/
 			}
 		}
-		return new ListResponse(vals, ctx);
+		return new ListResponse(vals, ctx,maxResults);
 
 	}
 
 	@Override
-	public ScimResponse replace(RequestCtx ctx, final ScimResource replaceResource)
+	public ScimResponse put(RequestCtx ctx, final ScimResource replaceResource)
 			throws ScimException, BackendException {
-		MongoScimResource origRes = (MongoScimResource) this.getResource(ctx);
+		MongoScimResource origRes = (MongoScimResource) getResource(ctx);
+		if (origRes == null )
+			return new ScimResponse(ScimResponse.ST_NOTFOUND, null, null);
 		if (!origRes.checkPreCondition(ctx))
 			return new ScimResponse(new PreconditionFailException(
 					"ETag predcondition does not match"));
@@ -448,20 +456,19 @@ public class MongoProvider implements IScimProvider {
 	public ScimResponse patch(RequestCtx ctx, final JsonPatchRequest req)
 			throws ScimException, BackendException {
 		ctx.setEncodeExtensions(true);
-		MongoScimResource mres = (MongoScimResource) this.getResource(ctx);
+		MongoScimResource mres = (MongoScimResource) getResource(ctx);
 		mres.modifyResource(req, ctx);
+		// Modify resource will update the meta.revision
 		return this.putResource(mres, ctx);
 	}
 
 	@Override
-	public ScimResponse bulkRequest(RequestCtx ctx, JsonNode node)
-			throws ScimException, BackendException {
+	public ScimResponse bulkRequest(RequestCtx ctx, JsonNode node) {
 		return new ScimResponse(ScimResponse.ST_NOSUPPORT, null, null);
 	}
 
 	@Override
-	public ScimResponse delete(RequestCtx ctx) throws ScimException,
-			BackendException {
+	public ScimResponse delete(RequestCtx ctx) throws ScimException {
 		//ctx.setEncodeExtensions(true);
 		String id = ctx.getPathId();
 		String type = ctx.getResourceContainer();
@@ -473,11 +480,22 @@ public class MongoProvider implements IScimProvider {
 			throw new NotImplementedException("Root searching not implemented");
 
 		MongoCollection<Document> col = this.scimDb.getCollection(type);
-		
 
+		// First, if a filter specified (by user or by acis) check for a match.
+		if (ctx.getFilter() != null)
+			try {
+				ScimResource original = getResource(ctx);
+				if (original == null )
+					return new ScimResponse(ScimResponse.ST_NOTFOUND, null, null);
+
+			} catch (BackendException e) {
+				e.printStackTrace();
+			}
+
+		// Given the match and aci filters succeeded, delete the original record.
 		Document query = new Document();
-
 		query.put("_id", new ObjectId(id));
+
 		Document res = col.findOneAndDelete(query);
 				//col.findOne(query);
 		if (res == null) {
@@ -488,18 +506,6 @@ public class MongoProvider implements IScimProvider {
 
 		// return success
 		return new ScimResponse(ScimResponse.ST_NOCONTENT, null, null);
-	}
-
-	public void eraseDatabase() {
-		System.err.println("  Initiating reset of database collection: "
-				+ getMongoDbName());
-		logger.warn("Database provider reset requested. Dropping");
-		
-		MongoDatabase db = mclient.getDatabase(this.getMongoDbName());
-		db.drop();
-		
-		System.err.println("  **Reset was requested by:");
-		Thread.dumpStack();
 	}
 
 	public String getMongoDbName() {
@@ -514,8 +520,11 @@ public class MongoProvider implements IScimProvider {
 
 	@Override
 	public void shutdown() {
-		logger.debug("======SCIM MmongoDB Shutdown======");
-		
+		mclient.close();
+		mclient = null; // null to allow for reset.
+		logger.info("======SCIM MmongoDB Shutdown======");
+
+		this.ready = false;
 	}
 
 	public MongoDatabase getDbConnection() {
@@ -530,11 +539,11 @@ public class MongoProvider implements IScimProvider {
 			MessageDigest md = MessageDigest.getInstance("MD5");
 
 			md.update(jsonVal.getBytes());
-			byte hashBytes[] = md.digest();
+			byte[] hashBytes = md.digest();
 			// convert the byte to hex format method 1
-			StringBuffer sb = new StringBuffer();
-			for (int i = 0; i < hashBytes.length; i++) {
-				sb.append(Integer.toString((hashBytes[i] & 0xff) + 0x100, 16)
+			StringBuilder sb = new StringBuilder();
+			for (byte hashByte : hashBytes) {
+				sb.append(Integer.toString((hashByte & 0xff) + 0x100, 16)
 						.substring(1));
 			}
 			return sb.toString();
@@ -550,19 +559,18 @@ public class MongoProvider implements IScimProvider {
 
 		PersistStateResource configState;
 		try {
-			configState = getConfig();
+			configState = getConfigState();
 			if (configState == null)
 				return null;  // This is a brand new database
 			
 			MongoCollection<Document> col =  getDbConnection().getCollection(ScimParams.PATH_TYPE_SCHEMAS);
 			if (col.countDocuments() == 0) return null;
 			
-			Collection<Schema> scol = new ArrayList<Schema>();
+			Collection<Schema> scol = new ArrayList<>();
 			FindIterable<Document> iter = col.find();
 			
 			for (Document doc : iter) {
-				JsonNode jdoc = JsonUtil.getJsonTree(doc.toJson());
-				Schema entry = new Schema(jdoc);
+				Schema entry = mapUtil.mapSchema(doc);
 				//  map.put(entry.getName(), entry);  // Map by both id and name
 				scol.add(entry);
 			}
@@ -581,20 +589,19 @@ public class MongoProvider implements IScimProvider {
 	public Collection<ResourceType> loadResourceTypes() throws ScimException {
 		PersistStateResource config;
 		try {
-			config = getConfig();
+			config = getConfigState();
 			if (config == null)
 				return null;  // This is a brand new database
 			
 			MongoCollection<Document> col =  getDbConnection().getCollection(ScimParams.PATH_TYPE_RESOURCETYPE);
 			if (col.countDocuments() == 0) return null;
 			
-			Collection<ResourceType> rcol = new ArrayList<ResourceType>();
+			Collection<ResourceType> rcol = new ArrayList<>();
 			FindIterable<Document> iter = col.find();
 			
 			for (Document doc : iter) {
-				JsonNode jdoc = JsonUtil.getJsonTree(doc.toJson());
-				ResourceType entry = new ResourceType(jdoc);
-				rcol.add(entry);  
+
+				rcol.add(mapUtil.mapResourceType(doc));
 			}
 			
 			return rcol;
@@ -610,70 +617,56 @@ public class MongoProvider implements IScimProvider {
 	/**
 	 * When the database is first set up, this runs through the ResourceTypes and Schemas to initialize Mongo
 	 * with indexed fields and uniqueness settings.
-	 * @param schemaCol
-	 * @param resTypeCol
+	 * @param resTypeCol The collection of {@link ResourceType} types to be defined in the database
 	 */
-	private void initDbSchema(Collection<Schema> schemaCol,Collection<ResourceType> resTypeCol) {
+	private void initDbSchema(Collection<ResourceType> resTypeCol) {
 		MongoDatabase sDb = getDbConnection();
 
 		//Initialize "id" index is not required as Mongo will auto index "_id" (which is mapped from id)
-		
-		
-		for (int i = 0; i < this.indexes.length; i++) {
-			String index = indexes[i];
-			String schema = index.substring(0,index.indexOf(':'));
-			String attrName = index.substring(index.indexOf(':')+1);
-			
-			ResourceType type,typematch = null;
-			Iterator<ResourceType> iter = resTypeCol.iterator();
-			while (iter.hasNext()) {
-				type = iter.next();
-				
-				if (type.getId().equals(schema) || type.getName().equals(schema)) {
+
+		Collection<Attribute> indexed = mapUtil.getIndexedAttributes();
+		for (Attribute attr: indexed) {
+			ResourceType type, typematch = null;
+			for (ResourceType resourceType : resTypeCol) {
+				type = resourceType;
+
+				if (type.getSchema().equals(attr.getSchema())) {
 					typematch = type;
 					break;
 				}
 			}
-			
+
 			if (typematch == null) {
-				logger.warn("Schema configuration for "+schema+" was not found. Ignoring index: "+index);
+				logger.warn("Schema configuration for " + attr.getSchema() + " was not found. Ignoring index: " + attr.getName());
 				continue;
 			}
 			String dbName = typematch.getTypePath();
 
-
 			MongoCollection<Document> col = sDb.getCollection(dbName);
-			Attribute attr = cfg.findAttribute(index,null);
-			if (attr == null) {
-				logger.warn("Attribute configuration for "+attrName+" was not found. Ignoring index: "+index);
-				continue;
-			}
-			
+
 			if (logger.isDebugEnabled())
-				logger.debug("Creating index for "+attr.getRelativePath()+", unique: "+attr.getUniqueness());
+				logger.debug("Creating index for " + attr.getRelativePath() + ", unique: " + attr.getUniqueness());
 			// According to MongoDB driver, if index already exists this should not re-create it.
-			if(attr.getUniqueness().contentEquals(Attribute.UNIQUE_none)) 
+			if (attr.getUniqueness().contentEquals(Attribute.UNIQUE_none))
 				col.createIndex(Indexes.ascending(attr.getRelativePath()));
 			else {
 				IndexOptions opt = new IndexOptions().unique(true);
 				col.createIndex(Indexes.ascending(attr.getRelativePath()), opt);
 			}
 			if (logger.isDebugEnabled()) {
-			MongoCursor<Document> inditer = col.listIndexes().iterator();
-				while (inditer.hasNext()) {
-					Document doc = inditer.next();
+				for (Document doc : col.listIndexes()) {
 					logger.debug(doc.toJson());
 				}
 			}
-			
+
 		}
 	}
 
 	@Override
 	public void syncConfig(Collection<Schema> schemaCol, Collection<ResourceType> resTypeCol) throws IOException {
 		
-		initDbSchema(schemaCol,resTypeCol);
-		
+		initDbSchema(resTypeCol);
+
 		Iterator<Schema> siter = schemaCol.iterator();
 
 		Iterator<ResourceType> riter = resTypeCol.iterator();
@@ -681,12 +674,12 @@ public class MongoProvider implements IScimProvider {
 		int scnt = schemaCol.size();
 		int rcnt = resTypeCol.size();
 			
-		PersistStateResource confState = new PersistStateResource(cfg,rcnt,scnt);
-		
+		PersistStateResource confState = mapUtil.mapConfigState(rcnt,scnt);
+
 		// Process the schemas
 		
 		MongoCollection<Document> col = getDbConnection().getCollection(ScimParams.PATH_TYPE_SCHEMAS);
-		logger.debug("Clearing existing schemas from DB");
+		logger.debug("Clearing existing schemas from DB and re-writing");
 		col.drop();
 		while (siter.hasNext()) {
 			Schema entry = siter.next();
@@ -709,7 +702,7 @@ public class MongoProvider implements IScimProvider {
 		
 		col = getDbConnection().getCollection(ScimParams.PATH_TYPE_RESOURCETYPE);
 		
-		logger.debug("Clearing existing resource types from DB");
+		logger.debug("Clearing and initalizing resource types to DB");
 		col.drop();
 		while (riter.hasNext()) {
 			ResourceType entry = riter.next();
@@ -725,11 +718,11 @@ public class MongoProvider implements IScimProvider {
 		}
 		
 		// Write out the current sync information.
-		Document query = new Document().append("id", PersistStateResource.CONFIG_ID);
+		Document query = new Document().append("id", ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 		
 		//Set options to create if it does not exist (upsert = true)
 		ReplaceOptions options = new ReplaceOptions().upsert(true);
-		col =  getDbConnection().getCollection(PersistStateResource.RESTYPE_CONFIG);
+		col =  getDbConnection().getCollection(SystemSchemas.RESTYPE_CONFIG);
 		try {
 			Document cfgDoc = Document.parse(confState.toJsonString());
 			col.replaceOne(query, cfgDoc,options);
@@ -740,6 +733,101 @@ public class MongoProvider implements IScimProvider {
 		
 
 	}
-		
-	
+
+	/**
+	 * Used to obtain information about the transaction previously committed in the provider. The value in
+	 * Meta.revisions can be used as the query term.
+	 * @param transid The transaction id (e.g. from Meta.revisions.value or RequestCtx.getTranID().
+	 * @return The TransactionRecord in the form of {@link ScimResource} containing information about the transaction (a
+	 * ScimResource).
+	 */
+	@Override
+	public ScimResource getTransactionRecord(String transid) throws BackendException {
+		try {
+
+
+			Document query = new Document();
+
+			MongoCollection<Document> col = this.scimDb.getCollection(SystemSchemas.TRANS_CONTAINER);
+
+
+			query.put("_id", new ObjectId(transid));
+			FindIterable<Document> iter = col.find(query);
+			Document doc = iter.first();
+
+			if (doc == null)
+				return null;
+
+			//String json = JSON.serialize(res);
+
+			return mapUtil.mapScimResource(doc, SystemSchemas.TRANS_CONTAINER);
+		} catch (ScimException e) {
+			// Would only expect a parsing error resulting from external data.
+			logger.error("Unexpected scim error: "+e.getMessage(),e);
+		}
+		return null;
+	}
+
+	/**
+	 * Used by the replication event processing system to detect if the cluster has already processed a transaction in
+	 * the case of 1 or more cluster members receiving the same event.
+	 * @param transid The transaction UUID string value to be checked (from {@link RequestCtx#getTranId()}).
+	 * @return true if present in the transaction store of the provider.
+	 */
+	@Override
+	public boolean isTransactionPresent(String transid)  {
+		Document query = new Document("_id", new ObjectId(transid));
+		String type = SystemSchemas.TRANS_CONTAINER;
+		MongoCollection<Document> col = this.scimDb.getCollection(type);
+
+		long num = col.countDocuments(query);
+		return (num > 0);
+	}
+
+	@Override
+	public synchronized void storeTransactionRecord(TransactionRecord record) throws DuplicateTxnException {
+
+		if (record.getId() == null)  // in the case of replication, the id is already set
+			record.setId((new ObjectId()).toString());
+		MongoDatabase sDb = getDbConnection();
+		MongoCollection<Document> col = sDb.getCollection(SystemSchemas.TRANS_CONTAINER);
+
+		// Check if the transaction is already stored.
+		Document query = new Document();
+		query.put("_id", new ObjectId(record.getId()));
+		FindIterable<Document> iter = col.find(query);
+		Document doc = iter.first();
+		if (doc != null)
+			throw new DuplicateTxnException("Transaction id "+record.getId()+" already exists.");
+
+		Meta meta = record.getMeta();
+		if (meta != null) {// Not needed for TransactionRecord type
+			Date created = new Date(System.currentTimeMillis());
+			if (meta.getCreatedDate() == null) // only set the created date if it does not already exist.
+				meta.setCreatedDate(created);
+			meta.setLastModifiedDate(created); // always set the modify date upon create.
+			meta.setLocation('/' + SystemSchemas.TRANS_CONTAINER + '/' + record.getId());
+
+
+			try {
+				String etag = record.calcVersionHash();
+				meta.setVersion(etag);
+			} catch (ScimException ignored) {
+			}
+
+		}
+
+		// Map and store the record
+		doc = MongoMapUtil.mapResource(record);
+		try {
+			col.insertOne(doc);
+		} catch (IllegalArgumentException e) {
+			//Should not happen
+			if (logger.isDebugEnabled())
+				logger.debug("Bad argument exception: "+e.getLocalizedMessage(),e);
+		} catch (MongoWriteException e) {
+			logger.warn("Unexpected error writing transaction record. "+e.getMessage(),e);
+		}
+	}
+
 }

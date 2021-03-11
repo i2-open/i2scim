@@ -1,38 +1,34 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015,2020 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.protocol;
 
-import java.io.IOException;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-
-import javax.servlet.ServletContext;
-import javax.servlet.http.HttpServletResponse;
-
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.core.err.TooManyException;
+import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.security.AciSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.independentid.scim.resource.ScimResource;
-import com.independentid.scim.server.ScimException;
-import com.independentid.scim.server.TooManyException;
+import javax.servlet.ServletContext;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 /**
  * ListResponse is used to generate a SCIM response per RFC7644. Note:
@@ -43,6 +39,7 @@ import com.independentid.scim.server.TooManyException;
 public class ListResponse extends ScimResponse {
 	private static final Logger logger = LoggerFactory.getLogger(ListResponse.class);
 
+
 	public final static SimpleDateFormat headDate = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");
 	
 	protected Date lastMod;
@@ -51,18 +48,19 @@ public class ListResponse extends ScimResponse {
 	protected int smax;  // max server response size
 	protected String id;
 
-	protected ArrayList<ScimResource> entries = new ArrayList<ScimResource>();
+	protected ArrayList<ScimResource> entries = new ArrayList<>();
 	
 	/**
 	 * Constructor used to create an empty SCIM List Response.
 	 * @param ctx A <RequestCtx> object containing the original request information.
+	 * @param maxResults
+	 *
 	 */
-	public ListResponse(RequestCtx ctx) {
+	public ListResponse(RequestCtx ctx, int maxResults) {
 		super();
 		this.ctx = ctx; 
-		
-		this.smax = this.ctx.getConfigMgr().getMaxResults();
-		if (this.ctx.count == 0 || this.ctx.count > this.smax)  
+		this.smax = maxResults;
+		if (this.ctx.count == 0 || this.ctx.count > maxResults)
 			this.ctx.count = this.smax;
 		this.totalRes = 0;
 		this.id = null;
@@ -85,10 +83,6 @@ public class ListResponse extends ScimResponse {
 		super();
 		this.ctx = ctx;
 		
-		this.smax = this.ctx.getConfigMgr().getMaxResults();
-		if (this.ctx.count == 0 || this.ctx.count > this.smax)  
-			this.ctx.count = this.smax;
-		
 		setLocation(val.getMeta().getLocation());
 		
 		this.etag = val.getMeta().getVersion();
@@ -104,14 +98,13 @@ public class ListResponse extends ScimResponse {
 	}
 	
 	
-	public ListResponse(final List<ScimResource> vals, RequestCtx ctx) throws ScimException {
+	public ListResponse(final List<ScimResource> vals, RequestCtx ctx, int maxResults) throws ScimException {
 		super();
 		this.ctx = ctx;
-		
+		this.smax = maxResults;
 		this.id = null;
 		
-		this.smax = this.ctx.getConfigMgr().getMaxResults();
-		if (this.ctx.count == 0 || this.ctx.count > this.smax)  
+		if (this.ctx.count == 0 || this.ctx.count > maxResults)
 			this.ctx.count = this.smax;
 		
 		this.totalRes = vals.size();
@@ -123,12 +116,15 @@ public class ListResponse extends ScimResponse {
 			int start = ctx.startIndex-1;
 			int count = ctx.count;
 			int stop = start + count;
+			/*
 			if (stop > this.totalRes) {
 				stop = this.totalRes;
 				count = stop - start;
 			}
+			 */
+
 			
-			for (int i = start; (i < this.ctx.count && i < vals.size()); i++) {
+			for (int i = start; (i < this.ctx.count && i < this.totalRes); i++) {
 				ScimResource resource = vals.get(i);
 				Date mdate = resource.getMeta().getLastModifiedDate();
 				if (mdate != null &&(lastMod == null || mdate.after(lastMod)))
@@ -207,15 +203,27 @@ public class ListResponse extends ScimResponse {
 		gen.writeEndArray();
 		gen.writeEndObject();
 		// Set Last Modified based on the most recently modified result in the set.
-		if (this.lastMod != null)
-			resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
-		
-		resp.setStatus(this.getStatus());
-		String loc = getLocation();
-		
-		if (loc != null)
-			resp.setHeader("Location", loc);
-		// TODO should we check for response size of 0 for not found?
+		if (resp != null) {
+			if (this.lastMod != null)
+				resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
+
+			resp.setStatus(this.getStatus());
+			String loc = getLocation();
+
+			if (loc != null)
+				resp.setHeader("Location", loc);
+			// TODO should we check for response size of 0 for not found?
+		}
 	}
-	
+
+	@Override
+	protected void processReadableResult(AciSet set) {
+		for (ScimResource res : this.entries) {
+			Set<Attribute> attrs = res.getAttributesPresent();
+			for (Attribute attr: attrs) {
+				if (set.isAttrNotReturnable(attr))
+					res.removeValue(attr);
+			}
+		}
+	}
 }

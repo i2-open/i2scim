@@ -1,24 +1,27 @@
-/**********************************************************************
- *  Independent Identity - Big Directory                              *
- *  (c) 2015 Phillip Hunt, All Rights Reserved                        *
- *                                                                    *
- *  Confidential and Proprietary                                      *
- *                                                                    *
- *  This unpublished source code may not be distributed outside       *
- *  “Independent Identity Org”. without express written permission of *
- *  Phillip Hunt.                                                     *
- *                                                                    *
- *  People at companies that have signed necessary non-disclosure     *
- *  agreements may only distribute to others in the company that are  *
- *  bound by the same confidentiality agreement and distribution is   *
- *  subject to the terms of such agreement.                           *
- **********************************************************************/
+/*
+ * Copyright (c) 2020.
+ *
+ * Confidential and Proprietary
+ *
+ * This unpublished source code may not be distributed outside
+ * “Independent Identity Org”. without express written permission of
+ * Phillip Hunt.
+ *
+ * People at companies that have signed necessary non-disclosure
+ * agreements may only distribute to others in the company that are
+ * bound by the same confidentiality agreement and distribution is
+ * subject to the terms of such agreement.
+ */
 
 package com.independentid.scim.protocol;
 
+import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
-import com.independentid.scim.server.BadFilterException;
+import com.independentid.scim.schema.Attribute;
+
+import javax.validation.constraints.NotNull;
+import java.util.Set;
 
 public class PrecedenceFilter extends Filter {
 
@@ -27,14 +30,12 @@ public class PrecedenceFilter extends Filter {
 	
 	public PrecedenceFilter(String filterStr) {
 		super(filterStr);
-		
 	}
-	
+
 	public PrecedenceFilter(Filter subfilter, boolean isNot) {
 		super(null);
 		this.isNot = isNot;
 		this.filter = subfilter;
-		
 	}
 	
 	public boolean isNot() {
@@ -46,7 +47,7 @@ public class PrecedenceFilter extends Filter {
 	}
 	
 	public String toString() {
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		if (isNot)
 			buf.append("not");
 		buf.append("(");
@@ -59,7 +60,7 @@ public class PrecedenceFilter extends Filter {
 	}
 	
 	public String toValuePathString() {
-		StringBuffer buf = new StringBuffer();
+		StringBuilder buf = new StringBuilder();
 		if (isNot)
 			buf.append("not");
 		buf.append("(");
@@ -85,5 +86,12 @@ public class PrecedenceFilter extends Filter {
 			return !filter.isMatch(value);
 		return filter.isMatch(value);
 	}
+
+	@Override
+	protected void filterAttributes(@NotNull Set<Attribute> attrSet) {
+		filter.filterAttributes(attrSet);
+	}
+
+
 
 }
