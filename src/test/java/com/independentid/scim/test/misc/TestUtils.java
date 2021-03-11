@@ -58,9 +58,6 @@ public class TestUtils {
     @ConfigProperty(name = "scim.prov.memory.persist.dir", defaultValue = "./scimdata")
     String storeDir;
 
-    @ConfigProperty(name = "scim.prov.memory.persist.file", defaultValue="scimdata.json")
-    String storeFile;
-
     @ConfigProperty(name="scim.prov.mongo.uri",defaultValue = "mongodb://localhost:27017")
     String dbUrl;
 

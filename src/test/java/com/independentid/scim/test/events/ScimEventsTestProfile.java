@@ -26,10 +26,12 @@ public class ScimEventsTestProfile implements QuarkusTestProfile {
     public Map<String, String> getConfigOverrides() {
         Map<String, String> cmap = new HashMap<>(Map.of(
                 "scim.prov.providerClass", MongoProvider.class.getName(),
-                "scim.prov.mongo.test", "true",
-                "scim.prov.mongo.dbname", "secTestSCIM",
+
+                "scim.prov.mongo.dbname", "eventTestSCIM",
                 "scim.prov.mongo.uri", "mongodb://localhost:27017",
 
+                "quarkus.log.min-level","DEBUG",
+                "logging.level.com.independentid.scim","DEBUG",
                 "quarkus.log.category.\"com.independentid.scim\".level", "DEBUG",
 
                 "scim.security.enable","false",
