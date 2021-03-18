@@ -502,13 +502,18 @@ public class Operation extends RecursiveAction {
             String subj = "";
             if (identity != null)
                 subj = " "+identity.toString();
+            String path = ctx.getPath();
+            if(newResource != null) {
+                //This is used to indicate URL for created resource
+                path = newResource.getMeta().getLocation();
+            }
             if (req != null)
                 return "["+req.getRemoteAddr()+subj+"] "
                         + " Tx:"+((tranId != null)?tranId:"NULL") + " "
                         + req.getMethod() + " "
-                        + req.getRequestURL().toString();
+                        + path;
             return "[<INTERNAL>"+subj+"] Tx:"+((tranId != null)?tranId:"NULL") + " "
-                    + this.getClass().getSimpleName()+" "+ctx.getPath();
+                    + this.getClass().getSimpleName()+" "+path;
         }
 
         return "<Missing context>";

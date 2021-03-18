@@ -21,9 +21,10 @@ import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.PoolManager;
 import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.events.JsonKafkaDeserializer;
-import com.independentid.scim.events.KafkaRepEventHandler;
-import com.independentid.scim.op.*;
+import com.independentid.scim.op.CreateOp;
+import com.independentid.scim.op.DeleteOp;
+import com.independentid.scim.op.Operation;
+import com.independentid.scim.op.PutOp;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ResourceResponse;
 import com.independentid.scim.protocol.ScimResponse;
@@ -40,7 +41,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,10 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -61,7 +65,9 @@ import static org.assertj.core.api.Assertions.fail;
 @QuarkusTest
 @TestProfile(ScimEventsTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
-public class ScimReplicationPubTest {
+public class ScimKafkaLogTest {
+
+    final static String KAFKA_LOG_PREFIX = "scim.kafka.log.pub.";
 
     @Inject
     ConfigMgr configMgr;
@@ -78,29 +84,26 @@ public class ScimReplicationPubTest {
     @Inject
     TestUtils testUtils;
 
-    @ConfigProperty(name="scim.kafka.rep.bootstrap")
+    @ConfigProperty(name="scim.kafka.log.bootstrap")
     String kafkaBoot;
 
-    @ConfigProperty(name = KafkaRepEventHandler.KAFKA_CON_PREFIX+"topic", defaultValue = "rep")
+    @ConfigProperty(name = KAFKA_LOG_PREFIX+"topic", defaultValue = "log")
     String repTopic;
 
-    @ConfigProperty (name= "scim.kafka.rep.client.id")
+    @ConfigProperty (name= KAFKA_LOG_PREFIX+"client.id")
     String svr_clientId;
 
-    @ConfigProperty (name= "scim.kafka.rep.cluster.id",defaultValue="cluster1")
-    String svr_groupId;
+    static final String TEST_CLIENT = "TestLogClient1";
+    static final String TEST_GROUP = "TestLogGroup";
 
-    static final String TEST_CLIENT = "TestClient2";
-    static final String TEST_GROUP = "TestGroup2";
-
-    private final static Logger logger = LoggerFactory.getLogger(ScimReplicationPubTest.class);
+    private final static Logger logger = LoggerFactory.getLogger(ScimKafkaLogTest.class);
 
     private static final String testUserFile1 = "classpath:/schema/TestUser-bjensen.json";
 
-    static KafkaConsumer<String, JsonNode> consumer = null;
+    static KafkaConsumer<String, String> consumer = null;
     Set<TopicPartition> tparts = null;
 
-    static ScimResource res;
+    static ScimResource res = null;
 
     @Test
     public void a_initProvider() {
@@ -119,8 +122,8 @@ public class ScimReplicationPubTest {
         props.setProperty("enable.auto.commit", "true");
         props.setProperty("auto.offset.reset","latest");
         //props.setProperty("broadcast","true");
-        props.setProperty("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-        props.setProperty("value.deserializer", JsonKafkaDeserializer.class.getName());
+        props.setProperty("key.deserializer", StringDeserializer.class.getName());
+        props.setProperty("value.deserializer", StringDeserializer.class.getName());
         consumer = new KafkaConsumer<>(props);
         consumer.subscribe(Collections.singletonList(repTopic));
         consumer.commitSync();
@@ -140,8 +143,8 @@ public class ScimReplicationPubTest {
     }
 
     @Test
-    public void b_testMessageProducer()  {
-        logger.info("B. Initiating SCIM transaction Test");
+    public void b_createOpTest()  {
+        logger.info("B. CreateOp Log Test");
 
        // KafkaProducer<String,JsonNode> producer = KafkaProducer.create(vertx, producerProps);
         InputStream userStream;
@@ -168,81 +171,27 @@ public class ScimReplicationPubTest {
             fail("Failed to start a SCIM create transaction: "+e.getMessage(),e);
         }
 
-
-    }
-
-    @Test
-    public void c_readRepStream() {
-        logger.info("C. Reading Kafka SCIM replication stream");
-
         int loopCnt = 0;
         boolean received = false;
-        logger.debug("Waiting for replication event...");
+        logger.debug("Waiting for log event...");
         while (loopCnt < 12 && !received) {
             loopCnt++;
-            ConsumerRecords<String, JsonNode> records = consumer.poll(Duration.ofMillis(5000));
-            for (ConsumerRecord<String, JsonNode> rec : records) {
-                logger.info("...rep event received.");
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(5000));
+            for (ConsumerRecord<String, String> rec : records) {
+                logger.info("...log event received.");
                 logger.debug("TEST: Record received: "+rec.toString());
                 logger.debug("TEST: Key="+rec.key());
                 assertThat(rec.key())
-                        .as("Message key matches created resource id")
+                        .as("Message key matches res id")
                         .isEqualTo(res.getId());
                 assertThat(rec.value())
                         .as("Check that event has a value")
                         .isNotNull();
-                String hdrClient = null, hdrGroup = null,hdrTran= null;
-                for (Header header : rec.headers()) {
-                    String key = header.key();
-                    switch(key) {
-                        case KafkaRepEventHandler.HDR_CLIENT:
-                            hdrClient = new String(header.value());
-                            if (logger.isDebugEnabled())
-                                logger.debug("\tSender Client:\t"+hdrClient);
-                            continue;
-                        case KafkaRepEventHandler.HDR_CLUSTER:
-                            hdrGroup = new String(header.value());
-                            if (logger.isDebugEnabled())
-                                logger.debug("\tSender Group:\t"+hdrGroup);
-                            continue;
-                        case KafkaRepEventHandler.HDR_TID:
-                            hdrTran = new String(header.value());
-                            if (logger.isDebugEnabled())
-                                logger.debug("\tTransactionId:\t"+hdrTran);
-                            continue;
-                        default:
-                            // ignore
-                    }
-                }
-                assertThat(hdrClient)
-                        .as("Check transmitting client id present")
-                        .isNotNull();
-                assertThat(hdrClient)
-                        .as("Check transmitting client id is "+svr_clientId)
-                        .isEqualTo(svr_clientId);
-                assertThat(hdrGroup)
-                        .as("Check transmitting cluster id present")
-                        .isNotNull();
-                assertThat(hdrGroup)
-                        .as("Check transmitting cluster id is "+svr_groupId)
-                        .isEqualTo(svr_groupId);
-                assertThat(hdrTran)
-                        .as("Check transmitting trans id is present")
-                        .isNotNull();
-
-                Operation op = null;
-                try {
-                    op = BulkOps.parseOperation(rec.value(), null, 0, true);
-                } catch (ScimException e) {
-                    fail("Unable to parse received operation: "+e.getMessage());
-                }
-                assertThat(op)
-                        .as("Check event was parsed as an operation")
-                        .isNotNull();
-                assertThat(op)
-                        .as("Check operation is a Create Op")
-                        .isInstanceOf(CreateOp.class);
-                logger.debug ("Successfully parsed operation: "+op.toString());
+                String msg = rec.value();
+                logger.debug("Log Message: "+msg);
+                assertThat(msg)
+                        .as("Received CreateOp log message")
+                        .contains("CreateOp /Users/"+res.getId());
                 received = true;
             }
 
@@ -254,8 +203,8 @@ public class ScimReplicationPubTest {
     }
 
     @Test
-    public void d_putTest() {
-        logger.info("D. Put Test");
+    public void c_putTest() {
+        logger.info("C. Put Test");
         Attribute uname = schemaManager.findAttribute("userName",null);
         StringValue newUserName = new StringValue(uname,"username1");
 
@@ -280,34 +229,25 @@ public class ScimReplicationPubTest {
 
         int loopCnt = 0;
         boolean received = false;
-        logger.debug("Waiting for replication event...");
+        logger.debug("Waiting for log event...");
         while (loopCnt < 12 && !received) {
             loopCnt++;
-            ConsumerRecords<String, JsonNode> records = consumer.poll(Duration.ofMillis(5000));
-            for (ConsumerRecord<String, JsonNode> rec : records) {
-                logger.info("...rep event received.");
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(5000));
+            for (ConsumerRecord<String, String> rec : records) {
+                logger.info("...log event received.");
                 logger.debug("TEST: Record received: "+rec.toString());
                 logger.debug("TEST: Key="+rec.key());
                 assertThat(rec.key())
-                        .as("Message key matches created resource id")
+                        .as("Message key matches res id")
                         .isEqualTo(res.getId());
                 assertThat(rec.value())
                         .as("Check that event has a value")
                         .isNotNull();
-
-                Operation op = null;
-                try {
-                    op = BulkOps.parseOperation(rec.value(), null, 0, true);
-                } catch (ScimException e) {
-                    fail("Unable to parse received operation: "+e.getMessage());
-                }
-                assertThat(op)
-                        .as("Check event was parsed as an operation")
-                        .isNotNull();
-                assertThat(op)
-                        .as("Check operation is a Create Op")
-                        .isInstanceOf(PutOp.class);
-                logger.debug ("Successfully parsed operation: "+op.toString());
+                String msg = rec.value();
+                logger.debug("Log Message: "+msg);
+                assertThat(msg)
+                        .as("Received PutOp log message")
+                        .contains("PutOp /Users/"+res.getId());
                 received = true;
             }
 
@@ -316,8 +256,8 @@ public class ScimReplicationPubTest {
     }
 
     @Test
-    public void e_deleteTest() {
-        logger.info("E. Delete Test");
+    public void d_deleteTest() {
+        logger.info("D. Delete Test");
 
         try {
             RequestCtx ctx = new RequestCtx("/Users",res.getId(),null,schemaManager);
@@ -336,34 +276,25 @@ public class ScimReplicationPubTest {
 
         int loopCnt = 0;
         boolean received = false;
-        logger.debug("Waiting for replication event...");
+        logger.debug("Waiting for log event...");
         while (loopCnt < 12 && !received) {
             loopCnt++;
-            ConsumerRecords<String, JsonNode> records = consumer.poll(Duration.ofMillis(5000));
-            for (ConsumerRecord<String, JsonNode> rec : records) {
-                logger.info("...rep event received.");
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(5000));
+            for (ConsumerRecord<String, String> rec : records) {
+                logger.info("...log event received.");
                 logger.debug("TEST: Record received: "+rec.toString());
                 logger.debug("TEST: Key="+rec.key());
                 assertThat(rec.key())
-                        .as("Message key matches created resource id")
+                        .as("Message key matches res id")
                         .isEqualTo(res.getId());
                 assertThat(rec.value())
                         .as("Check that event has a value")
                         .isNotNull();
-
-                Operation op = null;
-                try {
-                    op = BulkOps.parseOperation(rec.value(), null, 0, true);
-                } catch (ScimException e) {
-                    fail("Unable to parse received operation: "+e.getMessage());
-                }
-                assertThat(op)
-                        .as("Check event was parsed as an operation")
-                        .isNotNull();
-                assertThat(op)
-                        .as("Check operation is a Delete Op")
-                        .isInstanceOf(DeleteOp.class);
-                logger.debug ("Successfully parsed operation: "+op.toString());
+                String msg = rec.value();
+                logger.debug("Log Message: "+msg);
+                assertThat(msg)
+                        .as("Received DeleteOp log message")
+                        .contains("DeleteOp /Users/"+res.getId());
                 received = true;
             }
 
