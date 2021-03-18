@@ -16,11 +16,11 @@
 package com.independentid.scim.events;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.core.FifoCache;
 import com.independentid.scim.op.Operation;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
-import java.util.List;
 
 public interface IEventHandler {
     @PostConstruct
@@ -33,21 +33,11 @@ public interface IEventHandler {
      */
     void consume(JsonNode node);
 
-    List<Operation> getReceivedOps();
-
     /**
-     * Used to indicate if there are unprocessed received events.
-     * @return true if the received queue is empty
+     * Takes a processed SCIM Operation and publishes it
+     * @param op A processed SCIM Operation to be published
      */
-    boolean hasNoReceivedEvents();
-
-    /**
-     * Returns the list of operations not successfully processed.
-     * @return an List of Operations that were not processed successfully.
-     */
-    List<Operation> getSendErrorOps();
-
-    void process(Operation op);
+    void publish(Operation op);
 
     /**
      * Indicates if the producer is working.

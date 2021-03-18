@@ -22,6 +22,7 @@ import com.independentid.scim.core.err.InternalException;
 import com.independentid.scim.core.err.InvalidSyntaxException;
 import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.events.EventManager;
 import com.independentid.scim.plugin.PluginHandler;
 import com.independentid.scim.protocol.ListResponse;
 import com.independentid.scim.protocol.RequestCtx;
@@ -30,7 +31,6 @@ import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.SchemaManager;
-import com.independentid.scim.security.AccessControl;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.security.identity.SecurityIdentity;
 import org.slf4j.Logger;
@@ -385,6 +385,10 @@ public class Operation extends RecursiveAction {
         }
     }
 
+    public void prepareTestOp() {
+        doPreOperation();  // initialize data structures
+    }
+
     /**
      * This method is called by the thread pool to invoke the transaction lifecycle. Do not override this class!
      * <p>
@@ -487,6 +491,7 @@ public class Operation extends RecursiveAction {
             logger.debug("Op Stats: " + this.stats.toString());
         }
 
+        EventManager.getInstance().publishEvent(this);
     }
 
     public String getLogMessage() {
@@ -531,7 +536,8 @@ public class Operation extends RecursiveAction {
                 return rresp.getId();
             }
         }
-
+        if (this.newResource != null)
+            return this.newResource.getId();
         return null;
     }
 

@@ -16,12 +16,13 @@
 package com.independentid.scim.backend;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.backend.mongo.MongoProvider;
+import com.independentid.scim.core.err.DuplicateTxnException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.resource.TransactionRecord;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaManager;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import javax.annotation.Priority;
 import javax.ejb.Startup;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
@@ -43,6 +45,7 @@ import java.util.function.Supplier;
 //@ApplicationScoped
 @Singleton
 @Startup
+@Priority(5)
 @Named("BackendHandler")
 public class BackendHandler {
 
@@ -91,9 +94,6 @@ public class BackendHandler {
 
 			provider = this.providerSupplier.get();
 		}
-
-
-
 		return provider.ready();
 
 	}
@@ -167,46 +167,68 @@ public class BackendHandler {
 		return provider.ready();
 	}
 
+	public void checkProvider() {
+		if (provider == null)
+			provider = providerSupplier.get();
+	}
+
 	
 	public ScimResponse create(RequestCtx ctx,final ScimResource res)
 			throws ScimException, BackendException {
+		checkProvider();
 		return provider.create(ctx, res);
 	}
 
 	public ScimResponse get(RequestCtx ctx) throws ScimException, BackendException {
+		checkProvider();
 		return provider.get(ctx);
 	}
 
 	public ScimResponse replace(RequestCtx ctx, final ScimResource res)
 			throws ScimException, BackendException {
+		checkProvider();
 		return provider.put(ctx, res);
 	}
 
 	public ScimResponse patch(RequestCtx ctx, JsonPatchRequest	req) throws ScimException, BackendException {
+		checkProvider();
 		return provider.patch(ctx, req);
 	}
 
 	public ScimResponse bulkRequest(RequestCtx ctx, JsonNode node)
 			throws ScimException, BackendException {
+		checkProvider();
 		return provider.bulkRequest(ctx, node);
 	}
 
 	public ScimResponse delete(RequestCtx ctx) throws ScimException, BackendException {
+		checkProvider();
 		return provider.delete(ctx);
 	}
 
 	public void syncConfig(SchemaManager smgr) throws IOException {
-		if (provider == null)
-			provider = providerSupplier.get();
+		checkProvider();
 		provider.syncConfig(smgr.getSchemas(), smgr.getResourceTypes());
 	}
 	
 	public Collection<Schema> loadSchemas() throws ScimException {
+		checkProvider();
 		return provider.loadSchemas();
 	}
 	
 	public Collection<ResourceType> loadResourceTypes() throws ScimException {
+		checkProvider();
 		return provider.loadResourceTypes();
+	}
+
+	public ScimResource getTransactionRecord(String transid) throws BackendException {
+		checkProvider();
+		return provider.getTransactionRecord(transid);
+	}
+
+	public void storeTransactionRecord(TransactionRecord record) throws DuplicateTxnException {
+		checkProvider();
+		provider.storeTransactionRecord(record);
 	}
 
 	

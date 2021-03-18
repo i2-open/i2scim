@@ -18,14 +18,12 @@ package com.independentid.scim.server;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.PoolManager;
-import com.independentid.scim.events.EventManager;
 import com.independentid.scim.op.*;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.serializer.JsonUtil;
 import org.apache.http.HttpStatus;
 import org.eclipse.microprofile.metrics.annotation.Counted;
 import org.eclipse.microprofile.metrics.annotation.Timed;
-import org.jose4j.http.Get;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,8 +67,8 @@ public class ScimV2Servlet extends HttpServlet {
 	@Resource(name="PoolMgr")
   	PoolManager pool;
 
-	@Inject
-	EventManager eventManager;
+	//@Inject
+	//EventManager eventManager;
 
 	public ScimV2Servlet() {
 		logger.info("Scim Servlet Constructed");
@@ -107,8 +105,6 @@ public class ScimV2Servlet extends HttpServlet {
 		PatchOp op = new PatchOp(req, resp);
 
 		complete(op);
-
-		checkAndLogModOp(op);
 	}
 
 	/* (non-Javadoc)
@@ -123,8 +119,6 @@ public class ScimV2Servlet extends HttpServlet {
 		PutOp op = new PutOp(req, resp);
 
 		complete(op);
-
-		checkAndLogModOp(op);
 	}
 
 	/*
@@ -143,8 +137,6 @@ public class ScimV2Servlet extends HttpServlet {
 		DeleteOp op = new DeleteOp(req, resp);
 
 		complete(op);
-
-		checkAndLogModOp(op);
 	}
 
 	@Counted(name="scim.ops.search.count",description="Counts the number of SCIM Post Search requests")
@@ -199,11 +191,9 @@ public class ScimV2Servlet extends HttpServlet {
 	protected void doBulk(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
 		
-		BulkOps op = new BulkOps(req, resp, eventManager);
+		BulkOps op = new BulkOps(req, resp);
 		complete(op);
 
-		//BulkOps will invoke individual events as well
-		checkAndLogModOp(op);
 	}
 	
 	/*
@@ -242,7 +232,7 @@ public class ScimV2Servlet extends HttpServlet {
 		CreateOp op = new CreateOp(req, resp);
 
 		complete(op);
-		checkAndLogModOp(op);
+
 	}
 
 	@Override
@@ -276,16 +266,6 @@ public class ScimV2Servlet extends HttpServlet {
 			logger.error("Unexpected Job returned without execution: "
 					+ op.toString());
 		}
-	}
-
-	private void checkAndLogModOp(Operation op) {
-		if (op instanceof GetOp
-			|| op instanceof SearchOp) return;  //search ops not logged.
-
-		if (op.isDone()
-				&& !op.isError()
-				&& op.getResponse().getStatus() < 400)
-			eventManager.logEvent(op);
 	}
 
 

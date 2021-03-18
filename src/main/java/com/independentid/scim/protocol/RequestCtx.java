@@ -114,14 +114,17 @@ public class RequestCtx {
 
 	protected String tid;
 
+	private boolean isReplicaOp = false;
+
 	/**
 	 * Used to create a request context that exists within a single SCIM Bulk operation
 	 * @param bulkReqOp A parsed JSON structure representing a single SCIM bulk operation
 	 * @param schemaManager A pointer to the server ConfigMgr object (for schema)
+	 * @param isReplicaOp A flag indicating if request is from a replication event
 	 * @throws SchemaException thrown when the bulk request JSON structure is invalid
 	 * @throws ScimException thrown due to a schema or other Scim related issue
 	 */
-	public RequestCtx(JsonNode bulkReqOp, SchemaManager schemaManager) throws ScimException, SchemaException {
+	public RequestCtx(JsonNode bulkReqOp, SchemaManager schemaManager, boolean isReplicaOp) throws ScimException, SchemaException {
 		if (!bulkReqOp.isObject()) {
 			throw new SchemaException(
 					"Expecting an object element of 'Operations' array.");
@@ -129,6 +132,7 @@ public class RequestCtx {
 		this.smgr = schemaManager;
 		this.sctx = null;
 		this.tid = schemaManager.generateTransactionId();
+		this.isReplicaOp = isReplicaOp;
 
 		JsonNode item = bulkReqOp.get(BulkOps.PARAM_METHOD);
 		if (item == null)
@@ -862,4 +866,5 @@ public class RequestCtx {
 		this.tid = tranUuid;
 	}
 
+	public boolean isReplicaOp() { return this.isReplicaOp; }
 }

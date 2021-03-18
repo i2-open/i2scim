@@ -18,7 +18,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.core.err.TooLargeException;
-import com.independentid.scim.events.EventManager;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.schema.SchemaException;
@@ -60,24 +59,23 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	protected int opCompleted = 0, opFailed = 0, opRequested = 0;
 	protected int failOnErrors = 0;
 
-	final EventManager eventManager;
 
-	public BulkOps(HttpServletRequest req, HttpServletResponse resp, EventManager eventManager) {
+	public BulkOps(HttpServletRequest req, HttpServletResponse resp) {
 		super (req,resp);
 		this.ops = new ArrayList<>();
 		this.bulkMap = new HashMap<>();
 		this.bulkValMap = new HashMap<>();
-		this.eventManager = eventManager;
+
 	}
 
-	public BulkOps(JsonNode node, RequestCtx ctx, EventManager eventManager) {
+	public BulkOps(JsonNode node, RequestCtx ctx) {
 		super(ctx, 0);
 
 		this.node = node;
 		this.ops = new ArrayList<>();
 		this.bulkMap = new HashMap<>();
 		this.bulkValMap = new HashMap<>();
-		this.eventManager = eventManager;
+
 	}
 
 	@Override
@@ -150,7 +148,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 
 			Operation op;
 			try {
-				op = parseOperation(oper,this,requestNum);
+				op = parseOperation(oper,this,requestNum, false);
 			} catch (ScimException e) {
 				setCompletionError(e);
 				return;
@@ -251,22 +249,31 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	}
 
 	public static Operation parseOperation(
-			JsonNode bulkOpNode, BulkOps parent, int requestNum) throws ScimException {
-		RequestCtx octx = new RequestCtx(bulkOpNode, schemaManager);
+			JsonNode bulkOpNode, BulkOps parent, int requestNum, boolean isReplicOp) throws ScimException {
+		RequestCtx octx = new RequestCtx(bulkOpNode, schemaManager, isReplicOp);
 
-		JsonNode item = bulkOpNode.get(PARAM_DATA);
+		JsonNode item = bulkOpNode.get(BulkOps.PARAM_TRANID);
+		if (item == null) {
+			throw new SchemaException(
+					"Bulk request for POST/PUT/PATCH missing required attribute 'tid'.");
+		}
+		octx.setTranId(item.asText());
+
+		item = bulkOpNode.get(PARAM_METHOD);
+		if (item == null)
+			throw new SchemaException(
+					"Bulk request missing "+PARAM_METHOD+ "parameter.");
+		String method = item.asText();
+
+		item = bulkOpNode.get(PARAM_DATA);
 		if (item == null) {
 			if (!octx.getBulkMethod().equals(Operation.Bulk_Method_DELETE))
 				throw new SchemaException(
 						"Bulk request for POST/PUT/PATCH missing required attribute 'data'.");
 		}
 
-		item = bulkOpNode.get(BulkOps.PARAM_TRANID);
-		if (item != null)
-			octx.setTranId(item.asText());
-
 		Operation op = null;
-		switch (octx.getBulkMethod()) {
+		switch (method) {
 		case Operation.Bulk_Method_POST:
 			op = new CreateOp(item, octx, parent, requestNum);
 			break;
@@ -339,7 +346,6 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 				OpStat stat = op.getStats();
 				stat.setBulkExecNumber(batchExecNum++);
 				op.compute();
-				eventManager.logEvent(op);
 			}
 
 			if (op.isError())
