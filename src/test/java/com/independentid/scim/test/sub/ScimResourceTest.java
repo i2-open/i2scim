@@ -18,6 +18,8 @@ package com.independentid.scim.test.sub;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.backend.BackendException;
+import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
@@ -42,6 +44,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.text.ParseException;
+import java.time.Instant;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 
@@ -61,6 +65,9 @@ public class ScimResourceTest {
 	@Inject
 	@Resource(name="SchemaMgr")
 	SchemaManager smgr ;
+
+	@Inject
+	BackendHandler handler;
 	
 	final static String testUserFile1 = "classpath:/schema/TestUser-bjensen.json";
 	final static String testUserFile2 = "classpath:/schema/TestUser-jsmith.json";
@@ -245,8 +252,6 @@ public class ScimResourceTest {
 	@Test
 	public void d_copyTest() {
 		try {
-			JsonNode jnode = user1.toJsonNode(null);
-
 			ScimResource copyRes = user1.copy(null);
 
 			String original = user1.toString();
@@ -413,6 +418,43 @@ public class ScimResourceTest {
 		assertThat(testMatch)
 				.as("Check manager John Smith not present")
 				.doesNotContain(origMatch);
+	}
+
+	@Test
+	public void g_RevisionTest() throws ScimException {
+		RequestCtx ctx = new RequestCtx("/Uses",user1.getId(),null,smgr);
+
+		try {
+			Date curDate = Date.from(Instant.now());
+			user1.getMeta().addRevision(ctx,handler.getProvider(),curDate);
+
+			MultiValue revision = user1.getMeta().getRevisions();
+
+			assertThat(revision.getRawValue().length).isEqualTo(1);
+
+			// simulate new revision
+			ctx = new RequestCtx("/Uses",user1.getId(),null,smgr);
+			user1.getMeta().addRevision(ctx,handler.getProvider(), Date.from(Instant.now()));
+			int cnt = 0;
+			revision = user1.getMeta().getRevisions();
+			for(Value val : revision.getRawValue()) {
+				String record = val.toString(revision.getAttribute());
+				logger.debug("Version: "+record);
+				cnt++;
+			}
+			assertThat(cnt).isEqualTo(2);
+
+			String rec = user1.toJsonString();
+			assertThat(rec)
+					.as("JsonNode of user1 has revisions")
+					.contains(ctx.getTranId());
+
+			assertThat(rec)
+					.as("JsonNode of user1 has revisions")
+					.contains("date\":\""+Meta.ScimDateFormat.format(curDate));
+		} catch (BackendException e) {
+			fail("Received erroneous duplicate transaction exception: "+e.getMessage(),e);
+		}
 	}
 	
 
