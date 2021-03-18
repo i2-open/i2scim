@@ -15,9 +15,7 @@
 
 package com.independentid.scim.events;
 
-import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
-import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.PoolManager;
 import com.independentid.scim.op.Operation;
 import com.independentid.scim.resource.TransactionRecord;
@@ -40,31 +38,14 @@ import javax.inject.Singleton;
 public class EventManager {
     private final static Logger logger = LoggerFactory.getLogger(EventManager.class);
 
-    public static final String PARAM_KAFKA_BOOTSTRAP = "scim.kafka.bootstrap";
-
     @ConfigProperty(name = "scim.event.enable", defaultValue = "false")
     boolean enabled;
-
-    @ConfigProperty(name = "scim.event.issuer", defaultValue = "default.issuer.exceptionalid.com")
-    String issuer;
 
     @ConfigProperty(name = "scim.event.audiences", defaultValue = "default.audience.exceptionalid.com")
     String[] audiences;
 
-    @ConfigProperty(name = "scim.event.expiredays", defaultValue = "365")
-    int expDays;
-
     @ConfigProperty(name = "scim.event.types", defaultValue="replication")
     String[] types;
-
-    @ConfigProperty(name = "scim.event.signedTypes", defaultValue = "replication=true")
-    String[] signedTypes;
-
-    @ConfigProperty(name = "scim.event.signKey", defaultValue = "/certs/signKeyjwks.json")
-    String signedKeyPath;
-
-    @ConfigProperty(name = "scim.event.encryptedTypes", defaultValue = "None")
-    String[] encryptedTypes;
 
     @ConfigProperty (name= "scim.kafkaRepEventHandler.client.id", defaultValue="defaultClient")
     String clientId;
@@ -81,19 +62,24 @@ public class EventManager {
     @Inject
     SchemaManager schemaManager;
 
-    IScimProvider provider;
-
     //static List<Operation> queue = Collections.synchronizedList(new ArrayList<Operation>());
+    private static EventManager self = null;
 
     public EventManager() {
-
+        if (self == null)
+            self = this;
     }
+
+    /**
+     * Used by Operations to invoke EventManager
+     * @return The singleton EventManager instance when CDI not available (ie. Operation classes)
+     */
+    public static EventManager getInstance() { return self; }
 
     @PostConstruct
     public void init() {
         if (isEnabled()) {
             logger.info("Event Manager Started.");
-            provider = backendHandler.getProvider();
             return;
         }
        logger.warn("Event Manager *DISABLED*.");
@@ -111,28 +97,12 @@ public class EventManager {
             logger.warn("Event Manager *DISABLED*.");
     }
 
-    public String getIssuer() {
-        return issuer;
-    }
-
-    public void setIssuer(String issuer) {
-        this.issuer = issuer;
-    }
-
     public String[] getAudiences() {
         return audiences;
     }
 
     public void setAudiences(String[] audiences) {
         this.audiences = audiences;
-    }
-
-    public int getExpDays() {
-        return expDays;
-    }
-
-    public void setExpDays(int expDays) {
-        this.expDays = expDays;
     }
 
     public String[] getTypes() {
@@ -143,40 +113,16 @@ public class EventManager {
         this.types = types;
     }
 
-    public String[] getSignedTypes() {
-        return signedTypes;
-    }
-
-    public void setSignedTypes(String[] signedTypes) {
-        this.signedTypes = signedTypes;
-    }
-
-    public String getSignedKeyPath() {
-        return signedKeyPath;
-    }
-
-    public void setSignedKeyPath(String signedKeyPath) {
-        this.signedKeyPath = signedKeyPath;
-    }
-
-    public String[] getEncryptedTypes() {
-        return encryptedTypes;
-    }
-
-    public void setEncryptedTypes(String[] encryptedTypes) {
-        this.encryptedTypes = encryptedTypes;
-    }
-
     /**
      * Called by the servlet (e.g. {@link com.independentid.scim.server.ScimV2Servlet}) after the operation is executed.
      * @param op The {@link Operation} that was performed (not complete or errored)
      */
-    public void logEvent(Operation op) {
+    public void publishEvent(Operation op) {
         try {
             if (isEnabled()) {
                 TransactionRecord rec = new TransactionRecord(schemaManager,clientId,op);
 
-                PublishOperation pop = new PublishOperation(rec,handlers.iterator(), provider);
+                PublishOperation pop = new PublishOperation(rec,handlers.iterator(), backendHandler);
                 poolManager.addPublishOperation(pop);
             }
         } catch (SchemaException e) {

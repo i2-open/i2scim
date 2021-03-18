@@ -15,14 +15,17 @@
 
 package com.independentid.scim.test.misc;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.backend.memory.MemoryProvider;
 import com.independentid.scim.backend.mongo.MongoProvider;
+import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.SchemaManager;
-import com.independentid.scim.test.mongo.MongoConfigTest;
+import com.independentid.scim.serializer.JsonUtil;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
@@ -31,7 +34,6 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.junit.jupiter.api.Assertions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,8 +41,10 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.text.ParseException;
 
 import static org.assertj.core.api.Assertions.fail;
 
@@ -99,7 +103,7 @@ public class TestUtils {
     }
 
     void resetMongoDb(MongoProvider mongoProvider) throws ScimException, BackendException, IOException {
-        logger.warn("\t*** Resetting Mongo database "+scimDbName+" ***");
+        logger.warn("\t*** Resetting Mongo database ["+scimDbName+"] ***");
         if (mclient == null)
             mclient = MongoClients.create(dbUrl);
         MongoDatabase scimDb = mclient.getDatabase(scimDbName);
@@ -123,7 +127,7 @@ public class TestUtils {
     }
 
     void resetMemoryDb(MemoryProvider provider) throws ScimException, BackendException, IOException {
-
+        logger.warn("\t*** Resetting Memory Provider Data ["+storeDir+"] ***");
         // Shut the provider down
         if (provider.ready())
             provider.shutdown();
@@ -146,5 +150,19 @@ public class TestUtils {
             for (File afile: files)
                 afile.delete();
 
+    }
+
+    public ScimResource loadResource(String jsonfilepath,String container) {
+        InputStream userStream;
+        if (container == null)
+            container = "Users";
+        try {
+            userStream = ConfigMgr.getClassLoaderFile(jsonfilepath);
+            JsonNode node = JsonUtil.getJsonTree(userStream);
+            return new ScimResource(smgr, node, container);
+        } catch (ParseException | ScimException | IOException e) {
+            fail("Error preparing operation for "+jsonfilepath+": "+e.getMessage(),e);
+        }
+        return null;
     }
 }

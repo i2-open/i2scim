@@ -16,10 +16,10 @@
 package com.independentid.scim.events;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.core.FifoCache;
 import com.independentid.scim.op.GetOp;
 import com.independentid.scim.op.Operation;
 import com.independentid.scim.op.SearchOp;
-import com.independentid.scim.protocol.RequestCtx;
 import io.quarkus.runtime.Startup;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -37,7 +37,10 @@ import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Priority;
 import javax.enterprise.context.ApplicationScoped;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
 
 @ApplicationScoped
 @Startup
@@ -46,9 +49,6 @@ public class KafkaLogEventHandler implements IEventHandler {
     private final static Logger logger = LoggerFactory.getLogger(KafkaLogEventHandler.class);
 
     static final String KAFKA_PUB_PREFIX = "scim.kafka.log.pub.";
-
-    static final List<Operation> errorOps = Collections.synchronizedList(new ArrayList<>());
-    static final List<Operation> pendingOps = Collections.synchronizedList(new ArrayList<>());
 
     @ConfigProperty (name = "scim.kafka.log.bootstrap",defaultValue="localhost:9092")
     String bootstrapServers;
@@ -61,6 +61,12 @@ public class KafkaLogEventHandler implements IEventHandler {
 
     @ConfigProperty (name = "scim.kafka.log.pub.topic", defaultValue="log")
     String logTopic;
+
+    @ConfigProperty (name="scim.kafka.rep.cache.error", defaultValue = "100")
+    int errSize;
+
+    final FifoCache<Operation> errorOps = new FifoCache<>(errSize);
+    static final List<Operation> pendingOps = Collections.synchronizedList(new ArrayList<>());
 
     KafkaProducer<String,String> producer = null;
 
@@ -99,22 +105,12 @@ public class KafkaLogEventHandler implements IEventHandler {
         // do nothing
     }
 
-    @Override
-    public List<Operation> getReceivedOps() {
-        return null;
-    }
+    public FifoCache<Operation> getSendErrorOps() { return errorOps; }
 
-
-    @Override
-    public boolean hasNoReceivedEvents() {
-        return true;
-    }
-
-    @Override
-    public List<Operation> getSendErrorOps() { return errorOps; }
+    public int getSendErrorCnt() { return errorOps.size(); }
 
     private synchronized void produce(final Operation op) {
-        RequestCtx ctx = op.getRequestCtx();
+       //RequestCtx ctx = op.getRequestCtx();
 
         String logMessage = op.getLogMessage();
 
@@ -140,7 +136,7 @@ public class KafkaLogEventHandler implements IEventHandler {
      * @param op The {@link Operation} to be published
      */
     @Override
-    public void process(Operation op) {
+    public void publish(Operation op) {
         // Ignore search and get requests
         if (!enabled)
             return;  // ignore events when disabled

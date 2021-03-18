@@ -56,6 +56,7 @@ public class ResourceType implements ScimSerializer {
 
 	public ResourceType(SchemaManager schemaManager) {
 		this.smgr = schemaManager;
+		this.schemaExtensions = new LinkedHashMap<>();
 	}
 	
 	public ResourceType(JsonNode node, SchemaManager schemaManager) throws SchemaException {

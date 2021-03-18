@@ -16,12 +16,16 @@
 package com.independentid.scim.events;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.independentid.scim.backend.BackendException;
+import com.independentid.scim.backend.BackendHandler;
+import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.FifoCache;
+import com.independentid.scim.core.PoolManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.*;
-import io.quarkus.arc.config.ConfigProperties;
-import io.quarkus.runtime.Startup;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
+import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.resource.ScimResource;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -37,12 +41,17 @@ import org.slf4j.LoggerFactory;
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import javax.annotation.Priority;
-import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
-import java.util.*;
+import javax.inject.Singleton;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Properties;
 
-@ApplicationScoped
-@Startup
+//@ApplicationScoped
+//@Startup
+@Singleton
 @Priority(10)
 public class KafkaRepEventHandler implements IEventHandler {
     private final static Logger logger = LoggerFactory.getLogger(KafkaRepEventHandler.class);
@@ -50,20 +59,39 @@ public class KafkaRepEventHandler implements IEventHandler {
     public static final String KAFKA_PUB_PREFIX = "scim.kafka.rep.pub.";
     public static final String KAFKA_CON_PREFIX = "scim.kafka.rep.sub.";
 
+    public static final String STRAT_GLOBAL = "global";
+    public static final String STRAT_CLUS = "cluster";
+    public static final String STRAT_ALL = "all";
+    public static final String STRAT_TRAN = "transid";
+
+    public static final String HDR_CLIENT = "cli";
+    public static final String HDR_CLUSTER = "clus";
+    public static final String HDR_TID = BulkOps.PARAM_TRANID;
+
     @ConfigProperty (name = "scim.kafka.rep.enable", defaultValue = "false")
     boolean enabled;
 
     @ConfigProperty (name="scim.event.enable", defaultValue = "true")
     boolean eventsEnabled;
 
-    static final List<Operation> repErrorOps = Collections.synchronizedList(new ArrayList<>());
-    static final List<Operation> pendingOps = Collections.synchronizedList(new ArrayList<>());
+    @ConfigProperty (name="scim.kafka.rep.cache.error", defaultValue = "100")
+    int errSize;
+
+    @ConfigProperty (name="scim.kafka.rep.cache.processed", defaultValue = "100")
+    int procSize;
+
+    @ConfigProperty (name="scim.kafka.rep.cache.filtered", defaultValue = "100")
+    int filterSize;
+
+    // These arrays are used primarily for timing, recovery, and testing purposes.
+    FifoCache<Operation> sendErrorOps, tranConflictOps;
+    FifoCache<Operation> acceptedOps;
+    FifoCache<ConsumerRecord<String,JsonNode>> ignoredOps;
+
+    static final List<Operation> pendingPubOps = Collections.synchronizedList(new ArrayList<>());
 
     @ConfigProperty (name = "scim.kafka.rep.bootstrap",defaultValue="localhost:9092")
     String bootstrapServers;
-
-    @ConfigProperty (name = "scim.kafa.rep.sub.resetdate", defaultValue="NONE")
-    String resetDate; //TODO implement reset date
 
     @ConfigProperty (name = "scim.kafka.rep.pub.topic", defaultValue = "rep")
     String repTopic;
@@ -71,18 +99,31 @@ public class KafkaRepEventHandler implements IEventHandler {
     @ConfigProperty (name= "scim.kafka.rep.client.id")
     String clientId;
 
+    @ConfigProperty (name= "scim.kafka.rep.cluster.id",defaultValue="cluster1")
+    String clusterId;
+
+    @ConfigProperty (name= "scim.kafka.rep.strategy",defaultValue = "global")
+    String strategy;
+
     KafkaProducer<String,IBulkOp> producer = null;
-    KafkaConsumer<String,JsonNode> consumer = null;
-    HashSet<UUID> processed = new HashSet<>();
-    KafkaEventReceiver inboundEventProcessor = null;
+
 
     final Properties prodProps = new Properties();
-    final Properties conProps = new Properties();
 
     @Inject
     Config sysconf;
 
+    @Inject
+    ConfigMgr cmgr;
+
+    @Inject
+    BackendHandler handler;
+
+    @Inject
+    PoolManager pool;
+
     static boolean isErrorState = false;
+
 
     public KafkaRepEventHandler() {
 
@@ -91,76 +132,68 @@ public class KafkaRepEventHandler implements IEventHandler {
     @Override
     @PostConstruct
     public void init() {
+        sendErrorOps = new FifoCache<>(errSize);
+        tranConflictOps = new FifoCache<>(errSize);
+        acceptedOps = new FifoCache<>(procSize);
+        ignoredOps = new FifoCache<>(filterSize);
         if (notEnabled())
             return;
         logger.info("Kafka replication handler starting on "+bootstrapServers+" as client.id"+clientId+", using topic:"+repTopic+".");
-        List<String> ctopics = null;
 
         Iterable<String> iter = sysconf.getPropertyNames();
-        Properties prodProps = new Properties();
-        Properties conProps = new Properties();
 
         //Normally sender and receiver should have same client id.
         //If a sub or pub property is set for cliend.id, it will override
         prodProps.put(ProducerConfig.CLIENT_ID_CONFIG,clientId);
-        conProps.put(ConsumerConfig.CLIENT_ID_CONFIG,clientId);
+
         prodProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,bootstrapServers);
-        conProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,bootstrapServers);
+
         for (String name : iter) {
             if (name.startsWith(KAFKA_PUB_PREFIX)) {
                 String pprop = name.substring(KAFKA_PUB_PREFIX.length());
                 if (!pprop.equals("topic"))
                     prodProps.put(pprop, sysconf.getValue(name,String.class));
             }
-            if (name.startsWith(KAFKA_CON_PREFIX)) {
-                String cprop = name.substring(KAFKA_CON_PREFIX.length());
-                if (cprop.equals("topics"))
-                    ctopics = Arrays.asList(sysconf.getValue(name,String.class).split(", "));
-                else
-                    conProps.put(cprop, sysconf.getValue(name,String.class));
-            }
         }
 
         if (logger.isDebugEnabled()) {
-            logger.debug("Kafka replication receiver properties...");
-            for (String key : conProps.stringPropertyNames())
-                logger.debug("\t"+key+":\t"+conProps.getProperty(key));
-
             logger.debug("Kafka replication producer properties...");
             for (String key : prodProps.stringPropertyNames())
                 logger.debug("\t"+key+":\t"+prodProps.getProperty(key));
         }
 
-        if (ctopics == null) {
-            logger.warn("Configuration property "+KAFKA_CON_PREFIX+"topics undefined. Defaulting to 'rep'");
-            ctopics = Collections.singletonList("rep");
-        }
-        consumer = new KafkaConsumer<String, JsonNode>(conProps);
-        consumer.subscribe(ctopics);
-
-        producer = new KafkaProducer<String, IBulkOp>(prodProps);
+        producer = new KafkaProducer<>(prodProps);
         producer.initTransactions();
 
         // initialize the receiver thread
-        this.inboundEventProcessor = new KafkaEventReceiver(consumer, this);
-        Thread t = new Thread(this.inboundEventProcessor);
-        t.start();
+        //Thread t = new Thread(receiver);
+        //t.start();  // Do we need to start an injected thread?
 
         logger.info("Kafka replication started.");
+
+        // ensure that config,schema managers are initialized.
+        Operation.initialize(cmgr);
     }
 
     public boolean notEnabled() {
         return !enabled || !eventsEnabled;
     }
 
-    public Properties getConsumerProps() {
-        return this.conProps;
-    }
 
     public Properties getProducerProps() {
         return this.prodProps;
     }
 
+    /**
+     * Enables testing. Should not be used in production as it may cause loss of replication events as filtering changes.
+     * @param strat The replication strategy to enforce (determines how inbound rep events are filtered)
+     */
+    public void setStrategy(String strat) {
+        logger.warn("Server replication processing strategy changed to: "+strat);
+        strategy = strat;
+    }
+
+    public String getStrategy() { return strategy; }
 
     //@Incoming("rep-in")
     //@Acknowledgment(Acknowledgment.Strategy.PRE_PROCESSING)
@@ -173,34 +206,65 @@ public class KafkaRepEventHandler implements IEventHandler {
         }
         Operation op;
         try {
-            op = BulkOps.parseOperation(node, null, 0);
+            op = BulkOps.parseOperation(node, null, 0, true);
+            RequestCtx ctx = op.getRequestCtx();
+            if (ctx != null) {
+                String tranId = ctx.getTranId();
+                try {
+                    ScimResource tres = handler.getTransactionRecord(tranId);
+                    if (tres != null) {
+                        tranConflictOps.add(op);
+                        logger.debug("Received duplicate transaction ["+tranId+"] *IGNORED*.");
+                        return;
+                    }
+                } catch (BackendException e) {
+                    logger.warn("Unexpected error validating transaction id ["+tranId+"]: "+e.getMessage(),e);
+                    return;
+                }
+
+            }            op.getTransactionResource();
         } catch (ScimException e) {
-            e.printStackTrace();
+            logger.warn("Unexpected error parsing transaction: "+e.getMessage(),e);
             return;
         }
-        if (op != null)
-            System.err.println("\n\nRecieved JSON replica event\n" + op.toString() + "\n\n");
-        pendingOps.add(op);
+
+        if (logger.isDebugEnabled())
+            logger.debug("\tRecieved JSON replica event\n" + op.toString());
+        acceptedOps.add(op);
+        pool.addJob(op);
+        // logevent will be triggereed within the operation itself depending on completion
+
+
     }
 
-    @Override
-    public List<Operation> getReceivedOps() {
-        return pendingOps;
-    }
+    public FifoCache<ConsumerRecord<String,JsonNode>> getIgnoredOps () {return ignoredOps;}
 
+    public FifoCache<Operation> getSendErrorOps() { return sendErrorOps; }
 
-    @Override
-    public boolean hasNoReceivedEvents() {
-        return pendingOps.isEmpty();
-    }
-
-    @Override
-    public List<Operation> getSendErrorOps() { return repErrorOps; }
+    public int getSendErrorCnt() { return sendErrorOps.size(); }
 
     private synchronized void produce(final Operation op) {
-
+        RequestCtx ctx = op.getRequestCtx();
+        if (ctx != null && ctx.isReplicaOp()) {
+            if (logger.isDebugEnabled())
+                logger.debug("Ignoring internal event: "+op.toString());
+            return; // This is a replication op and should not be re-replicated!
+        }
+        if (logger.isDebugEnabled())
+            logger.debug("Processing event: "+op.toString());
         final ProducerRecord<String, IBulkOp> producerRecord = new ProducerRecord<>(repTopic, op.getResourceId(), ((IBulkOp) op));
+        // The following headers are used by the receiver to filter out duplicates and in cluster events depending on
+        // replication strategy
+        if (clientId != null && !clientId.isBlank())
+            producerRecord.headers().add(HDR_CLIENT,clientId.getBytes(StandardCharsets.UTF_8));
+        if (clusterId != null && !clusterId.isBlank())
+            producerRecord.headers().add(HDR_CLUSTER, clusterId.getBytes(StandardCharsets.UTF_8));
 
+        if (ctx != null) {
+            String tranId = ctx.getTranId();
+            if (tranId != null)
+                producerRecord.headers().add(HDR_TID,tranId.getBytes(StandardCharsets.UTF_8));
+        }
         try {
             producer.beginTransaction();
             producer.send(producerRecord);
@@ -209,11 +273,11 @@ public class KafkaRepEventHandler implements IEventHandler {
             producer.close();
             logger.error("Kafka Producer fatal error: " + e.getMessage(), e);
             isErrorState = true;
-            repErrorOps.add(op);
+            sendErrorOps.add(op);
         } catch (KafkaException e) {
             logger.warn("Error sending Op: "+op.toString()+", error: "+e.getMessage());
             producer.abortTransaction();
-            repErrorOps.add(op);
+            sendErrorOps.add(op);
         }
 
     }
@@ -223,19 +287,19 @@ public class KafkaRepEventHandler implements IEventHandler {
      * @param op The {@link Operation} to be published
      */
     @Override
-    public void process(Operation op) {
+    public void publish(Operation op) {
         // Ignore search and get requests
         if (op instanceof GetOp
             || op instanceof SearchOp)
             return;
-        pendingOps.add(op);
+        pendingPubOps.add(op);
         processBuffer();
 
     }
 
     private synchronized void processBuffer() {
-        while(pendingOps.size()>0 && isProducing())
-            produce(pendingOps.remove(0));
+        while(pendingPubOps.size()>0 && isProducing())
+            produce(pendingPubOps.remove(0));
     }
 
     @Override
@@ -250,13 +314,35 @@ public class KafkaRepEventHandler implements IEventHandler {
         if (notEnabled())
             return;
 
-        this.inboundEventProcessor.shutdown();
-
         processBuffer(); //Ensure all trans sent!
 
         producer.close();
 
     }
 
+    /*
+     Following methods generally used to error detection and testing...
+     */
 
+    public int getTranConflictCnt() { return tranConflictOps.size(); }
+
+    public boolean hasNoTranConflictOps() { return tranConflictOps.isEmpty(); }
+
+    public int getAcceptedOpsCnt() { return acceptedOps.size(); }
+
+    public boolean hasNoReceivedOps() { return acceptedOps.isEmpty(); }
+
+    public boolean hasNoReceivedEvents() { return acceptedOps.isEmpty(); }
+
+    public boolean hasNoIgnoredOps() { return ignoredOps.isEmpty(); }
+
+    public int getIgnoredOpsCnt() { return ignoredOps.size(); }
+
+
+    public void resetCounts() {
+        acceptedOps.clear();
+        ignoredOps.clear();
+        sendErrorOps.clear();
+        tranConflictOps.clear();
+    }
 }

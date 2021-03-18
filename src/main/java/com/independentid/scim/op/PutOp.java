@@ -137,11 +137,12 @@ public class PutOp extends Operation implements IBulkOp {
 
     @Override
     public JsonNode getJsonReplicaOp() {
-        if (isCompletedNormally()) {
+        if (!super.getStats().completionError) {
             ObjectNode node = JsonUtil.getMapper().createObjectNode();
             node.put(BulkOps.PARAM_METHOD,Bulk_Method_PUT);
             node.put(BulkOps.PARAM_PATH,ctx.getPath());
-            node.set(BulkOps.PARAM_DATA,newResource.toJsonNode(ctx));
+            // CTX should be null to ensure entire structure emitted
+            node.set(BulkOps.PARAM_DATA,newResource.toJsonNode(null));
 
             OpStat stats = getStats();
             node.put(BulkOps.PARAM_SEQNUM,stats.executionNum);

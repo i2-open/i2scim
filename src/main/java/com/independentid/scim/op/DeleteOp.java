@@ -92,9 +92,9 @@ public class DeleteOp extends Operation implements IBulkOp {
 
     @Override
     public JsonNode getJsonReplicaOp() {
-        if (this.isCompletedNormally()) {
+        if (!super.getStats().completionError) {
             ObjectNode node = JsonUtil.getMapper().createObjectNode();
-            node.put(BulkOps.PARAM_METHOD, Bulk_Method_POST);
+            node.put(BulkOps.PARAM_METHOD, Bulk_Method_DELETE);
             node.put(BulkOps.PARAM_PATH, ctx.getPath());
             OpStat stats = getStats();
             node.put(BulkOps.PARAM_SEQNUM,stats.executionNum);

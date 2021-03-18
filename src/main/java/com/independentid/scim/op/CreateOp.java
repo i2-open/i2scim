@@ -92,7 +92,8 @@ public class CreateOp extends Operation implements IBulkOp {
 
         try {
             newResource = new ScimResource(schemaManager, node, null, getResourceType().getTypePath());
-            newResource.setId(null); // ignore inbound identifiers (unless via replication).
+            if (!ctx.isReplicaOp())
+                newResource.setId(null); // ignore inbound identifiers (unless via replication).
         } catch (ScimException | ParseException e) {
             ScimException se;
             if (e instanceof ParseException) {
@@ -154,13 +155,22 @@ public class CreateOp extends Operation implements IBulkOp {
 
     @Override
     public JsonNode getJsonReplicaOp() {
-        if (!super.getStats().completionError &&
-                this.scimresp instanceof ResourceResponse) {
-            ResourceResponse rr = (ResourceResponse) this.scimresp;
+        // Note: when serializing for replication use null RequestCtx to ensure all attributes passed.
+        if (!super.getStats().completionError) {
+            JsonNode rnode = null;
+            if (this.scimresp != null && this.scimresp instanceof ResourceResponse) {
+                ResourceResponse rr = (ResourceResponse) this.scimresp;
+                rnode = rr.getResultResource().toJsonNode(null);
+            } else if (newResource != null)
+                rnode = newResource.toJsonNode(null); // this should only happen in testing
+            else if (node != null)
+                rnode = node;
+            if (rnode == null)
+                return null;
             ObjectNode node = JsonUtil.getMapper().createObjectNode();
             node.put(BulkOps.PARAM_METHOD,Bulk_Method_POST);
             node.put(BulkOps.PARAM_PATH,ctx.getPath());
-            node.set(BulkOps.PARAM_DATA,rr.getResultResource().toJsonNode(ctx));
+            node.set(BulkOps.PARAM_DATA,rnode);
 
             OpStat stats = getStats();
             node.put(BulkOps.PARAM_SEQNUM,stats.executionNum);

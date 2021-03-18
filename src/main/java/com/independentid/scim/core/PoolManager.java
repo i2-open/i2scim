@@ -114,15 +114,23 @@ public class PoolManager {
 		ready = true;
 	}
 
-	public synchronized Operation addJob(Operation task) {
+	public synchronized void addJob(Operation task) {
+		while (!ready) {
+			//noinspection CatchMayIgnoreException
+			try {
+				//noinspection BusyWait
+				sleep(100);
+			} catch (InterruptedException e) {
+			}
+		}
 		opCnt++;
-		Operation op = (Operation) operationPool.submit(task);
+		operationPool.execute(task); // arrange asyn execution
 		// actions.add(task);
 		
 		if (logger.isDebugEnabled())
 			logger.debug("Queued(async): " + task.toString());
 
-		return op;
+
 	}
 
 	public void addJobAndWait(Operation task)

@@ -130,7 +130,7 @@ public class PatchOp extends Operation implements IBulkOp {
 
     @Override
     public JsonNode getJsonReplicaOp() {
-        if (isCompletedNormally()) {
+        if (!super.getStats().completionError) {
             ObjectNode node = JsonUtil.getMapper().createObjectNode();
             node.put(BulkOps.PARAM_METHOD,Bulk_Method_PATCH);
             node.put(BulkOps.PARAM_PATH,ctx.getPath());

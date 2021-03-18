@@ -40,7 +40,9 @@ public class ScimEventsTestProfile implements QuarkusTestProfile {
                  ));
         cmap.putAll(Map.of(
                 "scim.kafka.log.bootstrap","10.1.10.101:9092",
-                "scim.kafka.rep.bootstrap","10.1.10.101:9092"
+                "scim.kafka.rep.bootstrap","10.1.10.101:9092",
+                "scim.kafka.rep.sub.auto.offset.reset","latest",
+                "scim.kafka.rep.sub.max.poll.records","1"  // faster turn around
 
         ));
         return cmap;
