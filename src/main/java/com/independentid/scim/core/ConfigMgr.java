@@ -303,9 +303,9 @@ public class ConfigMgr {
 		// In Quarkus, the classloader doesn't seem to want "classpath:" prefix. Springboot does.
 		String mapFile;
 		if (file.startsWith("classpath:"))
-			mapFile = file.substring(10);
+			mapFile = file.substring(10).trim();
 		else
-			mapFile = file;
+			mapFile = file.trim();  //remove leading a trailing spaces
 
 		URL fUrl = ConfigMgr.class.getClassLoader().getResource(mapFile);
 		if (fUrl != null)
