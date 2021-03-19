@@ -29,7 +29,7 @@ public class ScimDevOpsTestProfile implements QuarkusTestProfile {
 
                 "quarkus.http.test-port", "0",
                 "quarkus.log.min-level","DEBUG",
-                "quarkus.log.category.\"com.independentid.scim\".level", "DEBUG",
+                "quarkus.log.category.\"com.independentid.scim.test\".level", "DEBUG",
 
                 "scim.security.enable", "true",
                 "scim.security.authen.basic", "true",

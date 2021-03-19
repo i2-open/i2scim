@@ -33,8 +33,8 @@ public class ScimMemoryTestProfile implements QuarkusTestProfile {
 
                 "quarkus.http.test-port","0",
                 "quarkus.log.min-level","DEBUG",
-                "logging.level.com.independentid.scim","DEBUG",
-                "quarkus.log.category.\"com.independentid.scim\".level","DEBUG"
+                "logging.level.com.independentid.scim","INFO",
+                "quarkus.log.category.\"com.independentid.scim.test\".level","DEBUG"
         ));
         cmap.putAll(Map.of(
                 "scim.security.enable", "false",

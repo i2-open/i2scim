@@ -31,8 +31,8 @@ public class ScimEventsTestProfile implements QuarkusTestProfile {
                 "scim.prov.mongo.uri", "mongodb://localhost:27017",
 
                 "quarkus.log.min-level","DEBUG",
-                "logging.level.com.independentid.scim","DEBUG",
-                "quarkus.log.category.\"com.independentid.scim\".level", "DEBUG",
+                "logging.level.com.independentid.scim","INFO",
+                "quarkus.log.category.\"com.independentid.scim.test\".level", "DEBUG",
 
                 "scim.security.enable","false",
                 "scim.kafka.log.enable","true",

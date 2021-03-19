@@ -34,8 +34,8 @@ public class ScimAuthTestProfile implements QuarkusTestProfile {
 
                 "quarkus.http.test-port", "0",
                 "quarkus.log.level","INFO",
-                "logging.level.com.independentid.scim","DEBUG",
-                "quarkus.log.category.\"com.independentid.scim\".level", "DEBUG",
+                "logging.level.com.independentid.scim","INFO",
+                "quarkus.log.category.\"com.independentid.scim.test\".level", "DEBUG",
 
                 "scim.security.acis","classpath:/schema/aciSecurityTest.json"
         ));
