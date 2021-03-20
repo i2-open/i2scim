@@ -24,9 +24,6 @@ import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.test.misc.TestUtils;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoDatabase;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -42,15 +39,12 @@ import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -166,17 +160,13 @@ public class ScimHealthTest {
 		// Perform add with JWT bearer authorization
 		logger.info("B2. Attempting add bjensen as with JWT Bearer with role admin (SHOULD SUCCEED)");
 
-		File user1File = ConfigMgr.findClassLoaderResource(testUserFile1);
-
-		assert user1File != null;
-
 		InputStream userStream ;
 
 		URL rUrl = new URL(baseUrl,"/Users");
 		String req = rUrl.toString();
 
 		HttpPost post = new HttpPost(req);
-		userStream = new FileInputStream(user1File);
+		userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 		InputStreamEntity reqEntity = new InputStreamEntity(
 				userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
 		reqEntity.setChunked(false);
@@ -240,10 +230,8 @@ public class ScimHealthTest {
 
 		URL rUrl = new URL(baseUrl,"/Users");
 		String req = rUrl.toString();
-		File user2File = ConfigMgr.findClassLoaderResource(testUserFile2);
 
-		assert user2File != null;
-		userStream = new FileInputStream(user2File);
+		userStream = ConfigMgr.findClassLoaderResource(testUserFile2);
 		HttpPost post = new HttpPost(req);
 		post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		InputStreamEntity reqEntity = new InputStreamEntity(

@@ -19,7 +19,6 @@ package com.independentid.scim.test.http;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.ScimParams;
@@ -53,7 +52,9 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringWriter;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLEncoder;
@@ -114,10 +115,8 @@ public class ScimUserCRUDTest {
 		CloseableHttpClient client = HttpClients.createDefault();
 
 		try {
-			File user1File = ConfigMgr.findClassLoaderResource(testUserFile1);
 
-			assert user1File != null;
-			InputStream userStream = new FileInputStream(user1File);
+			InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 
 			URL rUrl = new URL(baseUrl,"/Users");
 			String req = rUrl.toString();
@@ -182,7 +181,7 @@ public class ScimUserCRUDTest {
 			logger.info("\tB2. Attempt to add User BJensen again (uniquenes test)...");
 			// Attempt to repeat the operation. It should fail due to non-unique username match
 			post = new HttpPost(req);
-			userStream = new FileInputStream(user1File);
+			userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 			reqEntity = new InputStreamEntity(
 	        userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
 			reqEntity.setChunked(false);

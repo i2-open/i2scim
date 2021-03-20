@@ -30,7 +30,7 @@ public class ScimSubComponentTestProfile implements QuarkusTestProfile {
 
                 "quarkus.log.min-level","DEBUG",
                 "logging.level.com.independentid.scim","INFO",
-                "quarkus.log.category.\"com.independentid.scim.test\".level","DEBUG",
+                "quarkus.log.category.\"com.independentid.scim.test\".level","INFO",
 
                 "scim.prov.providerClass", MemoryProvider.class.getName(),
                 "scim.prov.persist.schema","false",

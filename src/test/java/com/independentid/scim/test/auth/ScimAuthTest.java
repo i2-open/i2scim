@@ -41,6 +41,7 @@ import javax.annotation.Resource;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -75,12 +76,12 @@ public class ScimAuthTest {
 				.as("JWKS file is not null")
 				.isNotNull();
 
-		File jwksFile = ConfigMgr.findClassLoaderResource(jwks);
+		InputStream str = ConfigMgr.findClassLoaderResource(jwks);
 
-		assert jwksFile != null;
-		assertThat(jwksFile.exists())
+		assert str != null;
+		assertThat(str.available())
 			.as("Jwks file located")
-			.isTrue();
+			.isGreaterThan(0);
 	}
 	
 	/**

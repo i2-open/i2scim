@@ -102,9 +102,8 @@ public class ScimLoadSampleTest {
 		ArrayList<ScimResource> data = new ArrayList<>();
 		logger.debug("\t\tReading sample data from: "+dataSet);
 		Instant start = Instant.now();
-		File dataFile = ConfigMgr.findClassLoaderResource(dataSet);
-		assert dataFile != null;
-		InputStream dataStream = new FileInputStream(dataFile);
+
+		InputStream dataStream = ConfigMgr.findClassLoaderResource(dataSet);
 		JsonNode dataNode = JsonUtil.getJsonTree(dataStream);
 		
 		JsonNode info = dataNode.get("info");

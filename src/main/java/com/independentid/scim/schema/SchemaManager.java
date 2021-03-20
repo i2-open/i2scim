@@ -39,10 +39,7 @@ import javax.ejb.Startup;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
-import java.io.File;
-import java.io.IOException;
-import java.io.StringWriter;
-import java.io.Writer;
+import java.io.*;
 import java.util.*;
 
 /**
@@ -162,17 +159,14 @@ public class SchemaManager {
             throw new ScimException("SCIM default schema file path is null.");
 
         try {
-            File sfile = ConfigMgr.findClassLoaderResource(filePath);
+            InputStream stream = ConfigMgr.findClassLoaderResource(filePath);
 
-            if (sfile == null)
+            if (stream == null)
                 throw new IOException("Schema file must not be null");
-
-            if (!sfile.exists())
-                throw new IOException("Schema file does not exist: " + sfile.getPath());
 
             logger.debug("\t..Parsing Core Attribute Schema");
 
-            JsonNode node = JsonUtil.getJsonTree(sfile);
+            JsonNode node = JsonUtil.getJsonTree(stream);
 
             if (!node.isObject()) {
                 logger.error("Was expecting a JSON Object for SCIM Core Attributes. Found: " + node.getNodeType().toString());
@@ -219,9 +213,9 @@ public class SchemaManager {
             throw new ScimException("SCIM default schema file path is null.");
 
         try {
-            File sfile = ConfigMgr.findClassLoaderResource(schemaPath);
+           InputStream stream = ConfigMgr.findClassLoaderResource(schemaPath);
 
-            parseSchemaConfig(sfile);
+            parseSchemaConfig(stream);
         } catch (JsonProcessingException e) {
             throw new ScimException(
                     "JSON parsing exception processing schema configuration.",
@@ -229,15 +223,12 @@ public class SchemaManager {
         }
     }
 
-    protected void parseSchemaConfig(File schemaFile) throws IOException {
-        if (schemaFile == null)
+    protected void parseSchemaConfig(InputStream stream) throws IOException {
+        if (stream == null)
             throw new IOException("Schema file must not be null");
 
-        if (!schemaFile.exists())
-            throw new IOException("Schema file does not exist: " + schemaFile.getPath());
-
         logger.debug("\t..Parsing Schema Config.");
-        JsonNode node = JsonUtil.getJsonTree(schemaFile);
+        JsonNode node = JsonUtil.getJsonTree(stream);
 
         // In case this is a reload, reset the current Schemas
         schIdMap.clear();
@@ -345,9 +336,9 @@ public class SchemaManager {
             throw new ScimException("SCIM default resource type configuraiton file path is null.");
 
         try {
-            File sfile = ConfigMgr.findClassLoaderResource(resourceTypePath);
+            InputStream stream = ConfigMgr.findClassLoaderResource(resourceTypePath);
 
-            parseResourceTypes(sfile);
+            parseResourceTypes(stream);
         } catch (JsonProcessingException e) {
             throw new ScimException(
                     "JSON parsing exception processing Resource Type configuration.",
@@ -359,15 +350,12 @@ public class SchemaManager {
         }
     }
 
-    public void parseResourceTypes(File typeFile) throws SchemaException, IOException {
+    public void parseResourceTypes(InputStream stream) throws SchemaException, IOException {
 
-        if (typeFile == null)
+        if (stream == null)
             throw new IOException("Resource endpoint file must not be null");
 
-        if (!typeFile.exists())
-            throw new IOException("Resource endpoint file does not exist: " + typeFile.getPath());
-
-        JsonNode node = JsonUtil.getJsonTree(typeFile);
+        JsonNode node = JsonUtil.getJsonTree(stream);
 
         Iterator<JsonNode> iter;
         if (node.isObject()) {

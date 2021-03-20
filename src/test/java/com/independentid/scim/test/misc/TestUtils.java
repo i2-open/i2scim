@@ -157,7 +157,7 @@ public class TestUtils {
         if (container == null)
             container = "Users";
         try {
-            userStream = ConfigMgr.getClassLoaderFile(jsonfilepath);
+            userStream = ConfigMgr.findClassLoaderResource(jsonfilepath);
             JsonNode node = JsonUtil.getJsonTree(userStream);
             return new ScimResource(smgr, node, container);
         } catch (ParseException | ScimException | IOException e) {

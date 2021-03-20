@@ -142,12 +142,12 @@ public class AccessMgrTest {
 
         try {
 
-            InputStream userStream1 = ConfigMgr.getClassLoaderFile(testUserFile1);
+            InputStream userStream1 = ConfigMgr.findClassLoaderResource(testUserFile1);
             JsonNode userNode1 = JsonUtil.getJsonTree(userStream1);
             user1 = new ScimResource(smgr,userNode1,"Users");
             user1.setId(null);
 
-            InputStream userStream2 = ConfigMgr.getClassLoaderFile(testUserFile2);
+            InputStream userStream2 = ConfigMgr.findClassLoaderResource(testUserFile2);
             JsonNode userNode2 = JsonUtil.getJsonTree(userStream2);
             user2 = new ScimResource(smgr,userNode2,"Users");
             user2.setId(null);

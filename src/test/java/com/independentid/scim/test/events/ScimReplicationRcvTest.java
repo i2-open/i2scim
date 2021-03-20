@@ -386,6 +386,12 @@ public class ScimReplicationRcvTest {
                     .as("0 events ignored")
                     .isEqualTo(0);
 
+            //Wait for mongo to settle
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+               //ignore
+            }
             RequestCtx ctx = new RequestCtx("/Users",res1.getId(),null,schemaManager);
             ScimResponse resp = handler.get(ctx);
             assertThat(resp)
@@ -447,7 +453,12 @@ public class ScimReplicationRcvTest {
             assertThat(eventHandler.getIgnoredOps().size())
                     .as("0 events ignored")
                     .isEqualTo(0);
-
+            //Wait for mongo to settle
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                //ignore
+            }
             RequestCtx ctx = new RequestCtx("/Users",id1,null,schemaManager);
             ScimResponse resp = handler.get(ctx);
             assertThat(resp)

@@ -39,8 +39,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.HttpMethod;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 
 /**
  * @author pjdhunt
@@ -160,7 +160,7 @@ public class ScimV2Servlet extends HttpServlet {
 		if (path.startsWith("/certs")) {
 
 			ServletOutputStream out = resp.getOutputStream();
-			FileInputStream instream = ConfigMgr.getClassLoaderFile(path);
+			InputStream instream = ConfigMgr.findClassLoaderResource(path);
 			if (instream == null) {
 				resp.setStatus(HttpStatus.SC_NOT_FOUND);
 				return;

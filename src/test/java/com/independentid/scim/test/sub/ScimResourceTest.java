@@ -88,7 +88,7 @@ public class ScimResourceTest {
 		logger.info("========== ScimResource Test ==========");
 
 		try {
-			InputStream userStream = ConfigMgr.getClassLoaderFile(testUserFile1);
+			InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 			assert userStream != null;
 
 			//InputStream userStream = this.resourceloader.getResource(testUserFile1).getInputStream();
@@ -102,7 +102,7 @@ public class ScimResourceTest {
 
 			userStream.close();
 			
-			userStream = ConfigMgr.getClassLoaderFile(testUserFile2);
+			userStream = ConfigMgr.findClassLoaderResource(testUserFile2);
 			node = JsonUtil.getJsonTree(userStream);
 			user2 = new ScimResource(smgr,node, "Users");
 			logger.debug("User loaded: \n"+user2.toString());

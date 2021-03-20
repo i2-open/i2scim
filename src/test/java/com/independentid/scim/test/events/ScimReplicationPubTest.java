@@ -148,7 +148,7 @@ public class ScimReplicationPubTest {
         try {
             Operation.initialize(configMgr);
             handler.getProvider().init();
-            userStream = ConfigMgr.getClassLoaderFile(testUserFile1);
+            userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
             JsonNode node = JsonUtil.getJsonTree(userStream);
             //ScimResource ures = new ScimResource(schemaManager,node,"Users");
             RequestCtx ctx = new RequestCtx("/Users",null,null,schemaManager);

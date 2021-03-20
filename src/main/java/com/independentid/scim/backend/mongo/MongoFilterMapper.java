@@ -15,22 +15,14 @@
 
 package com.independentid.scim.backend.mongo;
 
-import com.fasterxml.jackson.databind.util.StdDateFormat;
-import com.mongodb.client.model.Filters;
-
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.protocol.AttributeFilter;
-import com.independentid.scim.protocol.Filter;
-import com.independentid.scim.protocol.LogicFilter;
-import com.independentid.scim.protocol.PrecedenceFilter;
-import com.independentid.scim.protocol.ValuePathFilter;
+import com.independentid.scim.protocol.*;
 import com.independentid.scim.schema.Attribute;
+import com.mongodb.client.model.Filters;
 import org.bson.conversions.Bson;
 import org.bson.types.Decimal128;
-
-import java.math.BigDecimal;
 
 
 public class MongoFilterMapper {
@@ -50,7 +42,7 @@ public class MongoFilterMapper {
         if (filter instanceof PrecedenceFilter)
             return MongoFilterMapper.mapFilter((PrecedenceFilter) filter, negate, isValPath);
 
-        throw new BackendException(Messages.getString("FilterMapper.0") //$NON-NLS-1$
+        throw new BackendException("Unexpected filter type: "
                 + filter.getClass().getCanonicalName());
     }
 
@@ -208,8 +200,7 @@ public class MongoFilterMapper {
                     case AttributeFilter.FILTEROP_LESS:
                     case AttributeFilter.FILTEROP_GREATEROREQUAL:
                     case AttributeFilter.FILTEROP_LESSOREQUAL:
-                        throw new BadFilterException(
-                                Messages.getString("FilterMapper.1")); //$NON-NLS-1$
+                        throw new BadFilterException("Filter operator not supported with boolean attributes."); //$NON-NLS-1$
                 }
                 return obj;
 
@@ -236,7 +227,7 @@ public class MongoFilterMapper {
                     case AttributeFilter.FILTEROP_STARTSWITH:
                     case AttributeFilter.FILTEROP_ENDSWITH: {
                         throw new BadFilterException(
-                                Messages.getString("FilterMapper.1")); //$NON-NLS-1$
+                                "Filter operator not supported with boolean attributes."); //$NON-NLS-1$
                     }
 
                     case AttributeFilter.FILTEROP_PRESENCE:
@@ -250,7 +241,7 @@ public class MongoFilterMapper {
                     case AttributeFilter.FILTEROP_GREATEROREQUAL:
                     case AttributeFilter.FILTEROP_LESSOREQUAL:
                         throw new BadFilterException(
-                                Messages.getString("FilterMapper.31")); //$NON-NLS-1$
+                                "Filter operator not supported with boolean attributes."); //$NON-NLS-1$
                 }
                 return obj;
             }
@@ -284,8 +275,7 @@ public class MongoFilterMapper {
                     case AttributeFilter.FILTEROP_CONTAINS:
                     case AttributeFilter.FILTEROP_STARTSWITH:
                     case AttributeFilter.FILTEROP_ENDSWITH: {
-                        throw new BadFilterException(
-                                Messages.getString("FilterMapper.38")); //$NON-NLS-1$
+                        throw new BadFilterException("Filter operator not supported with date attributes."); //$NON-NLS-1$
                     }
 
                     case AttributeFilter.FILTEROP_PRESENCE:
@@ -352,8 +342,7 @@ public class MongoFilterMapper {
                     case AttributeFilter.FILTEROP_CONTAINS:
                     case AttributeFilter.FILTEROP_STARTSWITH:
                     case AttributeFilter.FILTEROP_ENDSWITH: {
-                        throw new BadFilterException(
-                                Messages.getString("FilterMapper.48")); //$NON-NLS-1$
+                        throw new BadFilterException("Filter operator not supported with number attributes."); //$NON-NLS-1$
                     }
                     case AttributeFilter.FILTEROP_PRESENCE:
                         if (negate)
@@ -415,8 +404,7 @@ public class MongoFilterMapper {
                     case AttributeFilter.FILTEROP_CONTAINS:
                     case AttributeFilter.FILTEROP_STARTSWITH:
                     case AttributeFilter.FILTEROP_ENDSWITH: {
-                        throw new BadFilterException(
-                                Messages.getString("FilterMapper.48")); //$NON-NLS-1$
+                        throw new BadFilterException("Filter operator not supported with number attributes."); //$NON-NLS-1$
                     }
 
                     case AttributeFilter.FILTEROP_PRESENCE:

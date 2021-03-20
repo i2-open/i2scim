@@ -130,13 +130,13 @@ public class MemoryIndexTest {
 
     @Test
     public void c_indexResource() throws IOException, ScimException, ParseException {
-        InputStream userStream = ConfigMgr.getClassLoaderFile(testUserFile1);
+        InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
         assert userStream != null;
         JsonNode node = JsonUtil.getJsonTree(userStream);
         //,user2;
         user1 = new ScimResource(smgr, node, "Users");
 
-        InputStream userStream2 = ConfigMgr.getClassLoaderFile(testUserFile2);
+        InputStream userStream2 = ConfigMgr.findClassLoaderResource(testUserFile2);
         node = JsonUtil.getJsonTree(userStream2);
         user2 = new ScimResource(smgr, node, "Users");
 

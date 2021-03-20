@@ -126,9 +126,8 @@ public class ScimAttributeQualTest {
 		CloseableHttpClient client = HttpClients.createDefault();
 
 		try {
-			File uFile = ConfigMgr.findClassLoaderResource(testUserFile1);
-			assert uFile != null;
-			InputStream userStream = new FileInputStream(uFile);
+
+			InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 
 			String req = TestUtils.mapPathToReqUrl(baseUrl, "/Users");
 

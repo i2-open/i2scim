@@ -68,7 +68,7 @@
          logger.info("========== SCIM ValuePath Match Test ==========");
 
          try {
-             InputStream userStream = ConfigMgr.getClassLoaderFile(testUserFile1);
+             InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
              //InputStream userStream = this.resourceloader.getResource(testUserFile1).getInputStream();
              JsonNode node = JsonUtil.getJsonTree(userStream);
              user1 = new ScimResource(smgr, node, "Users");

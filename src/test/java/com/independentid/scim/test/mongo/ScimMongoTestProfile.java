@@ -33,7 +33,7 @@ public class ScimMongoTestProfile implements QuarkusTestProfile {
                 "quarkus.http.test-port","0",
                 "quarkus.log.min-level","DEBUG",
                 "logging.level.com.independentid.scim","INFO",
-                "quarkus.log.category.\"com.independentid.scim.test\".level","DEBUG",
+                "quarkus.log.category.\"com.independentid.scim.test\".level","INFO",
 
                 "scim.schema.path","classpath:/schema/scimSchemaTest.json"
         ));

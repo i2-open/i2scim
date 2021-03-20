@@ -38,8 +38,13 @@ import java.util.Set;
  */
 public class ValueUtil {
 
-    static ConfigMgr cfg = ConfigMgr.getConfig();
-    static SchemaManager smgr = cfg.getSchemaManager();
+    static ConfigMgr cfg = null;
+    static SchemaManager smgr = null;
+
+    public static void initialize(ConfigMgr cmgr) {
+        cfg = cmgr;
+        smgr = cfg.getSchemaManager();
+    }
 
     /**
      * Static method used to parse a <JsonNode> object for its appropriate SCIM Value type based on the declared

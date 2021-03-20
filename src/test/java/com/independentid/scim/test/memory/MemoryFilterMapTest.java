@@ -221,10 +221,7 @@ public class MemoryFilterMapTest {
                 .as("Check test schema loaded")
                 .isNotNull();
 
-        File user1File = ConfigMgr.findClassLoaderResource(testUserFile1);
-
-        assert user1File != null;
-        InputStream userStream = new FileInputStream(user1File);
+        InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
         JsonNode node = JsonUtil.getJsonTree(userStream);
         user1 = new ScimResource(smgr, node, "Users");
         user1.setId(null);  // When adding directly, id must be NULL!
@@ -235,9 +232,7 @@ public class MemoryFilterMapTest {
 
         userStream.close();
 
-        File user2File = ConfigMgr.findClassLoaderResource(testUserFile2);
-        assert user2File != null;
-        userStream = new FileInputStream(user2File);
+        userStream = ConfigMgr.findClassLoaderResource(testUserFile2);
         node = JsonUtil.getJsonTree(userStream);
         user2 = new ScimResource(smgr, node, "Users");
         user2.setId(null);  // When adding directly, id must be NULL!

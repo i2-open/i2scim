@@ -28,7 +28,6 @@ import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
-import io.quarkus.security.UnauthorizedException;
 import io.quarkus.security.identity.SecurityIdentity;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
@@ -36,8 +35,6 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
-import javax.ejb.Startup;
-import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -45,7 +42,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 //@Startup
 //@ApplicationScoped
@@ -80,7 +79,7 @@ public class AccessManager {
     public void init() throws IOException {
         logger.info("Access Manager starting using: "+this.acisPath);
 
-        InputStream aciStream = ConfigMgr.getClassLoaderFile(this.acisPath);
+        InputStream aciStream = ConfigMgr.findClassLoaderResource(this.acisPath);
         JsonNode node = JsonUtil.getJsonTree(aciStream);
         JsonNode acis = node.get("acis");
         for (JsonNode anode : acis) {

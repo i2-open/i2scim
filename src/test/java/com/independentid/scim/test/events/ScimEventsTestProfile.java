@@ -32,7 +32,7 @@ public class ScimEventsTestProfile implements QuarkusTestProfile {
 
                 "quarkus.log.min-level","DEBUG",
                 "logging.level.com.independentid.scim","INFO",
-                "quarkus.log.category.\"com.independentid.scim.test\".level", "DEBUG",
+                "quarkus.log.category.\"com.independentid.scim.test\".level", "INFO",
 
                 "scim.security.enable","false",
                 "scim.kafka.log.enable","true",

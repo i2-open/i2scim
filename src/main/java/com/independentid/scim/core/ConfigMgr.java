@@ -17,6 +17,7 @@ package com.independentid.scim.core;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.plugin.PluginHandler;
+import com.independentid.scim.resource.ValueUtil;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.security.AccessManager;
 import io.quarkus.runtime.Startup;
@@ -31,11 +32,8 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 import javax.servlet.ServletContext;
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.List;
 
@@ -228,6 +226,7 @@ public class ConfigMgr {
 
 		if (isRootEnabled() && getRootPassword().equals("admin"))
 			logger.warn("Server is configured with root access and default password!");
+		ValueUtil.initialize(this);
 	}
 	
 	public int getPort() {
@@ -284,38 +283,23 @@ public class ConfigMgr {
 	public String getRootPassword() {
 		return rootPassword;
 	}
-	
-
-
-	public static FileInputStream getClassLoaderFile(final String file) throws IOException {
-		File inFile = findClassLoaderResource(file);
-
-		return inFile==null? null : new FileInputStream(inFile);
-	}
 
 	/**
 	 * Returns a File for a resource packaged with the SCIM server.
 	 * @param file A <String> path containing the resourc to be located
-	 * @return File containing the located file.
+	 * @return InputStream containing the located file.
 	 * @throws IOException if not mappable or does not exist.
 	 */
-	public static File findClassLoaderResource(final String file) throws IOException {
+	public static InputStream findClassLoaderResource(final String file) throws IOException {
 		// In Quarkus, the classloader doesn't seem to want "classpath:" prefix. Springboot does.
-		String mapFile;
-		if (file.startsWith("classpath:"))
-			mapFile = file.substring(10).trim();
-		else
-			mapFile = file.trim();  //remove leading a trailing spaces
 
-		URL fUrl = ConfigMgr.class.getClassLoader().getResource(mapFile);
-		if (fUrl != null)
-			try {
-				return new File(fUrl.toURI());
-			} catch (URISyntaxException e) {
-				// SHOULD NOT HAPPEN as this is from classloader
-				throw new IOException("Unable to map URI returned from classloader.");
-			}
-		return  null;
+		String mapFile = file.strip();
+		if (mapFile.startsWith("classpath:"))
+			mapFile = mapFile.substring(10);
+		System.out.println("File requested:\t"+mapFile);
+
+		return ConfigMgr.class.getResourceAsStream(mapFile);
+
 	}
 
 

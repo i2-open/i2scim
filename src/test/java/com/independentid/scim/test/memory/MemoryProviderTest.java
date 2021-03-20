@@ -109,7 +109,7 @@ public class MemoryProviderTest {
 
 		logger.info("\tB1. Add User BJensen...");
 		try {
-			InputStream userStream = ConfigMgr.getClassLoaderFile(testUserFile1);
+			InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 			assert userStream != null;
 
 			//InputStream userStream = this.resourceloader.getResource(testUserFile1).getInputStream();

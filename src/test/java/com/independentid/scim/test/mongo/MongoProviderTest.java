@@ -47,8 +47,6 @@ import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -112,7 +110,7 @@ public class MongoProviderTest {
 
 		logger.info("\tB1. Add User BJensen...");
 		try {
-			InputStream userStream = ConfigMgr.getClassLoaderFile(testUserFile1);
+			InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 			assert userStream != null;
 
 			//InputStream userStream = this.resourceloader.getResource(testUserFile1).getInputStream();

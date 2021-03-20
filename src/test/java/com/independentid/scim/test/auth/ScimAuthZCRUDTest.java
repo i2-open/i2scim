@@ -124,10 +124,8 @@ public class ScimAuthZCRUDTest {
 
 		try {
 			logger.info("B1. Attempting add BJensen as anonymous (SHOULD FAIL)");
-			File user1File = ConfigMgr.findClassLoaderResource(testUserFile1);
 
-			assert user1File != null;
-			InputStream userStream = new FileInputStream(user1File);
+			InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 
 			URL rUrl = new URL(baseUrl,"/Users");
 			String req = rUrl.toString();
@@ -164,10 +162,6 @@ public class ScimAuthZCRUDTest {
 		// Perform add with JWT bearer authorization
 		logger.info("B2. Attempting add bjensen as with JWT Bearer with role admin (SHOULD SUCCEED)");
 
-		File user1File = ConfigMgr.findClassLoaderResource(testUserFile1);
-
-		assert user1File != null;
-
 		InputStream userStream ;
 
 		URL rUrl = new URL(baseUrl,"/Users");
@@ -175,7 +169,7 @@ public class ScimAuthZCRUDTest {
 		logger.info("\tRequest URI for add: "+req);
 
 		HttpPost post = new HttpPost(req);
-		userStream = new FileInputStream(user1File);
+		userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 		InputStreamEntity reqEntity = new InputStreamEntity(
 				userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
 		reqEntity.setChunked(false);
@@ -239,17 +233,13 @@ public class ScimAuthZCRUDTest {
 
 		logger.info("B3. Attempt to add User BJensen again (uniquenes test)...");
 
-		File user1File = ConfigMgr.findClassLoaderResource(testUserFile1);
-
-		assert user1File != null;
-
 		InputStream userStream ;
 
 		URL rUrl = new URL(baseUrl,"/Users");
 		String req = rUrl.toString();
 
 		HttpPost post = new HttpPost(req);
-		userStream = new FileInputStream(user1File);
+		userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 		InputStreamEntity reqEntity = new InputStreamEntity(
 				userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
 		reqEntity.setChunked(false);
@@ -261,7 +251,7 @@ public class ScimAuthZCRUDTest {
 		// Attempt to repeat the operation. It should fail due to non-unique username match
 		post = new HttpPost(req);
 		post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
-		userStream = new FileInputStream(user1File);
+		userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 		reqEntity = new InputStreamEntity(
 				userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
 		reqEntity.setChunked(false);
@@ -290,10 +280,8 @@ public class ScimAuthZCRUDTest {
 
 		URL rUrl = new URL(baseUrl,"/Users");
 		String req = rUrl.toString();
-		File user2File = ConfigMgr.findClassLoaderResource(testUserFile2);
 
-		assert user2File != null;
-		userStream = new FileInputStream(user2File);
+		userStream = ConfigMgr.findClassLoaderResource(testUserFile2);
 		HttpPost post = new HttpPost(req);
 		post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		InputStreamEntity reqEntity = new InputStreamEntity(
