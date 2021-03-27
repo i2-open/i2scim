@@ -3,7 +3,7 @@
 #
 # Before building the container image run:
 #
-# ./mvnw package
+# ./mvnw package -DskipTests
 #
 # Then, build the image with:
 #
@@ -11,7 +11,7 @@
 #
 # Then run the container using:
 #
-# docker run -i --rm -p 8080:8080 independentid/i2scim
+# docke
 #
 # If you want to include the debug port into your docker image
 # you will have to expose the debug port (default 5005) like this :  EXPOSE 8080 5050

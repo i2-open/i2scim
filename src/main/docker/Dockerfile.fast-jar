@@ -3,7 +3,7 @@
 #
 # Before building the container image run:
 #
-# ./mvnw package
+# ./mvnw package -Dextensions="container-image-docker"
 #
 # Then, build the image with:
 #
