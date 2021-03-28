@@ -33,12 +33,17 @@ RUN microdnf install curl ca-certificates ${JAVA_PACKAGE} \
     && microdnf clean all \
     && mkdir /deployments \
     && chown 1001 /deployments \
+    && mkdir /scim \
+    && chown 1001 /scim \
     && chmod "g+rwX" /deployments \
     && chown 1001:root /deployments \
     && curl https://repo1.maven.org/maven2/io/fabric8/run-java-sh/${RUN_JAVA_VERSION}/run-java-sh-${RUN_JAVA_VERSION}-sh.sh -o /deployments/run-java.sh \
     && chown 1001 /deployments/run-java.sh \
     && chmod 540 /deployments/run-java.sh \
     && echo "securerandom.source=file:/dev/urandom" >> /etc/alternatives/jre/lib/security/java.security
+
+# Create a mountable volume, used for logs and other storage (e.g. memory)  scim.root.dir
+VOLUME /scim
 
 # Configure the JAVA_OPTIONS, you can add -XshowSettings:vm to also display the heap size.
 ENV JAVA_OPTIONS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"

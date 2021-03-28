@@ -18,12 +18,13 @@ package com.independentid.scim.test.sub;
 import com.independentid.scim.backend.memory.MemoryProvider;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class ScimSubComponentTestProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
-        return Map.of(
+        Map<String,String> cmap = new HashMap<>( Map.of(
                 "scim.schema.path","/schema/scimSchemaTest.json",
                 "scim.test.configOnly","true",
                 "scim.json.pretty","true",
@@ -36,7 +37,9 @@ public class ScimSubComponentTestProfile implements QuarkusTestProfile {
                 "scim.prov.persist.schema","false",
                 "scim.security.enable", "false",
                 "scim.event.enable","false"
-        );
+        ));
+        cmap.put("scim.root.dir","." ); //enables local debug testing
+        return cmap;
     }
 
     @Override

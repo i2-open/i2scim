@@ -43,7 +43,8 @@ public class ScimHttpTestProfile implements QuarkusTestProfile {
         cmap.putAll(Map.of(
                 "scim.json.pretty","true",
                 "scim.security.enable", "false",
-                "scim.event.enable","false"
+                "scim.event.enable","false",
+                "scim.root.dir","."  //enables local debug testing
         ));
         return cmap;
     }

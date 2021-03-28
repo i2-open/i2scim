@@ -142,6 +142,7 @@ public class MemoryProvider implements IScimProvider {
 
 		File directory = new File(storeDir);
 		if (!directory.exists()) {
+			logger.info("Creating memory store directory: "+directory.toString());
 			directory.mkdir();
 		}
 

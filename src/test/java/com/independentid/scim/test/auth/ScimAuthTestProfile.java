@@ -43,7 +43,8 @@ public class ScimAuthTestProfile implements QuarkusTestProfile {
                 "quarkus.http.auth.basic", "true",
                 "scim.security.authen.basic", "true",
                 "scim.security.authen.jwt", "true",
-                "scim.event.enable","false"
+                "scim.event.enable","false",
+                "scim.root.dir","."  //enables local debug testing
         ));
         return cmap;
 

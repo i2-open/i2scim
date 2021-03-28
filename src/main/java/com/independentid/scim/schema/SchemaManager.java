@@ -119,7 +119,7 @@ public class SchemaManager {
 
         PersistStateResource cfgState = null;
 
-
+        logger.info("Loaded: "+getResourceTypes().size()+" resource types, "+getSchemas().size()+" schemas.");
     }
 
     @PreDestroy

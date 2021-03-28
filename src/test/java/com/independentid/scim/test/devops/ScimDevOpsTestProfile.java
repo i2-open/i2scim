@@ -37,7 +37,8 @@ public class ScimDevOpsTestProfile implements QuarkusTestProfile {
                 "scim.security.acis","classpath:/schema/aciSecurityTest.json"
         ));
         cmap.putAll(Map.of(
-                "scim.event.enable","false"
+                "scim.event.enable","false",
+                "scim.root.dir","."  //enables local debug testing
 
         ));
         return cmap;

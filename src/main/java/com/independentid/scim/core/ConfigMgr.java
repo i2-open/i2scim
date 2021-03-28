@@ -21,6 +21,7 @@ import com.independentid.scim.resource.ValueUtil;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.security.AccessManager;
 import io.quarkus.runtime.Startup;
+import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,10 +33,9 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 import javax.servlet.ServletContext;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Arrays;
-import java.util.List;
+import java.io.*;
+import java.time.Instant;
+import java.util.*;
 
 /**
  * @author pjdhunt
@@ -139,6 +139,12 @@ public class ConfigMgr {
 
 	@ConfigProperty(name = "scim.test.configOnly",defaultValue = "false")
 	boolean configOnly;
+
+	@ConfigProperty(name= "scim.root.dir",defaultValue = "/scim")
+	String rootDir;
+
+	@ConfigProperty(name= "quarkus.http.access-log.log-directory")
+	String logDir;
 	
 	@Inject 
 	@Resource(name="BackendHandler")
@@ -158,6 +164,9 @@ public class ConfigMgr {
 
 	@Inject
 	ServletContext sctx;
+
+	@Inject
+	Config sysconf;
 	
 	/**
 	 * @return the ctx
@@ -224,9 +233,42 @@ public class ConfigMgr {
 		
 		self = this;
 
+		File rootFile = new File(rootDir);
+		if (!rootFile.exists())
+			logger.error("Root directory for SCIM does not exist(scim.root.dir="+rootFile+").");
+
 		if (isRootEnabled() && getRootPassword().equals("admin"))
 			logger.warn("Server is configured with root access and default password!");
+
 		ValueUtil.initialize(this);
+		File cfile = new File(rootFile,"test.prop");
+		Properties tprop = new Properties();
+		for(String prop : sysconf.getPropertyNames()) {
+			try {
+				Optional<String> val = sysconf.getOptionalValue(prop,String.class);
+				String pval = "<optional>";
+				if (val.isPresent()) {
+					pval = val.get();
+				}
+				System.out.println(prop+"\t\t\t= "+pval);
+				tprop.put(prop,pval);
+			} catch (Exception ignore) {
+
+			}
+		}
+		Date now = Date.from(Instant.now());
+		FileOutputStream writer = new FileOutputStream(cfile);
+		tprop.store(writer,
+				"# Properties captured "+now.toString());
+		writer.close();
+
+		File dir = new File(logDir);
+		if (!dir.exists()) {
+			logger.info(" Creating log directory: "+logDir);
+			dir.mkdir();
+
+		}
+
 	}
 	
 	public int getPort() {
@@ -296,12 +338,11 @@ public class ConfigMgr {
 		String mapFile = file.strip();
 		if (mapFile.startsWith("classpath:"))
 			mapFile = mapFile.substring(10);
-		System.out.println("File requested:\t"+mapFile);
+		//System.out.println("File requested:\t"+mapFile);
 
 		return ConfigMgr.class.getResourceAsStream(mapFile);
 
 	}
-
 
 	
 	public boolean isPrettyJsonMode() {

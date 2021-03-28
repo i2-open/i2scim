@@ -39,7 +39,8 @@ public class ScimMongoTestProfile implements QuarkusTestProfile {
         ));
         cmap.putAll(Map.of(
                 "scim.security.enable", "false",
-                "scim.event.enable","false"
+                "scim.event.enable","false",
+                "scim.root.dir","."  //enables local debug testing
 
         ));
         return cmap;

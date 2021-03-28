@@ -32,6 +32,8 @@ RUN microdnf install curl ca-certificates ${JAVA_PACKAGE} \
     && microdnf update \
     && microdnf clean all \
     && mkdir /deployments \
+    && mkdir /scim \
+    && chown 1001 /scim \
     && chown 1001 /deployments \
     && chmod "g+rwX" /deployments \
     && chown 1001:root /deployments \
@@ -40,6 +42,8 @@ RUN microdnf install curl ca-certificates ${JAVA_PACKAGE} \
     && chmod 540 /deployments/run-java.sh \
     && echo "securerandom.source=file:/dev/urandom" >> /etc/alternatives/jre/lib/security/java.security
 
+# Create a mountable volume, used for logs and other storage (e.g. memory)  scim.root.dir
+VOLUME /scim
 # Configure the JAVA_OPTIONS, you can add -XshowSettings:vm to also display the heap size.
 ENV JAVA_OPTIONS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 # We make four distinct layers so if there are application changes the library layers can be re-used

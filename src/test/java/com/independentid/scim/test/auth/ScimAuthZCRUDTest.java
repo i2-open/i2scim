@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.protocol.ListResponse;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.ExtensionValues;
@@ -845,6 +846,51 @@ public class ScimAuthZCRUDTest {
 		} catch (IOException  e) {
 			fail("Exception occured in DELETE test for bjensen",e);
 		}
+	}
+
+	@Test
+	public void h_ConfigEndpointsTest() throws IOException {
+		String req = TestUtils.mapPathToReqUrl(baseUrl, "/ServiceProviderConfig");
+		logger.info("\tH. Testing Config Endpoints");
+		HttpUriRequest request = new HttpGet(req);
+		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+		HttpResponse resp = execute(request);
+		HttpEntity body = resp.getEntity();
+		String res = EntityUtils.toString(body);
+
+		logger.debug("ServiceProviderConfig res:\n" + res);
+		assertThat(res)
+				.as("ServiceProviderConfig does not contain ListResponse")
+				.doesNotContain(ScimParams.SCHEMA_API_ListResponse);
+
+		assertThat(res)
+				.as("Has schemas ServiceProviderConfig")
+				.contains(ScimParams.SCHEMA_SCHEMA_ServiceProviderConfig);
+
+		req = TestUtils.mapPathToReqUrl(baseUrl,"/Schemas");
+		request = new HttpGet(req);
+		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+		resp = execute(request);
+		body = resp.getEntity();
+
+		res = EntityUtils.toString(body);
+		logger.debug("Response returned: \n"+res);
+
+		assertThat(res).isNotNull();
+
+		assertThat(res)
+				.as("Is a List Response")
+				.startsWith("{\n" +
+						"  \"schemas\" : [ \"urn:ietf:params:scim:api:messages:2.0:ListResponse\" ]");
+		assertThat(res)
+				.as("Contains correct items per page(7)")
+				.contains("\"itemsPerPage\" : 7,");
+		assertThat(res)
+				.as("Contains correct total numbrt of results (7)")
+				.contains("\"totalResults\" : 7,");
+		assertThat(res)
+				.as("Confirtm List Response Type")
+				.contains(ListResponse.SCHEMA_LISTRESP);
 	}
 
 }
