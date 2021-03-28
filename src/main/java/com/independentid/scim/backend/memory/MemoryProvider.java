@@ -24,6 +24,7 @@ import com.independentid.scim.protocol.*;
 import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.*;
 import com.independentid.scim.serializer.JsonUtil;
+import io.quarkus.runtime.Startup;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,8 +48,9 @@ import java.util.concurrent.TimeUnit;
  * @author pjdhunt
  *
  */
-//@ApplicationScoped
+
 @Singleton
+@Startup // this is required or configproperty injection won't pick up application.properties ??!!
 @Priority(50)
 @Named("MemoryProvider")
 public class MemoryProvider implements IScimProvider {
@@ -79,13 +81,20 @@ public class MemoryProvider implements IScimProvider {
 	
 	private boolean ready;
 
-	@ConfigProperty(name = "scim.prov.memory.persist.dir", defaultValue = "./scimdata")
+	//@ConfigProperty(name = "scim.root.dir")
+	//String rootDir;
+
+	@Inject
+	@ConfigProperty(name = "scim.prov.memory.dir", defaultValue = "./scimdata")
 	String storeDir;
 
-	@ConfigProperty(name = "scim.prov.memory.persist.file", defaultValue="scimdata.json")
+	@Inject
+	@ConfigProperty(name = "scim.prov.memory.file", defaultValue="scimdata.json")
 	String storeFile;
 
 	File dataFile = null;
+
+
 
 	@ConfigProperty(name = ConfigMgr.SCIM_QUERY_MAX_RESULTSIZE, defaultValue= ConfigMgr.SCIM_QUERY_MAX_RESULTS_DEFAULT)
 	protected int maxResults;
@@ -132,10 +141,11 @@ public class MemoryProvider implements IScimProvider {
 	public synchronized void init() {
 
 		//this.configMgr = configMgr;
-
 		if (this.ready)
 			return;  // run only once!
-
+		//logger.info("rootDir:   "+rootDir);
+		//logger.info("storeDir:  "+storeDir);
+		//logger.info("storeFile: "+storeFile);
 		Collection<ResourceType> smgrTypes = schemaManager.getResourceTypes();
 		for(ResourceType atype : smgrTypes)
 			types.put(atype.getName(),atype);

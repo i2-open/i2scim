@@ -32,6 +32,7 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.ReplaceOptions;
+import io.quarkus.runtime.Startup;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -54,6 +55,7 @@ import java.util.Iterator;
 
 //@ApplicationScoped
 @Singleton
+@Startup // required for proper injection of application.properties values.
 @Priority(10)
 public class MongoProvider implements IScimProvider {
 	private final static Logger logger = LoggerFactory

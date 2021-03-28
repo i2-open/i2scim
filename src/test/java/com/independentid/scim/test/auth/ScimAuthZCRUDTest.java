@@ -40,6 +40,7 @@ import org.apache.http.entity.ContentType;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -83,6 +84,12 @@ public class ScimAuthZCRUDTest {
 
 	@TestHTTPResource("/")
 	URL baseUrl;
+
+	@ConfigProperty(name = "scim.security.root.username", defaultValue="admin")
+	String rootUser;
+
+	@ConfigProperty(name = "scim.security.root.password", defaultValue="admin")
+	String rootPassword;
 	
 	//private static String user1url = "";
 	
@@ -870,6 +877,32 @@ public class ScimAuthZCRUDTest {
 		req = TestUtils.mapPathToReqUrl(baseUrl,"/Schemas");
 		request = new HttpGet(req);
 		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+		resp = execute(request);
+		body = resp.getEntity();
+
+		res = EntityUtils.toString(body);
+		logger.debug("Response returned: \n"+res);
+
+		assertThat(res).isNotNull();
+
+		assertThat(res)
+				.as("Is a List Response")
+				.startsWith("{\n" +
+						"  \"schemas\" : [ \"urn:ietf:params:scim:api:messages:2.0:ListResponse\" ]");
+		assertThat(res)
+				.as("Contains correct items per page(7)")
+				.contains("\"itemsPerPage\" : 7,");
+		assertThat(res)
+				.as("Contains correct total numbrt of results (7)")
+				.contains("\"totalResults\" : 7,");
+		assertThat(res)
+				.as("Confirtm List Response Type")
+				.contains(ListResponse.SCHEMA_LISTRESP);
+
+		String auth = "Basic " + Base64.getEncoder().encodeToString((rootUser + ":" + rootPassword).getBytes());
+		req = TestUtils.mapPathToReqUrl(baseUrl,"/Schemas");
+		request = new HttpGet(req);
+		request.addHeader(HttpHeaders.AUTHORIZATION, auth);
 		resp = execute(request);
 		body = resp.getEntity();
 

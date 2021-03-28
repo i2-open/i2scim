@@ -57,15 +57,15 @@ public class ConfigMgr {
 	
 	public static final String SCIM_SERVER_PORT_DEF = "8080";
 
-	public static final String SCIM_SERVER_PORT = "scim.server.port";
+	//public static final String SCIM_SERVER_PORT = "scim.server.port";
 
 	public static final String SCIM_SERVER_PATH_DEF = "/scim";
 
 	public static final String SCIM_SERVER_HOST_DEF = "localhost";
 
-	public static final String SCIM_SERVER_PATH = "scim.server.path";
+	//public static final String SCIM_SERVER_PATH = "scim.server.path";
 
-	public static final String SCIM_SERVER_HOST = "scim.server.host";
+	//public static final String SCIM_SERVER_HOST = "scim.server.host";
 
 	public final static List<String> SCIM_CORE_ATTRS = Arrays.asList(
 			"id","externalid","schemas","meta");
@@ -128,19 +128,19 @@ public class ConfigMgr {
 	@ConfigProperty(name = "scim.security.root.password", defaultValue="admin")
 	String rootPassword;
 	
-	@ConfigProperty(name = SCIM_SERVER_PORT, defaultValue=SCIM_SERVER_PORT_DEF)
+	@ConfigProperty(name = "scim.server.port", defaultValue=SCIM_SERVER_PORT_DEF)
 	int scimPort;
 	
-	@ConfigProperty(name = SCIM_SERVER_HOST, defaultValue=SCIM_SERVER_HOST_DEF)
+	@ConfigProperty(name = "scim.server.host", defaultValue=SCIM_SERVER_HOST_DEF)
 	String scimHost;
 	
-	@ConfigProperty(name = SCIM_SERVER_PATH, defaultValue=SCIM_SERVER_PATH_DEF)
+	@ConfigProperty(name = "scim.server.path", defaultValue=SCIM_SERVER_PATH_DEF)
 	String scimRoot;
 
 	@ConfigProperty(name = "scim.test.configOnly",defaultValue = "false")
 	boolean configOnly;
 
-	@ConfigProperty(name= "scim.root.dir",defaultValue = "/scim")
+	@ConfigProperty(name= "scim.root.dir")
 	String rootDir;
 
 	@ConfigProperty(name= "quarkus.http.access-log.log-directory")
@@ -232,7 +232,7 @@ public class ConfigMgr {
 		logger.info("======Initializing SCIM Config Mangaer=====");
 		
 		self = this;
-
+		logger.info("Scim file system root: "+rootDir);
 		File rootFile = new File(rootDir);
 		if (!rootFile.exists())
 			logger.error("Root directory for SCIM does not exist(scim.root.dir="+rootFile+").");
@@ -241,17 +241,34 @@ public class ConfigMgr {
 			logger.warn("Server is configured with root access and default password!");
 
 		ValueUtil.initialize(this);
+
 		File cfile = new File(rootFile,"test.prop");
 		Properties tprop = new Properties();
-		for(String prop : sysconf.getPropertyNames()) {
+		System.out.println("SCIM Environment Run Properties");
+		System.out.printf("%-50s %s\n","Property","Value");
+		List<String> pvals = new ArrayList<>();
+		for(String prop : sysconf.getPropertyNames())
+			pvals.add(prop);
+		Collections.sort(pvals);
+		for(String prop : pvals) {
 			try {
 				Optional<String> val = sysconf.getOptionalValue(prop,String.class);
 				String pval = "<optional>";
 				if (val.isPresent()) {
 					pval = val.get();
+					tprop.put(prop,pval);
 				}
-				System.out.println(prop+"\t\t\t= "+pval);
-				tprop.put(prop,pval);
+				int len = prop.length();
+				if (len >= 50) {
+					int trim = len-50;
+
+					prop = "< " + prop.substring(trim+2); // trim the left side
+				}
+				String mask = "********************************";
+				if(prop.startsWith("scim.security.root") && !prop.equals("scim.security.root.enable"))
+					pval = mask.substring(0,pval.length()-1);
+				System.out.printf("%-50s %s\n",prop,pval);
+
 			} catch (Exception ignore) {
 
 			}
@@ -266,9 +283,7 @@ public class ConfigMgr {
 		if (!dir.exists()) {
 			logger.info(" Creating log directory: "+logDir);
 			dir.mkdir();
-
 		}
-
 	}
 	
 	public int getPort() {
