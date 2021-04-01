@@ -22,6 +22,7 @@ import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.schema.*;
 import io.quarkus.security.identity.SecurityIdentity;
 
+import java.security.Principal;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
@@ -53,10 +54,10 @@ public class TransactionRecord extends ScimResource {
 
         addValue(new IntegerValue(SystemSchemas.opCntAttr,op.getStats().getRequestNumber()));
 
-        SecurityIdentity identity = op.getRequestCtx().getSecSubject();
-        if (identity != null)
-            addValue(new StringValue(SystemSchemas.actorAttr, identity.getPrincipal().getName()));
-
+        Principal userPrincipal = op.getRequestCtx().getPrincipal();
+        if (userPrincipal != null) {
+            addValue(new StringValue(SystemSchemas.actorAttr,userPrincipal.getName()));
+        }
         if (op.getResourceId() != null) {
             String ref = op.getResourceType().getEndpoint() + "/" + op.getResourceId();
             Attribute attr = SystemSchemas.refsAttr;

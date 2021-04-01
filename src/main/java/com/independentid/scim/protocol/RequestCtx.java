@@ -35,6 +35,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.constraints.NotNull;
 import java.io.InputStream;
+import java.security.Principal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -105,6 +106,7 @@ public class RequestCtx {
 	
 	private final boolean hasSecAuth = false;
 	private SecurityIdentity identity = null;
+	private Principal principal = null;
 	private ArrayList<String> secRoles = null;
 	private AciSet acis = null;
 
@@ -780,9 +782,14 @@ public class RequestCtx {
 	public void setSecSubject(@NotNull SecurityIdentity identity) {
 
 		this.identity = identity;
+		principal = identity.getPrincipal();
 		this.secRoles = new ArrayList<>();
 		this.secRoles.addAll(
 				identity.getRoles());
+	}
+
+	public Principal getPrincipal() {
+		return principal;
 	}
 
 	public void setAciSet(AciSet acis) {
