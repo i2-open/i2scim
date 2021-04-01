@@ -23,10 +23,11 @@ import com.independentid.scim.core.PoolManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.schema.SchemaManager;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.health.*;
 
 import javax.annotation.Resource;
-import javax.enterprise.context.ApplicationScoped;
+import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
@@ -34,13 +35,11 @@ import java.io.IOException;
 import java.text.ParseException;
 
 /**
- * This check verifies if i2scim is ready to serve requests. It checks to see the provider is initialized.
- *
- * Note: at this time, it does not check whether the provider is still functional
+ * Liveness allows devops to interrogate if the server is instantiated. It does not test readiness.
  */
-@Readiness
+@Liveness
 @Singleton
-public class ScimHealthCheck implements HealthCheck {
+public class LivenessCheck implements HealthCheck {
 
     @Inject
     @Resource(name="ConfigMgr")
@@ -56,34 +55,33 @@ public class ScimHealthCheck implements HealthCheck {
     @Inject
     BackendHandler handler;
 
+    @ConfigProperty(name = "scim.prov.providerClass", defaultValue="com.independentid.scim.backend.mongo.MongoProvider")
+    String providerName;
+
+    @Inject
+    Instance<IScimProvider> providers;
+
     @Override
     public HealthCheckResponse call() {
         HealthCheckResponseBuilder responseBuilder =
                 HealthCheckResponse.named("SCIM.server");
-        IScimProvider provider;
-        boolean providerReady = false;
-        String providerClass = "<UNDEFINED>";
-        try {
-            provider = handler.getProvider();
-            providerClass = provider.getClass().toString();
-            PersistStateResource cfgState = provider.getConfigState();
-            if (cfgState != null)
-                providerReady = true;
 
-        } catch (ScimException | IOException | ParseException e) {
-            responseBuilder = responseBuilder
-                    .withData("scim.error.exceptionMessage","Exception polling backend: "+e.getLocalizedMessage())
-                    .withData("scim.provider.bean",providerClass)
-                    .withData("scim.provider.ready",providerReady);
+        if (handler == null | schemaManager == null | configMgr == null) {
+            responseBuilder.withData("scim.error.missing","One or manager classes missing or not injected (Config, Schema, BackendHandler).");
             return responseBuilder.down().build();
-
+        }
+        boolean provLoaded = false;
+        for (IScimProvider item : providers) {
+            String cname = item.getClass().toString();
+            if (cname.contains(providerName)) {
+                provLoaded = true;
+                break;
+            }
         }
 
-
-
         responseBuilder = responseBuilder
-                .withData("scim.provider.bean",providerClass)
-                .withData("scim.provider.ready",providerReady)
+                .withData("scim.provider.bean",providerName)
+                .withData("scim.provider.loaded",provLoaded)
                 .withData("scim.backend.handlerStatus",handler.isReady())
                 .withData("scim.poolmanager.poolPendingCnt",poolManager.getPendingTasksCnt())
                 .withData("scim.schemaManager.resourceTypeCnt",schemaManager.getResourceTypeCnt())
@@ -92,8 +90,9 @@ public class ScimHealthCheck implements HealthCheck {
                 .withData("scim.security.authen.jwt", configMgr.isAuthJwt())
                 .withData("scim.security.authen.basic", configMgr.isAuthBasic());
 
-        return responseBuilder.up().build();
-
+        if (provLoaded)
+            return responseBuilder.up().build();
+        return responseBuilder.down().build();
 
     }
 }
