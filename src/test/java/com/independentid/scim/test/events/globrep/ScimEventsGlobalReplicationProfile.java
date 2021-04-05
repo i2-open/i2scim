@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020.
+ * Copyright (c) 2021.
  *
  * Confidential and Proprietary
  *
@@ -13,38 +13,42 @@
  * subject to the terms of such agreement.
  */
 
-package com.independentid.scim.test.events;
+package com.independentid.scim.test.events.globrep;
 
+import com.independentid.scim.backend.memory.MemoryProvider;
 import com.independentid.scim.backend.mongo.MongoProvider;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
-public class ScimEventsTestProfile implements QuarkusTestProfile {
+public class ScimEventsGlobalReplicationProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
         Map<String, String> cmap = new HashMap<>(Map.of(
-                "scim.prov.providerClass", MongoProvider.class.getName(),
-
-                "scim.prov.mongo.dbname", "eventTestSCIM",
-                "scim.prov.mongo.uri", "mongodb://localhost:27017",
+                "scim.prov.providerClass", MemoryProvider.class.getName(),
 
                 "quarkus.log.min-level","DEBUG",
-                "logging.level.com.independentid.scim","INFO",
-                "quarkus.log.category.\"com.independentid.scim.test\".level", "INFO",
+                "logging.level.com.independentid.scim","DEBUG",
+                "quarkus.log.category.\"com.independentid.scim.test\".level", "DEBUG",
+                "scim.root.dir",".",  //enables local debug testing
 
                 "scim.security.enable","false",
+                "scim.event.enable","true",
                 "scim.kafka.log.enable","true",
                 "scim.kafka.rep.enable","true"
                  ));
         cmap.putAll(Map.of(
-                "scim.event.enable","true",
+
                 "scim.kafka.log.bootstrap","10.1.10.101:9092",
                 "scim.kafka.rep.bootstrap","10.1.10.101:9092",
                 "scim.kafka.rep.sub.auto.offset.reset","latest",
                 "scim.kafka.rep.sub.max.poll.records","1",  // faster turn around
-                "scim.root.dir","."  //enables local debug testing
+
+                "scim.kafka.rep.mode","global-replica",
+                "scim.kafka.rep.clientid", UUID.randomUUID().toString(),
+                "scim.kafka.rep.cluster.id","<AUTO>"
 
         ));
         return cmap;
