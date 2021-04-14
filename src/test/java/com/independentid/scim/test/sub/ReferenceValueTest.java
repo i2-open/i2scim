@@ -21,6 +21,8 @@ import com.independentid.scim.resource.ReferenceValue;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.*;
 
@@ -29,6 +31,8 @@ import java.text.ParseException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
+@QuarkusTest
+@TestProfile(ScimSubComponentTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
 public class ReferenceValueTest {
 
@@ -53,7 +57,7 @@ public class ReferenceValueTest {
 	static String inputString1 = "{\"$ref\": \"/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a\"}";
 	static String matchString1 = "/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a";
 	static String inputString2 = "{\"$ref\": \"https://example.com/v2/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a\"}";
-	static String matchString2 = "https://example.com/v2/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a";
+	//static String matchString2 = "https://example.com/v2/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a";
 		
 	
 	static JsonNode jnodetest1, jnodetest2 = null;

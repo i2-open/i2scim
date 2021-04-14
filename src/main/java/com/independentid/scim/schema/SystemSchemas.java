@@ -41,6 +41,7 @@ public class SystemSchemas {
     public final static String SYNC_ACTOR = "actor";
     public final static String SYNC_REFS = "refs";
     public final static String SYNC_OPTYPE = "op";
+
     public final static String TRANS_CONTAINER = "Trans";
 
     public static Attribute idAttr;
@@ -50,11 +51,13 @@ public class SystemSchemas {
     public static Attribute actorAttr;
     public static Attribute refsAttr;
     public static Attribute opCntAttr;
+    public static Attribute saltAttr;
 
 
     public static String FIELD_RTYPE_CNT = "rTypeCnt";
     public static String FIELD_LAST_SYNC = "lastSyncDate";
     public static String FIELD_SCHEMA_CNT = "schemaCnt";
+    public final static String FIELD_SYNC_SALT = "salt";
 
     public static String RESTYPE_CONFIG = ScimParams.PATH_SERV_PROV_CFG;
 
@@ -78,10 +81,12 @@ public class SystemSchemas {
         syncDateAttr = createAttribute(FIELD_LAST_SYNC,persistSchema.getId(),Attribute.TYPE_Date);
         rTypeCntAttr = createAttribute(FIELD_RTYPE_CNT,persistSchema.getId(),Attribute.TYPE_Integer);
         sCntAttr = createAttribute(FIELD_SCHEMA_CNT,persistSchema.getId(),Attribute.TYPE_Integer);
+        saltAttr = createAttribute(FIELD_SYNC_SALT,persistSchema.getId(), Attribute.TYPE_Binary);
 
         persistSchema.putAttribute(syncDateAttr);
         persistSchema.putAttribute(rTypeCntAttr);
         persistSchema.putAttribute(sCntAttr);
+        persistSchema.putAttribute(saltAttr);
 
         persistType = new ResourceType(smgr);
         persistType.setName(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);

@@ -25,7 +25,10 @@ import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -37,6 +40,7 @@ import java.util.Set;
  * @author pjdhunt
  */
 public class ValueUtil {
+    private final static Logger logger = LoggerFactory.getLogger(ValueUtil.class);
 
     static ConfigMgr cfg = null;
     static SchemaManager smgr = null;
@@ -73,30 +77,38 @@ public class ValueUtil {
         if (attr.isMultiValued() && fnode.getNodeType().equals(JsonNodeType.ARRAY)) {
             val = new MultiValue(attr, fnode, bulkIdResolver);
         } else {
-            switch (attr.getType().toLowerCase()) {
-                case Attribute.TYPE_String:
-                    val = new StringValue(attr, fnode);
-                    break;
-                case Attribute.TYPE_Complex:
-                    val = new ComplexValue(attr, fnode, null);
-                    break;
-                case Attribute.TYPE_Boolean:
-                    val = new BooleanValue(attr, fnode);
-                    break;
-                case Attribute.TYPE_Date:
-                    val = new DateValue(attr, fnode);
-                    break;
-                case Attribute.TYPE_Binary:
-                    val = new BinaryValue(attr, fnode);
-                    break;
-                case Attribute.TYPE_Integer:
-                    val = new IntegerValue(attr, fnode);
-                    break;
-                case Attribute.TYPE_Reference:
-                    val = new ReferenceValue(attr, fnode, bulkIdResolver);
-                    break;
-                case Attribute.TYPE_Decimal:
-                    val = new DecimalValue(attr, fnode);
+            if (smgr.isVirtualAttr(attr)) {
+                try {
+                    val = (Value) smgr.getAttributeJsonConstructor(attr).newInstance(attr,fnode);
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                    logger.error("Error mapping attribute "+attr.getName()+": "+e.getMessage(),e);
+                }
+            } else {
+                switch (attr.getType().toLowerCase()) {
+                    case Attribute.TYPE_String:
+                        val = new StringValue(attr, fnode);
+                        break;
+                    case Attribute.TYPE_Complex:
+                        val = new ComplexValue(attr, fnode, null);
+                        break;
+                    case Attribute.TYPE_Boolean:
+                        val = new BooleanValue(attr, fnode);
+                        break;
+                    case Attribute.TYPE_Date:
+                        val = new DateValue(attr, fnode);
+                        break;
+                    case Attribute.TYPE_Binary:
+                        val = new BinaryValue(attr, fnode);
+                        break;
+                    case Attribute.TYPE_Integer:
+                        val = new IntegerValue(attr, fnode);
+                        break;
+                    case Attribute.TYPE_Reference:
+                        val = new ReferenceValue(attr, fnode, bulkIdResolver);
+                        break;
+                    case Attribute.TYPE_Decimal:
+                        val = new DecimalValue(attr, fnode);
+                }
             }
         }
         if (val == null)

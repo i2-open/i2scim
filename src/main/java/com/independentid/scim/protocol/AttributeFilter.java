@@ -392,7 +392,7 @@ public class AttributeFilter extends Filter {
                 }
                 if (value instanceof StringValue) {
                     try {  // normalize the value by passing through referencevalue
-                        ReferenceValue rval = new ReferenceValue(attr,((StringValue) value).value);
+                        ReferenceValue rval = new ReferenceValue(attr,((StringValue) value).getRawValue());
                         value = new StringValue(attr,rval.toString());
                     } catch (SchemaException e) {
                         e.printStackTrace();
@@ -418,18 +418,11 @@ public class AttributeFilter extends Filter {
                 switch (compOp) {
 
                     case AttributeFilter.FILTEROP_EQ: {
-                        if (!attr.getCaseExact()) {
-                            // do case inexact regex
-                            return val.equalsIgnoreCase(valString);
-                        } else
-                            return val.equals(valString);
+                        return value.equals(new StringValue(attr,valString));
                     }
 
                     case AttributeFilter.FILTEROP_NE:
-                        if (!attr.getCaseExact())
-                            return !val.equalsIgnoreCase(valString);
-                        else
-                            return !val.equals(valString);
+                        return !value.equals(new StringValue(attr,valString));
 
                     case AttributeFilter.FILTEROP_CONTAINS: {
                         if (attr.getCaseExact())

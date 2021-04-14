@@ -29,6 +29,7 @@ import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -106,7 +107,18 @@ public class PoolManager {
 		if (logger.isDebugEnabled())
 			logger.debug("Pool Manager initializing with " + threads + " threads.");
 				//pool = new ForkJoinPool(threads);
-		operationPool = new ForkJoinPool(threads);
+
+		//operationPool = new ForkJoinPool(threads);
+		/*
+		This is to solve a classloader issue around microprofiles. smallrye JWT won't load properly
+		See: https://github.com/quarkusio/quarkus/issues/9397#issuecomment-630037633
+		 */
+		operationPool = new ForkJoinPool(threads, new ForkJoinPool.ForkJoinWorkerThreadFactory() {
+			@Override
+			public ForkJoinWorkerThread newThread(ForkJoinPool pool) {
+				return new ForkJoinWorkerThread(pool) {};
+			}
+		}, null, false);
 
 		eventPool = new ForkJoinPool(5);
 	

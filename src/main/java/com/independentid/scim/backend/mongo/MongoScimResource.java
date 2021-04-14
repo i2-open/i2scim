@@ -24,8 +24,11 @@ import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
+import java.lang.reflect.InvocationTargetException;
 import java.text.ParseException;
 import java.util.Set;
 
@@ -38,6 +41,7 @@ import java.util.Set;
  *
  */
 public class MongoScimResource extends ScimResource {
+	private final static Logger logger = LoggerFactory.getLogger(MongoScimResource.class);
 
 	private Document originalResource;
 
@@ -115,6 +119,13 @@ public class MongoScimResource extends ScimResource {
 		Attribute[] attrs = coreSchema.getAttributes();
 		for (Attribute attr : attrs) {
 			Value val = MongoMapUtil.mapBsonDocument(attr, doc);
+			if (smgr.isVirtualAttr(attr)) {
+				try {  // convert from virtual type to virtual type
+					val = (Value) smgr.getAttributeValueConstructor(attr).newInstance(val);
+				} catch (InstantiationException | IllegalAccessException | InvocationTargetException | NullPointerException e) {
+					logger.error("Error mapping attribute "+attr.getName()+": "+e.getMessage(),e);
+				}
+			}
 			attrsInUse.add(attr);
 			if (val != null)
 				this.coreAttrVals.put(attr, val);
