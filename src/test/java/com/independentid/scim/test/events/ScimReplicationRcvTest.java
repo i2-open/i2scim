@@ -33,6 +33,7 @@ import com.independentid.scim.resource.StringValue;
 import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
+import com.independentid.scim.test.events.globrep.ScimEventsGlobalReplicationProfile;
 import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -68,7 +69,7 @@ import static org.assertj.core.api.Assertions.fail;
  */
 @SuppressWarnings("BusyWait")
 @QuarkusTest
-@TestProfile(ScimEventsTestProfile.class)
+@TestProfile(ScimEventsGlobalReplicationProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
 public class ScimReplicationRcvTest {
     private final static Logger logger = LoggerFactory.getLogger(ScimReplicationRcvTest.class);
@@ -144,7 +145,7 @@ public class ScimReplicationRcvTest {
     @Test
     public void b_sendAsGlobalWithGlobalStratTest() {
         logger.info("B. Sending global event with global rep mode (STRAT_GLOBAL)");
-        eventHandler.setStrategy(KafkaRepEventHandler.STRAT_GLOBAL);
+        eventHandler.setStrategy(KafkaRepEventHandler.MODE_GLOB_PART);
         eventHandler.resetCounts();
 
         id1 = generator.getNewIdentifier();
@@ -180,7 +181,7 @@ public class ScimReplicationRcvTest {
     @Test
     public void c_sendAsClusterWithStatGlobalTest() {
         logger.info("C. Testing create user in same cluster with Global replication (STRAT_GLOBAL)");
-        eventHandler.setStrategy(KafkaRepEventHandler.STRAT_GLOBAL);
+        eventHandler.setStrategy(KafkaRepEventHandler.MODE_GLOB_PART);
         eventHandler.resetCounts();
 
         try {
@@ -207,7 +208,7 @@ public class ScimReplicationRcvTest {
 
         logger.debug("\tResetting provider and counts");
         eventHandler.resetCounts();
-        eventHandler.setStrategy(KafkaRepEventHandler.STRAT_CLUS);
+        eventHandler.setStrategy(KafkaRepEventHandler.MODE_CLUS_REP);
 
         try {
             testUtils.resetProvider();
@@ -254,7 +255,7 @@ public class ScimReplicationRcvTest {
 
         logger.debug("\tResetting provider and counts");
         eventHandler.resetCounts();
-        eventHandler.setStrategy(KafkaRepEventHandler.STRAT_ALL);
+        eventHandler.setStrategy(KafkaRepEventHandler.MODE_TRAN);
 
         try {
             testUtils.resetProvider();
@@ -361,7 +362,7 @@ public class ScimReplicationRcvTest {
 
         logger.debug("\tResetting counts");
         eventHandler.resetCounts();
-        eventHandler.setStrategy(KafkaRepEventHandler.STRAT_ALL);
+        eventHandler.setStrategy(KafkaRepEventHandler.MODE_TRAN);
 
         try {
             Attribute unameattr = schemaManager.findAttribute("userName",null);
@@ -436,7 +437,7 @@ public class ScimReplicationRcvTest {
 
         logger.debug("\tResetting counts");
         eventHandler.resetCounts();
-        eventHandler.setStrategy(KafkaRepEventHandler.STRAT_ALL);
+        eventHandler.setStrategy(KafkaRepEventHandler.MODE_TRAN);
 
         try {
 

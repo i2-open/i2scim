@@ -1,4 +1,4 @@
-# SCIM Configuration
+# i2scim Configuration
 
 The following properties are used to configure the I2 SCIM server:
 

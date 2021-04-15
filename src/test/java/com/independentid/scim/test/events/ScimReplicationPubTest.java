@@ -32,6 +32,7 @@ import com.independentid.scim.resource.StringValue;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
+import com.independentid.scim.test.events.globrep.ScimEventsGlobalReplicationProfile;
 import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
@@ -59,7 +60,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 @QuarkusTest
-@TestProfile(ScimEventsTestProfile.class)
+@TestProfile(ScimEventsGlobalReplicationProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
 public class ScimReplicationPubTest {
 

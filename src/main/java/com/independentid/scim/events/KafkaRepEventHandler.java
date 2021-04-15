@@ -43,11 +43,9 @@ import javax.annotation.PreDestroy;
 import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 //@ApplicationScoped
 //@Startup
@@ -59,20 +57,37 @@ public class KafkaRepEventHandler implements IEventHandler {
     public static final String KAFKA_PUB_PREFIX = "scim.kafka.rep.pub.";
     public static final String KAFKA_CON_PREFIX = "scim.kafka.rep.sub.";
 
-    public static final String STRAT_GLOBAL = "global";
-    public static final String STRAT_CLUS = "cluster";
-    public static final String STRAT_ALL = "all";
-    public static final String STRAT_TRAN = "transid";
+    public static final String MODE_GLOB_PART   = "global-shard";
+    public static final String MODE_GLOB_REP    = "global-replica";
+    public static final String MODE_CLUS_PART   = "cluster-shard";
+    public static final String MODE_CLUS_REP    = "cluster-replica";
+    
+    public static final String MODE_TRAN        = "transid";
 
     public static final String HDR_CLIENT = "cli";
     public static final String HDR_CLUSTER = "clus";
     public static final String HDR_TID = BulkOps.PARAM_TRANID;
+    public static final String KAFKA_DIR = "kafka";
+    public static final String KAFKA_NODE_CFG_PROP = "-kafkaCfg.prop";
+    public static final String PROP_SCIM_KAFKA_REP_SHARDS = "scim.kafka.rep.shards";
+    public static final String ID_AUTO_GEN = "<AUTO>";
+    public static final String PROP_CLIENT_ID = "client.id";
+    public static final String PROP_GROUP_ID = "group.id";
+
+    @ConfigProperty(name= "scim.root.dir")
+    String rootDir;
 
     @ConfigProperty (name = "scim.kafka.rep.enable", defaultValue = "false")
     boolean enabled;
 
     @ConfigProperty (name="scim.event.enable", defaultValue = "true")
     boolean eventsEnabled;
+
+    @ConfigProperty (name="scim.kafka.rep.shards", defaultValue = "1")
+    int partitions;
+
+    @ConfigProperty (name="scim.kafka.rep.partitionerclass", defaultValue = "")
+    String partClass;
 
     @ConfigProperty (name="scim.kafka.rep.cache.error", defaultValue = "100")
     int errSize;
@@ -96,14 +111,16 @@ public class KafkaRepEventHandler implements IEventHandler {
     @ConfigProperty (name = "scim.kafka.rep.pub.topic", defaultValue = "rep")
     String repTopic;
 
-    @ConfigProperty (name= "scim.kafka.rep.client.id")
+    @ConfigProperty (name= "scim.kafka.rep.client.id", defaultValue = ID_AUTO_GEN)
     String clientId;
 
-    @ConfigProperty (name= "scim.kafka.rep.cluster.id",defaultValue="cluster1")
+    @ConfigProperty (name= "scim.kafka.rep.cluster.id",defaultValue= ID_AUTO_GEN)
     String clusterId;
 
-    @ConfigProperty (name= "scim.kafka.rep.strategy",defaultValue = "global")
-    String strategy;
+    Properties clientIdProp = new Properties();
+
+    @ConfigProperty (name= "scim.kafka.rep.mode",defaultValue = MODE_GLOB_REP)
+    String repMode;
 
     KafkaProducer<String,IBulkOp> producer = null;
 
@@ -124,6 +141,7 @@ public class KafkaRepEventHandler implements IEventHandler {
 
     static boolean isErrorState = false;
 
+    boolean ready = false;
 
     public KafkaRepEventHandler() {
 
@@ -140,7 +158,15 @@ public class KafkaRepEventHandler implements IEventHandler {
             return;
         logger.info("Kafka replication handler starting on "+bootstrapServers+" as client.id"+clientId+", using topic:"+repTopic+".");
 
+        if (partitions > 1) {
+            //Configure to use partitioned cluster. This assumes scim.kafka.rep.shards matches kubernetes Statefulset replica size
+            //Note partitioner can be overridden by placing in scim.kafka.rep.pub.partitioner.class.
+            prodProps.put(ProducerConfig.PARTITIONER_CLASS_CONFIG,ScimKafkaPartitioner.class.getName());
+            prodProps.put(PROP_SCIM_KAFKA_REP_SHARDS,partitions);
+        }
         Iterable<String> iter = sysconf.getPropertyNames();
+
+        initId();  // Load previous id or generate new ones
 
         //Normally sender and receiver should have same client id.
         //If a sub or pub property is set for cliend.id, it will override
@@ -173,6 +199,8 @@ public class KafkaRepEventHandler implements IEventHandler {
 
         // ensure that config,schema managers are initialized.
         Operation.initialize(cmgr);
+
+        ready = true;
     }
 
     public boolean notEnabled() {
@@ -190,10 +218,70 @@ public class KafkaRepEventHandler implements IEventHandler {
      */
     public void setStrategy(String strat) {
         logger.warn("Server replication processing strategy changed to: "+strat);
-        strategy = strat;
+        repMode = strat;
     }
 
-    public String getStrategy() { return strategy; }
+    private void initId() {
+        /*
+         Because a kubernetes cluster may turn over and the server host name and other factors may change, the kafka
+         client.id will be stored on disk (the PV) based on a generated identifier (UUID). Thus as a new pod takes
+         over an old PV, the new pod *becomes* the node and resumes processing.
+         */
+        if (ready) return;
+        File rootFile = new File(rootDir);
+        if (!rootFile.exists())
+            logger.error("Root directory for SCIM does not exist(scim.root.dir="+rootFile+").");
+        File kafkaDir = new File(rootFile, KAFKA_DIR);
+        if (!kafkaDir.exists())
+            kafkaDir.mkdir();
+        File kafkaState = new File(kafkaDir, KAFKA_NODE_CFG_PROP);
+
+        if (kafkaState.exists()) {
+            try {
+                FileInputStream fis = new FileInputStream(kafkaState);
+                clientIdProp.load(fis);
+                fis.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+
+            if (clientId.equals(ID_AUTO_GEN))
+                clientId = UUID.randomUUID().toString();
+            clientIdProp.put("client.id", clientId);
+            switch (repMode) {
+                case MODE_CLUS_REP:
+                case MODE_GLOB_REP:
+                case MODE_TRAN:
+                    // Each node gets an equal full copy, therefore each node is its own group
+                    clientIdProp.put(PROP_GROUP_ID,clientId);
+                    break;
+                default:
+                    clientIdProp.put(PROP_GROUP_ID,clusterId);
+            }
+            try {
+                FileOutputStream fos = new FileOutputStream(kafkaState);
+                clientIdProp.store(fos,"i2Scim Replication Kafka client data");
+                fos.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        clientId = clientIdProp.getProperty(PROP_CLIENT_ID);
+        clusterId = clientIdProp.getProperty(PROP_GROUP_ID);
+
+        logger.info("Replication client properties:\n"+clientIdProp.toString());
+
+        ready = true;
+    }
+
+    public Properties getClientIdProps() {
+        initId();
+        return clientIdProp;
+
+    }
+
+    public String getStrategy() { return repMode; }
 
     //@Incoming("rep-in")
     //@Acknowledgment(Acknowledgment.Strategy.PRE_PROCESSING)
@@ -252,6 +340,7 @@ public class KafkaRepEventHandler implements IEventHandler {
         }
         if (logger.isDebugEnabled())
             logger.debug("Processing event: "+op.toString());
+
         final ProducerRecord<String, IBulkOp> producerRecord = new ProducerRecord<>(repTopic, op.getResourceId(), ((IBulkOp) op));
         // The following headers are used by the receiver to filter out duplicates and in cluster events depending on
         // replication strategy

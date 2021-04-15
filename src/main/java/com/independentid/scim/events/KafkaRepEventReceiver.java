@@ -36,11 +36,11 @@ import javax.annotation.PreDestroy;
 import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.time.Duration;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
@@ -50,8 +50,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Singleton
 @Priority(20)
 @Startup // required to esnure independent startup
-public class KafkaEventReceiver implements Runnable{
-    private final static Logger logger = LoggerFactory.getLogger(KafkaEventReceiver.class);
+public class KafkaRepEventReceiver implements Runnable{
+    private final static Logger logger = LoggerFactory.getLogger(KafkaRepEventReceiver.class);
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
     private  KafkaConsumer<String, JsonNode> consumer;
@@ -68,6 +68,9 @@ public class KafkaEventReceiver implements Runnable{
     @Inject
     Config sysconf;
 
+    @ConfigProperty (name="scim.kafka.rep.shards", defaultValue = "1")
+    int partitions;
+
     @ConfigProperty(name = "scim.kafka.rep.enable", defaultValue = "false")
     boolean enabled;
 
@@ -77,10 +80,10 @@ public class KafkaEventReceiver implements Runnable{
     @ConfigProperty (name = "scim.kafka.rep.bootstrap",defaultValue="localhost:9092")
     String bootstrapServers;
 
-    @ConfigProperty (name= "scim.kafka.rep.client.id")
-    String clientId;
+    Properties clIdProps = null;
+    long lastTime = 0, offset = 0;
 
-    public KafkaEventReceiver() {
+    public KafkaRepEventReceiver() {
 
     }
 
@@ -92,12 +95,33 @@ public class KafkaEventReceiver implements Runnable{
         this.repErrorOps = eventHandler.sendErrorOps;
         this.received = KafkaRepEventHandler.pendingPubOps;
 
-        Iterable<String> iter = sysconf.getPropertyNames();
+        clIdProps = eventHandler.getClientIdProps();
+
+        switch (eventHandler.getStrategy()) {
+            case KafkaRepEventHandler.MODE_CLUS_REP:
+                logger.info("Replication mode: cluster-replica, each node will be identical replicas. Only events from the local cluster accepted.");
+                break;
+            case KafkaRepEventHandler.MODE_CLUS_PART:
+                logger.info("Replication mode: cluster-shard, each node holds a portion of the cluster.");
+                break;
+            case KafkaRepEventHandler.MODE_GLOB_REP:
+                logger.info("Replication mode: global-replica, each node will be identical replicas. All events from all clusters accepted.");
+                break;
+            case KafkaRepEventHandler.MODE_GLOB_PART:
+                logger.info("Replication mode: global-shard,each node holds a portion of the cluster. All events from all clusters accepted.");
+                break;
+        }
+
         Properties conProps = new Properties();
         List<String> ctopics = null;
-        conProps.put(ConsumerConfig.CLIENT_ID_CONFIG,clientId);
+        // move the client identification properties into consumer props (e.g. client.id. group.id)
+        for (String key : clIdProps.stringPropertyNames()) {
+            conProps.put(key,clIdProps.getProperty(key));
+        }
+
         conProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,bootstrapServers);
 
+        Iterable<String> iter = sysconf.getPropertyNames();
         for (String name : iter) {
 
             if (name.startsWith(KafkaRepEventHandler.KAFKA_CON_PREFIX)) {
@@ -169,15 +193,17 @@ public class KafkaEventReceiver implements Runnable{
                         continue;
                     }
                     switch (eventHandler.getStrategy()) {
-                        case KafkaRepEventHandler.STRAT_GLOBAL:
-                            // ignore if event originates in cluster or same clientid
-                            if (eventHandler.clusterId.equals(hdrGroup)
-                                    || eventHandler.clientId.equals(hdrClient)) {
+                        case KafkaRepEventHandler.MODE_GLOB_PART: // Kafka handles partitioning
+                        case KafkaRepEventHandler.MODE_GLOB_REP:
+                            // ignore if event is from self
+                            if (eventHandler.clientId.equals(hdrClient)) {
                                 eventHandler.ignoredOps.add(record);
                                 continue; //ignore the event
                             }
                             break;
-                        case KafkaRepEventHandler.STRAT_CLUS:
+
+                        case KafkaRepEventHandler.MODE_CLUS_PART:
+                        case KafkaRepEventHandler.MODE_CLUS_REP:
                             // ignore if clusterid does not match or client.id does match
                             if (!eventHandler.clusterId.equals(hdrGroup)
                                     || eventHandler.clientId.equals(hdrClient)) {
@@ -185,17 +211,13 @@ public class KafkaEventReceiver implements Runnable{
                                 continue; //ignore the event (not in cluster or self)
                             }
                             break;
-                        case KafkaRepEventHandler.STRAT_ALL:
-                            // ignore only if client id matches
-                            if (eventHandler.clientId.equals(hdrClient)) {
-                                eventHandler.ignoredOps.add(record);
-                                continue; //ignore the event (produced by self)
-                            }
-                            break;
-                        case KafkaRepEventHandler.STRAT_TRAN:
+                        case KafkaRepEventHandler.MODE_TRAN:
                             // do nothing - tranId checked later.
 
                     }
+                    lastTime = record.timestamp();
+                    offset = record.offset();
+
                     eventHandler.consume(record.value());
                 }
             }
@@ -219,6 +241,19 @@ public class KafkaEventReceiver implements Runnable{
             return;
         closed.set(true);
         consumer.wakeup();
+        // store the current state on shut down offset and lasteventdate can be used for recovery
+        File kafkaFile = new File(KafkaRepEventHandler.KAFKA_DIR,KafkaRepEventHandler.KAFKA_NODE_CFG_PROP);
+        try {
+            FileOutputStream fos = new FileOutputStream(kafkaFile);
+            Date lastDate = new Date(lastTime);
+            clIdProps.put("lastEventDate",lastDate.toString());
+            clIdProps.put("offset",offset);
+            clIdProps.store(fos,"i2Scim Replication Kafka client data");
+            fos.close();
+        } catch (IOException e) {
+            logger.error("Unable to store kafa state: "+e.getMessage(),e);
+        }
+
     }
 
 }
