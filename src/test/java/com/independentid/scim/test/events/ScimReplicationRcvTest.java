@@ -27,6 +27,7 @@ import com.independentid.scim.op.*;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ResourceResponse;
 import com.independentid.scim.protocol.ScimResponse;
+import com.independentid.scim.pwd.PasswordToken;
 import com.independentid.scim.resource.Meta;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.StringValue;
@@ -347,8 +348,7 @@ public class ScimReplicationRcvTest {
                     .isInstanceOf(StringValue.class);
             assertThat(((StringValue)val).getRawValue())
                     .as("entire resource was replicated and password is present")
-                    .isEqualTo("t1meMa$heen");
-
+                    .startsWith(PasswordToken.PREFIX_TOKEN);
         } catch (ScimException | BackendException e) {
             fail("Unable to read resource: "+e.getMessage(),e);
         }
@@ -412,7 +412,7 @@ public class ScimReplicationRcvTest {
                     .isInstanceOf(StringValue.class);
             assertThat(((StringValue)val).getRawValue())
                     .as("pasword value was updated and password is present")
-                    .isEqualTo("t1meMa$heen");
+                    .startsWith(PasswordToken.PREFIX_TOKEN);
             val = res.getValue(unameattr);
             assertThat(val)
                     .as("entire resource was updated and username is not null")
@@ -515,7 +515,7 @@ public class ScimReplicationRcvTest {
         } catch (KafkaException e) {
             producer.abortTransaction();
             producer.close();
-            fail("Error sending Op: "+op.toString()+", error: "+e.getMessage());
+            fail("Error sending Op: "+op+", error: "+e.getMessage());
         }
 
     }

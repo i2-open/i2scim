@@ -105,6 +105,9 @@ public class KafkaRepEventHandler implements IEventHandler {
     @ConfigProperty (name= "scim.kafka.rep.strategy",defaultValue = "global")
     String strategy;
 
+    @ConfigProperty (name= "scim.kafka.rep.mode",defaultValue = "replicas")
+    String clusterMode;
+
     KafkaProducer<String,IBulkOp> producer = null;
 
 
@@ -229,7 +232,7 @@ public class KafkaRepEventHandler implements IEventHandler {
         }
 
         if (logger.isDebugEnabled())
-            logger.debug("\tRecieved JSON replica event\n" + op.toString());
+            logger.debug("\tRecieved JSON replica event\n" + op);
         acceptedOps.add(op);
         pool.addJob(op);
         // logevent will be triggereed within the operation itself depending on completion
@@ -247,11 +250,11 @@ public class KafkaRepEventHandler implements IEventHandler {
         RequestCtx ctx = op.getRequestCtx();
         if (ctx != null && ctx.isReplicaOp()) {
             if (logger.isDebugEnabled())
-                logger.debug("Ignoring internal event: "+op.toString());
+                logger.debug("Ignoring internal event: "+op);
             return; // This is a replication op and should not be re-replicated!
         }
         if (logger.isDebugEnabled())
-            logger.debug("Processing event: "+op.toString());
+            logger.debug("Processing event: "+op);
         final ProducerRecord<String, IBulkOp> producerRecord = new ProducerRecord<>(repTopic, op.getResourceId(), ((IBulkOp) op));
         // The following headers are used by the receiver to filter out duplicates and in cluster events depending on
         // replication strategy
@@ -275,7 +278,7 @@ public class KafkaRepEventHandler implements IEventHandler {
             isErrorState = true;
             sendErrorOps.add(op);
         } catch (KafkaException e) {
-            logger.warn("Error sending Op: "+op.toString()+", error: "+e.getMessage());
+            logger.warn("Error sending Op: "+op+", error: "+e.getMessage());
             producer.abortTransaction();
             sendErrorOps.add(op);
         }
