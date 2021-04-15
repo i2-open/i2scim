@@ -120,7 +120,9 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
             return Uni.createFrom().failure(new AuthenticationFailedException("Invalid password detected"));
 
         String filter  //URLEncoder.encode("UserName eq \"" + user + "\" and password eq \"" + pwd + "\"", StandardCharsets.UTF_8);
-                = "userName eq \""+user+"\" and password eq \""+pwd+"\"";
+        //        = "userName eq \""+user+"\" and password eq \""+pwd+"\"";
+                = "userName eq \""+user+"\"";   // cannot search for a password value directly
+
         RequestCtx ctx;
         try {
             ctx = new RequestCtx("/Users", null, filter, smgr);

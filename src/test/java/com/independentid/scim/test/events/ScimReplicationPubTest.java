@@ -91,7 +91,7 @@ public class ScimReplicationPubTest {
     String svr_groupId;
 
     static final String TEST_CLIENT = "TestClient2";
-    static final String TEST_GROUP = "TestGroup2";
+    static final String TEST_GROUP = TEST_CLIENT;
 
     private final static Logger logger = LoggerFactory.getLogger(ScimReplicationPubTest.class);
 
@@ -242,7 +242,7 @@ public class ScimReplicationPubTest {
                 assertThat(op)
                         .as("Check operation is a Create Op")
                         .isInstanceOf(CreateOp.class);
-                logger.debug ("Successfully parsed operation: "+op.toString());
+                logger.debug ("Successfully parsed operation: "+op);
                 received = true;
             }
 
@@ -307,7 +307,7 @@ public class ScimReplicationPubTest {
                 assertThat(op)
                         .as("Check operation is a Create Op")
                         .isInstanceOf(PutOp.class);
-                logger.debug ("Successfully parsed operation: "+op.toString());
+                logger.debug ("Successfully parsed operation: "+op);
                 received = true;
             }
 
@@ -363,7 +363,7 @@ public class ScimReplicationPubTest {
                 assertThat(op)
                         .as("Check operation is a Delete Op")
                         .isInstanceOf(DeleteOp.class);
-                logger.debug ("Successfully parsed operation: "+op.toString());
+                logger.debug ("Successfully parsed operation: "+op);
                 received = true;
             }
 

@@ -54,6 +54,9 @@ public class KafkaEventReceiver implements Runnable{
     private final static Logger logger = LoggerFactory.getLogger(KafkaEventReceiver.class);
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
+    public final static String MODE_REPLICATE = "replicas";
+    public final static String MODE_SHARD = "sharded";
+
     private  KafkaConsumer<String, JsonNode> consumer;
 
     FifoCache<Operation> repErrorOps;
@@ -80,6 +83,14 @@ public class KafkaEventReceiver implements Runnable{
     @ConfigProperty (name= "scim.kafka.rep.client.id")
     String clientId;
 
+    @ConfigProperty (name= "scim.kafka.rep.cluster.id",defaultValue="cluster1")
+    String clusterId;
+
+    @ConfigProperty (name= "scim.kafka.rep.mode",defaultValue = "replicas")
+    String clusterMode;
+
+
+
     public KafkaEventReceiver() {
 
     }
@@ -97,6 +108,11 @@ public class KafkaEventReceiver implements Runnable{
         List<String> ctopics = null;
         conProps.put(ConsumerConfig.CLIENT_ID_CONFIG,clientId);
         conProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,bootstrapServers);
+
+        if(clusterMode.equalsIgnoreCase(MODE_REPLICATE))
+            conProps.put(ConsumerConfig.GROUP_ID_CONFIG,clientId); //each client is its own reader
+        else
+            conProps.put(ConsumerConfig.GROUP_ID_CONFIG,clusterId); //each client is part of a group
 
         for (String name : iter) {
 

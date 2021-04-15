@@ -288,6 +288,7 @@ public class MongoMapUtil {
      */
     @SuppressWarnings("unchecked")
     public static Value mapBson(Attribute attr, Object value) throws SchemaException {
+
         if (value instanceof String)
             return mapBson(attr, (String) value);
         if (value instanceof List)

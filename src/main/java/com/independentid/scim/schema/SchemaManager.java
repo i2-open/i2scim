@@ -25,9 +25,11 @@ import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
+import com.independentid.scim.pwd.PasswordToken;
 import com.independentid.scim.resource.Meta;
-import com.independentid.scim.resource.PersistStateResource;
+import com.independentid.scim.resource.Value;
 import com.independentid.scim.serializer.JsonUtil;
+import io.smallrye.jwt.auth.principal.JWTParser;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +41,11 @@ import javax.ejb.Startup;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
-import java.io.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.lang.reflect.Constructor;
 import java.util.*;
 
 /**
@@ -78,6 +84,26 @@ public class SchemaManager {
     @ConfigProperty(name = "scim.prov.persist.schema", defaultValue = "true")
     boolean persistSchema;
 
+    @ConfigProperty(name = "scim.pwd.hash.alg", defaultValue = PasswordToken.ALG_PBKDF2)
+    String hashAlg;
+
+    @ConfigProperty(name = "scim.pwd.hash.iter", defaultValue = "1500")
+    int hashIter;
+
+    @ConfigProperty(name = "scim.pwd.pepper.key",defaultValue = "provideAcomm0nRandoM32Chars!VMko")
+    String pepperKey;
+
+    @ConfigProperty(name = "scim.attr.classes", defaultValue = "password=com.independentid.scim.pwd.PasswordValue")
+    String valueAttrClasses;
+
+    @ConfigProperty(name="scim.pwd.tkn.issuer",defaultValue = "localhost")
+    String issuer;
+
+    @Inject
+    JWTParser parser;
+
+    private final static LinkedHashMap<Attribute, Constructor<?>> virtualAttrJsonConstructors = new LinkedHashMap<>();
+    private final static LinkedHashMap<Attribute, Constructor<?>> virtualAttrValueConstructors = new LinkedHashMap<>();
     private final static LinkedHashMap<String, Schema> schIdMap = new LinkedHashMap<>();
     private final static LinkedHashMap<String, Schema> schNameMap = new LinkedHashMap<>();
 
@@ -117,7 +143,13 @@ public class SchemaManager {
         loadDefaultResourceTypes();
         loadCoreSchema();
 
-        PersistStateResource cfgState = null;
+        initVirtualValueConstructors();
+
+        pepperKey = pepperKey.strip();
+        if (pepperKey.length() != 32)
+            logger.error("Pepper key must be 32 characters. Detected "+pepperKey.length());
+
+        PasswordToken.init(parser,pepperKey,issuer,hashIter,hashAlg);
 
         logger.info("Loaded: "+getResourceTypes().size()+" resource types, "+getSchemas().size()+" schemas.");
     }
@@ -127,6 +159,53 @@ public class SchemaManager {
         // clean up so that GC works faster
         logger.debug("SchemaManager shutdown.");
         resetConfig();
+    }
+
+    private void initVirtualValueConstructors() {
+        //Initialize virtualized attribute value list
+        String[] items = valueAttrClasses.split(",");
+        for (String item : items) {
+            String[] parts = item.split("=");
+            if (parts.length != 2) {
+                logger.warn("Invalid attribute class. Expecting attr:classname format, found: " + item);
+                continue;
+            }
+            Attribute attr = findAttribute(parts[0].trim(),null);
+            if (attr == null) {
+                logger.warn("Unable to find attribute '"+parts[0]+"'.");
+                continue;
+            }
+
+            Class<?> clazz;
+            try {
+                clazz = Class.forName(parts[1].trim());
+                Constructor<?> constructor = clazz.getConstructor(Attribute.class, JsonNode.class);
+
+                virtualAttrJsonConstructors.put(attr,constructor);
+
+                constructor = clazz.getConstructor(Value.class);
+
+                virtualAttrValueConstructors.put(attr,constructor);
+            } catch (ClassNotFoundException e) {
+                logger.warn("Constructor not found error for "+item+".\n"+e);
+
+            } catch (NoSuchMethodException e) {
+                logger.warn("Unable to locate constructor Value(Attribute,JsonNode) constructor for: "+parts[1]+".\n"+e);
+            }
+
+        }
+    }
+
+    public boolean isVirtualAttr(Attribute attr) {
+        return virtualAttrJsonConstructors.containsKey(attr);
+    }
+
+    public Constructor<?> getAttributeJsonConstructor(Attribute attr) {
+        return virtualAttrJsonConstructors.get(attr);
+    }
+
+    public Constructor<?> getAttributeValueConstructor(Attribute attr) {
+        return virtualAttrValueConstructors.get(attr);
     }
 
     public void loadConfigFromProvider() throws ScimException {
