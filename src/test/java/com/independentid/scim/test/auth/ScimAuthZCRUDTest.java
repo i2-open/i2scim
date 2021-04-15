@@ -24,6 +24,7 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.ListResponse;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.protocol.ScimResponse;
+import com.independentid.scim.pwd.PasswordToken;
 import com.independentid.scim.resource.ExtensionValues;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.StringValue;
@@ -34,6 +35,7 @@ import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import io.smallrye.jwt.auth.principal.JWTParser;
 import org.apache.http.*;
 import org.apache.http.client.methods.*;
 import org.apache.http.entity.ContentType;
@@ -90,7 +92,10 @@ public class ScimAuthZCRUDTest {
 
 	@ConfigProperty(name = "scim.security.root.password", defaultValue="admin")
 	String rootPassword;
-	
+
+	@Inject
+	JWTParser parser;
+
 	//private static String user1url = "";
 	
 	private static final String testUserFile1 = "classpath:/schema/TestUser-bjensen.json";
@@ -110,7 +115,7 @@ public class ScimAuthZCRUDTest {
 	 */
 	@Test
 	public void a_initializeAuthTests() {
-	
+		//PasswordToken.init(parser,"AyM1SysPpbyDfgZld3umj1qzKObwVMko","TESTER",10000,PasswordToken.ALG_PBKDF2);
 		logger.info("========== Scim Authorize CRUD Test ==========");
 		logger.info("\tA. Initializing test database.");
 

@@ -302,6 +302,8 @@ public class MongoFilterMapTest {
             logger.debug("");
             logger.info("Filter (" + i + "):\t" + testArray[i][1]);
             RequestCtx ctx;
+            if (testArray[i][1].contains("password"))
+                continue;  // password cannot be matched in general searches.
             try {
                 ctx = new RequestCtx("Users", null, testArray[i][1], smgr);
                 logger.debug("Parsed filt:\t"+ctx.getFilter().toString());

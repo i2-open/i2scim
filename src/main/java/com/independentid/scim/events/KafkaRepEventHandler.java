@@ -61,7 +61,7 @@ public class KafkaRepEventHandler implements IEventHandler {
     public static final String MODE_GLOB_REP    = "global-replica";
     public static final String MODE_CLUS_PART   = "cluster-shard";
     public static final String MODE_CLUS_REP    = "cluster-replica";
-    
+
     public static final String MODE_TRAN        = "transid";
 
     public static final String HDR_CLIENT = "cli";
@@ -86,7 +86,7 @@ public class KafkaRepEventHandler implements IEventHandler {
     @ConfigProperty (name="scim.kafka.rep.shards", defaultValue = "1")
     int partitions;
 
-    @ConfigProperty (name="scim.kafka.rep.partitionerclass", defaultValue = "")
+    @ConfigProperty (name="scim.kafka.rep.partitionerclass", defaultValue = "com.independentid.scim.events.ScimKafkaPartitioner")
     String partClass;
 
     @ConfigProperty (name="scim.kafka.rep.cache.error", defaultValue = "100")
@@ -121,6 +121,9 @@ public class KafkaRepEventHandler implements IEventHandler {
 
     @ConfigProperty (name= "scim.kafka.rep.mode",defaultValue = MODE_GLOB_REP)
     String repMode;
+
+    @ConfigProperty (name= "scim.kafka.rep.mode",defaultValue = "replicas")
+    String clusterMode;
 
     KafkaProducer<String,IBulkOp> producer = null;
 
@@ -161,8 +164,9 @@ public class KafkaRepEventHandler implements IEventHandler {
         if (partitions > 1) {
             //Configure to use partitioned cluster. This assumes scim.kafka.rep.shards matches kubernetes Statefulset replica size
             //Note partitioner can be overridden by placing in scim.kafka.rep.pub.partitioner.class.
-            prodProps.put(ProducerConfig.PARTITIONER_CLASS_CONFIG,ScimKafkaPartitioner.class.getName());
-            prodProps.put(PROP_SCIM_KAFKA_REP_SHARDS,partitions);
+            prodProps.put(ProducerConfig.PARTITIONER_CLASS_CONFIG,partClass);
+            //prodProps.put(PROP_SCIM_KAFKA_REP_SHARDS,partitions);
+
         }
         Iterable<String> iter = sysconf.getPropertyNames();
 
@@ -317,7 +321,7 @@ public class KafkaRepEventHandler implements IEventHandler {
         }
 
         if (logger.isDebugEnabled())
-            logger.debug("\tRecieved JSON replica event\n" + op.toString());
+            logger.debug("\tRecieved JSON replica event\n" + op);
         acceptedOps.add(op);
         pool.addJob(op);
         // logevent will be triggereed within the operation itself depending on completion
@@ -335,12 +339,11 @@ public class KafkaRepEventHandler implements IEventHandler {
         RequestCtx ctx = op.getRequestCtx();
         if (ctx != null && ctx.isReplicaOp()) {
             if (logger.isDebugEnabled())
-                logger.debug("Ignoring internal event: "+op.toString());
+                logger.debug("Ignoring internal event: "+op);
             return; // This is a replication op and should not be re-replicated!
         }
         if (logger.isDebugEnabled())
-            logger.debug("Processing event: "+op.toString());
-
+            logger.debug("Processing event: "+op);
         final ProducerRecord<String, IBulkOp> producerRecord = new ProducerRecord<>(repTopic, op.getResourceId(), ((IBulkOp) op));
         // The following headers are used by the receiver to filter out duplicates and in cluster events depending on
         // replication strategy
@@ -364,7 +367,7 @@ public class KafkaRepEventHandler implements IEventHandler {
             isErrorState = true;
             sendErrorOps.add(op);
         } catch (KafkaException e) {
-            logger.warn("Error sending Op: "+op.toString()+", error: "+e.getMessage());
+            logger.warn("Error sending Op: "+op+", error: "+e.getMessage());
             producer.abortTransaction();
             sendErrorOps.add(op);
         }

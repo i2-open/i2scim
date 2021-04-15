@@ -105,7 +105,7 @@ public class ScimResourceTest {
 			userStream = ConfigMgr.findClassLoaderResource(testUserFile2);
 			node = JsonUtil.getJsonTree(userStream);
 			user2 = new ScimResource(smgr,node, "Users");
-			logger.debug("User loaded: \n"+user2.toString());
+			logger.debug("User loaded: \n"+user2);
 			
 			assertThat(user1)
 				.as("SCIM User BJensen Parse Test")
@@ -117,12 +117,12 @@ public class ScimResourceTest {
 
 			Attribute userAttr = user1.getAttribute("userName", null);
 			StringValue userValue = (StringValue) user1.getValue(userAttr);
-			assertThat(userValue.value)
+			assertThat(userValue.getRawValue())
 				.as("Has username value of bjensen")
 				.isEqualTo("bjensen@example.com");
 			
 			userValue = (StringValue) user2.getValue(userAttr);
-			assertThat(userValue.value)
+			assertThat(userValue.getRawValue())
 				.as("Has username value of jsmith@example.com")
 				.isEqualTo("jsmith@example.com");
 			
@@ -185,7 +185,7 @@ public class ScimResourceTest {
 			LinkedList<DiffMatchPatch.Diff> diff = dmp.diffMain(result,result2,false);
 			for (DiffMatchPatch.Diff adif : diff) {
 				if (!adif.operation.equals(DiffMatchPatch.Operation.EQUAL))
-					logger.info("Difference: "+adif.toString());
+					logger.info("Difference: "+adif);
 			}
 			assertThat(diff.size())
 					.as("Difference analysis returns 1 result").isEqualTo(1);
@@ -235,7 +235,7 @@ public class ScimResourceTest {
 			for (DiffMatchPatch.Diff adif : diff) {
 				if (!adif.operation.equals(DiffMatchPatch.Operation.EQUAL)) {
 					differenceCount++;
-					logger.info("Difference: " + adif.toString());
+					logger.info("Difference: " + adif);
 				}
 			}
 			assertThat(differenceCount)
@@ -261,7 +261,7 @@ public class ScimResourceTest {
 			LinkedList<DiffMatchPatch.Diff> diff = dmp.diffMain(original,copy,false);
 			for (DiffMatchPatch.Diff adif : diff) {
 				if (!adif.operation.equals(DiffMatchPatch.Operation.EQUAL))
-					logger.info("Difference: "+adif.toString());
+					logger.info("Difference: "+adif);
 			}
 			assertThat(diff.size())
 					.as("Difference analysis returns 1 result").isEqualTo(1);

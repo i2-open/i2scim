@@ -28,14 +28,17 @@ import com.independentid.scim.serializer.JsonUtil;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 
 public class StringValue extends Value implements IBulkIdTarget {
 
 	//private final static Logger logger = LoggerFactory.getLogger(StringValue.class);
-	
-	public String value;
+
+	// store data as byte arrays to improve GC of security risky data.
+	public char[] value;
 	public IBulkIdResolver resolver;
+	boolean isBulkId = false;
 	
 	public StringValue(Attribute attr, JsonNode node,IBulkIdResolver bulkIdResolver) throws SchemaException {
 		super(attr,node);
@@ -52,21 +55,25 @@ public class StringValue extends Value implements IBulkIdTarget {
 	public StringValue(Attribute attr, String value) {
 		super();
 		this.jtype = JsonNodeType.STRING;
-		this.value = value;
+		if (value.startsWith("bulkid:")) {
+			isBulkId = true;
+			this.value = value.substring(7).toCharArray();
+		} else
+			this.value = value.toCharArray();
 		this.attr = attr;
 	}
 	
 	public String getBulkId() {
-		if (this.value == null) return null;
-		if (!value.toLowerCase().startsWith("bulkid:"))
+		if (this.value == null || !isBulkId)
 			return null;
 		
-		return this.value.substring(7);
+		return new String(this.value);
 	}
 	
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws ScimException,IOException {
-		String val = value;
-		if (val == null) return;
+		if (this.value == null || this.value.length == 0)
+			return;
+		String val = new String(value);
 		if (hasBulkIds()) 
 			val = resolver.translateId(val);
 			
@@ -77,7 +84,7 @@ public class StringValue extends Value implements IBulkIdTarget {
 	public JsonNode toJsonNode(ObjectNode parent,String aname) {
 		if (parent == null)
 		   parent = JsonUtil.getMapper().createObjectNode();
-		parent.put(aname,this.value);
+		parent.put(aname,new String(this.value));
 		return parent;
 	}
 
@@ -86,10 +93,18 @@ public class StringValue extends Value implements IBulkIdTarget {
 			throw new SchemaException("Was expecting a String value but encountered null");
 		if (!this.jtype.equals(JsonNodeType.STRING))
 			throw new SchemaException("Invalid field data endpoint. Expecting 'string'."+node.toString());
-		this.value = node.asText();
+		this.value = node.asText().toCharArray();
 	}
 	
 	public String getRawValue() {
+		return new String(this.value);
+	}
+
+	public byte[] getBytes() {
+		return (new String(this.value)).getBytes(StandardCharsets.UTF_8);
+	}
+
+	public char[] getCharArray() {
 		return this.value;
 	}
 
@@ -98,9 +113,9 @@ public class StringValue extends Value implements IBulkIdTarget {
 	 */
 	@Override
 	public boolean hasBulkIds() {
-	if(this.value == null) return false;
+	if(this.value == null || this.value.length==0) return false;
 		
-		return (this.value.toLowerCase().startsWith("bulkid:"));
+		return this.isBulkId;
 	}
 
 	/* (non-Javadoc)
@@ -110,11 +125,11 @@ public class StringValue extends Value implements IBulkIdTarget {
 	public void getBulkIdsRequired(List<String> bulkList) {
 		if (!hasBulkIds())
 			return;
-		bulkList.add(this.value);
+		bulkList.add(new String(this.value));
 	}
 
 	public String toString() {
-		return this.value;
+		return new String(this.value);
 	}
 
 	/* (non-Javadoc)
@@ -130,22 +145,29 @@ public class StringValue extends Value implements IBulkIdTarget {
 	 * @return A the String value with the bytes in reverse order (e.g. Flip becomes pilF)
 	 */
 	public String reverseValue() {
-		byte[] valBytes = this.value.getBytes(StandardCharsets.UTF_8);
-		byte[] revBytes = new byte[valBytes.length];
-		for (int byteAt = 0; byteAt < valBytes.length; byteAt++) {
-			revBytes[byteAt] = valBytes[valBytes.length - byteAt - 1];
+		char[] valChars = this.value;
+		char[] revChars = new char[valChars.length];
+		for (int byteAt = 0; byteAt < valChars.length; byteAt++) {
+			revChars[byteAt] = valChars[valChars.length - byteAt - 1];
 		}
-		return new String(revBytes);
+		return new String(revChars);
 	}
 
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof StringValue) {
 			StringValue obVal = (StringValue) obj;
-			if (attr.getCaseExact())
-				return obVal.value.equals(value);
-			return obVal.value.equalsIgnoreCase(value);
+			if (obVal.value.length != this.value.length)
+				return false;
+			if (attr.getCaseExact()) {
+				for (int i = 0; i < this.value.length; i++)
+					if (!Character.valueOf(this.value[i]).equals(obVal.value[i]))
+						return false;
+				return true;
+			}
+			return obVal.toString().equalsIgnoreCase(this.toString());
 		}
+
 		return false;
 	}
 
@@ -154,8 +176,8 @@ public class StringValue extends Value implements IBulkIdTarget {
 		if (o instanceof StringValue) {
 			StringValue obVal = (StringValue) o;
 			if(attr.getCaseExact())
-				return value.compareTo(obVal.value);
-			return value.toLowerCase().compareTo(obVal.value.toLowerCase());
+				return toString().compareTo(obVal.toString());
+			return toString().toLowerCase().compareTo(obVal.toString().toLowerCase());
 		}
 		throw new ClassCastException("Unable to compare Value types");
 	}

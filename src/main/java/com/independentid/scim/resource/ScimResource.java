@@ -629,6 +629,15 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 	}
 
+	/**
+	 * @param map A Map of Attribute Values containing the current set of attributes processed
+	 * @param attr The new Attribute to be added
+	 * @param node The JsonNode containing the attribute.
+	 * @param isReplace Boolean indicating if existing values are replaced (changes multivalue processing)
+	 * @throws ConflictException Exception thrown by ValueUtil when parsing types
+	 * @throws SchemaException
+	 * @throws ParseException
+	 */
 	protected void processAttribute(LinkedHashMap<Attribute, Value> map,
 			Attribute attr, JsonNode node, boolean isReplace) throws ConflictException, SchemaException,
 			ParseException {
@@ -683,7 +692,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		if (rootAttribute.getName().equalsIgnoreCase("id"))
 			return new StringValue(attr,getId());
 		if (rootAttribute.getName().equalsIgnoreCase("externalId"))
-			return new StringValue(attr,getExternalId());
+			return this.externalId != null?new StringValue(attr,getExternalId()):null;
 
 		if (rootAttribute.getName().equalsIgnoreCase("schemas")) {
 			List<Value> vals = new ArrayList<>();
