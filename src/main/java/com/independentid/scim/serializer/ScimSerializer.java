@@ -16,7 +16,6 @@ package com.independentid.scim.serializer;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;

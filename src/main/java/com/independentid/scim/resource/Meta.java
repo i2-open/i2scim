@@ -367,7 +367,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 				if (attr == null)
 					logger.warn("**** Unable to load revisions as META Attr not loaded!");
 				else
-					this.revisions = (MultiValue) ValueUtil.parseJson(attr.getSubAttribute(META_REVISIONS), item, null);
+					this.revisions = (MultiValue) ValueUtil.parseJson(null,attr.getSubAttribute(META_REVISIONS), item, null);
 			} else
 				this.revisions = null;
 		} catch (ConflictException | ParseException e) {

@@ -38,7 +38,8 @@ public class ScimSubComponentTestProfile implements QuarkusTestProfile {
                 "scim.security.enable", "false",
                 "scim.event.enable","false"
         ));
-        cmap.put("scim.root.dir","." ); //enables local debug testing
+        cmap.put("scim.root.dir",".");
+        cmap.put("scim.kafka.log.enable","false"); //enables local debug testing
         return cmap;
     }
 

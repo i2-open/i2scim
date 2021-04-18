@@ -243,7 +243,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 		JsonNode attrNode = node.get(attr.getName());
 		Value val;
 		if (attrNode != null) {
-			val = ValueUtil.parseJson(attr, attrNode, this.resolver);
+			val = ValueUtil.parseJson(null,attr, attrNode, this.resolver);
 			this.attrs.put(attr, val);
 		}
 	}

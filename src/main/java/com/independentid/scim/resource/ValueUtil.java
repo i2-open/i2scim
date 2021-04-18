@@ -28,11 +28,13 @@ import com.independentid.scim.schema.SchemaManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.validation.constraints.NotNull;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.ParseException;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -53,6 +55,7 @@ public class ValueUtil {
     /**
      * Static method used to parse a <JsonNode> object for its appropriate SCIM Value type based on the declared
      * Attribute.
+     * @param res             The id of the scim resource being mapped (if available or null)
      * @param attr           The SCIM <Attribute> type for the value being parsed
      * @param fnode          A <JsonNode> representing the attribute/value node.
      * @param bulkIdResolver This resolver is used for bulk operations where an Identifier may be temporary.
@@ -62,7 +65,7 @@ public class ValueUtil {
      * @throws SchemaException   May be thrown by ValueUtil parser.
      * @throws ParseException    May be thrown by ValueUtil parser.
      */
-    public static Value parseJson(Attribute attr, JsonNode fnode, IBulkIdResolver bulkIdResolver)
+    public static Value parseJson(@NotNull ScimResource res, Attribute attr, JsonNode fnode, IBulkIdResolver bulkIdResolver)
             throws ConflictException, SchemaException, ParseException {
         // TODO Should we treat as string by default when parsing unknown
         // schema?
@@ -75,13 +78,25 @@ public class ValueUtil {
         //logger.debug("Attr: "+attr.getName()+", aType: "+attr.getType()+", nType: "+fnode.getNodeType()+", aMulti: "+attr.isMultiValued());
 
         if (attr.isMultiValued() && fnode.getNodeType().equals(JsonNodeType.ARRAY)) {
-            val = new MultiValue(attr, fnode, bulkIdResolver);
+            if(smgr.isVirtualAttr(attr)) {
+                // This enables multi-valued virtual attributes. These attributes should extend MultiValue.
+                try {
+                    val = smgr.constructValue(res,attr,fnode);
+                    if (val == null)
+                        val = smgr.constructValue(res,attr);
+                } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
+                    logger.error("Error mapping virtual attribute "+attr.getName()+": "+e.getMessage(),e);
+                }
+            } else
+                val = new MultiValue(attr, fnode, bulkIdResolver);
         } else {
             if (smgr.isVirtualAttr(attr)) {
                 try {
-                    val = (Value) smgr.getAttributeJsonConstructor(attr).newInstance(attr,fnode);
+                    val = smgr.constructValue(res,attr,fnode);
+                    if (val == null)
+                        val = smgr.constructValue(res,attr);
                 } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                    logger.error("Error mapping attribute "+attr.getName()+": "+e.getMessage(),e);
+                    logger.error("Error mapping virtual attribute "+attr.getName()+": "+e.getMessage(),e);
                 }
             } else {
                 switch (attr.getType().toLowerCase()) {
@@ -235,4 +250,25 @@ public class ValueUtil {
         return false;
     }
 
+    public static void mapVirtualVals(ScimResource resource, Schema schema, Map<Attribute,Value> vals) {
+        for (Attribute attr : schema.getAttributes()) {
+            Value val = vals.get(attr);
+            Value res = mapVirtualValue(resource,attr,val);
+            if (res != null)
+                vals.put(attr,val);
+        }
+    }
+
+    public static Value mapVirtualValue(ScimResource resource, Attribute attr, Value val) {
+        if (!smgr.isVirtualAttr(attr))
+            return null;
+        try {
+            if (val == null)
+                return smgr.constructValue(resource,attr);
+            return smgr.constructValue(resource, attr, val);
+        } catch (InvocationTargetException | IllegalAccessException | InstantiationException e) {
+            logger.error("Error mapping virtual attribute for "+attr.getName()+":"+e.getMessage(),e);
+        }
+        return null;
+    }
 }
