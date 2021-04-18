@@ -16,7 +16,7 @@
 package com.independentid.scim.pwd;
 
 import com.independentid.scim.resource.Meta;
-import com.independentid.scim.resource.ValueUtil;
+import com.independentid.scim.resource.ScimResource;
 import io.smallrye.jwt.auth.principal.JWTParser;
 import io.smallrye.jwt.auth.principal.ParseException;
 import io.smallrye.jwt.build.Jwt;
@@ -49,19 +49,25 @@ public class PasswordToken {
     public static String tknKey = null;
 
     static String iss;
-    //String sub;
+    String sub = null;
     byte[] salt;
     String alg;
     byte[] hash;
     int iter;
     int failCnt;
+
+    ScimResource resource;
     Date lastSuccess;
     SecretKeyFactory factory;
 
+    public PasswordToken(String sub, String pwdVal) throws NoSuchAlgorithmException, java.text.ParseException, ParseException {
+      this((ScimResource) null,pwdVal);
+      this.sub = sub;
+    }
 
-    public PasswordToken(String pwdVal) throws NoSuchAlgorithmException, java.text.ParseException, ParseException {
+    public PasswordToken(ScimResource parent, String pwdVal) throws NoSuchAlgorithmException, java.text.ParseException, ParseException {
 
-
+        this.resource = parent;
         if (pwdVal.startsWith(PREFIX_TOKEN))
             parseJwt(pwdVal.substring(PREFIX_TOKEN.length()));
         else {
@@ -83,7 +89,7 @@ public class PasswordToken {
 
         JsonWebToken token = parser.decrypt(jwtVal,tknKey);
         iss = token.getIssuer();
-        //sub = token.getSubject();
+        sub = token.getSubject();
         String val = token.getClaim("salt");
         this.salt = decoder.decode(val);
         this.alg = token.getClaim("alg");
@@ -134,8 +140,11 @@ public class PasswordToken {
     public String getJwt()  {
 
         JwtClaimsBuilder builder = Jwt.claims();
-        //builder.subject(sub).issuer(iss);
-        builder.issuer(iss).subject("dummy");
+
+        if (sub == null)
+            sub = resource.getId();  // this is done so that Id can be picked up late binding since the current resource may not yet have been saved.
+
+        builder.issuer(iss).subject(sub);
         builder
                 .claim("salt",encoder.encodeToString(salt))
                 .claim("alg",alg)
@@ -153,7 +162,7 @@ public class PasswordToken {
         return null;
     }
 
-    private byte[] performHash(char[] pwd) throws NoSuchAlgorithmException {
+    private byte[] performHash(char[] pwd) {
 
         //PasswordUtil.length = length;
 

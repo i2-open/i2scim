@@ -56,7 +56,7 @@ public class PasswordTest {
     @Test
     public void a_TestPwdToken() throws NoSuchAlgorithmException, java.text.ParseException, ParseException {
         //PasswordToken.init(parser,"AyM1SysPpbyDfgZld3umj1qzKObwVMko","TESTER",10000,PasswordToken.ALG_PBKDF2);
-        PasswordToken tkn = new PasswordToken("password");
+        PasswordToken tkn = new PasswordToken("anon","password");
 
         String value = tkn.getRawValue();
         System.out.println("coded: \t"+value);
@@ -64,7 +64,7 @@ public class PasswordTest {
         byte[] saltin = tkn.getSalt();
 
         try {
-            PasswordToken tknc = new PasswordToken(value);
+            PasswordToken tknc = new PasswordToken("anon",value);
             byte[] saltout = tknc.getSalt();
             for (int i=0; i < saltout.length; i++)
                 if (saltout[i] != saltin[i])
@@ -97,7 +97,7 @@ public class PasswordTest {
         StringValue sval = new StringValue(password,"password");
         JsonNode node = sval.toJsonNode(null,password.getName()).get("password");
         try {
-            Value pval = ValueUtil.parseJson(password,node,null);
+            Value pval = ValueUtil.parseJson(null, password,node,null);
             assertThat(pval).isInstanceOf(PasswordValue.class);
 
             assertThat(pval.equals(sval)).isTrue();
