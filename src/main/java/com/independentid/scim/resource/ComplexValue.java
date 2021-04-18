@@ -153,7 +153,7 @@ public class ComplexValue extends Value {
 			if (map.containsKey(field)) {
 				Attribute sattr = map.get(field);
 				Value val = ValueUtil
-						.parseJson(sattr, fnode, this.resolver);
+						.parseJson(null,sattr, fnode, this.resolver);
 				this.vals.put(sattr, val);
 			}
 

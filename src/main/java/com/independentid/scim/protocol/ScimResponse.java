@@ -18,13 +18,11 @@ package com.independentid.scim.protocol;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.security.AciSet;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;

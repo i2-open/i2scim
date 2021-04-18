@@ -144,6 +144,8 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	public void setResourceType(String container) {
 		this.container = container;
 		this.type = smgr.getResourceTypeByPath(container);
+		if (this.type == null)
+			this.type = smgr.getResourceTypeByName(container);
 		if (this.type != null)
 			this.coreSchema = smgr.getSchemaById(this.type.getSchema());
 	
@@ -604,9 +606,13 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			gen.writeFieldName("meta");
 			this.meta.serialize(gen, ctx, false);
 		}
-	
-		// Write out the core attribute values
 
+		// Question:  Should this be done if there is no RequestCtx?
+		// Check if the core schema to the resource has virtual attributes
+		//if (ctx != null)
+		//	ValueUtil.mapVirtualVals(getId(),this.coreSchema,this.coreAttrVals);
+
+		// Write out the core attribute values
 		for (Attribute attr: coreAttrVals.keySet()) {
 			if(!ValueUtil.isReturnable(attr, ctx))
 				continue;
@@ -618,6 +624,10 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		}
 
 		for (ExtensionValues ext : this.extAttrVals.values()) {
+			// Check if the extension has virtual schema
+			//if (ctx != null)
+			//	ValueUtil.mapVirtualVals(getId(),ext.getSchema(),ext.getValueMap());
+
 			if (ValueUtil.isReturnable(ext, ctx)) {
 				ext.setBlockedAttrs(blockedAttrs);
 				ext.serialize(gen, ctx, forHash);
@@ -635,8 +645,8 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 * @param node The JsonNode containing the attribute.
 	 * @param isReplace Boolean indicating if existing values are replaced (changes multivalue processing)
 	 * @throws ConflictException Exception thrown by ValueUtil when parsing types
-	 * @throws SchemaException
-	 * @throws ParseException
+	 * @throws SchemaException Thrown when an invalid value is parsed compared to the defined attribue
+	 * @throws ParseException Thrown due to JSON parsing error
 	 */
 	protected void processAttribute(LinkedHashMap<Attribute, Value> map,
 			Attribute attr, JsonNode node, boolean isReplace) throws ConflictException, SchemaException,
@@ -648,10 +658,10 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		if (attrNode != null) {
 			attrsInUse.add(attr);
 			if (isReplace || !attr.isMultiValued()) {
-				val = ValueUtil.parseJson(attr, attrNode, this.idResolver);
+				val = ValueUtil.parseJson(this,attr, attrNode, this.idResolver);
 				map.put(attr, val);
 			} else {
-				val = ValueUtil.parseJson(attr, attrNode, this.idResolver);
+				val = ValueUtil.parseJson(this,attr, attrNode, this.idResolver);
 				MultiValue mval = (MultiValue) map.get(attr);
 				// Initialize if this is a new value
 				if (mval == null)
@@ -836,7 +846,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			switch (op.op){
 			case JsonPatchOp.OP_ACTION_ADD:
 				try {
-					Value val = ValueUtil.parseJson(tattr, op.value, null);
+					Value val = ValueUtil.parseJson(this,tattr, op.value, null);
 					this.addValue(val);
 				} catch (SchemaException | ParseException e) {
 					throw new InvalidValueException("JSON parsing error parsing value parameter.",e);
@@ -849,7 +859,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			case JsonPatchOp.OP_ACTION_REPLACE:
 				Value val;
 				try {
-					val = ValueUtil.parseJson(tattr, op.value, null);
+					val = ValueUtil.parseJson(this,tattr, op.value, null);
 				} catch (SchemaException | ParseException e) {
 					throw new InvalidValueException("JSON parsing error parsing value parameter.",e);
 				}
@@ -880,7 +890,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 							Attribute sattr = target.getAttribute(path.getTargetAttrName()+"."+path.getSubAttrName(), ctx);
 							Value nval;
 							try {
-								nval = ValueUtil.parseJson(sattr, op.value, null);
+								nval = ValueUtil.parseJson(this,sattr, op.value, null);
 							    if (nval instanceof BooleanValue) {
 							    	BooleanValue bval = (BooleanValue) nval;
 							    	if (bval.getRawValue() && sattr.getName().equals("primary"))
@@ -903,7 +913,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 							path.getTargetAttribute().getType()
 							.equalsIgnoreCase(Attribute.TYPE_Complex)) {
 						try {
-							Value nval = ValueUtil.parseJson(path.getTargetAttribute(), op.value, null);
+							Value nval = ValueUtil.parseJson(this,path.getTargetAttribute(), op.value, null);
 							if (val instanceof ComplexValue) {
 								ComplexValue cval = (ComplexValue) val;
 						
@@ -950,7 +960,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 							Attribute sattr = path.getSubAttribute();
 							Value nval;
 							try {
-								nval = ValueUtil.parseJson(sattr, op.value, null);
+								nval = ValueUtil.parseJson(this,sattr, op.value, null);
 								if (nval instanceof ComplexValue) {
 									cval.replaceValues((ComplexValue)nval);
 								} else {
@@ -972,7 +982,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 							path.getTargetAttribute().getType()
 							.equalsIgnoreCase(Attribute.TYPE_Complex)) {
 						try {
-							Value cval = ValueUtil.parseJson(path.getTargetAttribute(), op.value, null);
+							Value cval = ValueUtil.parseJson(this,path.getTargetAttribute(), op.value, null);
 							mval.removeValue(val);// remove the current value
 							mval.addValue(cval);
 							break;
@@ -1187,7 +1197,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 */
 	public ScimResource copy(RequestCtx requestCtx) throws ScimException, ParseException {
 		JsonNode node = toJsonNode(requestCtx);
-		return new ScimResource(smgr,node,this.getResourceType());
+		return new ScimResource(smgr,node,this.type.getTypePath());
 
 	}
 

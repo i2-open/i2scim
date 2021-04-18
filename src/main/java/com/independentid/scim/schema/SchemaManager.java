@@ -26,7 +26,9 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.pwd.PasswordToken;
+import com.independentid.scim.resource.GroupsValue;
 import com.independentid.scim.resource.Meta;
+import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
 import com.independentid.scim.serializer.JsonUtil;
 import io.smallrye.jwt.auth.principal.JWTParser;
@@ -46,6 +48,7 @@ import java.io.InputStream;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.*;
 
 /**
@@ -93,7 +96,7 @@ public class SchemaManager {
     @ConfigProperty(name = "scim.pwd.pepper.key",defaultValue = "provideAcomm0nRandoM32Chars!VMko")
     String pepperKey;
 
-    @ConfigProperty(name = "scim.attr.classes", defaultValue = "password=com.independentid.scim.pwd.PasswordValue")
+    @ConfigProperty(name = "scim.attr.classes", defaultValue = "User:password=com.independentid.scim.pwd.PasswordValue,User:groups=com.independentid.scim.resource.GroupsValue")
     String valueAttrClasses;
 
     @ConfigProperty(name="scim.pwd.tkn.issuer",defaultValue = "localhost")
@@ -102,8 +105,9 @@ public class SchemaManager {
     @Inject
     JWTParser parser;
 
-    private final static LinkedHashMap<Attribute, Constructor<?>> virtualAttrJsonConstructors = new LinkedHashMap<>();
-    private final static LinkedHashMap<Attribute, Constructor<?>> virtualAttrValueConstructors = new LinkedHashMap<>();
+    private final static LinkedHashMap<Attribute, Constructor<?>> virtualAttrMapJsonConstructors = new LinkedHashMap<>();
+    private final static LinkedHashMap<Attribute, Constructor<?>> virtualAttrMapValueConstructors = new LinkedHashMap<>();
+    private final static LinkedHashMap<Attribute, Constructor<?>> virtualAttrCalculatedConstructors = new LinkedHashMap<>();
     private final static LinkedHashMap<String, Schema> schIdMap = new LinkedHashMap<>();
     private final static LinkedHashMap<String, Schema> schNameMap = new LinkedHashMap<>();
 
@@ -150,6 +154,7 @@ public class SchemaManager {
             logger.error("Pepper key must be 32 characters. Detected "+pepperKey.length());
 
         PasswordToken.init(parser,pepperKey,issuer,hashIter,hashAlg);
+        GroupsValue.init(this,backendHandler);
 
         logger.info("Loaded: "+getResourceTypes().size()+" resource types, "+getSchemas().size()+" schemas.");
     }
@@ -179,34 +184,73 @@ public class SchemaManager {
             Class<?> clazz;
             try {
                 clazz = Class.forName(parts[1].trim());
-                Constructor<?> constructor = clazz.getConstructor(Attribute.class, JsonNode.class);
 
-                virtualAttrJsonConstructors.put(attr,constructor);
-
-                constructor = clazz.getConstructor(Value.class);
-
-                virtualAttrValueConstructors.put(attr,constructor);
             } catch (ClassNotFoundException e) {
-                logger.warn("Constructor not found error for "+item+".\n"+e);
-
-            } catch (NoSuchMethodException e) {
-                logger.warn("Unable to locate constructor Value(Attribute,JsonNode) constructor for: "+parts[1]+".\n"+e);
+                logger.warn("Class not found error for "+item+".\n"+e);
+                continue;
             }
 
+            try {
+                Constructor<?> constructor = clazz.getConstructor(ScimResource.class, Attribute.class, JsonNode.class);
+                virtualAttrMapJsonConstructors.put(attr, constructor);
+            } catch (NoSuchMethodException e) {
+                //logger.warn("Unable to locate constructor Value(String,Attribute,JsonNode) constructor for: "+parts[1]+".\n"+e);
+            }
+
+            try {
+                Constructor<?> constructor = clazz.getConstructor(ScimResource.class, Value.class);
+                virtualAttrMapValueConstructors.put(attr,constructor);
+            } catch (NoSuchMethodException ignored) {
+            }
+
+            try {
+                Constructor<?> constructor = clazz.getConstructor(ScimResource.class, Attribute.class);
+                virtualAttrCalculatedConstructors.put(attr,constructor);
+            } catch (NoSuchMethodException ignored) {
+            }
         }
     }
 
     public boolean isVirtualAttr(Attribute attr) {
-        return virtualAttrJsonConstructors.containsKey(attr);
+        return virtualAttrMapJsonConstructors.containsKey(attr)
+                || virtualAttrMapValueConstructors.containsKey(attr)
+                || virtualAttrCalculatedConstructors.containsKey(attr);
+    }
+
+    public Value constructValue(ScimResource res, Attribute attr, JsonNode node) throws InvocationTargetException, InstantiationException, IllegalAccessException {
+        if (node == null || !virtualAttrMapJsonConstructors.containsKey(attr))
+            return null;
+        return (Value) virtualAttrMapJsonConstructors.get(attr).newInstance(res,attr,node);
+
     }
 
     public Constructor<?> getAttributeJsonConstructor(Attribute attr) {
-        return virtualAttrJsonConstructors.get(attr);
+        return virtualAttrMapJsonConstructors.get(attr);
+    }
+
+
+
+    public Value constructValue(ScimResource res, Attribute attr, Value val) throws InvocationTargetException, InstantiationException, IllegalAccessException {
+        if (val == null || !virtualAttrMapValueConstructors.containsKey(attr))
+            return null;
+        return (Value) virtualAttrMapValueConstructors.get(attr).newInstance(res,val);
+
     }
 
     public Constructor<?> getAttributeValueConstructor(Attribute attr) {
-        return virtualAttrValueConstructors.get(attr);
+        return virtualAttrMapValueConstructors.get(attr);
     }
+
+    public Value constructValue(ScimResource res, Attribute attr) throws InvocationTargetException, InstantiationException, IllegalAccessException {
+        if (!virtualAttrCalculatedConstructors.containsKey(attr))
+            return null;
+        return (Value) virtualAttrCalculatedConstructors.get(attr).newInstance(res,attr);
+    }
+
+    public Constructor<?> getAttributeCalcConstructor(Attribute attr) {
+        return virtualAttrCalculatedConstructors.get(attr);
+    }
+
 
     public void loadConfigFromProvider() throws ScimException {
         Collection<Schema> pSchemas = backendHandler.loadSchemas();
@@ -338,7 +382,7 @@ public class SchemaManager {
             //System.out.println("Detected node endpoint "+node.getNodeType().toString());
         }
         // TODO Handle invalid node on schema parsing
-        logger.error("Unexpected JsonNode while parsing schema: " + node.toString());
+        logger.error("Unexpected JsonNode while parsing schema: " + node);
     }
 
 
@@ -456,7 +500,7 @@ public class SchemaManager {
             logger.error("While parsing resource types, detected node endpoint " + node.getNodeType().toString());
         }
         // TODO Handle invalid node on Resource Type parsing
-        logger.error("Unexpected JsonNode while parsing ResourceTypes: " + node.toString());
+        logger.error("Unexpected JsonNode while parsing ResourceTypes: " + node);
 
     }
 

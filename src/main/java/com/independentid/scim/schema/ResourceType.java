@@ -281,8 +281,8 @@ public class ResourceType implements ScimSerializer {
 		gen.writeString(SCHEMA_ID);
 		gen.writeEndArray();
 		
-		if (id != null)
-			gen.writeStringField("id", id);
+		if (this.id != null)
+			gen.writeStringField("id", this.id);
 	
 		if (name != null)
 			gen.writeStringField("name", name);
@@ -306,7 +306,7 @@ public class ResourceType implements ScimSerializer {
 		
 		if (meta != null) {
 			gen.writeFieldName("meta");
-			meta.serialize(gen, ctx, false);			
+			meta.serialize(gen, ctx, false);
 		}
 		
 		gen.writeEndObject();
@@ -359,7 +359,7 @@ public class ResourceType implements ScimSerializer {
 		if (item != null) {
 			this.schema = item.asText();
 		} else
-			throw new SchemaException("Resource endpoint has no schema\n"+node.toString());
+			throw new SchemaException("Resource endpoint has no schema\n"+node);
 		
 		item = node.get("schemaExtensions");
 		if (item != null) {

@@ -120,8 +120,10 @@ public class MongoScimResource extends ScimResource {
 		for (Attribute attr : attrs) {
 			Value val = MongoMapUtil.mapBsonDocument(attr, doc);
 			if (smgr.isVirtualAttr(attr)) {
-				try {  // convert from virtual type to virtual type
-					val = (Value) smgr.getAttributeValueConstructor(attr).newInstance(val);
+				try {  // convert from value type to virtual type
+					val = smgr.constructValue(this,attr,val);
+					if (val == null)
+						val = smgr.constructValue(this,attr);  // try a calculated attribute
 				} catch (InstantiationException | IllegalAccessException | InvocationTargetException | NullPointerException e) {
 					logger.error("Error mapping attribute "+attr.getName()+": "+e.getMessage(),e);
 				}
