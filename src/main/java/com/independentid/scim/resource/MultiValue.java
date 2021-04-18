@@ -34,17 +34,18 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.ParseException;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Vector;
 
 public class MultiValue extends Value {
 
-	private final Vector<Value> values;
+	private final HashSet<Value> values;
 	private final IBulkIdResolver resolver;
 
 	public MultiValue() {
 		this.jtype = JsonNodeType.ARRAY;
-		this.values = new Vector<>();
+		this.values = new HashSet<>();
 		this.resolver = null;
 		this.attr = null;
 	}
@@ -54,7 +55,7 @@ public class MultiValue extends Value {
 		super(attr, node);
 		if (attr == null)
 			throw new SchemaException("Attribute schema is null");
-		this.values = new Vector<>();
+		this.values = new HashSet<>();
 		this.resolver = bulkIdResolver;
 		parseJson(node);
 	}
@@ -63,7 +64,7 @@ public class MultiValue extends Value {
 		if (attr == null)
 			throw new SchemaException("Attribute schema is null");
 		this.jtype = JsonNodeType.ARRAY;
-		this.values = new Vector<>();
+		this.values = new HashSet<>();
 		this.values.addAll(vals);
 		this.resolver = null;
 		this.attr = attr;
@@ -169,20 +170,8 @@ public class MultiValue extends Value {
 		this.values.addAll(vals);
 	}
 
-	public void removeValueAt(int index) {
-		this.values.remove(index);
-	}
-
 	public void removeValue(Value val) {
 		this.values.remove(val);
-	}
-
-	public void replaceValueAt(int index, Value val) {
-		if (val instanceof ComplexValue) {
-			if (((ComplexValue) val).isPrimary())
-				this.resetPrimary();
-		}
-		this.values.set(index, val);
 	}
 
 	public Value getMatchValue(Filter filter) throws BadFilterException {
