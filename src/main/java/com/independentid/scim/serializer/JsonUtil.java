@@ -22,6 +22,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.independentid.scim.resource.Meta;
 
 import java.io.*;
@@ -37,6 +38,7 @@ public class JsonUtil {
 		mapper.setDateFormat(Meta.ScimDateFormat);
 		mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
 		mapper.setSerializationInclusion(Include.NON_EMPTY);
+		mapper.setNodeFactory(JsonNodeFactory.withExactBigDecimals(true)); // this added because 1.0 gets converted to 1
 	}
 	
 	public static JsonGenerator getGenerator(Writer writer, boolean compact) throws IOException {

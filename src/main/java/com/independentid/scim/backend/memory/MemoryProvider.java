@@ -386,16 +386,24 @@ public class MemoryProvider implements IScimProvider {
 			if (filter == null) {
 
 				for (ScimResource res : this.mainMap.values()) {
-					if (results.size() < maxResults)
-						results.add(res);
+					if (results.size() < maxResults) {
+						try {
+							results.add(res.copy(null)); // return raw copy to trigger virtual values
+						} catch (ParseException ignore) {
+						}
+					}
 				}
 			} else {
 				Set<String> candidates = evaluateFilter(filter, ctx.getResourceContainer());
 
 				for (String id : candidates) {
 					ScimResource candidate = this.mainMap.get(id);
-					if (filter.isMatch(candidate))
-						results.add(candidate);
+					if (filter.isMatch(candidate)) {
+						try {
+							results.add(candidate.copy(null));// return raw copy to trigger virtual values and protected stored values
+						} catch (ParseException ignore) {
+						}
+					}
 					if (results.size() > maxResults)
 						break;
 				}
@@ -440,8 +448,13 @@ public class MemoryProvider implements IScimProvider {
 			throw new InvalidValueException("Missing resource identifier exception");
 		
 		ScimResource res = this.mainMap.get(id);
-		if (Filter.checkMatch(res,ctx))
-			return res;
+		if (res == null) return null;
+		try {
+			res  = res.copy(null); // use raw copy to trigger virtual values for filter match and to protect stored value from plug mods
+			if (Filter.checkMatch(res,ctx))
+				return res;
+		} catch (ParseException ignore) {
+		}
 		return null;
 
 	}
