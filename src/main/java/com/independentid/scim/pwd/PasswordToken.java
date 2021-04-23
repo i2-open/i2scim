@@ -142,7 +142,10 @@ public class PasswordToken {
         JwtClaimsBuilder builder = Jwt.claims();
 
         if (sub == null)
-            sub = resource.getId();  // this is done so that Id can be picked up late binding since the current resource may not yet have been saved.
+            if (resource == null)
+                sub="anonymous";
+            else
+                sub = resource.getId();  // this is done so that Id can be picked up late binding since the current resource may not yet have been saved.
 
         builder.issuer(iss).subject(sub);
         builder

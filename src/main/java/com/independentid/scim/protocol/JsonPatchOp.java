@@ -17,6 +17,8 @@ package com.independentid.scim.protocol;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.independentid.scim.core.err.InvalidValueException;
+import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
 
@@ -31,10 +33,21 @@ public class JsonPatchOp {
 
 	public String path;
 	public String op;
-	public JsonNode value;
+	public JsonNode jsonValue;
 	
-	
-	public JsonPatchOp(RequestCtx ctx, JsonNode node) throws SchemaException {
+	public JsonPatchOp(String op, String path, Value value) {
+		this.op = op;
+		this.path = path;
+		ObjectNode node = JsonUtil.getMapper().createObjectNode();
+
+		//Convert to JSON value...
+		if (value == null)
+			this.jsonValue = null;
+		else
+			this.jsonValue = value.toJsonNode(null,"field").findValue("field");
+	}
+
+	public JsonPatchOp(JsonNode node) throws SchemaException, InvalidValueException {
 		JsonNode onode = node.get(OP_ACTION);
 		if (onode == null)
 			throw new SchemaException("Missing attribute 'op' defining the SCIM patch operation type.");
@@ -47,7 +60,7 @@ public class JsonPatchOp {
 			op =type;
 			break;
 		default:
-			throw new SchemaException("Invalid SCIM Patch operation value for 'op'. Found: "+type);
+			throw new InvalidValueException("Invalid SCIM Patch operation value for 'op'. Found: "+type);
 		}
 
 		
@@ -60,7 +73,9 @@ public class JsonPatchOp {
 		if (path == null && op.equals(OP_ACTION_REMOVE))
 			throw new SchemaException("Missing path value for a SCIM Patch 'remove' operation.");
 		
-		this.value = node.get(OP_VALUE);
+		this.jsonValue = node.get(OP_VALUE);
+		if (this.jsonValue == null && !op.equals(OP_ACTION_REMOVE))
+			throw new InvalidValueException("No value provided for SCIM PATCH ADD or REPLACE operation.");
 	}
 
 	public JsonNode toJsonNode() {
@@ -68,8 +83,8 @@ public class JsonPatchOp {
 		node.put(OP_ACTION,op);
 		if (path != null)
 			node.put(OP_PATH,path);
-		if (value != null)
-			node.set(OP_VALUE,value);
+		if (jsonValue != null)
+			node.set(OP_VALUE, jsonValue);
 		return node;
 	}
 

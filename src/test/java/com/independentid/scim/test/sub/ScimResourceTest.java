@@ -18,11 +18,15 @@ package com.independentid.scim.test.sub;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.InvalidValueException;
+import com.independentid.scim.core.err.NoTargetException;
 import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.protocol.*;
 import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
@@ -45,9 +49,7 @@ import java.io.InputStream;
 import java.io.StringWriter;
 import java.text.ParseException;
 import java.time.Instant;
-import java.util.Date;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
@@ -455,6 +457,302 @@ public class ScimResourceTest {
 		} catch (BackendException e) {
 			fail("Received erroneous duplicate transaction exception: "+e.getMessage(),e);
 		}
+	}
+
+	@Test
+	public void h_patchTests() throws ScimException, IOException, ParseException {
+		logger.info("H. Checking Patch functions");
+
+		//reload user1
+		InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
+		assert userStream != null;
+
+		JsonNode node = JsonUtil.getJsonTree(userStream);
+		user1 = new ScimResource(smgr,node, "Users");
+
+		Attribute titleAttr = smgr.findAttribute("User:title",null);
+		Attribute phoneAttr = smgr.findAttribute("User:phoneNumbers",null);
+		Attribute valAttr = phoneAttr.getSubAttribute("value");
+		Attribute typAttr = phoneAttr.getSubAttribute("type");
+		StringValue val = new StringValue(valAttr,"987-654-3210");
+		StringValue type = new StringValue(typAttr,"test");
+
+		Map<Attribute,Value> map = new HashMap<>();
+		map.put(valAttr,val);
+		map.put(typAttr,type);
+		ComplexValue phoneVal = new ComplexValue(phoneAttr,map);
+
+		StringValue titleVal = new StringValue(titleAttr,"TEST TITLE");
+		// Simple attribute add test
+		JsonPatchOp addTitleOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_ADD,"User:title",titleVal); // this should convert to replace since title is single-value
+
+		// CMV add value test
+		JsonPatchOp addPhoneNumberOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_ADD,"User:phoneNumbers",phoneVal);
+
+		// Resource level add (no path)
+		String jvalStr = "{\"emails\": [{\"value\":\"test@example.com\",\"type\":\"TEST\"}],\"externalId\": \"1234567890\"}";
+		String jsonOP = "{\"op\": \"add\",\"value\": "+jvalStr+"}";
+		JsonNode opJsonNode = JsonUtil.getJsonTree(jsonOP);
+		JsonPatchOp addResourceLevelOp = new JsonPatchOp(opJsonNode);
+
+		logger.info("\t... checking JsonPatchOp serialization");
+		JsonNode pnode = addPhoneNumberOp.toJsonNode();
+		//logger.info("PatchOp:\n"+pnode.toPrettyString());
+
+		JsonPatchOp patchOp2 = new JsonPatchOp(pnode);
+		assertThat(addPhoneNumberOp.path)
+				.as("Check paths are the same")
+				.isEqualTo(patchOp2.path);
+		assertThat(addPhoneNumberOp.op)
+				.as("Check operation are the same")
+				.isEqualTo(patchOp2.op);
+
+		assertThat(addPhoneNumberOp.jsonValue.asText())
+				.as("Check values are the same")
+				.isEqualTo(patchOp2.jsonValue.asText());
+
+		logger.info("\t... Checking JsonPatchRequest serialization");
+
+		// build a json patch request from json
+		ObjectNode reqJson = JsonUtil.getMapper().createObjectNode();
+		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
+		ArrayNode anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
+		anode.add(addTitleOp.toJsonNode());
+		anode.add(patchOp2.toJsonNode());
+		anode.add(addResourceLevelOp.toJsonNode());
+
+
+		logger.info("\t\t raw request:\n"+reqJson.toPrettyString());
+		RequestCtx ctx = new RequestCtx(user1.getMeta().getLocation(),null,null,smgr);
+		JsonPatchRequest jpr = new JsonPatchRequest(reqJson,ctx);
+
+		assertThat(jpr.getSize())
+				.as("Check three operations parsed")
+				.isEqualTo(3);
+
+		logger.info("\t... Performing patch add tests on user1");
+		user1.modifyResource(jpr,ctx);
+
+
+		StringValue titleValue = (StringValue) user1.getValue(titleAttr);
+		assertThat(titleValue.getRawValue())
+				.as("Check title was changed to TEST TITLE")
+				.isEqualTo("TEST TITLE");
+		Value phoneValues = user1.getValue(phoneAttr);
+		assertThat(phoneValues)
+				.as("phonenumbers is a multivalue")
+				.isInstanceOf(MultiValue.class);
+		MultiValue values = (MultiValue) phoneValues;
+		assertThat(values.size())
+				.as("There should be 3 phone numbers")
+				.isEqualTo(3);
+		Filter filter = Filter.parseFilter("type eq test","phoneNumbers",ctx);
+		Value pval = values.getMatchValue(filter);
+		assertThat(pval).isNotNull();
+		assertThat(pval).isInstanceOf(ComplexValue.class);
+		Value numbval = ((ComplexValue)pval).getValue(valAttr);
+		assertThat(numbval).isInstanceOf(StringValue.class);
+		StringValue numStringVal = (StringValue) numbval;
+		assertThat(numStringVal.getRawValue())
+				.as("Has correct value assigned")
+				.isEqualTo("987-654-3210");
+
+		Attribute emailAttr = smgr.findAttribute("emails",null);
+		Value emailVals = user1.getValue(emailAttr);
+		filter = Filter.parseFilter("type eq TEST","emails",ctx);
+		assertThat(filter.isMatch(emailVals))
+				.as("TEST number is present")
+				.isTrue();
+
+		Attribute extAttr = smgr.findAttribute("externalId",null);
+		Value extVal = user1.getValue(extAttr);
+		assertThat(extVal.getRawValue())
+				.as("External id was set to 1234567890")
+				.isEqualTo("1234567890");
+
+		logger.info("\t... Performing patch replace test");
+		reqJson = JsonUtil.getMapper().createObjectNode();
+		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
+		anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
+
+		titleVal = new StringValue(titleAttr,"REP TITLE");
+		JsonPatchOp replaceTitleOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE,"User:title",titleVal);
+
+		anode.add(replaceTitleOp.toJsonNode());
+
+		map = new HashMap<>();
+		map.put(valAttr,val);
+		type = new StringValue(typAttr,"other");
+		map.put(typAttr,type);
+		phoneVal = new ComplexValue(phoneAttr,map);
+		JsonPatchOp replacePhoneOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE,"phoneNumbers[type eq test]",phoneVal);
+		anode.add(replacePhoneOp.toJsonNode());
+
+		val = new StringValue(valAttr,"111-1111");
+		JsonPatchOp replacePhoneMobileOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE,"phoneNumbers[type eq mobile].value",val);
+		anode.add(replacePhoneMobileOp.toJsonNode());
+
+		jpr = new JsonPatchRequest(reqJson,ctx);
+		assertThat(jpr.getSize()).isEqualTo(3);
+		user1.modifyResource(jpr,ctx);
+
+		// Check replace results
+		titleValue = (StringValue) user1.getValue(titleAttr);
+		assertThat(titleValue.getRawValue())
+				.as("Check title was changed to TEST TITLE")
+				.isEqualTo("REP TITLE");
+		phoneValues = user1.getValue(phoneAttr);
+		assertThat(phoneValues)
+				.as("phonenumbers is a multivalue")
+				.isInstanceOf(MultiValue.class);
+		values = (MultiValue) phoneValues;
+		filter = Filter.parseFilter("type eq other","phoneNumbers",ctx);
+		pval = values.getMatchValue(filter);
+		assertThat(pval).isNotNull();
+		assertThat(pval).isInstanceOf(ComplexValue.class);
+		numbval = ((ComplexValue)pval).getValue(valAttr);
+		assertThat(numbval).isInstanceOf(StringValue.class);
+		numStringVal = (StringValue) numbval;
+		assertThat(numStringVal.getRawValue())
+				.as("Has correct value assigned")
+				.isEqualTo("987-654-3210");
+
+		filter = Filter.parseFilter("type eq mobile","phoneNumbers",ctx);
+		pval = values.getMatchValue(filter);
+		assertThat(pval).isNotNull();
+		assertThat(pval).isInstanceOf(ComplexValue.class);
+		numbval = ((ComplexValue)pval).getValue(valAttr);
+		assertThat(numbval).isInstanceOf(StringValue.class);
+		numStringVal = (StringValue) numbval;
+		assertThat(numStringVal.getRawValue())
+				.as("Has correct value assigned")
+				.isEqualTo("111-1111");
+
+		logger.info("\t... Performing patch delete tests");
+
+		reqJson = JsonUtil.getMapper().createObjectNode();
+		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
+		anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
+
+		JsonPatchOp deleteTitleOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REMOVE,"User:title",null);
+		anode.add(deleteTitleOp.toJsonNode());
+
+		JsonPatchOp deletePhoneValOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REMOVE,"phoneNumbers[type eq mobile]",null);
+		anode.add(deletePhoneValOp.toJsonNode());
+
+		JsonPatchOp deleteSubAttrOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REMOVE,"name.honorificSuffix",null);
+		anode.add(deleteSubAttrOp.toJsonNode());
+
+		jpr = new JsonPatchRequest(reqJson,ctx);
+		assertThat(jpr.getSize()).isEqualTo(3);
+		user1.modifyResource(jpr,ctx);
+
+		Value value = user1.getValue(titleAttr);
+		assertThat(value)
+				.as("Confirm title removed")
+				.isNull();
+		Attribute nameAttr = smgr.findAttribute("User:name",null);
+		value = user1.getValue(nameAttr);
+		assertThat(value)
+				.isInstanceOf(ComplexValue.class);
+		ComplexValue nval = (ComplexValue) value;
+		Value honorsufficVal = nval.getValue(nameAttr.getSubAttribute("honorificSuffix"));
+		assertThat(honorsufficVal)
+				.as("Confirm sub attribute removed")
+				.isNull();
+		Value famNam = nval.getValue(nameAttr.getSubAttribute("familyName"));
+		assertThat(famNam).isNotNull();
+		StringValue famStringVal = (StringValue) famNam;
+		assertThat(famStringVal.getRawValue())
+				.as("Familiy name still present as Jensen")
+				.isEqualTo("Jensen");
+
+		phoneValues = user1.getValue(phoneAttr);
+		assertThat(phoneValues)
+				.as("phonenumbers is a multivalue")
+				.isInstanceOf(MultiValue.class);
+
+		values = (MultiValue) phoneValues;
+		assertThat(values.size())
+				.as("Should be 2 numbers left")
+				.isEqualTo(2);
+		filter = Filter.parseFilter("type eq other","phoneNumbers",ctx);
+		pval = values.getMatchValue(filter);
+		assertThat(pval).isNotNull();
+		assertThat(pval).isInstanceOf(ComplexValue.class);
+		numbval = ((ComplexValue)pval).getValue(valAttr);
+		assertThat(numbval).isInstanceOf(StringValue.class);
+		numStringVal = (StringValue) numbval;
+		assertThat(numStringVal.getRawValue())
+				.as("Other phone number is still present")
+				.isEqualTo("987-654-3210");
+
+		//TODO: Negative tests to ensure value not matched is returned correctly
+
+		logger.info("... Testing faulty ops");
+		reqJson = JsonUtil.getMapper().createObjectNode();
+		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
+		anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
+
+
+		JsonPatchOp faultyFilterOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REMOVE,"phoneNumbers[type eq blah].value",null);
+		anode.add(faultyFilterOp.toJsonNode());
+
+		jpr = new JsonPatchRequest(reqJson,ctx);
+		boolean hadCorrectError = false;
+		try {
+			user1.modifyResource(jpr,ctx);
+		} catch (ScimException e) {
+			assertThat(e)
+					.as("check for NoTargetException")
+					.isInstanceOf(NoTargetException.class);
+			hadCorrectError = true;
+		}
+		assertThat(hadCorrectError)
+				.as("Properly threw no targetexception")
+				.isTrue();
+
+		// Generate InvalidValueException
+		reqJson = JsonUtil.getMapper().createObjectNode();
+		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
+		anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
+
+
+		faultyFilterOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE,"phoneNumbers[type eq blah].value",null);
+		anode.add(faultyFilterOp.toJsonNode());
+
+		hadCorrectError = false;
+		try {
+			new JsonPatchRequest(reqJson, ctx);
+		} catch (InvalidValueException e) {
+			hadCorrectError = true;
+		}
+		assertThat(hadCorrectError)
+				.as("Properly threw no InvalidValueException")
+				.isTrue();
+
+		// Generate NoTarget exception
+		reqJson = JsonUtil.getMapper().createObjectNode();
+		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
+		anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
+		Attribute phoneValueAttr = smgr.findAttribute("phoneNumbers.value",null);
+		Value testVal = new StringValue(phoneValueAttr, "633-1234");
+		faultyFilterOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE,"phoneNumbers[type eq blah].value",testVal);
+		anode.add(faultyFilterOp.toJsonNode());
+		jpr = new JsonPatchRequest(reqJson, ctx);
+
+		hadCorrectError = false;
+		try {
+			user1.modifyResource(jpr,ctx);
+		} catch (ScimException e) {
+			assertThat(e)
+					.as("check for NoTargetException")
+					.isInstanceOf(NoTargetException.class);
+			hadCorrectError = true;
+		}
+		assertThat(hadCorrectError)
+				.as("Properly threw no targetexception")
+				.isTrue();
 	}
 	
 

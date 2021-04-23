@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.core.err.InternalException;
 import com.independentid.scim.core.err.InvalidSyntaxException;
+import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
@@ -89,7 +90,7 @@ public class PatchOp extends Operation implements IBulkOp {
                         "Detected array, expecting JSON object for SCIM PATCH request."));
                 return;
             }
-            this.preq = new JsonPatchRequest(configMgr, node, ctx);
+            this.preq = new JsonPatchRequest(node, ctx);
 
         } catch (SchemaException e) {
             ScimException se;
@@ -97,6 +98,11 @@ public class PatchOp extends Operation implements IBulkOp {
             if (logger.isDebugEnabled())
                 logger.debug("Error parsing PATCH request: " + se.getMessage(), e);
             setCompletionError(se);
+        } catch (InvalidValueException e) {
+
+            if (logger.isDebugEnabled())
+                logger.debug("Invalid PATCH request: " + e.getMessage(), e);
+            setCompletionError(e);
         }
     }
 

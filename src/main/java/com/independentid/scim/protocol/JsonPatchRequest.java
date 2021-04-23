@@ -18,7 +18,7 @@ package com.independentid.scim.protocol;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
 
@@ -31,27 +31,24 @@ import java.util.Iterator;
  *
  */
 public class JsonPatchRequest {
-
-	protected final ConfigMgr cfg;
 	
 	protected final RequestCtx ctx;
 	
 	protected final ArrayList<JsonPatchOp> ops;
 
 	/**
-	 * @param cfg The current context Configuration context.
-	 * @param resourceNode A pointer to  SCIM Json Modify request message to be parsed.
+	 * @param jsonPatchReq A pointer to  SCIM Json Modify request message to be parsed.
 	 * @param ctx An the associated request context received with the patch request.
 	 * @throws SchemaException Thrown when a missing or required attribute is detected
+	 * @throws InvalidValueException Thrown when a Patch operation is missing a required value
 	 */
-	public JsonPatchRequest(ConfigMgr cfg, JsonNode resourceNode, RequestCtx ctx) throws SchemaException {
-		this.cfg = cfg;
+	public JsonPatchRequest(JsonNode jsonPatchReq, RequestCtx ctx) throws SchemaException, InvalidValueException {
 		this.ctx = ctx;
 		this.ops = new ArrayList<>();
-		parseJson(resourceNode);
+		parseJson(jsonPatchReq);
 	}
 	
-	public void parseJson(JsonNode node) throws SchemaException {
+	public void parseJson(JsonNode node) throws SchemaException, InvalidValueException {
 		JsonNode snode = node.get(ScimParams.ATTR_SCHEMAS);
 		if (snode == null) throw new SchemaException("JSON is missing 'schemas' attribute.");
 		
@@ -81,7 +78,7 @@ public class JsonPatchRequest {
 		Iterator<JsonNode> oiter = opsnode.elements();
 		while (oiter.hasNext()) {
 			JsonNode oper = oiter.next();
-			JsonPatchOp op = new JsonPatchOp(this.ctx,oper);
+			JsonPatchOp op = new JsonPatchOp(oper);
 			this.ops.add(op);
 		}	
 		}

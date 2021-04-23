@@ -19,7 +19,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.IResourceModifier;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.*;
 import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.op.IBulkIdTarget;
@@ -43,8 +42,6 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 	public final static String SCHEMA_EXT_PREFIX = "Ext-";
 	
-	//protected ConfigMgr cfg;
-
 	protected String id;
 
 	protected String externalId;
@@ -206,6 +203,12 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		else
 			rootAttribute = attr;
 
+		if (attr.getName().equalsIgnoreCase(ScimParams.ATTR_EXTID)) {
+			this.externalId = ((StringValue) addval).getRawValue();
+			attrsInUse.add(attr);
+			return;
+		}
+
 		if (attr.getSchema().equals(coreSchema.getId())) {
 			if (rootAttribute.isMultiValued()) {
 				if (addval instanceof MultiValue) {
@@ -305,6 +308,12 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			attrsInUse.remove(attr);
 			return;
 			
+		}
+
+		if (attr.getName().equalsIgnoreCase(ScimParams.ATTR_EXTID)) {
+			this.externalId = null;
+			attrsInUse.remove(attr);
+			return;
 		}
 		
 		// The attribute is an extension attribute
@@ -426,8 +435,14 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			// if is is a common attribute, skip
 			
 			//if (ConfigMgr.SCIM_CORE_ATTRS.stream().anyMatch(lfield::equals))
-			if (ConfigMgr.SCIM_CORE_ATTRS.contains(lfield))
+			if (SystemSchemas.SCIM_COMMON_ATTRS.contains(lfield)) {
+				if (field.equals(ScimParams.ATTR_EXTID)) {
+					JsonNode extNode = node.get(field);
+					if (extNode != null)
+						this.externalId = extNode.asText();
+				}
 				continue;
+			}
 			//if it is an extension object, process it
 			if (field.startsWith(ScimResource.SCHEMA_EXT_PREFIX) || exts.contains(field)) {
 				processExtension(type,field,node);
@@ -496,21 +511,21 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 */
 	public JsonNode toJsonNode(RequestCtx requestCtx)  {
 		ObjectNode node = JsonUtil.getMapper().createObjectNode();
-		ArrayNode sarray = node.putArray("schemas");
+		ArrayNode sarray = node.putArray(ScimParams.ATTR_SCHEMAS);
 		for (String scheme : schemas)
 			sarray.add(scheme);
 
 		// Write out the id and externalId
 		if (this.id != null)
-			node.put("id",id);
+			node.put(ScimParams.ATTR_ID,id);
 
-		if (this.externalId != null && ValueUtil.isReturnable(commonSchema,"externalId", requestCtx))
-			node.put("externalId",externalId);
+		if (this.externalId != null && ValueUtil.isReturnable(commonSchema,ScimParams.ATTR_EXTID, requestCtx))
+			node.put(ScimParams.ATTR_EXTID,externalId);
 
 		// Write out the meta information
 		// Meta will not be used for hash calculations.
-		if (this.meta != null && ValueUtil.isReturnable(commonSchema,"meta", requestCtx)) {
-			node.set("meta",meta.toJsonNode(requestCtx));
+		if (this.meta != null && ValueUtil.isReturnable(commonSchema,ScimParams.ATTR_META, requestCtx)) {
+			node.set(ScimParams.ATTR_META,meta.toJsonNode(requestCtx));
 		}
 
 		// Write out the core attribute values
@@ -582,28 +597,28 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		gen.writeStartObject();
 
 		// Write out the schemas value
-		gen.writeArrayFieldStart("schemas");
+		gen.writeArrayFieldStart(ScimParams.ATTR_SCHEMAS);
 		for (String schema : this.schemas)
 			gen.writeString(schema);
 		gen.writeEndArray();
 
 		// Write out the id and externalId
 		if (this.id != null)
-			gen.writeStringField("id", this.id);
+			gen.writeStringField(ScimParams.ATTR_ID, this.id);
 
 		
 		if (this.externalId != null &&
-				ValueUtil.isReturnable(commonSchema,"externalId", ctx)
-				&& isNotBlocked(commonSchema.getAttribute("externalId")))
+				ValueUtil.isReturnable(commonSchema,ScimParams.ATTR_EXTID, ctx)
+				&& isNotBlocked(commonSchema.getAttribute(ScimParams.ATTR_EXTID)))
 
-			gen.writeStringField("externalId", this.externalId);
+			gen.writeStringField(ScimParams.ATTR_EXTID, this.externalId);
 
 		// Write out the meta information
 		// Meta will not be used for hash calculations.
 		if (this.meta != null && !forHash &&
-				ValueUtil.isReturnable(commonSchema,"meta", ctx) &&
-				isNotBlocked(commonSchema.getAttribute("meta"))) {
-			gen.writeFieldName("meta");
+				ValueUtil.isReturnable(commonSchema,ScimParams.ATTR_META, ctx) &&
+				isNotBlocked(commonSchema.getAttribute(ScimParams.ATTR_META))) {
+			gen.writeFieldName(ScimParams.ATTR_META);
 			this.meta.serialize(gen, ctx, false);
 		}
 
@@ -699,19 +714,19 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		else
 			rootAttribute = attr;
 
-		if (rootAttribute.getName().equalsIgnoreCase("id"))
+		if (rootAttribute.getName().equalsIgnoreCase(ScimParams.ATTR_ID))
 			return new StringValue(attr,getId());
-		if (rootAttribute.getName().equalsIgnoreCase("externalId"))
+		if (rootAttribute.getName().equalsIgnoreCase(ScimParams.ATTR_EXTID))
 			return this.externalId != null?new StringValue(attr,getExternalId()):null;
 
-		if (rootAttribute.getName().equalsIgnoreCase("schemas")) {
+		if (rootAttribute.getName().equalsIgnoreCase(ScimParams.ATTR_SCHEMAS)) {
 			List<Value> vals = new ArrayList<>();
 			for (String uri : getSchemaURIs())
 				vals.add(new StringValue(attr,uri));
 			return new MultiValue(attr,vals);
 		}
 
-		if (rootAttribute.getName().equalsIgnoreCase("meta")) {
+		if (rootAttribute.getName().equalsIgnoreCase(ScimParams.ATTR_META)) {
 			if (attr.isChild())
 				return this.getMeta().getValue(attr);
 			return this.getMeta();
@@ -749,8 +764,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			val = this.coreAttrVals.get(rootAttribute);
 		} else if (attr.getSchema().equals(ScimParams.SCHEMA_SCHEMA_Common)) {
 			try {
-				val = getCommonValue(attr);
-				return val;
+				return getCommonValue(attr);
 			} catch (SchemaException e) {
 				logger.warn("Unexpected schema exception getting common schema value: " + attr.getName() + ": " + e.getLocalizedMessage(), e);
 			}
@@ -838,7 +852,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			
 			// Is this a multi-value patch?
 			if (jpath.isMultiValue()) {
-				performMultiValOp(op,jpath,ctx);
+				performMultiValOp(op,jpath);
 				continue;
 			}
 			// Now we have simple attribute manipulation
@@ -846,7 +860,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			switch (op.op){
 			case JsonPatchOp.OP_ACTION_ADD:
 				try {
-					Value val = ValueUtil.parseJson(this,tattr, op.value, null);
+					Value val = ValueUtil.parseJson(this,tattr, op.jsonValue, null);
 					this.addValue(val);
 				} catch (SchemaException | ParseException e) {
 					throw new InvalidValueException("JSON parsing error parsing value parameter.",e);
@@ -859,7 +873,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			case JsonPatchOp.OP_ACTION_REPLACE:
 				Value val;
 				try {
-					val = ValueUtil.parseJson(this,tattr, op.value, null);
+					val = ValueUtil.parseJson(this,tattr, op.jsonValue, null);
 				} catch (SchemaException | ParseException e) {
 					throw new InvalidValueException("JSON parsing error parsing value parameter.",e);
 				}
@@ -872,137 +886,163 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		
 	}
 	
-	private void performMultiValOp(JsonPatchOp op, JsonPath path, RequestCtx ctx) throws ScimException {
+	private void performMultiValOp(JsonPatchOp op, JsonPath path) throws ScimException {
 		ScimResource target = this;
-		
-		MultiValue mval = (MultiValue) target.getValue(path.getTargetAttribute());
-		Value val = mval.getMatchValue(path.getTargetValueFilter());
-		
-		
-		if (val == null)
-			throw new NoTargetException("No match found for the path filter.");
-			
-				switch (op.op){
-				case JsonPatchOp.OP_ACTION_ADD:
-					if (path.hasSubAttr() && !op.value.isObject()) {
-						if (val instanceof ComplexValue) {
-							ComplexValue cval = (ComplexValue) val;
-							Attribute sattr = target.getAttribute(path.getTargetAttrName()+"."+path.getSubAttrName(), ctx);
-							Value nval;
-							try {
-								nval = ValueUtil.parseJson(this,sattr, op.value, null);
-							    if (nval instanceof BooleanValue) {
-							    	BooleanValue bval = (BooleanValue) nval;
-							    	if (bval.getRawValue() && sattr.getName().equals("primary"))
-							    		mval.resetPrimary();
-							    }
+		Attribute targetAttr = path.getTargetAttribute();
+		MultiValue mval = (MultiValue) target.getValue(targetAttr);
+		Value targetValue = null;
+		if (path.getTargetValueFilter() != null)
+			targetValue = mval.getMatchValue(path.getTargetValueFilter());
 
-								//cval.vals.put(path.getSubAttrName(), nval);
-								cval.addValue(sattr,nval);
-							} catch (SchemaException | ParseException e) {
-								throw new InvalidValueException("JSON parsing error parsing value parameter.",e);
-							}	
-							break;
-						}
-						
-						// There was a sub attribute specified, but the parent does not support sub-attributes.
-						// TODO what about simple "value" for mv attributes.
-						throw new InvalidValueException("A sub-attribute was specified, but the value was a JSON object: "+op.path);
-						
-					} else if (op.value.isObject() && 
-							path.getTargetAttribute().getType()
-							.equalsIgnoreCase(Attribute.TYPE_Complex)) {
-						try {
-							Value nval = ValueUtil.parseJson(this,path.getTargetAttribute(), op.value, null);
-							if (val instanceof ComplexValue) {
-								ComplexValue cval = (ComplexValue) val;
-						
-								if (nval instanceof ComplexValue) {
-									if (((ComplexValue) nval).isPrimary()) {
-										mval.resetPrimary();
-									}
-									cval.mergeValues((ComplexValue)nval);
-								} else {
-									cval.addValue(path.getTargetAttribute(),nval);
-								}
-							} else
-								throw new ScimException("Unknown error. Expecting ComplexValue, got "+val.getClass().getCanonicalName());
-							
-							break;
-							
-						} catch (SchemaException | ParseException e) {
-							throw new InvalidSyntaxException("Unable to parse value parameter",e);
-						}
+		switch (op.op){
+			case JsonPatchOp.OP_ACTION_ADD:
+				if (path.isMultiValue() && path.getTargetValueFilter() == null) {
+					// This is a simple add value to the array
+					try {
+						Value newVal = ValueUtil.parseJson(this,targetAttr, op.jsonValue, null);
+						mval.addValue(newVal);
+						return;
+					} catch (ParseException e) {
+						e.printStackTrace();
 					}
-					break;
-				case JsonPatchOp.OP_ACTION_REMOVE:
-					if (path.hasSubAttr()) {
-						if (val instanceof ComplexValue) {
-							ComplexValue cval = (ComplexValue) val;
-							//TODO do we care if the attribute didn't exist? Probably not
-							cval.removeValue(path.getSubAttribute());
-							break;
-						}
-						// There was a sub attribute specified, but the parent does not support sub-attributes.
-						// TODO what about simple "value" for mv attributes.
-						throw new InvalidValueException("A sub-attribute was specified for a parent attribute that is not complex: "+op.path);	
-					}
-					// No sub-attribute specified, remove the entire value
-					mval.removeValue(val);
-					
-					break;
-					
-				case JsonPatchOp.OP_ACTION_REPLACE:
-					if (path.hasSubAttr() && !op.value.isObject()) {
-						if (val instanceof ComplexValue) {
-							ComplexValue cval = (ComplexValue) val;
-							//Attribute sattr = target.getAttribute(path.getTargetAttrName()+"."+path.getSubAttrName(), ctx);
-							Attribute sattr = path.getSubAttribute();
-							Value nval;
-							try {
-								nval = ValueUtil.parseJson(this,sattr, op.value, null);
-								if (nval instanceof ComplexValue) {
-									cval.replaceValues((ComplexValue)nval);
-								} else {
-									// TODO may need to check if sub attribute is multi-valued
-									cval.addValue(sattr,nval);
-								}
-
-							} catch (SchemaException | ParseException e) {
-								throw new InvalidValueException("JSON parsing error parsing value parameter.",e);
-							}	
-							break;
-						}
-						
-						// There was a sub attribute specified, but the parent does not support sub-attributes.
-						// TODO what about simple "value" for mv attributes.
-						throw new InvalidValueException("A sub-attribute was specified, but the value was a JSON object: "+op.path);
-						
-					} else if (op.value.isObject() && 
-							path.getTargetAttribute().getType()
-							.equalsIgnoreCase(Attribute.TYPE_Complex)) {
-						try {
-							Value cval = ValueUtil.parseJson(this,path.getTargetAttribute(), op.value, null);
-							mval.removeValue(val);// remove the current value
-							mval.addValue(cval);
-							break;
-						} catch (SchemaException | ParseException e) {
-							throw new InvalidSyntaxException("Unable to parse value parameter",e);
-						}
-					}
-					break;					
 				}
+				if (path.hasVpathSubAttr() && !op.jsonValue.isObject()) {
+					if (targetValue == null )
+						throw new NoTargetException("No value match found for the valuepath filter.");
 
-		
-			
+					// the reuqest is to add a sub attribute to an existing value
+					if (targetValue instanceof ComplexValue) {
+						ComplexValue cval = (ComplexValue) targetValue;
+
+						Attribute sattr = path.getSubAttribute();
+						Value nval;
+						try {
+							nval = ValueUtil.parseJson(this,sattr, op.jsonValue, null);
+							if (nval instanceof BooleanValue) {
+								BooleanValue bval = (BooleanValue) nval;
+								if (bval.getRawValue() && sattr.getName().equals("primary"))
+									mval.resetPrimary();
+							}
+
+							//cval.vals.put(path.getSubAttrName(), nval);
+							cval.addValue(sattr,nval);
+						} catch (SchemaException | ParseException e) {
+							throw new InvalidValueException("JSON parsing error parsing value parameter.",e);
+						}
+						return;
+					}
+
+					// There was a sub attribute specified, but the parent does not support sub-attributes.
+					// TODO what about simple "value" for mv attributes.
+					throw new InvalidValueException("A sub-attribute was specified, but the value was a JSON object: "+op.path);
+
+				}
+				/*  Note clear what this case is addressing
+				else if (op.jsonValue.isObject()) {
+					try {
+						Value nval = ValueUtil.parseJson(this,path.getTargetAttribute(), op.jsonValue, null);
+						targetValue.
+						if (targetValue instanceof ComplexValue) {
+							ComplexValue cval = (ComplexValue) targetValue;
+
+							if (nval instanceof ComplexValue) {
+								if (((ComplexValue) nval).isPrimary()) {
+									mval.resetPrimary();
+								}
+								cval.mergeValues((ComplexValue)nval);
+							} else {
+								cval.addValue(path.getTargetAttribute(),nval);
+							}
+						} else
+							throw new ScimException("Unknown error. Expecting ComplexValue, got "+targetValue.getClass().getCanonicalName());
+
+						break;
+
+					} catch (SchemaException | ParseException e) {
+						throw new InvalidSyntaxException("Unable to parse value parameter",e);
+					}
+				}
+				break;
+
+				 */
+			case JsonPatchOp.OP_ACTION_REMOVE:
+				if (targetValue == null && path.hasVpathSubAttr())
+					throw new NoTargetException("Unable to to match a record value");
+				if (targetValue == null) {
+					if (path.getTargetValueFilter() == null)
+						removeValue(targetAttr);  // remove the entire attribute otherwise nothing to do
+					return;
+				}
+				if (path.hasVpathSubAttr()) {
+					if (targetValue instanceof ComplexValue) {
+						ComplexValue cval = (ComplexValue) targetValue;
+						//TODO do we care if the attribute didn't exist? Probably not
+						cval.removeValue(path.getSubAttribute());
+						return;
+					}
+					// There was a sub attribute specified, but the parent does not support sub-attributes.
+					// TODO what about simple "value" for mv attributes.
+					throw new InvalidValueException("A sub-attribute was specified for a parent attribute that is not complex: "+op.path);
+				}
+				// No sub-attribute specified, remove the entire value
+				mval.removeValue(targetValue);
+				return;
+
+			case JsonPatchOp.OP_ACTION_REPLACE:
+
+				if (path.hasVpathSubAttr() && !op.jsonValue.isObject()) {
+					if (targetValue == null)
+						throw new NoTargetException("No matching value found to replace "+path.getSubAttrName());
+					if (targetValue instanceof ComplexValue) {
+						ComplexValue cval = (ComplexValue) targetValue;
+						//Attribute sattr = target.getAttribute(path.getTargetAttrName()+"."+path.getSubAttrName(), ctx);
+						Attribute sattr = path.getSubAttribute();
+						Value nval;
+						try {
+							nval = ValueUtil.parseJson(this,sattr, op.jsonValue, null);
+							if (nval instanceof ComplexValue) {
+								cval.replaceValues((ComplexValue)nval);
+							} else {
+								// TODO may need to check if sub attribute is multi-valued
+								cval.addValue(sattr,nval);
+							}
+
+						} catch (SchemaException | ParseException e) {
+							throw new InvalidValueException("JSON parsing error parsing value parameter.",e);
+						}
+						return;
+					}
+
+					// There was a sub attribute specified, but the parent does not support sub-attributes.
+					// TODO what about simple "value" for mv attributes.
+					throw new InvalidValueException("A sub-attribute was specified, but the value was a JSON object: "+op.path);
+
+				} else if (op.jsonValue.isObject() &&
+						path.getTargetAttribute().getType()
+						.equalsIgnoreCase(Attribute.TYPE_Complex)) {
+					try {
+						Value cval = ValueUtil.parseJson(this,path.getTargetAttribute(), op.jsonValue, null);
+						if (targetValue != null)
+							mval.removeValue(targetValue);// remove the current value if it exists
+						mval.addValue(cval); // add the replacement
+						return;
+					} catch (SchemaException | ParseException e) {
+						throw new InvalidSyntaxException("Unable to parse value parameter",e);
+					}
+				}
+				return;
+
+			default:
+				throw new InvalidValueException("The operation requested ("+op.op+") is not supported");
+		}
 	}
 	
 	private void performResourcePatch(JsonPatchOp op, RequestCtx ctx) throws ScimException {
-		ScimResource target = this;
+
 		if (op.op.equalsIgnoreCase(JsonPatchOp.OP_ACTION_ADD)
 				|| op.op.equalsIgnoreCase(JsonPatchOp.OP_ACTION_REPLACE)) {
 			try {
-				target.parseAttributes(op.value,
+				parseAttributes(op.jsonValue,
 						(op.op.equalsIgnoreCase(JsonPatchOp.OP_ACTION_REPLACE)), false);
 				return;
 			} catch (SchemaException | ParseException e) {
@@ -1081,7 +1121,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			String aname = attr.getName();
 			
 			// Meta should never be removed (regardless of server setting)
-			if (aname.equals("meta")) 
+			if (aname.equals(ScimParams.ATTR_META))
 				continue;
 			
 			//Attribute attr = smgr.findAttribute(coreSchemaId, aname, null, ctx);
@@ -1223,5 +1263,17 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 	public void blockAttribute(Attribute attr) {
 		this.blockedAttrs.add(attr);
+	}
+
+	/**
+	 * Can be invoked when data has changed to enable virtual attributes to change values (e.g. after modify)
+	 */
+	public void refreshVirtualAttrs() {
+		for (Attribute attr: attrsInUse) {
+			if (smgr.isVirtualAttr(attr)) {
+				Value val = getValue(attr);
+				((IVirtualValue)val).refreshValues();
+			}
+		}
 	}
 }

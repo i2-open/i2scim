@@ -16,22 +16,30 @@
 package com.independentid.scim.test.http;
 
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.protocol.ScimParams;
-import com.independentid.scim.protocol.ScimResponse;
+import com.independentid.scim.protocol.*;
+import com.independentid.scim.resource.ComplexValue;
+import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.resource.StringValue;
+import com.independentid.scim.resource.Value;
+import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
+import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.apache.http.Header;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.HttpPatch;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import org.junit.jupiter.api.Assertions;
@@ -41,13 +49,15 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Resource;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+import java.text.ParseException;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -56,11 +66,14 @@ import static org.assertj.core.api.Assertions.fail;
 @QuarkusTest
 @TestProfile(ScimHttpTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
-public class ScimGroupCRUDTest {
+public class ScimPatchTest {
 	
-	private final static Logger logger = LoggerFactory.getLogger(ScimGroupCRUDTest.class);
+	private final static Logger logger = LoggerFactory.getLogger(ScimPatchTest.class);
 	
 	//private static String userSchemaId = "urn:ietf:params:scim:schemas:core:2.0:User";
+
+	@Inject
+	SchemaManager smgr;
 
 	@Inject
 	TestUtils testUtils;
@@ -72,11 +85,17 @@ public class ScimGroupCRUDTest {
 	
 	private static final String testUserFile1 = "classpath:/schema/TestUser-bjensen.json";
 	private static final String testUserFile2 = "classpath:/schema/TestUser-jsmith.json";
+
+	static String patchRequestBody;
+	static ScimResource res1,res2;
+
+	static JsonPatchRequest jpr;
+
 	/**
 	 * This test actually resets and re-initializes the SCIM Mongo test database.
 	 */
 	@Test
-	public void a_initializeMongo() {
+	public void a_initializeProvider() {
 	
 		logger.info("========== Scim HTTP CRUD Test ==========");
 		logger.info("\tA. Initializing test data");
@@ -93,22 +112,23 @@ public class ScimGroupCRUDTest {
 	 * This test checks that a JSON user can be parsed into a SCIM Resource
 	 */
 	@Test
-	public void b_PrepareUsers() {
+	public void b_PrepareTestData() throws MalformedURLException, UnsupportedEncodingException {
 		
-		logger.info("\tB1. Add two users...");
+		logger.info("\tB1. Add users and group...");
 
 		try {
 
 			InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 
+			JsonNode userNode = JsonUtil.getJsonTree(userStream);
+			res1 = new ScimResource(smgr,userNode,"Users");
 			URL rUrl = new URL(baseUrl,"/Users");
 			String req = rUrl.toString();
 			
 			
 			HttpPost post = new HttpPost(req);
 				
-			InputStreamEntity reqEntity = new InputStreamEntity(
-	        userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
+			StringEntity reqEntity = new StringEntity(userNode.toString());
 			reqEntity.setChunked(false);
 			post.setEntity(reqEntity);
 		
@@ -130,8 +150,10 @@ public class ScimGroupCRUDTest {
 
 			userStream = ConfigMgr.findClassLoaderResource(testUserFile2);
 			post = new HttpPost(req);
-			reqEntity = new InputStreamEntity(
-					userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
+			userNode = JsonUtil.getJsonTree(userStream);
+			res2 = new ScimResource(smgr,userNode,"Users");
+			reqEntity = new StringEntity(userNode.toString());
+
 			reqEntity.setChunked(false);
 			post.setEntity(reqEntity);
 			resp = TestUtils.executeRequest(post);
@@ -149,25 +171,17 @@ public class ScimGroupCRUDTest {
 					.isEqualTo(ScimResponse.ST_CREATED);
 			
 		} catch (IOException e) {
-			Assertions.fail("Exception occured creating bjenson. "+e.getMessage(),e);
+			Assertions.fail("Exception occured creating users. "+e.getMessage(),e);
+		} catch (ScimException | ParseException e) {
+			Assertions.fail("Scim exception occured parsing users: "+e.getMessage(),e);
 		}
-	}
 
-	private String memberObj(String ref) {
-		String id = ref.substring(ref.lastIndexOf("/")+1);
-		return "{ \"value\": \""+id+"\",\n"+
-				"    \"$ref\": \""+ref+"\"}";
-	}
-
-	@Test
-	public void c_createGroupTest() throws IOException {
-		logger.info("\tC. Creating Group...");
 		String jsonGroup = "{\n" +
 				"     \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],\n" +
 				"     \"id\": \"e9e30dba-f08f-4109-8486-d5c6a331660a\",\n" +
 				"     \"displayName\": \"TEST Tour Guides\",\n" +
 				"     \"members\": [\n";
-		jsonGroup = jsonGroup + memberObj(user1url)+",\n"+memberObj(user2url)+"\n]}";
+		jsonGroup = jsonGroup + memberObj(user1url)+"\n]}";
 
 		String req = TestUtils.mapPathToReqUrl(baseUrl,"/Groups");
 
@@ -176,7 +190,13 @@ public class ScimGroupCRUDTest {
 		body.setChunked(false);
 		postGroup.setEntity(body);
 
-		HttpResponse resp = TestUtils.executeRequest(postGroup);
+		HttpResponse resp = null;
+		try {
+			resp = TestUtils.executeRequest(postGroup);
+		} catch (IOException e) {
+			fail("Failed to create group: "+e.getMessage(),e);
+		}
+		assert resp != null;
 		assertThat(resp.getStatusLine().getStatusCode())
 				.as("Create user response status of 201")
 				.isEqualTo(ScimResponse.ST_CREATED);
@@ -189,9 +209,16 @@ public class ScimGroupCRUDTest {
 		}
 	}
 
+	private String memberObj(String ref) {
+		String id = ref.substring(ref.lastIndexOf("/")+1);
+		return "{ \"value\": \""+id+"\",\n"+
+				"    \"$ref\": \""+ref+"\",\n" +
+				"	 \"type\": \"User\" }";
+	}
+
 	@Test
-	public void d_getGroupTest() throws IOException {
-		logger.info("\tD. Get Group...");
+	public void c_GroupTest() throws IOException {
+		logger.info("\tC. Test Modify Group...");
 
 		HttpResponse resp = TestUtils.executeGet(baseUrl,grpUrl);
 
@@ -211,65 +238,94 @@ public class ScimGroupCRUDTest {
 				.contains(user1url);
 
 		assertThat(body)
-				.as("Contains an extension value Tour Operations")
-				.contains("Tour Guides");
-
+				.as("Does not have jsmith url")
+				.doesNotContain(user2url);
 		System.out.println("Entry retrieved:\n"+body);
+
+		ObjectNode reqJson = JsonUtil.getMapper().createObjectNode();
+		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
+		ArrayNode anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
+		String memStr = memberObj(user2url);
+		String opStr = "{\"op\": \"add\", \"path\": \"members\", \"value\": "+memStr+"}";
+		JsonNode memNode = JsonUtil.getJsonTree(opStr);
+
+		anode.add(memNode);
+
+		String req = TestUtils.mapPathToReqUrl(baseUrl,grpUrl);
+        HttpPatch post = new HttpPatch(req);
+
+        String requestBody = reqJson.toPrettyString();
+        logger.info("\t...Patch request\n"+requestBody);
+        StringEntity reqEntity = new StringEntity(requestBody);
+        reqEntity.setChunked(false);
+        post.setEntity(reqEntity);
+
+        logger.info("\t...Patching group to add JSmith");
+        //logger.debug(EntityUtils.toString(reqEntity));
+
+        resp = TestUtils.executeRequest(post);
+        assertThat(resp.getStatusLine().getStatusCode())
+                .as("Has HTTP response status of 200 - ok")
+                .isEqualTo(ScimResponse.ST_OK);
+        String rbody = EntityUtils.toString(resp.getEntity());
+        assertThat(rbody)
+                .as("Has smith ref of "+user2url)
+                .contains(user2url);
+        System.out.println("Response:\n"+rbody);
 	}
 
 	@Test
-	public void e_getUserTest() throws IOException {
-		logger.info("\tE. Check Groups on User...");
+	public void d_CheckPatchUser() throws ScimException, IOException {
+		logger.info("D. Checking Patch User");
 
-		HttpResponse resp = TestUtils.executeGet(baseUrl,user1url);
+		Attribute phone = smgr.findAttribute("User:phoneNumbers",null);
+		Attribute valAttr = phone.getSubAttribute("value");
+		Attribute typAttr = phone.getSubAttribute("type");
+		StringValue val = new StringValue(valAttr,"987-654-3210");
+		StringValue type = new StringValue(typAttr,"test");
+		Map<Attribute,Value> map = new HashMap<>();
+		map.put(valAttr,val);
+		map.put(typAttr,type);
+		ComplexValue phoneVal = new ComplexValue(phone,map);
 
-		assert resp != null;
+		JsonPatchOp patchOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_ADD,"User:phoneNumbers",phoneVal);
+
+		ObjectNode reqJson = JsonUtil.getMapper().createObjectNode();
+		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
+		ArrayNode anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
+		anode.add(patchOp.toJsonNode());
+
+		RequestCtx ctx = new RequestCtx(user2url,null,null,smgr);
+		jpr = new JsonPatchRequest(reqJson,ctx);
+
+		assertThat(jpr.getSize())
+				.as("Check one operation parsed")
+				.isEqualTo(1);
+
+		patchRequestBody = jpr.toJsonNode().toPrettyString();
+		logger.info("\t...JSmith patch request:\n"+patchRequestBody);
+
+		String req = TestUtils.mapPathToReqUrl(baseUrl,user2url);
+
+		HttpPatch patchUser = new HttpPatch(req);
+		StringEntity body = new StringEntity(patchRequestBody);
+		body.setChunked(false);
+		patchUser.setEntity(body);
+
+		HttpResponse resp = TestUtils.executeRequest(patchUser);
 		assertThat(resp.getStatusLine().getStatusCode())
-				.as("GET Group- Check for status response 200 OK")
+				.as("Patch user response status of 200 OK")
 				.isEqualTo(ScimResponse.ST_OK);
 
-		String body = EntityUtils.toString(resp.getEntity());
+		HttpEntity entity = resp.getEntity();
+		assertThat(entity)
+				.isNotNull();
+		String respbody  = EntityUtils.toString(entity);
 
-		assertThat(body)
-				.as("contains dynamic url for Tour Guides")
-				.contains(grpUrl);
-
-		assertThat(body)
-				.as("has displayname TEST Tour Guides")
-				.contains("\"TEST Tour Guides\"");
-
-		assertThat(body)
-				.as("still has original group US Employees")
-				.contains("\"US Employees\"");
-
-		System.out.println("Entry retrieved:\n"+body);
+		logger.info("\t...user patch response:\n"+respbody);
+		assertThat(respbody)
+				.as("JSmith Has the new phone number")
+				.contains("987-654-3210");
 	}
-
-	@Test
-	public void f_getUserFilterTest() throws IOException {
-		logger.info("\tF. Search filter for groups on User...");
-
-
-		HttpResponse resp = TestUtils.executeGet(baseUrl,user2url+"?filter="+ URLEncoder.encode("groups.$ref eq "+grpUrl, StandardCharsets.UTF_8));
-
-		assert resp != null;
-		assertThat(resp.getStatusLine().getStatusCode())
-				.as("GET Group- Check for status response 200 OK")
-				.isEqualTo(ScimResponse.ST_OK);
-
-		String body = EntityUtils.toString(resp.getEntity());
-
-		assertThat(body)
-				.as("contains dynamic url for Tour Guides")
-				.contains(grpUrl);
-
-		assertThat(body)
-				.as("has displayname Tour Guides")
-				.contains("\"Tour Guides\"");
-
-		System.out.println("Entry retrieved:\n"+body);
-	}
-
-
 
 }

@@ -71,6 +71,11 @@ public class PasswordValue extends StringValue implements IVirtualValue {
     }
 
     @Override
+    public void refreshValues() {
+         // don't need to refresh;
+    }
+
+    @Override
     public boolean equals(Object obj) {
         if (obj instanceof PasswordValue) {
             byte[] hash = getToken().getMatchHash();
