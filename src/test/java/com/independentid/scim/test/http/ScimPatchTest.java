@@ -63,6 +63,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 
+/**
+ * This tests only basic functionality of SCIM Patch. {@link com.independentid.scim.test.sub.ScimResourceTest} contains
+ * the full functionality test. This test checks basic Http requirements and function.
+ */
 @QuarkusTest
 @TestProfile(ScimHttpTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
@@ -243,7 +247,9 @@ public class ScimPatchTest {
 		System.out.println("Entry retrieved:\n"+body);
 
 		ObjectNode reqJson = JsonUtil.getMapper().createObjectNode();
-		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
+		ArrayNode snode = reqJson.putArray(ScimParams.ATTR_SCHEMAS);
+		snode.add(ScimParams.SCHEMA_API_PatchOp);
+
 		ArrayNode anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
 		String memStr = memberObj(user2url);
 		String opStr = "{\"op\": \"add\", \"path\": \"members\", \"value\": "+memStr+"}";
@@ -291,12 +297,13 @@ public class ScimPatchTest {
 		JsonPatchOp patchOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_ADD,"User:phoneNumbers",phoneVal);
 
 		ObjectNode reqJson = JsonUtil.getMapper().createObjectNode();
-		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
+		ArrayNode snode = reqJson.putArray(ScimParams.ATTR_SCHEMAS);
+		snode.add(ScimParams.SCHEMA_API_PatchOp);
 		ArrayNode anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
 		anode.add(patchOp.toJsonNode());
 
 		RequestCtx ctx = new RequestCtx(user2url,null,null,smgr);
-		jpr = new JsonPatchRequest(reqJson,ctx);
+		jpr = new JsonPatchRequest(reqJson);  // test the Json Parser constructor
 
 		assertThat(jpr.getSize())
 				.as("Check one operation parsed")
@@ -328,4 +335,84 @@ public class ScimPatchTest {
 				.contains("987-654-3210");
 	}
 
+	@Test
+	public void e_NoTargetTest() throws ScimException, IOException {
+		logger.info("E. Checking No Target Response");
+		JsonPatchOp faultyValueOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REMOVE,"phoneNumbers[type eq blah].value",null);
+		jpr = new JsonPatchRequest();
+		jpr.addOperation(faultyValueOp);
+
+		String req = TestUtils.mapPathToReqUrl(baseUrl,user1url);
+
+		HttpPatch patchUser = new HttpPatch(req);
+		StringEntity body = new StringEntity(jpr.toJsonNode().toPrettyString());
+		body.setChunked(false);
+		patchUser.setEntity(body);
+
+		HttpResponse resp = TestUtils.executeRequest(patchUser);
+		assertThat(resp.getStatusLine().getStatusCode())
+				.as("Patch resposne bad request")
+				.isEqualTo(ScimResponse.ST_BAD_REQUEST);
+
+		HttpEntity entity = resp.getEntity();
+		assertThat(entity)
+				.isNotNull();
+		String respbody  = EntityUtils.toString(entity);
+
+		logger.info("\t...Response to no match:\n"+respbody);
+		assertThat(respbody)
+				.as("confirm noTarget Error")
+				.contains("noTarget");
+	}
+
+	@Test
+	public void f_InvalidValueTest() throws ScimException, IOException {
+		logger.info("F. Checking Invalid Value Response");
+		JsonPatchOp faultyValueOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE,"phoneNumbers[type eq blah].value",null);
+		jpr = new JsonPatchRequest();
+		jpr.addOperation(faultyValueOp);
+
+		String req = TestUtils.mapPathToReqUrl(baseUrl,user1url);
+
+		HttpPatch patchUser = new HttpPatch(req);
+		StringEntity body = new StringEntity(jpr.toJsonNode().toPrettyString());
+		body.setChunked(false);
+		patchUser.setEntity(body);
+
+		HttpResponse resp = TestUtils.executeRequest(patchUser);
+		assertThat(resp.getStatusLine().getStatusCode())
+				.as("Patch resposne bad request")
+				.isEqualTo(ScimResponse.ST_BAD_REQUEST);
+
+		HttpEntity entity = resp.getEntity();
+		assertThat(entity)
+				.isNotNull();
+		String respbody  = EntityUtils.toString(entity);
+
+		logger.info("\t...Response to invalid value request:\n"+respbody);
+		assertThat(respbody)
+				.as("confirm invalid value error")
+				.contains("invalidValue");
+	}
+
+	@Test
+	public void g_MethodNotAllowedTest() throws IOException {
+		logger.info("G. Checking PATCH on Container not allowed");
+		JsonPatchOp dummyOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REMOVE,"phoneNumbers",null);
+		jpr = new JsonPatchRequest();
+		jpr.addOperation(dummyOp);
+
+		String req = TestUtils.mapPathToReqUrl(baseUrl,"/Users");
+
+		HttpPatch patchUser = new HttpPatch(req);
+		StringEntity body = new StringEntity(jpr.toJsonNode().toPrettyString());
+		body.setChunked(false);
+		patchUser.setEntity(body);
+
+		HttpResponse resp = TestUtils.executeRequest(patchUser);
+		assertThat(resp.getStatusLine().getStatusCode())
+				.as("Patch resposne bad request")
+				.isEqualTo(ScimResponse.ST_METHODNOTALLOWED);
+
+	}
 }

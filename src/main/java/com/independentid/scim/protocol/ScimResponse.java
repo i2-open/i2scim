@@ -55,6 +55,7 @@ public class ScimResponse implements ScimSerializer {
 	public static final int ST_TOOLARGE = HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE;
 	public static final int ST_INTERNAL = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 	public static final int ST_NOSUPPORT = HttpServletResponse.SC_NOT_IMPLEMENTED;
+	public static final int ST_METHODNOTALLOWED = HttpServletResponse.SC_METHOD_NOT_ALLOWED;
 	
 	public static final String ERR_TYPE_FILTER     = "invalidFilter";
 	public static final String ERR_TYPE_TOOMANY    = "tooMany";

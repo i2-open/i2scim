@@ -24,6 +24,7 @@ import com.independentid.scim.serializer.JsonUtil;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 /*
  * This class holds a parsed SCIM JSON Modify request as per Sec 3.5.2 of RFC7644
@@ -32,26 +33,35 @@ import java.util.Iterator;
  */
 public class JsonPatchRequest {
 	
-	protected final RequestCtx ctx;
-	
 	protected final ArrayList<JsonPatchOp> ops;
 
 	/**
 	 * @param jsonPatchReq A pointer to  SCIM Json Modify request message to be parsed.
-	 * @param ctx An the associated request context received with the patch request.
 	 * @throws SchemaException Thrown when a missing or required attribute is detected
 	 * @throws InvalidValueException Thrown when a Patch operation is missing a required value
 	 */
-	public JsonPatchRequest(JsonNode jsonPatchReq, RequestCtx ctx) throws SchemaException, InvalidValueException {
-		this.ctx = ctx;
+	public JsonPatchRequest(JsonNode jsonPatchReq) throws SchemaException, InvalidValueException {
 		this.ops = new ArrayList<>();
 		parseJson(jsonPatchReq);
 	}
-	
+
+	public JsonPatchRequest() {
+		this.ops = new ArrayList<>();
+	}
+
+	public JsonPatchRequest(List<JsonPatchOp> ops) {
+		this.ops = new ArrayList<>();
+		this.ops.addAll(ops);
+	}
+
+	public void addOperation(JsonPatchOp op) {
+		this.ops.add(op);
+	}
+
 	public void parseJson(JsonNode node) throws SchemaException, InvalidValueException {
 		JsonNode snode = node.get(ScimParams.ATTR_SCHEMAS);
 		if (snode == null) throw new SchemaException("JSON is missing 'schemas' attribute.");
-		
+
 		boolean invalidSchema = true;
 		if (snode.isArray()) {
 			Iterator<JsonNode> jiter = snode.elements();
@@ -60,12 +70,10 @@ public class JsonPatchRequest {
 				if (anode.asText().equalsIgnoreCase(ScimParams.SCHEMA_API_PatchOp))
 					invalidSchema = false;
 			}
-		} else
-			if (snode.asText().equalsIgnoreCase(ScimParams.SCHEMA_API_PatchOp))
-				invalidSchema = false;
-		
+		}
+
 		if (invalidSchema)
-			throw new SchemaException("Expecting JSON with schemas attribute with value of: "+ScimParams.SCHEMA_API_PatchOp);
+			throw new SchemaException("Expecting JSON with schemas attribute to be an array with value of: "+ScimParams.SCHEMA_API_PatchOp);
 		
 		JsonNode opsnode = node.get(ScimParams.ATTR_PATCH_OPS);
 		if (opsnode == null)

@@ -515,7 +515,9 @@ public class ScimResourceTest {
 
 		// build a json patch request from json
 		ObjectNode reqJson = JsonUtil.getMapper().createObjectNode();
-		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
+		ArrayNode snode = reqJson.putArray(ScimParams.ATTR_SCHEMAS);
+		snode.add(ScimParams.SCHEMA_API_PatchOp);
+
 		ArrayNode anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
 		anode.add(addTitleOp.toJsonNode());
 		anode.add(patchOp2.toJsonNode());
@@ -524,7 +526,7 @@ public class ScimResourceTest {
 
 		logger.info("\t\t raw request:\n"+reqJson.toPrettyString());
 		RequestCtx ctx = new RequestCtx(user1.getMeta().getLocation(),null,null,smgr);
-		JsonPatchRequest jpr = new JsonPatchRequest(reqJson,ctx);
+		JsonPatchRequest jpr = new JsonPatchRequest(reqJson);
 
 		assertThat(jpr.getSize())
 				.as("Check three operations parsed")
@@ -571,14 +573,13 @@ public class ScimResourceTest {
 				.isEqualTo("1234567890");
 
 		logger.info("\t... Performing patch replace test");
-		reqJson = JsonUtil.getMapper().createObjectNode();
-		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
-		anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
+
+		jpr = new JsonPatchRequest();
 
 		titleVal = new StringValue(titleAttr,"REP TITLE");
 		JsonPatchOp replaceTitleOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE,"User:title",titleVal);
 
-		anode.add(replaceTitleOp.toJsonNode());
+		jpr.addOperation(replaceTitleOp);
 
 		map = new HashMap<>();
 		map.put(valAttr,val);
@@ -586,13 +587,12 @@ public class ScimResourceTest {
 		map.put(typAttr,type);
 		phoneVal = new ComplexValue(phoneAttr,map);
 		JsonPatchOp replacePhoneOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE,"phoneNumbers[type eq test]",phoneVal);
-		anode.add(replacePhoneOp.toJsonNode());
+		jpr.addOperation(replacePhoneOp);
 
 		val = new StringValue(valAttr,"111-1111");
 		JsonPatchOp replacePhoneMobileOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE,"phoneNumbers[type eq mobile].value",val);
-		anode.add(replacePhoneMobileOp.toJsonNode());
+		jpr.addOperation(replacePhoneMobileOp);
 
-		jpr = new JsonPatchRequest(reqJson,ctx);
 		assertThat(jpr.getSize()).isEqualTo(3);
 		user1.modifyResource(jpr,ctx);
 
@@ -630,20 +630,19 @@ public class ScimResourceTest {
 
 		logger.info("\t... Performing patch delete tests");
 
-		reqJson = JsonUtil.getMapper().createObjectNode();
-		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
-		anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
+
+		List<JsonPatchOp> ops = new ArrayList<>();
 
 		JsonPatchOp deleteTitleOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REMOVE,"User:title",null);
-		anode.add(deleteTitleOp.toJsonNode());
+		ops.add(deleteTitleOp);
 
 		JsonPatchOp deletePhoneValOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REMOVE,"phoneNumbers[type eq mobile]",null);
-		anode.add(deletePhoneValOp.toJsonNode());
+		ops.add(deletePhoneValOp);
 
 		JsonPatchOp deleteSubAttrOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REMOVE,"name.honorificSuffix",null);
-		anode.add(deleteSubAttrOp.toJsonNode());
+		ops.add(deleteSubAttrOp);
 
-		jpr = new JsonPatchRequest(reqJson,ctx);
+		jpr = new JsonPatchRequest(ops);
 		assertThat(jpr.getSize()).isEqualTo(3);
 		user1.modifyResource(jpr,ctx);
 
@@ -687,18 +686,13 @@ public class ScimResourceTest {
 				.as("Other phone number is still present")
 				.isEqualTo("987-654-3210");
 
-		//TODO: Negative tests to ensure value not matched is returned correctly
-
 		logger.info("... Testing faulty ops");
-		reqJson = JsonUtil.getMapper().createObjectNode();
-		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
-		anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
-
+		ops.clear();
 
 		JsonPatchOp faultyFilterOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REMOVE,"phoneNumbers[type eq blah].value",null);
-		anode.add(faultyFilterOp.toJsonNode());
+		ops.add(faultyFilterOp);
 
-		jpr = new JsonPatchRequest(reqJson,ctx);
+		jpr = new JsonPatchRequest(ops);
 		boolean hadCorrectError = false;
 		try {
 			user1.modifyResource(jpr,ctx);
@@ -714,16 +708,17 @@ public class ScimResourceTest {
 
 		// Generate InvalidValueException
 		reqJson = JsonUtil.getMapper().createObjectNode();
-		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
-		anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
+		snode = reqJson.putArray(ScimParams.ATTR_SCHEMAS);
+		snode.add(ScimParams.SCHEMA_API_PatchOp);
 
+		anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
 
 		faultyFilterOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE,"phoneNumbers[type eq blah].value",null);
 		anode.add(faultyFilterOp.toJsonNode());
 
 		hadCorrectError = false;
 		try {
-			new JsonPatchRequest(reqJson, ctx);
+			new JsonPatchRequest(reqJson);
 		} catch (InvalidValueException e) {
 			hadCorrectError = true;
 		}
@@ -732,14 +727,13 @@ public class ScimResourceTest {
 				.isTrue();
 
 		// Generate NoTarget exception
-		reqJson = JsonUtil.getMapper().createObjectNode();
-		reqJson.put(ScimParams.ATTR_SCHEMAS,ScimParams.SCHEMA_API_PatchOp);
-		anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
+
 		Attribute phoneValueAttr = smgr.findAttribute("phoneNumbers.value",null);
 		Value testVal = new StringValue(phoneValueAttr, "633-1234");
 		faultyFilterOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE,"phoneNumbers[type eq blah].value",testVal);
-		anode.add(faultyFilterOp.toJsonNode());
-		jpr = new JsonPatchRequest(reqJson, ctx);
+
+		jpr = new JsonPatchRequest();
+		jpr.addOperation(faultyFilterOp);
 
 		hadCorrectError = false;
 		try {

@@ -17,10 +17,7 @@ package com.independentid.scim.op;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.core.err.InternalException;
-import com.independentid.scim.core.err.InvalidSyntaxException;
-import com.independentid.scim.core.err.NotFoundException;
-import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.core.err.*;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.ResourceType;
@@ -67,6 +64,12 @@ public class PutOp extends Operation implements IBulkOp {
     }
 
     protected void parseJson(JsonNode node) {
+        if (this.ctx.getPathId() == null) {
+            ScimException se = new MethodNotAllowedException("HTTP PUT not permitted against resource container.");
+            setCompletionError(se);
+            return;
+        }
+
         if (node.isArray()) {
             setCompletionError(new InvalidSyntaxException(
                     "Detected array, expecting JSON object for SCIM Put request."));
