@@ -67,9 +67,6 @@ public class ConfigMgr {
 
 	//public static final String SCIM_SERVER_HOST = "scim.server.host";
 
-	public final static List<String> SCIM_CORE_ATTRS = Arrays.asList(
-			"id","externalid","schemas","meta");
-
 	private final static Logger logger = LoggerFactory.getLogger(ConfigMgr.class);
 
 	public static final String SCIM_PERSIST_SCHEMA = "scim.persist.schema";
@@ -276,7 +273,7 @@ public class ConfigMgr {
 		Date now = Date.from(Instant.now());
 		FileOutputStream writer = new FileOutputStream(cfile);
 		tprop.store(writer,
-				"# Properties captured "+now.toString());
+				"# Properties captured "+now);
 		writer.close();
 
 		File dir = new File(logDir);

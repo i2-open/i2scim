@@ -22,6 +22,8 @@ import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * This class holds internal schemas not defined externally. They are used to co-ordinate synchronization of schema
@@ -33,6 +35,9 @@ public class SystemSchemas {
 
     @Inject
     SchemaManager smgr;
+
+    public final static List<String> SCIM_COMMON_ATTRS = Arrays.asList(
+            "id","externalid","schemas","meta");
 
     public final static String SYNC_ID = "id";
     public final static String SYNC_OPCNT = "opNum";

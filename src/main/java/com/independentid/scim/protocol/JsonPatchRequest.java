@@ -18,12 +18,13 @@ package com.independentid.scim.protocol;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
 
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 
 /*
  * This class holds a parsed SCIM JSON Modify request as per Sec 3.5.2 of RFC7644
@@ -31,30 +32,36 @@ import java.util.Iterator;
  *
  */
 public class JsonPatchRequest {
-
-	protected final ConfigMgr cfg;
-	
-	protected final RequestCtx ctx;
 	
 	protected final ArrayList<JsonPatchOp> ops;
 
 	/**
-	 * @param cfg The current context Configuration context.
-	 * @param resourceNode A pointer to  SCIM Json Modify request message to be parsed.
-	 * @param ctx An the associated request context received with the patch request.
+	 * @param jsonPatchReq A pointer to  SCIM Json Modify request message to be parsed.
 	 * @throws SchemaException Thrown when a missing or required attribute is detected
+	 * @throws InvalidValueException Thrown when a Patch operation is missing a required value
 	 */
-	public JsonPatchRequest(ConfigMgr cfg, JsonNode resourceNode, RequestCtx ctx) throws SchemaException {
-		this.cfg = cfg;
-		this.ctx = ctx;
+	public JsonPatchRequest(JsonNode jsonPatchReq) throws SchemaException, InvalidValueException {
 		this.ops = new ArrayList<>();
-		parseJson(resourceNode);
+		parseJson(jsonPatchReq);
 	}
-	
-	public void parseJson(JsonNode node) throws SchemaException {
+
+	public JsonPatchRequest() {
+		this.ops = new ArrayList<>();
+	}
+
+	public JsonPatchRequest(List<JsonPatchOp> ops) {
+		this.ops = new ArrayList<>();
+		this.ops.addAll(ops);
+	}
+
+	public void addOperation(JsonPatchOp op) {
+		this.ops.add(op);
+	}
+
+	public void parseJson(JsonNode node) throws SchemaException, InvalidValueException {
 		JsonNode snode = node.get(ScimParams.ATTR_SCHEMAS);
 		if (snode == null) throw new SchemaException("JSON is missing 'schemas' attribute.");
-		
+
 		boolean invalidSchema = true;
 		if (snode.isArray()) {
 			Iterator<JsonNode> jiter = snode.elements();
@@ -63,12 +70,10 @@ public class JsonPatchRequest {
 				if (anode.asText().equalsIgnoreCase(ScimParams.SCHEMA_API_PatchOp))
 					invalidSchema = false;
 			}
-		} else
-			if (snode.asText().equalsIgnoreCase(ScimParams.SCHEMA_API_PatchOp))
-				invalidSchema = false;
-		
+		}
+
 		if (invalidSchema)
-			throw new SchemaException("Expecting JSON with schemas attribute with value of: "+ScimParams.SCHEMA_API_PatchOp);
+			throw new SchemaException("Expecting JSON with schemas attribute to be an array with value of: "+ScimParams.SCHEMA_API_PatchOp);
 		
 		JsonNode opsnode = node.get(ScimParams.ATTR_PATCH_OPS);
 		if (opsnode == null)
@@ -81,7 +86,7 @@ public class JsonPatchRequest {
 		Iterator<JsonNode> oiter = opsnode.elements();
 		while (oiter.hasNext()) {
 			JsonNode oper = oiter.next();
-			JsonPatchOp op = new JsonPatchOp(this.ctx,oper);
+			JsonPatchOp op = new JsonPatchOp(oper);
 			this.ops.add(op);
 		}	
 		}

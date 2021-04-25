@@ -33,10 +33,7 @@ import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.text.ParseException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Vector;
+import java.util.*;
 
 public class MultiValue extends Value {
 
@@ -171,7 +168,18 @@ public class MultiValue extends Value {
 	}
 
 	public void removeValue(Value val) {
-		this.values.remove(val);
+		int hash = val.hashCode();
+		Iterator<Value> iter = this.values.iterator();
+		while (iter.hasNext()) {
+			Value ival = iter.next();
+			int ihash = ival.hashCode();
+			if (hash == ihash) {
+				iter.remove();
+				break;
+			}
+		}
+		// For some reason, HashSet.remove wasn't working.
+		//this.values.remove(val);
 	}
 
 	public Value getMatchValue(Filter filter) throws BadFilterException {

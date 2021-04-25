@@ -152,7 +152,7 @@ public class MemoryProvider implements IScimProvider {
 
 		File directory = new File(storeDir);
 		if (!directory.exists()) {
-			logger.info("Creating memory store directory: "+directory.toString());
+			logger.info("Creating memory store directory: "+directory);
 			directory.mkdir();
 		}
 
@@ -244,6 +244,10 @@ public class MemoryProvider implements IScimProvider {
 		return index.checkUniqueAttr(val);
 	}
 
+	/**
+	 * @param res Resource to check
+	 * @return true if a conflict exists
+	 */
 	private boolean checkUniqueConflict(ScimResource res) {
 		IndexResourceType index = containerIndexes.get(res.getContainer());
 		return index.checkUniques(res);
@@ -360,6 +364,7 @@ public class MemoryProvider implements IScimProvider {
 	 * @param res The ScimResource to be stored in memory
 	 */
 	private void storeResource(ScimResource res) {
+		res.refreshVirtualAttrs();
 		this.mainMap.put(res.getId(),res);
 		indexResource(res);
 		Map<String, ScimResource> cmap = this.containerMaps.computeIfAbsent(res.getContainer(), k -> new ConcurrentHashMap<>());
@@ -387,10 +392,8 @@ public class MemoryProvider implements IScimProvider {
 
 				for (ScimResource res : this.mainMap.values()) {
 					if (results.size() < maxResults) {
-						try {
-							results.add(res.copy(null)); // return raw copy to trigger virtual values
-						} catch (ParseException ignore) {
-						}
+						res.refreshVirtualAttrs();
+						results.add(res); // return raw copy to trigger virtual values
 					}
 				}
 			} else {
@@ -449,12 +452,10 @@ public class MemoryProvider implements IScimProvider {
 		
 		ScimResource res = this.mainMap.get(id);
 		if (res == null) return null;
-		try {
-			res  = res.copy(null); // use raw copy to trigger virtual values for filter match and to protect stored value from plug mods
-			if (Filter.checkMatch(res,ctx))
-				return res;
-		} catch (ParseException ignore) {
-		}
+
+		res.refreshVirtualAttrs();
+		if (Filter.checkMatch(res,ctx))
+			return res;
 		return null;
 
 	}
@@ -474,23 +475,14 @@ public class MemoryProvider implements IScimProvider {
 
 		ScimResource temp ;
 		try {
-			temp = origRes.copy(ctx);
+			temp = origRes.copy(null);
 		} catch (ParseException e) {
 			logger.error("Unexpected error creating temporary copy of "+ctx.getPath()+", "+e.getMessage());
 			return new ScimResponse(new InternalException("Unexpected parsing error: "+e.getMessage(),e));
 		}
 		temp.replaceResAttributes(replaceResource, ctx);
-		deIndexResource(origRes);
 
-		if (checkUniqueConflict(temp)) {
-			// As the transaction failed, restore the index on the original resource
-			indexResource(origRes);
-			return new ScimResponse(ScimResponse.ST_BAD_REQUEST, null, ScimResponse.ERR_TYPE_UNIQUENESS);
-		}
-
-		storeResource(temp);
-		isModified = true;  // set memory as modified compared to disk
-		return completeResponse(temp,ctx);
+		return processModifyScimResponse(ctx, origRes, temp);
 
 	}
 
@@ -505,42 +497,60 @@ public class MemoryProvider implements IScimProvider {
 			return new ScimResponse(ScimResponse.ST_NOTFOUND, null, null);
 		ScimResource temp;
 		try {
-			temp = origRes.copy(ctx);
+			temp = origRes.copy(null);
 		} catch (ParseException e) {
 			logger.error("Unexpected error creating temporary copy of "+ctx.getPath()+", "+e.getMessage());
 			return new ScimResponse(new InternalException("Unexpected parsing error: "+e.getMessage(),e));
 		}
 
 		temp.modifyResource(req, ctx);
-		deIndexResource(origRes);
 
-		if (checkUniqueConflict(temp)) {
+		return processModifyScimResponse(ctx, origRes, temp);
+	}
+
+	private ScimResponse processModifyScimResponse(RequestCtx ctx, ScimResource origRes, ScimResource modRes) {
+		deIndexResource(origRes);  // first remove old version.
+		if (checkUniqueConflict(modRes)) {
 			// As the transaction failed, restore the index on the original resource
 			indexResource(origRes);
 			return new ScimResponse(ScimResponse.ST_BAD_REQUEST, null, ScimResponse.ERR_TYPE_UNIQUENESS);
 		}
-		storeResource(temp);
-		isModified = true;  // set memory as modified compared to disk
-		return completeResponse(temp, ctx);
 
+		try {
+			updateMeta(modRes,ctx);
+		} catch (DuplicateTxnException | BackendException e) {
+			DuplicateTxnException de;
+			if (e instanceof BackendException)
+				de = new DuplicateTxnException( e.getMessage());
+			else
+				de = (DuplicateTxnException) e;
+			indexResource(origRes);
+			return new ScimResponse(de);
+		}
+		storeResource(modRes);
+		isModified = true;  // set memory as modified compared to disk
+		return completeResponse(modRes, ctx);
 	}
 
-	@SuppressWarnings("DuplicatedCode")
-	private ScimResponse completeResponse(ScimResource res, RequestCtx ctx) throws ScimException {
+	private void updateMeta(ScimResource res, RequestCtx ctx) throws DuplicateTxnException, BackendException {
 		String path = ctx.getResourceContainer();
 		Meta meta = res.getMeta();
 		Date modDate = new Date();
 		meta.setLastModifiedDate(modDate);
 
 		if (!path.equals(SystemSchemas.TRANS_CONTAINER))
-			try {
-				meta.addRevision(ctx, this, modDate);
-			} catch (BackendException  e) {
-				return handleUnexpectedException(e);
-			}
+			meta.addRevision(ctx, this, modDate);
 
-		String etag = res.calcVersionHash();
+		String etag = null;
+		try {
+			etag = res.calcVersionHash();
+		} catch (ScimException ignored) {
+		}
 		meta.setVersion(etag);
+	}
+
+	@SuppressWarnings("DuplicatedCode")
+	private ScimResponse completeResponse(ScimResource res, RequestCtx ctx) {
 
 		// Nothing needs to be done as the original object modified directly.
 
@@ -594,7 +604,7 @@ public class MemoryProvider implements IScimProvider {
 			String[] parts = dataFile.getName().split("\\.");
 			String newName = parts[0]+"_"+formatter.format(new Date()) + ".json";
 			File rollName = new File(storeDir,newName);
-			logger.info("\tRolling database file to: "+rollName.toString());
+			logger.info("\tRolling database file to: "+rollName);
 			dataFile.renameTo(rollName);
 
 			File directory = new File(storeDir);
@@ -669,7 +679,7 @@ public class MemoryProvider implements IScimProvider {
 	public Collection<Schema> loadSchemas()  {
 		File schemaFile = new File(storeDir,SCHEMA_JSON);
 		if (!schemaFile.exists()) {
-			logger.warn("Scheam file not found: "+schemaFile.toString());
+			logger.warn("Scheam file not found: "+schemaFile);
 			return null;
 		}
 
@@ -679,7 +689,7 @@ public class MemoryProvider implements IScimProvider {
 		try {
 			node = JsonUtil.getJsonTree(schemaFile);
 		} catch (IOException e) {
-			logger.error("Unexpected error parsing: "+schemaFile.toString()+", error: "+e.getMessage());
+			logger.error("Unexpected error parsing: "+schemaFile+", error: "+e.getMessage());
 			return null;
 		}
 		if (node.isObject())
@@ -709,7 +719,7 @@ public class MemoryProvider implements IScimProvider {
 	public Collection<ResourceType> loadResourceTypes() {
 		File typeFile = new File(storeDir,RESOURCE_TYPES_JSON);
 		if (!typeFile.exists()) {
-			logger.warn("Scheam file not found: "+typeFile.toString());
+			logger.warn("Scheam file not found: "+typeFile);
 			return null;
 		}
 
@@ -719,7 +729,7 @@ public class MemoryProvider implements IScimProvider {
 		try {
 			node = JsonUtil.getJsonTree(typeFile);
 		} catch (IOException e) {
-			logger.error("Unexpected error parsing: "+typeFile.toString()+", error: "+e.getMessage());
+			logger.error("Unexpected error parsing: "+typeFile+", error: "+e.getMessage());
 			return null;
 		}
 		if (node.isObject())
@@ -773,7 +783,7 @@ public class MemoryProvider implements IScimProvider {
 			writer.close();
 
 		} catch (IOException e) {
-			logger.error("Error writing schema to disk at: "+schemaFile.toString()+" error: "+e.getMessage());
+			logger.error("Error writing schema to disk at: "+schemaFile+" error: "+e.getMessage());
 			success = false;
 		}
 
@@ -791,7 +801,7 @@ public class MemoryProvider implements IScimProvider {
 			writer.close();
 
 		} catch (IOException e) {
-			logger.error("Error writing resourceType to disk at: "+resFile.toString()+" error: "+e.getMessage());
+			logger.error("Error writing resourceType to disk at: "+resFile+" error: "+e.getMessage());
 			success = false;
 		}
 

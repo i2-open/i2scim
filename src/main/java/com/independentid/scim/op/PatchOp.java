@@ -17,9 +17,7 @@ package com.independentid.scim.op;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.core.err.InternalException;
-import com.independentid.scim.core.err.InvalidSyntaxException;
-import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.core.err.*;
 import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.SchemaException;
@@ -83,13 +81,18 @@ public class PatchOp extends Operation implements IBulkOp {
     }
 
     protected void parseJson(JsonNode node) {
+        if (this.ctx.getPathId() == null) {
+            ScimException se = new MethodNotAllowedException("HTTP PATCH not permitted against resource container.");
+            setCompletionError(se);
+            return;
+        }
         try {
             if (node.isArray()) {
                 setCompletionError(new InvalidSyntaxException(
                         "Detected array, expecting JSON object for SCIM PATCH request."));
                 return;
             }
-            this.preq = new JsonPatchRequest(configMgr, node, ctx);
+            this.preq = new JsonPatchRequest(node);
 
         } catch (SchemaException e) {
             ScimException se;
@@ -97,6 +100,11 @@ public class PatchOp extends Operation implements IBulkOp {
             if (logger.isDebugEnabled())
                 logger.debug("Error parsing PATCH request: " + se.getMessage(), e);
             setCompletionError(se);
+        } catch (InvalidValueException e) {
+
+            if (logger.isDebugEnabled())
+                logger.debug("Invalid PATCH request: " + e.getMessage(), e);
+            setCompletionError(e);
         }
     }
 
@@ -111,7 +119,8 @@ public class PatchOp extends Operation implements IBulkOp {
 
         } catch (ScimException e) {
             // Catch the scim error and serialize it
-            logger.info("SCIM error while processing SCIM PATCH for: ["
+            if (logger.isDebugEnabled())
+                logger.debug("SCIM error while processing SCIM PATCH for: ["
                     + this.ctx.getPath() + "] " + e.getMessage(), e);
             setCompletionError(e);
 

@@ -92,6 +92,11 @@ public class GroupsValue extends MultiValue implements IVirtualValue {
         dispNameAttr = smgr.findAttribute("Group:displayName",null);
     }
 
+    public void refreshValues() {
+        loaded = false;
+        loadValues();
+    }
+
     /**
      * Load values is intended to be called once per the life-cycle of the Value. In order to minimize calculation,
      * dynamic calculation is only calculated once the first accessor is called.

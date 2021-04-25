@@ -93,7 +93,7 @@ public class ScimGroupCRUDTest {
 	 * This test checks that a JSON user can be parsed into a SCIM Resource
 	 */
 	@Test
-	public void b_ScimAddUserTest() {
+	public void b_PrepareUsers() {
 		
 		logger.info("\tB1. Add two users...");
 

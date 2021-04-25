@@ -18,4 +18,6 @@ package com.independentid.scim.schema;
 public interface IVirtualValue {
 
     boolean isVirtual();
+
+    void refreshValues();
 }
