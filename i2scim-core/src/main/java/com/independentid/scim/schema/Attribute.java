@@ -428,7 +428,7 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 			this.name = item.asText();
 		else
 			throw new SchemaException("Attribute has no name\n"
-					+ node.toString());
+					+ node);
 
 		item = node.get("type");
 		if (item == null)

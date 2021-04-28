@@ -96,7 +96,7 @@ public class BulkResponse extends ScimResponse {
 		// Write all the operations out.
 		for (Operation op : this.ops) {
 			if (!op.isDone())
-				throw new IOException("Not all operations are done: " + op.toString());
+				throw new IOException("Not all operations are done: " + op);
 			//TODO is this the correct response
 			op.doResponse(gen);
 		}

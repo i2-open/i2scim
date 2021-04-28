@@ -243,7 +243,7 @@ public class Schema implements ScimSerializer  {
 	public void parseJson(JsonNode node) throws SchemaException {
 		JsonNode n_id = node.get("id");
 		if (n_id == null)
-			throw new SchemaException("Invalid Schema element: missing id\n"+node.toString());
+			throw new SchemaException("Invalid Schema element: missing id\n"+ node);
 		
 		this.id = n_id.asText();
 		

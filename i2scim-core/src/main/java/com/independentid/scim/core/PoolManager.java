@@ -113,12 +113,7 @@ public class PoolManager {
 		This is to solve a classloader issue around microprofiles. smallrye JWT won't load properly
 		See: https://github.com/quarkusio/quarkus/issues/9397#issuecomment-630037633
 		 */
-		operationPool = new ForkJoinPool(threads, new ForkJoinPool.ForkJoinWorkerThreadFactory() {
-			@Override
-			public ForkJoinWorkerThread newThread(ForkJoinPool pool) {
-				return new ForkJoinWorkerThread(pool) {};
-			}
-		}, null, false);
+		operationPool = new ForkJoinPool(threads, pool -> new ForkJoinWorkerThread(pool) {}, null, false);
 
 		eventPool = new ForkJoinPool(5);
 	

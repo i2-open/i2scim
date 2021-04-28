@@ -152,14 +152,14 @@ public class MemoryIndexTest {
         StringValue uval = (StringValue) user1.getValue(username);
         ValResMap vrm = map.get(uval);
         assertThat(vrm)
-                .as("Value resource map exists for "+uval.value)
+                .as("Value resource map exists for "+uval.getRawValue())
                 .isNotNull();
         assertThat(vrm.containsId(user1.getId()))
                 .as("Index has user 1 id of "+user1.getId())
                 .isTrue();
         Value u2val = user2.getValue(username);
         assertThat(vrm.containsId(user2.getId()))
-                .as("Index of "+uval.value+ " does not contain user2 id")
+                .as("Index of "+uval.getRawValue()+ " does not contain user2 id")
                 .isFalse();
         ValResMap vrm2 = map.get(u2val);
         assertThat(vrm)
@@ -169,7 +169,7 @@ public class MemoryIndexTest {
         Map<String, ValResMap> smap = userIndex.getSubstrIndex(username);
         ValResMap svrm1 = smap.get(uval.reverseValue());
         assertThat(svrm1)
-                .as("Substring val resource map exists for "+uval.value)
+                .as("Substring val resource map exists for "+uval.getRawValue())
                 .isNotNull();
         assertThat(svrm1.containsId(user1.getId()))
                 .as("Substring index has user 1 id of "+user1.getId())
@@ -180,7 +180,7 @@ public class MemoryIndexTest {
                 .as("No conflict exists for username 'testUser'")
                 .isFalse();
         assertThat(userIndex.checkUniqueAttr(uval))
-                .as(uval.toString()+" should be conflicted")
+                .as(uval +" should be conflicted")
                 .isTrue();
     }
 
@@ -204,11 +204,11 @@ public class MemoryIndexTest {
         Map<String, ValResMap> smap = userIndex.getSubstrIndex(username);
         ValResMap svrm1 = smap.get(uval.reverseValue());
         assertThat(svrm1)
-                .as("Substring val resource map exists for "+uval.value)
+                .as("Substring val resource map exists for "+uval.getRawValue())
                 .isNull();
 
         assertThat(userIndex.checkUniqueAttr(uval))
-                .as(uval.toString()+" should not be conflicted post de-index")
+                .as(uval.getRawValue() +" should not be conflicted post de-index")
                 .isFalse();
     }
 

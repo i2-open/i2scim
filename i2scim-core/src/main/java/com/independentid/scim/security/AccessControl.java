@@ -231,7 +231,7 @@ public class AccessControl implements ScimSerializer {
         }
 
         if (this.targetAttrs == null && this.targetFilter == null)
-            throw new SchemaException("Invalid aci: no target specified: \n"+node.toString());
+            throw new SchemaException("Invalid aci: no target specified: \n"+ node);
 
         item = node.get(FIELD_RIGHTS);
         if (item == null)

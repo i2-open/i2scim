@@ -53,7 +53,7 @@ public class ListResponse extends ScimResponse {
 	/**
 	 * Constructor used to create an empty SCIM List Response.
 	 * @param ctx A <RequestCtx> object containing the original request information.
-	 * @param maxResults
+	 * @param maxResults The maximum results that can be returned to the client
 	 *
 	 */
 	public ListResponse(RequestCtx ctx, int maxResults) {

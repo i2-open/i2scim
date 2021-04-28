@@ -184,7 +184,7 @@ public class MongoMapUtil {
         if (val instanceof BooleanValue)
             return mapValue((BooleanValue) val);
 
-        logger.warn("\n\n\n***** Mapping object to mongo using default type: " + val.getClass().toString() + " = " + val.toString());
+        logger.warn("\n\n\n***** Mapping object to mongo using default type: " + val.getClass().toString() + " = " + val);
         return val.getRawValue();
     }
 

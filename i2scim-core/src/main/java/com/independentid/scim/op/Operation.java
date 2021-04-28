@@ -488,7 +488,7 @@ public class Operation extends RecursiveAction {
         this.stats.completeOp(isError());
         if (logger.isDebugEnabled()) {
             logger.debug(this.toString());
-            logger.debug("Op Stats: " + this.stats.toString());
+            logger.debug("Op Stats: " + this.stats);
         }
 
         EventManager.getInstance().publishEvent(this);
@@ -501,7 +501,7 @@ public class Operation extends RecursiveAction {
             String tranId = ctx.getTranId();
             String subj = "";
             if (identity != null)
-                subj = " "+identity.toString();
+                subj = " "+ identity;
             String path = ctx.getPath();
             if(newResource != null) {
                 //This is used to indicate URL for created resource

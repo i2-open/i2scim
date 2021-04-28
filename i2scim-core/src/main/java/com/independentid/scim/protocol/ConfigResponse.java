@@ -52,7 +52,7 @@ public class ConfigResponse extends ListResponse {
      * Builds a SCIM response based on the internal SCIM operational configuration (rather than pulled from backend)
      * @param ctx   The {@link RequestCtx} object containing the GET request (either by URL or by POST .search)
      * @param configMgr The system {@link ConfigMgr} object containing the operational configuration and schema
-     * @param maxResults
+     * @param maxResults The maximum number of results that may be returned.
      */
     public ConfigResponse(RequestCtx ctx, ConfigMgr configMgr, int maxResults) {
         super(ctx, maxResults);

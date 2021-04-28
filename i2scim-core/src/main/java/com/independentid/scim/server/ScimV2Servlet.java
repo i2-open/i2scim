@@ -264,7 +264,7 @@ public class ScimV2Servlet extends HttpServlet {
 	private void checkDone(Operation op) {
 		if (!op.isDone()) {
 			logger.error("Unexpected Job returned without execution: "
-					+ op.toString());
+					+ op);
 		}
 	}
 

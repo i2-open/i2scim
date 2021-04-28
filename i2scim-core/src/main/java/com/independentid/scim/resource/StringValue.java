@@ -92,7 +92,7 @@ public class StringValue extends Value implements IBulkIdTarget {
 		if (node == null)
 			throw new SchemaException("Was expecting a String value but encountered null");
 		if (!this.jtype.equals(JsonNodeType.STRING))
-			throw new SchemaException("Invalid field data endpoint. Expecting 'string'."+node.toString());
+			throw new SchemaException("Invalid field data endpoint. Expecting 'string'."+ node);
 		this.value = node.asText().toCharArray();
 	}
 	

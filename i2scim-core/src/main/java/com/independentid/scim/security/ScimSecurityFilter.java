@@ -135,7 +135,7 @@ public class ScimSecurityFilter implements Filter {
 
             if (response instanceof HttpServletResponse) {
                 if (logger.isDebugEnabled())
-                    logger.debug("No acis/roles matched for user: " + identity.getPrincipal().getName() + ", Scopes Provided: " + roles.toString());
+                    logger.debug("No acis/roles matched for user: " + identity.getPrincipal().getName() + ", Scopes Provided: " + roles);
                 //No further chain processing
                 HttpServletResponse resp = (HttpServletResponse) response;
                 if (identity.isAnonymous())
