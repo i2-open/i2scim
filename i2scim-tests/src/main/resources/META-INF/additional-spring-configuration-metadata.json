@@ -1,0 +1,62 @@
+{"properties": [
+  {
+    "name": "scim.mongodb.uri",
+    "type": "java.lang.String",
+    "description": "MongoDB Connection URI string"
+  },
+  {
+    "name": "scim.mongodb.dbname",
+    "type": "java.lang.String",
+    "description": "The MongoDB database name for SCIM date. DEFAULT SCIM"
+  },
+  {
+    "name": "scim.schema.path",
+    "type": "java.lang.String",
+    "description": "Core SCIM shema to boot server (Default loads from classpth)"
+  },
+  {
+    "name": "scim.resourcetype.path",
+    "type": "java.lang.String",
+    "description": "ResourceTypes JSON configuration (Default loads from classpath)"
+  },
+  {
+    "name": "scim.json.pretty",
+    "type": "java.lang.Boolean",
+    "description": "When TRUE, all JSON output rendered in easy-reading format (Default false)"
+  },
+  {
+    "name": "scim.query.max.resultsize",
+    "type": "java.lang.Integer",
+    "description": "The maximum number of results that may be performed in a search (Default 1000)"
+  },
+  {
+    "name": "scim.thread.count",
+    "type": "java.lang.Integer",
+    "description": "The number of pooled worker threads (Default 5)."
+  },
+  {
+    "name": "scim.query.max.errors",
+    "type": "java.lang.Integer",
+    "description": "The maximum number of errors that may occur in a single bulk request (Default 5)"
+  },
+  {
+    "name": "scim.bulk.max.ops",
+    "type": "java.lang.Integer",
+    "description": "The maximum number of operations in a single bulk request (Default 1000)"
+  },
+  {
+    "name": "scim.persist.schema",
+    "type": "java.lang.Boolean",
+    "description": "When true, default schema and resourceType definitions will be added to database (DEFAULT TRUE)"
+  },
+  {
+    "name": "scim.provider.bean",
+    "type": "java.lang.String",
+    "description": "SCIM Data Persistance Provider (Default MongoProvider)"
+  },
+  {
+    "name": "scim.security.root.enable",
+    "type": "java.lang.String",
+    "description": "A description for 'scim.security.root.enable'"
+  }
+]}

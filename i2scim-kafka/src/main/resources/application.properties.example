@@ -1,0 +1,6299 @@
+
+#
+# The name of the application.
+# If not set, defaults to the name of the project (except for tests where it is not set at all).
+#
+#quarkus.application.name=
+
+#
+# The version of the application.
+# If not set, defaults to the version of the project (except for tests where it is not set at all).
+#
+#quarkus.application.version=
+
+#
+# If set to true '@Inject' is automatically added to all non-static fields that are annotated with
+# one of the annotations defined by {@link AutoInjectAnnotationBuildItem}.
+#
+#quarkus.arc.auto-inject-fields=true
+
+#
+# If set to true then 'javax.enterprise.inject.Produces' is automatically added to all non-void methods that are
+# annotated with a scope annotation, a stereotype or a qualifier, and are not annotated with 'Inject' or
+# 'Produces', and no parameter is annotated with 'Disposes', 'Observes' or 'ObservesAsync'.
+#
+#quarkus.arc.auto-producer-methods=true
+
+#
+# The default naming strategy for {@link ConfigProperties.NamingStrategy}. The allowed values are determined
+# by that enum
+#
+#quarkus.arc.config-properties-default-naming-strategy=kebab-case
+
+#
+# If set to true then the container attempts to detect "unused removed beans" false positives during programmatic lookup at
+# runtime. You can disable this feature to conserve some memory when running your application in production.
+#
+# @see ArcConfig#removeUnusedBeans
+#
+#quarkus.arc.detect-unused-false-positives=true
+
+#
+# If set to true then the container attempts to detect usage of <i>wrong</i> annotations.
+#
+# A <i>wrong</i> annotation may lead to unexpected behavior in a Quarkus application. A typical example is
+# '@javax.ejb.Singleton' which is often confused with '@javax.inject.Singleton'. As a result a component
+# annotated with '@javax.ejb.Singleton' can be completely ignored.
+#
+#quarkus.arc.detect-wrong-annotations=true
+
+#
+# The maven artifactId of the artifact.
+#
+#quarkus.arc.exclude-dependency.*.artifact-id=
+
+#
+# The maven classifier of the artifact.
+#
+#quarkus.arc.exclude-dependency.*.classifier=
+
+#
+# The maven groupId of the artifact.
+#
+#quarkus.arc.exclude-dependency.*.group-id=
+
+#
+# The list of types that should be excluded from discovery.
+#
+# An element value can be:
+# 
+#  - a fully qualified class name, i.e. 'org.acme.Foo'
+#  - a simple class name as defined by {@link Class#getSimpleName()}, i.e. 'Foo'
+#  - a package name with suffix '.*', i.e. 'org.acme.*', matches a package
+#  - a package name with suffix '.**', i.e. 'org.acme.**', matches a package that starts with the value
+# 
+# If any element value matches a discovered type then the type is excluded from discovery, i.e. no beans and observer
+# methods are created from this type.
+#
+#quarkus.arc.exclude-types=
+
+#
+# 
+#  - If set to 'all' (or 'true') the container will attempt to remove all unused beans.
+#  - If set to 'none' (or 'false') no beans will ever be removed even if they are unused (according to the
+# criteria set out
+# below)
+#  - If set to 'fwk', then all unused beans will be removed, except the unused beans whose classes are declared in
+# the
+# application code
+# 
+#
+# An unused bean:
+# 
+#  - is not a built-in bean or interceptor,
+#  - is not eligible for injection to any injection point,
+#  - is not excluded by any extension,
+#  - does not have a name,
+#  - does not declare an observer,
+#  - does not declare any producer which is eligible for injection to any injection point,
+#  - is not directly eligible for injection into any {@link javax.enterprise.inject.Instance} injection point
+# 
+#
+# @see UnremovableBeanBuildItem
+#
+#quarkus.arc.remove-unused-beans=all
+
+#
+# The list of selected alternatives for an application.
+#
+# An element value can be:
+# 
+#  - a fully qualified class name, i.e. 'org.acme.Foo'
+#  - a simple class name as defined by {@link Class#getSimpleName()}, i.e. 'Foo'
+#  - a package name with suffix '.*', i.e. 'org.acme.*', matches a package
+#  - a package name with suffix '.**', i.e. 'org.acme.**', matches a package that starts with the value
+# 
+# Each element value is used to match an alternative bean class, an alternative stereotype annotation type or a bean class
+# that declares an alternative producer. If any value matches then the priority of {@link Integer#MAX_VALUE} is used for
+# the relevant bean. The priority declared via {@link javax.annotation.Priority} or
+# {@link io.quarkus.arc.AlternativePriority} is overriden.
+#
+#quarkus.arc.selected-alternatives=
+
+#
+# If set to true, the bytecode of unproxyable beans will be transformed. This ensures that a proxy/subclass
+# can be created properly. If the value is set to false, then an exception is thrown at build time indicating that a
+# subclass/proxy could not be created.
+#
+# Quarkus performs the following transformations when this setting is enabled:
+# 
+#  - Remove 'final' modifier from classes and methods when a proxy is required.
+#  - Create a no-args constructor if needed.
+#  - Makes private no-args constructors package-private if necessary.
+# </ul
+#
+#quarkus.arc.transform-unproxyable-classes=true
+
+#
+# List of types that should be considered unremovable regardless of whether they are directly used or not.
+# This is a configuration option equivalent to using {@link io.quarkus.arc.Unremovable} annotation.
+#
+# An element value can be:
+# 
+#  - a fully qualified class name, i.e. 'org.acme.Foo'
+#  - a simple class name as defined by {@link Class#getSimpleName()}, i.e. 'Foo'
+#  - a package name with suffix '.*', i.e. 'org.acme.*', matches a package
+#  - a package name with suffix '.**', i.e. 'org.acme.**', matches a package that starts with the value
+# 
+# If any element value matches a discovered bean, then such a bean is considered unremovable.
+#
+# @see 'remove-unused-beans'
+# @see {@link io.quarkus.arc.Unremovable}
+#
+#quarkus.arc.unremovable-types=
+
+#
+# The arguments passed to the command line.
+#
+# We don't make it a list as the args are separated by a space, not a comma.
+#
+#quarkus.args=
+
+#
+# Whether or not the banner will be displayed
+#
+#quarkus.banner.enabled=true
+
+#
+# The path of the banner (path relative to root of classpath)
+# which could be provided by user
+#
+#quarkus.banner.path=default_banner.txt
+
+#
+# What should happen if the application is started with a different build time configuration than it was compiled
+# against. This may be useful to prevent misconfiguration.
+#
+# If this is set to 'warn' the application will warn at start up.
+#
+# If this is set to 'fail' the application will fail at start up.
+#
+# Native tests leveraging<code>@io.quarkus.test.junit.TestProfile</code> are always run with
+# 'quarkus.configuration.build-time-mismatch-at-runtime = fail'.
+#
+#quarkus.configuration.build-time-mismatch-at-runtime=warn
+
+#
+# Additional tags of the container image.
+#
+#quarkus.container-image.additional-tags=
+
+#
+# Whether or not a image build will be performed.
+#
+#quarkus.container-image.build=false
+
+#
+# The name of the container image extension to use (e.g. docker, jib, s2i).
+# The option will be used in case multiple extensions are present.
+#
+#quarkus.container-image.builder=
+
+#
+# The group the container image will be part of
+#
+#quarkus.container-image.group=${user.name}
+
+#
+# Represents the entire image string.
+# If set, then 'group', 'name', 'registry', 'tags', 'additionalTags'
+# are ignored
+#
+#quarkus.container-image.image=
+
+#
+# Whether or not insecure registries are allowed
+#
+#quarkus.container-image.insecure=false
+
+#
+# The name of the container image. If not set defaults to the application name
+#
+#quarkus.container-image.name=${quarkus.application.name:unset}
+
+#
+# The password to use to authenticate with the registry where the built image will be pushed
+#
+#quarkus.container-image.password=
+
+#
+# Whether or not an image push will be performed.
+#
+#quarkus.container-image.push=false
+
+#
+# The container registry to use
+#
+#quarkus.container-image.registry=
+
+#
+# The tag of the container image. If not set defaults to the application version
+#
+#quarkus.container-image.tag=${quarkus.application.version:latest}
+
+#
+# The username to use to authenticate with the registry where the built image will be pushed
+#
+#quarkus.container-image.username=
+
+#
+# If set to a directory, all generated classes will be written into that directory
+#
+#quarkus.debug.generated-classes-dir=
+
+#
+# If set to true, writes a list of all reflective classes to META-INF
+#
+#quarkus.debug.reflection=false
+
+#
+# Default locale that can be consumed by the extensions.
+#
+# The locales must be specified in the IETF BCP 47 format e.g. en-US or fr-FR.
+#
+# For instance, the Hibernate Validator extension makes use of it.
+#
+#quarkus.default-locale=${user.language:en}-${user.country:}
+
+#
+# Whether or not extensions published health check should be enabled.
+#
+#quarkus.health.extensions.enabled=true
+
+#
+# Whether or not to include the Liveness and Readiness Health endpoints in the generated OpenAPI document
+#
+#quarkus.health.openapi.included=false
+
+#
+# The access log file base name, defaults to 'quarkus' which will give a log file
+# name of 'quarkus.log'.
+#
+#quarkus.http.access-log.base-file-name=quarkus
+
+#
+# The log category to use if logging is being done via the standard log mechanism (i.e. if base-file-name is empty).
+#
+#quarkus.http.access-log.category=io.quarkus.http.access-log
+
+#
+# If access logging is enabled. By default this will log via the standard logging facility
+#
+#quarkus.http.access-log.enabled=false
+
+#
+# The log directory to use when logging access to a file
+#
+# If this is not set then the current working directory is used.
+#
+#quarkus.http.access-log.log-directory=
+
+#
+# The log file suffix
+#
+#quarkus.http.access-log.log-suffix=.log
+
+#
+# If logging should be done to a separate file.
+#
+#quarkus.http.access-log.log-to-file=false
+
+#
+# The access log pattern.
+#
+# If this is the string `common`, `combined` or `long` then this will use one of the specified named formats:
+#
+# - common: `%h %l %u %t "%r" %s %b`
+# - combined: `%h %l %u %t "%r" %s %b "%{i,Referer}" "%{i,User-Agent}"`
+# - long: `%r\n%{ALL_REQUEST_HEADERS}`
+#
+# Otherwise consult the Quarkus documentation for the full list of variables that can be used.
+#
+# @asciidoclet
+#
+#quarkus.http.access-log.pattern=common
+
+#
+# If the log should be rotated daily
+#
+#quarkus.http.access-log.rotate=true
+
+#
+# If this is true and proxy address forwarding is enabled then the standard 'Forwarded' header will be used,
+# rather than the more common but not standard 'X-Forwarded-For'.
+#
+# @deprecated use quarkus.http.proxy.allow-forwarded instead.
+#
+#quarkus.http.allow-forwarded=
+
+#
+# If basic auth should be enabled. If both basic and form auth is enabled then basic auth will be enabled in silent mode.
+#
+# If no authentication mechanisms are configured basic auth is the default.
+#
+#quarkus.http.auth.basic=false
+
+#
+# The cookie that is used to store the persistent session
+#
+#quarkus.http.auth.form.cookie-name=quarkus-credential
+
+#
+# If form authentication is enabled
+#
+#quarkus.http.auth.form.enabled=false
+
+#
+# The error page
+#
+#quarkus.http.auth.form.error-page=/error.html
+
+#
+# The landing page to redirect to if there is no saved page to redirect back to
+#
+#quarkus.http.auth.form.landing-page=/index.html
+
+#
+# The login page
+#
+#quarkus.http.auth.form.login-page=/login.html
+
+#
+# How old a cookie can get before it will be replaced with a new cookie with an updated timeout, also
+# referred to as "renewal-timeout".
+#
+# Note that smaller values will result in slightly more server load (as new encrypted cookies will be
+# generated more often), however larger values affect the inactivity timeout as the timeout is set
+# when a cookie is generated.
+#
+# For example if this is set to 10 minutes, and the inactivity timeout is 30m, if a users last request
+# is when the cookie is 9m old then the actual timeout will happen 21m after the last request, as the timeout
+# is only refreshed when a new cookie is generated.
+#
+# In other words no timeout is tracked on the server side; the timestamp is encoded and encrypted in the cookie itself
+# and it is decrypted and parsed with each request.
+#
+#quarkus.http.auth.form.new-cookie-interval=PT1M
+
+#
+# Option to disable redirect to landingPage if there is no saved page to redirect back to. Form Auth POST is followed
+# by redirect to landingPage by default.
+#
+#quarkus.http.auth.form.redirect-after-login=true
+
+#
+# The inactivity (idle) timeout
+#
+# When inactivity timeout is reached, cookie is not renewed and a new login is enforced.
+#
+#quarkus.http.auth.form.timeout=PT30M
+
+#
+# Determines whether the entire permission set is enabled, or not.
+#
+# By default, if the permission set is defined, it is enabled.
+#
+#quarkus.http.auth.permission.*.enabled=
+
+#
+# The methods that this permission set applies to. If this is not set then they apply to all methods.
+#
+# Note that if a request matches any path from any permission set, but does not match the constraint
+# due to the method not being listed then the request will be denied.
+#
+# Method specific permissions take precedence over matches that do not have any methods set.
+#
+# This means that for example if Quarkus is configured to allow GET and POST requests to /admin to
+# and no other permissions are configured PUT requests to /admin will be denied.
+#
+#quarkus.http.auth.permission.*.methods=
+
+#
+# The paths that this permission check applies to. If the path ends in /* then this is treated
+# as a path prefix, otherwise it is treated as an exact match.
+#
+# Matches are done on a length basis, so the most specific path match takes precedence.
+#
+# If multiple permission sets match the same path then explicit methods matches take precedence
+# over over matches without methods set, otherwise the most restrictive permissions are applied.
+#
+#quarkus.http.auth.permission.*.paths=
+
+#
+# The HTTP policy that this permission set is linked to.
+#
+# There are 3 built in policies: permit, deny and authenticated. Role based
+# policies can be defined, and extensions can add their own policies.
+#
+#quarkus.http.auth.permission.*.policy=
+
+#
+# The roles that are allowed to access resources protected by this policy
+#
+#quarkus.http.auth.policy.*.roles-allowed=
+
+#
+# If this is true and credentials are present then a user will always be authenticated
+# before the request progresses.
+#
+# If this is false then an attempt will only be made to authenticate the user if a permission
+# check is performed or the current user is required for some other reason.
+#
+#quarkus.http.auth.proactive=true
+
+#
+# The authentication realm
+#
+#quarkus.http.auth.realm=Quarkus
+
+#
+# The encryption key that is used to store persistent logins (e.g. for form auth). Logins are stored in a persistent
+# cookie that is encrypted with AES-256 using a key derived from a SHA-256 hash of the key that is provided here.
+#
+# If no key is provided then an in-memory one will be generated, this will change on every restart though so it
+# is not suitable for production environments. This must be more than 16 characters long for security reasons
+#
+#quarkus.http.auth.session.encryption-key=
+
+#
+# Whether the uploaded files should be removed after serving the request.
+#
+# If 'true' the uploaded files stored in 'quarkus.http.body-handler.uploads-directory' will be removed
+# after handling the request. Otherwise the files will be left there forever.
+#
+#quarkus.http.body.delete-uploaded-files-on-end=false
+
+#
+# Whether the files sent using 'multipart/form-data' will be stored locally.
+#
+# If 'true', they will be stored in 'quarkus.http.body-handler.uploads-directory' and will be made
+# available via 'io.vertx.ext.web.RoutingContext.fileUploads()'. Otherwise, the the files sent using
+# 'multipart/form-data' will not be stored locally, and 'io.vertx.ext.web.RoutingContext.fileUploads()'
+# will always return an empty collection. Note that even with this option being set to 'false', the
+# 'multipart/form-data' requests will be accepted.
+#
+#quarkus.http.body.handle-file-uploads=true
+
+#
+# Whether the form attributes should be added to the request parameters.
+#
+# If 'true', the form attributes will be added to the request parameters; otherwise the form parameters will
+# not be added to the request parameters
+#
+#quarkus.http.body.merge-form-attributes=true
+
+#
+# Whether the body buffer should pre-allocated based on the 'Content-Length' header value.
+#
+# If 'true' the body buffer is pre-allocated according to the size read from the 'Content-Length'
+# header. Otherwise the body buffer is pre-allocated to 1KB, and is resized dynamically
+#
+#quarkus.http.body.preallocate-body-buffer=false
+
+#
+# The directory where the files sent using 'multipart/form-data' should be stored.
+#
+# Either an absolute path or a path relative to the current directory of the application process.
+#
+#quarkus.http.body.uploads-directory=file-uploads
+
+#
+# Enable the CORS filter.
+#
+#quarkus.http.cors=false
+
+#
+# The `Access-Control-Allow-Credentials` header is used to tell the
+# browsers to expose the response to front-end JavaScript code when
+# the requestâs credentials mode Request.credentials is âincludeâ.
+#
+# The value of this header will default to `true` if `quarkus.http.cors.origins` property is set and
+# there is a match with the precise `Origin` header and that header is not '*'.
+#
+#quarkus.http.cors.access-control-allow-credentials=
+
+#
+# The `Access-Control-Max-Age` response header value indicating
+# how long the results of a pre-flight request can be cached.
+#
+#quarkus.http.cors.access-control-max-age=
+
+#
+# HTTP headers exposed in CORS
+#
+# Comma separated list of valid headers. ex: X-Custom,Content-Disposition
+#
+# default: empty
+#
+#quarkus.http.cors.exposed-headers=
+
+#
+# HTTP headers allowed for CORS
+#
+# Comma separated list of valid headers. ex: X-Custom,Content-Disposition
+# The filter allows any header if this is not set.
+#
+# default: returns any requested header as valid
+#
+#quarkus.http.cors.headers=
+
+#
+# HTTP methods allowed for CORS
+#
+# Comma separated list of valid methods. ex: GET,PUT,POST
+# The filter allows any method if this is not set.
+#
+# default: returns any requested method as valid
+#
+#quarkus.http.cors.methods=
+
+#
+# Origins allowed for CORS
+#
+# Comma separated list of valid URLs. ex: http://www.quarkus.io,http://localhost:3000
+# The filter allows any origin if this is not set.
+#
+# default: returns any requested origin as valid
+#
+#quarkus.http.cors.origins=
+
+#
+# Path to a unix domain socket
+#
+#quarkus.http.domain-socket=/var/run/io.quarkus.app.socket
+
+#
+# Enable listening to host:port
+#
+#quarkus.http.domain-socket-enabled=false
+
+#
+# If responses should be compressed.
+#
+# Note that this will attempt to compress all responses, to avoid compressing
+# already compressed content (such as images) you need to set the following header:
+#
+# Content-Encoding: identity
+#
+# Which will tell vert.x not to compress the response.
+#
+#quarkus.http.enable-compression=false
+
+#
+# The HTTP host
+#
+# In dev/test mode this defaults to localhost, in prod mode this defaults to 0.0.0.0
+#
+# Defaulting to 0.0.0.0 makes it easier to deploy Quarkus to container, however it
+# is not suitable for dev/test mode as other people on the network can connect to your
+# development machine.
+#
+#quarkus.http.host=
+
+#
+# Enable listening to host:port
+#
+#quarkus.http.host-enabled=true
+
+#
+# If this is true (the default) then HTTP/2 will be enabled.
+#
+# Note that for browsers to be able to use it HTTPS must be enabled,
+# and you must be running on JDK11 or above, as JDK8 does not support
+# ALPN.
+#
+#quarkus.http.http2=true
+
+#
+# Http connection idle timeout
+#
+#quarkus.http.idle-timeout=30M
+
+#
+# If insecure (i.e. http rather than https) requests are allowed. If this is 'enabled'
+# then http works as normal. 'redirect' will still open the http port, but
+# all requests will be redirected to the HTTPS port. 'disabled' will prevent the HTTP
+# port from opening at all.
+#
+#quarkus.http.insecure-requests=enabled
+
+#
+# The number if IO threads used to perform IO. This will be automatically set to a reasonable value based on
+# the number of CPU cores if it is not provided. If this is set to a higher value than the number of Vert.x event
+# loops then it will be capped at the number of event loops.
+#
+# In general this should be controlled by setting quarkus.vertx.event-loops-pool-size, this setting should only
+# be used if you want to limit the number of HTTP io threads to a smaller number than the total number of IO threads.
+#
+#quarkus.http.io-threads=
+
+#
+# The maximum size of a request body.
+#
+#quarkus.http.limits.max-body-size=10240K
+
+#
+# The max HTTP chunk size
+#
+#quarkus.http.limits.max-chunk-size=8192
+
+#
+# The maximum length of all headers.
+#
+#quarkus.http.limits.max-header-size=20K
+
+#
+# The maximum length of the initial line (e.g. '"GET / HTTP/1.0"').
+#
+#quarkus.http.limits.max-initial-line-length=4096
+
+#
+# The HTTP root path for non application endpoints. Various endpoints such as metrics, health,
+# and open api are deployed under this path.
+# Setting the value to "/" disables the separate non application root,
+# resulting in all non application endpoints being served from "/" along with the application.
+#
+#quarkus.http.non-application-root-path=/q
+
+#
+# The HTTP port
+#
+#quarkus.http.port=8080
+
+#
+# If this is true then the address, scheme etc will be set from headers forwarded by the proxy server, such as
+# 'X-Forwarded-For'. This should only be set if you are behind a proxy that sets these headers.
+#
+# @deprecated use quarkus.http.proxy.proxy-address-forwarding instead.
+#
+#quarkus.http.proxy-address-forwarding=
+
+#
+# If this is true and proxy address forwarding is enabled then the standard 'Forwarded' header will be used,
+# rather than the more common but not standard 'X-Forwarded-For'.
+#
+#quarkus.http.proxy.allow-forwarded=false
+
+#
+# Enable override the received request's host through a forwarded host header.
+#
+#quarkus.http.proxy.enable-forwarded-host=false
+
+#
+# Enable prefix the received request's path with a forwarded prefix header.
+#
+#quarkus.http.proxy.enable-forwarded-prefix=false
+
+#
+# Configure the forwarded host header to be used if override enabled.
+#
+#quarkus.http.proxy.forwarded-host-header=X-Forwarded-Host
+
+#
+# Configure the forwarded prefix header to be used if prefixing enabled.
+#
+#quarkus.http.proxy.forwarded-prefix-header=X-Forwarded-Prefix
+
+#
+# If this is true then the address, scheme etc will be set from headers forwarded by the proxy server, such as
+# 'X-Forwarded-For'. This should only be set if you are behind a proxy that sets these headers.
+#
+#quarkus.http.proxy.proxy-address-forwarding=false
+
+#
+# Http connection read timeout for blocking IO. This is the maximum amount of time
+# a thread will wait for data, before an IOException will be thrown and the connection
+# closed.
+#
+#quarkus.http.read-timeout=60s
+
+#
+# If this is true then the request start time will be recorded to enable logging of total request time.
+#
+# This has a small performance penalty, so is disabled by default.
+#
+#quarkus.http.record-request-start-time=false
+
+#
+# Whether to redirect non application endpoints from previous location off the root to the
+# new non application root path.
+# Enabled by default.
+#
+#quarkus.http.redirect-to-non-application-root-path=true
+
+#
+# The HTTP root path. All web content will be served relative to this root path.
+#
+#quarkus.http.root-path=/
+
+#
+# If this is true then the 'secure' attribute will automatically be sent on
+# cookies with a SameSite attribute of None.
+#
+#quarkus.http.same-site-cookie.*.add-secure-for-none=true
+
+#
+# If the cookie pattern is case sensitive
+#
+#quarkus.http.same-site-cookie.*.case-sensitive=false
+
+#
+# Some User Agents break when sent SameSite=None, this will detect them and avoid sending the value
+#
+#quarkus.http.same-site-cookie.*.enable-client-checker=true
+
+#
+# The value to set in the samesite attribute
+#
+#quarkus.http.same-site-cookie.*.value=
+
+#
+# Enable socket reuse port (linux/macOs native transport only)
+#
+#quarkus.http.so-reuse-port=false
+
+#
+# The HTTPS port
+#
+#quarkus.http.ssl-port=8443
+
+#
+# The file path to a server certificate or certificate chain in PEM format.
+#
+#quarkus.http.ssl.certificate.file=
+
+#
+# The file path to the corresponding certificate private key file in PEM format.
+#
+#quarkus.http.ssl.certificate.key-file=
+
+#
+# An optional key store which holds the certificate information instead of specifying separate files.
+#
+#quarkus.http.ssl.certificate.key-store-file=
+
+#
+# An optional parameter to specify type of the key store file. If not given, the type is automatically detected
+# based on the file name.
+#
+#quarkus.http.ssl.certificate.key-store-file-type=
+
+#
+# A parameter to specify the password of the key store file. If not given, the default ("password") is used.
+#
+#quarkus.http.ssl.certificate.key-store-password=password
+
+#
+# An optional parameter to specify a provider of the key store file. If not given, the provider is automatically detected
+# based on the key store file type.
+#
+#quarkus.http.ssl.certificate.key-store-provider=
+
+#
+# An optional trust store which holds the certificate information of the certificates to trust
+#
+#quarkus.http.ssl.certificate.trust-store-file=
+
+#
+# An optional parameter to specify type of the trust store file. If not given, the type is automatically detected
+# based on the file name.
+#
+#quarkus.http.ssl.certificate.trust-store-file-type=
+
+#
+# A parameter to specify the password of the trust store file.
+#
+#quarkus.http.ssl.certificate.trust-store-password=
+
+#
+# An optional parameter to specify a provider of the trust store file. If not given, the provider is automatically detected
+# based on the trust store file type.
+#
+#quarkus.http.ssl.certificate.trust-store-provider=
+
+#
+# The cipher suites to use. If none is given, a reasonable default is selected.
+#
+#quarkus.http.ssl.cipher-suites=
+
+#
+# Configures the engine to require/request client authentication.
+# NONE, REQUEST, REQUIRED
+#
+#quarkus.http.ssl.client-auth=NONE
+
+#
+# The list of protocols to explicitly enable.
+#
+#quarkus.http.ssl.protocols=TLSv1.3,TLSv1.2
+
+#
+# Enable tcp cork (linux native transport only)
+#
+#quarkus.http.tcp-cork=false
+
+#
+# Enable tcp fast open (linux native transport only)
+#
+#quarkus.http.tcp-fast-open=false
+
+#
+# Enable tcp quick ack (linux native transport only)
+#
+#quarkus.http.tcp-quick-ack=false
+
+#
+# The HTTP port used to run tests
+#
+#quarkus.http.test-port=8081
+
+#
+# The HTTPS port used to run tests
+#
+#quarkus.http.test-ssl-port=8444
+
+#
+# If this is true then only a virtual channel will be set up for vertx web.
+# We have this switch for testing purposes.
+#
+#quarkus.http.virtual=false
+
+#
+# The maven artifactId of the artifact.
+#
+#quarkus.index-dependency.*.artifact-id=
+
+#
+# The maven classifier of the artifact.
+#
+#quarkus.index-dependency.*.classifier=
+
+#
+# The maven groupId of the artifact.
+#
+#quarkus.index-dependency.*.group-id=
+
+#
+# If enabled, Jackson will fail when encountering unknown properties.
+#
+# You can still override it locally with '@JsonIgnoreProperties(ignoreUnknown = false)'.
+#
+#quarkus.jackson.fail-on-unknown-properties=false
+
+#
+# The base image to be used when a container image is being produced for the jar build
+#
+#quarkus.jib.base-jvm-image=fabric8/java-alpine-openjdk11-jre
+
+#
+# The base image to be used when a container image is being produced for the native binary build
+#
+#quarkus.jib.base-native-image=registry.access.redhat.com/ubi8/ubi-minimal
+
+#
+# The password to use to authenticate with the registry used to pull the base JVM image
+#
+#quarkus.jib.base-registry-password=
+
+#
+# The username to use to authenticate with the registry used to pull the base JVM image
+#
+#quarkus.jib.base-registry-username=
+
+#
+# Environment variables to add to the container image
+#
+#quarkus.jib.environment-variables.*=
+
+#
+# Additional JVM arguments to pass to the JVM when starting the application
+#
+#quarkus.jib.jvm-arguments=-Djava.util.logging.manager=org.jboss.logmanager.LogManager
+
+#
+# If this is set, then it will be used as the entry point of the container image.
+# There are a few things to be aware of when creating an entry point
+# 
+#  - A valid entrypoint is jar package specific (see 'quarkus.package.type')
+#  - A valid entrypoint depends on the location of both the launching scripts and the application jar file. To that
+# end it's helpful to remember that when 'fast-jar' packaging is used, all necessary application jars are added to
+# the '/work' directory and that the same
+# directory is also used as the working directory. When 'legacy' or 'uber-jar' are used, the application jars
+# are unpacked under the '/app' directory
+# and that directory is used as the working directory.
+#  - Even if the 'jvmArguments' field is set, it is ignored completely
+# 
+#
+# When this is not set, a proper default entrypoint will be constructed.
+#
+# As a final note, a very useful tool for inspecting container image layers that can greatly aid
+# when debugging problems with endpoints is <a href="https://github.com/wagoodman/dive">dive</a>
+#
+#quarkus.jib.jvm-entrypoint=
+
+#
+# Custom labels to add to the generated image
+#
+#quarkus.jib.labels.*=
+
+#
+# Additional arguments to pass when starting the native application
+#
+#quarkus.jib.native-arguments=
+
+#
+# If this is set, then it will be used as the entry point of the container image.
+# There are a few things to be aware of when creating an entry point
+# 
+#  - A valid entrypoint depends on the location of both the launching scripts and the native binary file. To that end
+# it's helpful to remember that the native application is added to the '/work' directory and that and the same
+# directory is also used as the working directory
+#  - Even if the 'nativeArguments' field is set, it is ignored completely
+# 
+#
+# When this is not set, a proper default entrypoint will be constructed.
+#
+# As a final note, a very useful tool for inspecting container image layers that can greatly aid
+# when debugging problems with endpoints is <a href="https://github.com/wagoodman/dive">dive</a>
+#
+#quarkus.jib.native-entrypoint=
+
+#
+# The ports to expose
+#
+#quarkus.jib.ports=8080
+
+#
+# The user to use in generated image
+#
+#quarkus.jib.user=
+
+#
+# @deprecated JNI is always enabled starting from GraalVM 19.3.1.
+#
+#quarkus.jni.enable=true
+
+#
+# Paths of library to load.
+#
+#quarkus.jni.library-paths=
+
+#
+# Whether or not to add the build timestamp to the Kubernetes annotations
+# This is a very useful way to have manifests of successive builds of the same
+# application differ - thus ensuring that Kubernetes will apply the updated resources
+#
+#quarkus.knative.add-build-timestamp=true
+
+#
+# Custom annotations to add to all resources
+#
+#quarkus.knative.annotations.*=
+
+#
+# The arguments
+#
+# @return The arguments
+#
+#quarkus.knative.arguments=
+
+#
+# Filesystem type.
+#
+#quarkus.knative.aws-elastic-block-store-volumes.*.fs-type=ext4
+
+#
+# The partition.
+#
+#quarkus.knative.aws-elastic-block-store-volumes.*.partition=
+
+#
+# Wether the volumeName is read only or not.
+#
+#quarkus.knative.aws-elastic-block-store-volumes.*.read-only=false
+
+#
+# The name of the disk to mount.
+#
+#quarkus.knative.aws-elastic-block-store-volumes.*.volume-id=
+
+#
+# Disk caching mode.
+#
+#quarkus.knative.azure-disk-volumes.*.caching-mode=ReadWrite
+
+#
+# The name of the disk to mount.
+#
+#quarkus.knative.azure-disk-volumes.*.disk-name=
+
+#
+# The URI of the vhd blob object OR the resourceID of an Azure managed data disk if Kind is Managed
+#
+#quarkus.knative.azure-disk-volumes.*.disk-uri=
+
+#
+# File system type.
+#
+#quarkus.knative.azure-disk-volumes.*.fs-type=ext4
+
+#
+# Kind of disk.
+#
+#quarkus.knative.azure-disk-volumes.*.kind=Managed
+
+#
+# Wether the volumeName is read only or not.
+#
+#quarkus.knative.azure-disk-volumes.*.read-only=false
+
+#
+# Wether the volumeName is read only or not.
+#
+#quarkus.knative.azure-file-volumes.*.read-only=false
+
+#
+# The secret name.
+#
+#quarkus.knative.azure-file-volumes.*.secret-name=
+
+#
+# The share name.
+#
+#quarkus.knative.azure-file-volumes.*.share-name=
+
+#
+# Whether or not this service is cluster-local.
+# Cluster local services are not exposed to the outside world.
+#
+#quarkus.knative.cluster-local=false
+
+#
+# The commands
+#
+#quarkus.knative.command=
+
+#
+# The name of the ConfigMap to mount.
+#
+#quarkus.knative.config-map-volumes.*.config-map-name=
+
+#
+# Default mode.
+# When specifying an octal number, leading zero must be present.
+#
+# @return The default mode.
+#
+#quarkus.knative.config-map-volumes.*.default-mode=0600
+
+#
+# Optional
+#
+#quarkus.knative.config-map-volumes.*.optional=false
+
+#
+# The arguments
+#
+# @return The arguments.
+#
+#quarkus.knative.containers.*.arguments=
+
+#
+# The commands
+#
+#quarkus.knative.containers.*.command=
+
+#
+# The environment variable config map.
+#
+#quarkus.knative.containers.*.env-vars.*.configmap=
+
+#
+# The environment variable field.
+#
+#quarkus.knative.containers.*.env-vars.*.field=
+
+#
+# The environment variable name.
+#
+#quarkus.knative.containers.*.env-vars.*.name=
+
+#
+# The environment variable secret.
+#
+#quarkus.knative.containers.*.env-vars.*.secret=
+
+#
+# The environment variable value.
+#
+#quarkus.knative.containers.*.env-vars.*.value=
+
+#
+# The optional list of ConfigMap names to load environment variables from.
+#
+#quarkus.knative.containers.*.env.configmaps=
+
+#
+# The map associating environment variable names to their associated field references they take their value from.
+#
+#quarkus.knative.containers.*.env.fields.*=
+
+#
+# The optional name of the ConfigMap from which a value is to be extracted.
+# Mutually exclusive with 'from-secret'.
+#
+#quarkus.knative.containers.*.env.mapping.*.from-configmap=
+
+#
+# The optional name of the Secret from which a value is to be extracted.
+# Mutually exclusive with 'from-configmap'.
+#
+#quarkus.knative.containers.*.env.mapping.*.from-secret=
+
+#
+# The key identifying the field from which the value is extracted.
+#
+#quarkus.knative.containers.*.env.mapping.*.with-key=
+
+#
+# The optional list of Secret names to load environment variables from.
+#
+#quarkus.knative.containers.*.env.secrets=
+
+#
+# The map associating environment name to its associated value.
+#
+#quarkus.knative.containers.*.env.vars.*=
+
+#
+# The host under which the application is going to be exposed.
+#
+#quarkus.knative.containers.*.host=
+
+#
+# The container image.
+#
+#quarkus.knative.containers.*.image=
+
+#
+# Image pull policy.
+#
+#quarkus.knative.containers.*.image-pull-policy=Always
+
+#
+# The image pull secret
+#
+#quarkus.knative.containers.*.image-pull-secrets=
+
+#
+# The command to use for the probe.
+#
+#quarkus.knative.containers.*.liveness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.knative.containers.*.liveness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.knative.containers.*.liveness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.knative.containers.*.liveness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.knative.containers.*.liveness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.knative.containers.*.liveness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.knative.containers.*.liveness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.knative.containers.*.liveness-probe.timeout=10s
+
+#
+# The name of the volumeName to mount.
+#
+# @return The name.
+#
+#quarkus.knative.containers.*.mounts.*.name=
+
+#
+# The path to mount.
+#
+# @return The path.
+#
+#quarkus.knative.containers.*.mounts.*.path=
+
+#
+# ReadOnly
+#
+# @return True if mount is readonly, False otherwise.
+#
+#quarkus.knative.containers.*.mounts.*.read-only=false
+
+#
+# Path within the volumeName from which the container's volumeName should be
+# mounted.
+#
+# @return The subPath.
+#
+#quarkus.knative.containers.*.mounts.*.sub-path=
+
+#
+# The port number. Refers to the container port.
+#
+#quarkus.knative.containers.*.ports.*.container-port=
+
+#
+# The host port.
+#
+#quarkus.knative.containers.*.ports.*.host-port=
+
+#
+# The application path (refers to web application path).
+#
+# @return The path, defaults to /.
+#
+#quarkus.knative.containers.*.ports.*.path=/
+
+#
+# The protocol.
+#
+#quarkus.knative.containers.*.ports.*.protocol=TCP
+
+#
+# The command to use for the probe.
+#
+#quarkus.knative.containers.*.readiness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.knative.containers.*.readiness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.knative.containers.*.readiness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.knative.containers.*.readiness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.knative.containers.*.readiness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.knative.containers.*.readiness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.knative.containers.*.readiness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.knative.containers.*.readiness-probe.timeout=10s
+
+#
+# The service account.
+#
+#quarkus.knative.containers.*.service-account=
+
+#
+# Working directory.
+#
+#quarkus.knative.containers.*.working-dir=
+
+#
+# The environment variable config map.
+#
+#quarkus.knative.env-vars.*.configmap=
+
+#
+# The environment variable field.
+#
+#quarkus.knative.env-vars.*.field=
+
+#
+# The environment variable name.
+#
+#quarkus.knative.env-vars.*.name=
+
+#
+# The environment variable secret.
+#
+#quarkus.knative.env-vars.*.secret=
+
+#
+# The environment variable value.
+#
+#quarkus.knative.env-vars.*.value=
+
+#
+# The optional list of ConfigMap names to load environment variables from.
+#
+#quarkus.knative.env.configmaps=
+
+#
+# The map associating environment variable names to their associated field references they take their value from.
+#
+#quarkus.knative.env.fields.*=
+
+#
+# The optional name of the ConfigMap from which a value is to be extracted.
+# Mutually exclusive with 'from-secret'.
+#
+#quarkus.knative.env.mapping.*.from-configmap=
+
+#
+# The optional name of the Secret from which a value is to be extracted.
+# Mutually exclusive with 'from-configmap'.
+#
+#quarkus.knative.env.mapping.*.from-secret=
+
+#
+# The key identifying the field from which the value is extracted.
+#
+#quarkus.knative.env.mapping.*.with-key=
+
+#
+# The optional list of Secret names to load environment variables from.
+#
+#quarkus.knative.env.secrets=
+
+#
+# The map associating environment name to its associated value.
+#
+#quarkus.knative.env.vars.*=
+
+#
+# The directory of the repository to mount.
+#
+#quarkus.knative.git-repo-volumes.*.directory=
+
+#
+# Git repoistory URL.
+#
+#quarkus.knative.git-repo-volumes.*.repository=
+
+#
+# The commit hash to use.
+#
+#quarkus.knative.git-repo-volumes.*.revision=
+
+#
+
+#
+#quarkus.knative.global-auto-scaling.auto-scaler-class=
+
+#
+
+#
+#quarkus.knative.global-auto-scaling.container-concurrency=
+
+#
+
+#
+#quarkus.knative.global-auto-scaling.requests-per-second=
+
+#
+
+#
+#quarkus.knative.global-auto-scaling.target-utilization-percentage=
+
+#
+# The host under which the application is going to be exposed
+#
+#quarkus.knative.host=
+
+#
+# The hostnames to resolve to the ip
+#
+# @return The path.
+#
+#quarkus.knative.host-aliases.*.hostnames=
+
+#
+# The ip address
+#
+# @return The ip.
+#
+#quarkus.knative.host-aliases.*.ip=
+
+#
+# Image pull policy
+#
+#quarkus.knative.image-pull-policy=Always
+
+#
+# The image pull secret
+#
+#quarkus.knative.image-pull-secrets=
+
+#
+# The arguments
+#
+# @return The arguments.
+#
+#quarkus.knative.init-containers.*.arguments=
+
+#
+# The commands
+#
+#quarkus.knative.init-containers.*.command=
+
+#
+# The environment variable config map.
+#
+#quarkus.knative.init-containers.*.env-vars.*.configmap=
+
+#
+# The environment variable field.
+#
+#quarkus.knative.init-containers.*.env-vars.*.field=
+
+#
+# The environment variable name.
+#
+#quarkus.knative.init-containers.*.env-vars.*.name=
+
+#
+# The environment variable secret.
+#
+#quarkus.knative.init-containers.*.env-vars.*.secret=
+
+#
+# The environment variable value.
+#
+#quarkus.knative.init-containers.*.env-vars.*.value=
+
+#
+# The optional list of ConfigMap names to load environment variables from.
+#
+#quarkus.knative.init-containers.*.env.configmaps=
+
+#
+# The map associating environment variable names to their associated field references they take their value from.
+#
+#quarkus.knative.init-containers.*.env.fields.*=
+
+#
+# The optional name of the ConfigMap from which a value is to be extracted.
+# Mutually exclusive with 'from-secret'.
+#
+#quarkus.knative.init-containers.*.env.mapping.*.from-configmap=
+
+#
+# The optional name of the Secret from which a value is to be extracted.
+# Mutually exclusive with 'from-configmap'.
+#
+#quarkus.knative.init-containers.*.env.mapping.*.from-secret=
+
+#
+# The key identifying the field from which the value is extracted.
+#
+#quarkus.knative.init-containers.*.env.mapping.*.with-key=
+
+#
+# The optional list of Secret names to load environment variables from.
+#
+#quarkus.knative.init-containers.*.env.secrets=
+
+#
+# The map associating environment name to its associated value.
+#
+#quarkus.knative.init-containers.*.env.vars.*=
+
+#
+# The host under which the application is going to be exposed.
+#
+#quarkus.knative.init-containers.*.host=
+
+#
+# The container image.
+#
+#quarkus.knative.init-containers.*.image=
+
+#
+# Image pull policy.
+#
+#quarkus.knative.init-containers.*.image-pull-policy=Always
+
+#
+# The image pull secret
+#
+#quarkus.knative.init-containers.*.image-pull-secrets=
+
+#
+# The command to use for the probe.
+#
+#quarkus.knative.init-containers.*.liveness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.knative.init-containers.*.liveness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.knative.init-containers.*.liveness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.knative.init-containers.*.liveness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.knative.init-containers.*.liveness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.knative.init-containers.*.liveness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.knative.init-containers.*.liveness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.knative.init-containers.*.liveness-probe.timeout=10s
+
+#
+# The name of the volumeName to mount.
+#
+# @return The name.
+#
+#quarkus.knative.init-containers.*.mounts.*.name=
+
+#
+# The path to mount.
+#
+# @return The path.
+#
+#quarkus.knative.init-containers.*.mounts.*.path=
+
+#
+# ReadOnly
+#
+# @return True if mount is readonly, False otherwise.
+#
+#quarkus.knative.init-containers.*.mounts.*.read-only=false
+
+#
+# Path within the volumeName from which the container's volumeName should be
+# mounted.
+#
+# @return The subPath.
+#
+#quarkus.knative.init-containers.*.mounts.*.sub-path=
+
+#
+# The port number. Refers to the container port.
+#
+#quarkus.knative.init-containers.*.ports.*.container-port=
+
+#
+# The host port.
+#
+#quarkus.knative.init-containers.*.ports.*.host-port=
+
+#
+# The application path (refers to web application path).
+#
+# @return The path, defaults to /.
+#
+#quarkus.knative.init-containers.*.ports.*.path=/
+
+#
+# The protocol.
+#
+#quarkus.knative.init-containers.*.ports.*.protocol=TCP
+
+#
+# The command to use for the probe.
+#
+#quarkus.knative.init-containers.*.readiness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.knative.init-containers.*.readiness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.knative.init-containers.*.readiness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.knative.init-containers.*.readiness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.knative.init-containers.*.readiness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.knative.init-containers.*.readiness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.knative.init-containers.*.readiness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.knative.init-containers.*.readiness-probe.timeout=10s
+
+#
+# The service account.
+#
+#quarkus.knative.init-containers.*.service-account=
+
+#
+# Working directory.
+#
+#quarkus.knative.init-containers.*.working-dir=
+
+#
+# Custom labels to add to all resources
+#
+#quarkus.knative.labels.*=
+
+#
+# The command to use for the probe.
+#
+#quarkus.knative.liveness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.knative.liveness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.knative.liveness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.knative.liveness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.knative.liveness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.knative.liveness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.knative.liveness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.knative.liveness-probe.timeout=10s
+
+#
+# This value controls the maximum number of replicas each revision should have.
+# Knative will attempt to never have more than this number of replicas running, or in the process of being created, at any
+# one point in time.
+#
+#quarkus.knative.max-scale=
+
+#
+# This value controls the minimum number of replicas each revision should have.
+# Knative will attempt to never have less than this number of replicas at any one point in time.
+#
+#quarkus.knative.min-scale=
+
+#
+# The name of the volumeName to mount.
+#
+# @return The name.
+#
+#quarkus.knative.mounts.*.name=
+
+#
+# The path to mount.
+#
+# @return The path.
+#
+#quarkus.knative.mounts.*.path=
+
+#
+# ReadOnly
+#
+# @return True if mount is readonly, False otherwise.
+#
+#quarkus.knative.mounts.*.read-only=false
+
+#
+# Path within the volumeName from which the container's volumeName should be
+# mounted.
+#
+# @return The subPath.
+#
+#quarkus.knative.mounts.*.sub-path=
+
+#
+# The name of the application. This value will be used for naming Kubernetes
+# resources like: - Deployment - Service and so on ...
+#
+#quarkus.knative.name=${quarkus.container-image.name}
+
+#
+# The namespace the generated resources should belong to.
+# If not value is set, then the 'namespace' field will not be
+# added to the 'metadata' section of the generated manifests.
+# This in turn means that when the manifests are applied to a cluster,
+# the namespace will be resolved from the current Kubernetes context
+# (see https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/#context
+# for more details).
+#
+#quarkus.knative.namespace=
+
+#
+# The name of the group this component belongs too
+#
+#quarkus.knative.part-of=
+
+#
+# The port number. Refers to the container port.
+#
+#quarkus.knative.ports.*.container-port=
+
+#
+# The host port.
+#
+#quarkus.knative.ports.*.host-port=
+
+#
+# The application path (refers to web application path).
+#
+# @return The path, defaults to /.
+#
+#quarkus.knative.ports.*.path=/
+
+#
+# The protocol.
+#
+#quarkus.knative.ports.*.protocol=TCP
+
+#
+# When true (the default), emit a set of annotations to identify
+# services that should be scraped by prometheus for metrics.
+#
+# In configurations that use the Prometheus operator with ServiceMonitor,
+# annotations may not be necessary.
+#
+#quarkus.knative.prometheus.annotations=true
+
+#
+# Define the annotation used to indicate the path to scrape.
+# By default, '/path' will be appended to the defined prefix.
+#
+#quarkus.knative.prometheus.path=
+
+#
+# Define the annotation used to indicate the port to scrape.
+# By default, '/port' will be appended to the defined prefix.
+#
+#quarkus.knative.prometheus.port=
+
+#
+# Define the annotation prefix used for scrape values, this value will be used
+# as the base for other annotation name defaults. Altering the base for generated
+# annotations can make it easier to define re-labeling rules and avoid unexpected
+# knock-on effects. The default value is 'prometheus.io'
+#
+# See Prometheus example:
+# https://github.com/prometheus/prometheus/blob/master/documentation/examples/prometheus-kubernetes.yml
+#
+#quarkus.knative.prometheus.prefix=prometheus.io
+
+#
+# Define the annotation used to indicate the scheme to use for scraping
+# By default, '/scheme' will be appended to the defined prefix.
+#
+#quarkus.knative.prometheus.scheme=
+
+#
+# Define the annotation used to indicate services that should be scraped.
+# By default, '/scrape' will be appended to the defined prefix.
+#
+#quarkus.knative.prometheus.scrape=
+
+#
+# The name of the claim to mount.
+#
+#quarkus.knative.pvc-volumes.*.claim-name=
+
+#
+# Default mode.
+# When specifying an octal number, leading zero must be present.
+#
+# @return The default mode.
+#
+#quarkus.knative.pvc-volumes.*.default-mode=0600
+
+#
+# Optional
+#
+#quarkus.knative.pvc-volumes.*.optional=false
+
+#
+# The command to use for the probe.
+#
+#quarkus.knative.readiness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.knative.readiness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.knative.readiness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.knative.readiness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.knative.readiness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.knative.readiness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.knative.readiness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.knative.readiness-probe.timeout=10s
+
+#
+# CPU Requirements
+#
+#quarkus.knative.resources.limits.cpu=
+
+#
+# Memory Requirements
+#
+#quarkus.knative.resources.limits.memory=
+
+#
+# CPU Requirements
+#
+#quarkus.knative.resources.requests.cpu=
+
+#
+# Memory Requirements
+#
+#quarkus.knative.resources.requests.memory=
+
+#
+
+#
+#quarkus.knative.revision-auto-scaling.auto-scaler-class=
+
+#
+
+#
+#quarkus.knative.revision-auto-scaling.container-concurrency=
+
+#
+
+#
+#quarkus.knative.revision-auto-scaling.metric=
+
+#
+
+#
+#quarkus.knative.revision-auto-scaling.target=
+
+#
+
+#
+#quarkus.knative.revision-auto-scaling.target-utilization-percentage=
+
+#
+
+#
+#quarkus.knative.revision-name=
+
+#
+# The scale-to-zero values control whether Knative allows revisions to scale down to zero, or stops at â1â.
+#
+#quarkus.knative.scale-to-zero-enabled=true
+
+#
+# Default mode.
+# When specifying an octal number, leading zero must be present.
+#
+# @return The default mode.
+#
+#quarkus.knative.secret-volumes.*.default-mode=0600
+
+#
+# Optional
+#
+#quarkus.knative.secret-volumes.*.optional=false
+
+#
+# The name of the secret to mount.
+#
+#quarkus.knative.secret-volumes.*.secret-name=
+
+#
+# The service account
+#
+#quarkus.knative.service-account=
+
+#
+# The type of service that will be generated for the application
+#
+#quarkus.knative.service-type=ClusterIP
+
+#
+# LatestRevision may be optionally provided to indicate that the latest
+# ready Revision of the Configuration should be used for this traffic
+# target. When provided LatestRevision must be true if RevisionName is
+# empty.
+#
+#quarkus.knative.traffic.*.latest-revision=false
+
+#
+# Percent indicates that percentage based routing should be used and
+# the value indicates the percent of traffic that is be routed to this
+# Revision or Configuration. `0` (zero) mean no traffic, `100` means all
+# traffic.
+#
+#quarkus.knative.traffic.*.percent=100
+
+#
+# RevisionName of a specific revision to which to send this portion of traffic.
+#
+#quarkus.knative.traffic.*.revision-name=
+
+#
+# Tag is optionally used to expose a dedicated url for referencing
+# this target exclusively.
+#
+#quarkus.knative.traffic.*.tag=
+
+#
+# The version of the application.
+#
+#quarkus.knative.version=${quarkus.container-image.tag}
+
+#
+# Working directory
+#
+#quarkus.knative.working-dir=
+
+#
+# CA certificate data
+#
+#quarkus.kubernetes-client.ca-cert-data=
+
+#
+# CA certificate file
+#
+#quarkus.kubernetes-client.ca-cert-file=
+
+#
+# Client certificate data
+#
+#quarkus.kubernetes-client.client-cert-data=
+
+#
+# Client certificate file
+#
+#quarkus.kubernetes-client.client-cert-file=
+
+#
+# Client key algorithm
+#
+#quarkus.kubernetes-client.client-key-algo=
+
+#
+# Client key data
+#
+#quarkus.kubernetes-client.client-key-data=
+
+#
+# Client key file
+#
+#quarkus.kubernetes-client.client-key-file=
+
+#
+# Client key passphrase
+#
+#quarkus.kubernetes-client.client-key-passphrase=
+
+#
+# Maximum amount of time to wait for a connection with the API server to be established
+#
+#quarkus.kubernetes-client.connection-timeout=PT10S
+
+#
+# HTTP proxy used to access the Kubernetes API server
+#
+#quarkus.kubernetes-client.http-proxy=
+
+#
+# HTTPS proxy used to access the Kubernetes API server
+#
+#quarkus.kubernetes-client.https-proxy=
+
+#
+# URL of the Kubernetes API server
+#
+#quarkus.kubernetes-client.master-url=
+
+#
+# Default namespace to use
+#
+#quarkus.kubernetes-client.namespace=
+
+#
+# IP addresses or hosts to exclude from proxying
+#
+#quarkus.kubernetes-client.no-proxy=
+
+#
+# Kubernetes auth password
+#
+#quarkus.kubernetes-client.password=
+
+#
+# Proxy password
+#
+#quarkus.kubernetes-client.proxy-password=
+
+#
+# Proxy username
+#
+#quarkus.kubernetes-client.proxy-username=
+
+#
+# Maximum amount of time to wait for a request to the API server to be completed
+#
+#quarkus.kubernetes-client.request-timeout=PT10S
+
+#
+# Maximum amount of time in milliseconds to wait for a rollout to be completed
+#
+#quarkus.kubernetes-client.rolling-timeout=PT15M
+
+#
+# Kubernetes oauth token
+#
+#quarkus.kubernetes-client.token=
+
+#
+# Whether or not the client should trust a self signed certificate if so presented by the API server
+#
+#quarkus.kubernetes-client.trust-certs=
+
+#
+# Kubernetes auth username
+#
+#quarkus.kubernetes-client.username=
+
+#
+# Watch reconnect interval
+#
+#quarkus.kubernetes-client.watch-reconnect-interval=PT1S
+
+#
+# Maximum reconnect attempts in case of watch failure
+# By default there is no limit to the number of reconnect attempts
+#
+#quarkus.kubernetes-client.watch-reconnect-limit=-1
+
+#
+# Whether or not to add the build timestamp to the Kubernetes annotations
+# This is a very useful way to have manifests of successive builds of the same
+# application differ - thus ensuring that Kubernetes will apply the updated resources
+#
+#quarkus.kubernetes.add-build-timestamp=true
+
+#
+# If true, the 'app.kubernetes.io/version' label will be part of the selectors of Service and Deployment
+#
+#quarkus.kubernetes.add-version-to-label-selectors=true
+
+#
+# Custom annotations to add to all resources
+#
+#quarkus.kubernetes.annotations.*=
+
+#
+# The arguments
+#
+# @return The arguments
+#
+#quarkus.kubernetes.arguments=
+
+#
+# Filesystem type.
+#
+#quarkus.kubernetes.aws-elastic-block-store-volumes.*.fs-type=ext4
+
+#
+# The partition.
+#
+#quarkus.kubernetes.aws-elastic-block-store-volumes.*.partition=
+
+#
+# Wether the volumeName is read only or not.
+#
+#quarkus.kubernetes.aws-elastic-block-store-volumes.*.read-only=false
+
+#
+# The name of the disk to mount.
+#
+#quarkus.kubernetes.aws-elastic-block-store-volumes.*.volume-id=
+
+#
+# Disk caching mode.
+#
+#quarkus.kubernetes.azure-disk-volumes.*.caching-mode=ReadWrite
+
+#
+# The name of the disk to mount.
+#
+#quarkus.kubernetes.azure-disk-volumes.*.disk-name=
+
+#
+# The URI of the vhd blob object OR the resourceID of an Azure managed data disk if Kind is Managed
+#
+#quarkus.kubernetes.azure-disk-volumes.*.disk-uri=
+
+#
+# File system type.
+#
+#quarkus.kubernetes.azure-disk-volumes.*.fs-type=ext4
+
+#
+# Kind of disk.
+#
+#quarkus.kubernetes.azure-disk-volumes.*.kind=Managed
+
+#
+# Wether the volumeName is read only or not.
+#
+#quarkus.kubernetes.azure-disk-volumes.*.read-only=false
+
+#
+# Wether the volumeName is read only or not.
+#
+#quarkus.kubernetes.azure-file-volumes.*.read-only=false
+
+#
+# The secret name.
+#
+#quarkus.kubernetes.azure-file-volumes.*.secret-name=
+
+#
+# The share name.
+#
+#quarkus.kubernetes.azure-file-volumes.*.share-name=
+
+#
+# The commands
+#
+#quarkus.kubernetes.command=
+
+#
+# The name of the ConfigMap to mount.
+#
+#quarkus.kubernetes.config-map-volumes.*.config-map-name=
+
+#
+# Default mode.
+# When specifying an octal number, leading zero must be present.
+#
+# @return The default mode.
+#
+#quarkus.kubernetes.config-map-volumes.*.default-mode=0600
+
+#
+# Optional
+#
+#quarkus.kubernetes.config-map-volumes.*.optional=false
+
+#
+# If set to true, Quarkus will attempt to deploy the application to the target Kubernetes cluster
+#
+#quarkus.kubernetes.deploy=false
+
+#
+# The target deployment platform.
+# Defaults to kubernetes. Can be kubernetes, openshift, knative, minikube etc, or any combination of the above as comma
+# separated
+# list.
+#
+#quarkus.kubernetes.deployment-target=
+
+#
+# The environment variable config map.
+#
+#quarkus.kubernetes.env-vars.*.configmap=
+
+#
+# The environment variable field.
+#
+#quarkus.kubernetes.env-vars.*.field=
+
+#
+# The environment variable name.
+#
+#quarkus.kubernetes.env-vars.*.name=
+
+#
+# The environment variable secret.
+#
+#quarkus.kubernetes.env-vars.*.secret=
+
+#
+# The environment variable value.
+#
+#quarkus.kubernetes.env-vars.*.value=
+
+#
+# The optional list of ConfigMap names to load environment variables from.
+#
+#quarkus.kubernetes.env.configmaps=
+
+#
+# The map associating environment variable names to their associated field references they take their value from.
+#
+#quarkus.kubernetes.env.fields.*=
+
+#
+# The optional name of the ConfigMap from which a value is to be extracted.
+# Mutually exclusive with 'from-secret'.
+#
+#quarkus.kubernetes.env.mapping.*.from-configmap=
+
+#
+# The optional name of the Secret from which a value is to be extracted.
+# Mutually exclusive with 'from-configmap'.
+#
+#quarkus.kubernetes.env.mapping.*.from-secret=
+
+#
+# The key identifying the field from which the value is extracted.
+#
+#quarkus.kubernetes.env.mapping.*.with-key=
+
+#
+# The optional list of Secret names to load environment variables from.
+#
+#quarkus.kubernetes.env.secrets=
+
+#
+# The map associating environment name to its associated value.
+#
+#quarkus.kubernetes.env.vars.*=
+
+#
+# If true, a Kubernetes Ingress will be created
+#
+#quarkus.kubernetes.expose=false
+
+#
+# The directory of the repository to mount.
+#
+#quarkus.kubernetes.git-repo-volumes.*.directory=
+
+#
+# Git repoistory URL.
+#
+#quarkus.kubernetes.git-repo-volumes.*.repository=
+
+#
+# The commit hash to use.
+#
+#quarkus.kubernetes.git-repo-volumes.*.revision=
+
+#
+# The host under which the application is going to be exposed
+#
+#quarkus.kubernetes.host=
+
+#
+# The hostnames to resolve to the ip
+#
+# @return The path.
+#
+#quarkus.kubernetes.hostaliases.*.hostnames=
+
+#
+# The ip address
+#
+# @return The ip.
+#
+#quarkus.kubernetes.hostaliases.*.ip=
+
+#
+# Image pull policy
+#
+#quarkus.kubernetes.image-pull-policy=Always
+
+#
+# The image pull secret
+#
+#quarkus.kubernetes.image-pull-secrets=
+
+#
+# The arguments
+#
+# @return The arguments.
+#
+#quarkus.kubernetes.init-containers.*.arguments=
+
+#
+# The commands
+#
+#quarkus.kubernetes.init-containers.*.command=
+
+#
+# The environment variable config map.
+#
+#quarkus.kubernetes.init-containers.*.env-vars.*.configmap=
+
+#
+# The environment variable field.
+#
+#quarkus.kubernetes.init-containers.*.env-vars.*.field=
+
+#
+# The environment variable name.
+#
+#quarkus.kubernetes.init-containers.*.env-vars.*.name=
+
+#
+# The environment variable secret.
+#
+#quarkus.kubernetes.init-containers.*.env-vars.*.secret=
+
+#
+# The environment variable value.
+#
+#quarkus.kubernetes.init-containers.*.env-vars.*.value=
+
+#
+# The optional list of ConfigMap names to load environment variables from.
+#
+#quarkus.kubernetes.init-containers.*.env.configmaps=
+
+#
+# The map associating environment variable names to their associated field references they take their value from.
+#
+#quarkus.kubernetes.init-containers.*.env.fields.*=
+
+#
+# The optional name of the ConfigMap from which a value is to be extracted.
+# Mutually exclusive with 'from-secret'.
+#
+#quarkus.kubernetes.init-containers.*.env.mapping.*.from-configmap=
+
+#
+# The optional name of the Secret from which a value is to be extracted.
+# Mutually exclusive with 'from-configmap'.
+#
+#quarkus.kubernetes.init-containers.*.env.mapping.*.from-secret=
+
+#
+# The key identifying the field from which the value is extracted.
+#
+#quarkus.kubernetes.init-containers.*.env.mapping.*.with-key=
+
+#
+# The optional list of Secret names to load environment variables from.
+#
+#quarkus.kubernetes.init-containers.*.env.secrets=
+
+#
+# The map associating environment name to its associated value.
+#
+#quarkus.kubernetes.init-containers.*.env.vars.*=
+
+#
+# The host under which the application is going to be exposed.
+#
+#quarkus.kubernetes.init-containers.*.host=
+
+#
+# The container image.
+#
+#quarkus.kubernetes.init-containers.*.image=
+
+#
+# Image pull policy.
+#
+#quarkus.kubernetes.init-containers.*.image-pull-policy=Always
+
+#
+# The image pull secret
+#
+#quarkus.kubernetes.init-containers.*.image-pull-secrets=
+
+#
+# The command to use for the probe.
+#
+#quarkus.kubernetes.init-containers.*.liveness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.kubernetes.init-containers.*.liveness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.kubernetes.init-containers.*.liveness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.kubernetes.init-containers.*.liveness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.kubernetes.init-containers.*.liveness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.kubernetes.init-containers.*.liveness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.kubernetes.init-containers.*.liveness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.kubernetes.init-containers.*.liveness-probe.timeout=10s
+
+#
+# The name of the volumeName to mount.
+#
+# @return The name.
+#
+#quarkus.kubernetes.init-containers.*.mounts.*.name=
+
+#
+# The path to mount.
+#
+# @return The path.
+#
+#quarkus.kubernetes.init-containers.*.mounts.*.path=
+
+#
+# ReadOnly
+#
+# @return True if mount is readonly, False otherwise.
+#
+#quarkus.kubernetes.init-containers.*.mounts.*.read-only=false
+
+#
+# Path within the volumeName from which the container's volumeName should be
+# mounted.
+#
+# @return The subPath.
+#
+#quarkus.kubernetes.init-containers.*.mounts.*.sub-path=
+
+#
+# The port number. Refers to the container port.
+#
+#quarkus.kubernetes.init-containers.*.ports.*.container-port=
+
+#
+# The host port.
+#
+#quarkus.kubernetes.init-containers.*.ports.*.host-port=
+
+#
+# The application path (refers to web application path).
+#
+# @return The path, defaults to /.
+#
+#quarkus.kubernetes.init-containers.*.ports.*.path=/
+
+#
+# The protocol.
+#
+#quarkus.kubernetes.init-containers.*.ports.*.protocol=TCP
+
+#
+# The command to use for the probe.
+#
+#quarkus.kubernetes.init-containers.*.readiness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.kubernetes.init-containers.*.readiness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.kubernetes.init-containers.*.readiness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.kubernetes.init-containers.*.readiness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.kubernetes.init-containers.*.readiness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.kubernetes.init-containers.*.readiness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.kubernetes.init-containers.*.readiness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.kubernetes.init-containers.*.readiness-probe.timeout=10s
+
+#
+# The service account.
+#
+#quarkus.kubernetes.init-containers.*.service-account=
+
+#
+# Working directory.
+#
+#quarkus.kubernetes.init-containers.*.working-dir=
+
+#
+# Custom labels to add to all resources
+#
+#quarkus.kubernetes.labels.*=
+
+#
+# The command to use for the probe.
+#
+#quarkus.kubernetes.liveness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.kubernetes.liveness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.kubernetes.liveness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.kubernetes.liveness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.kubernetes.liveness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.kubernetes.liveness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.kubernetes.liveness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.kubernetes.liveness-probe.timeout=10s
+
+#
+# The name of the volumeName to mount.
+#
+# @return The name.
+#
+#quarkus.kubernetes.mounts.*.name=
+
+#
+# The path to mount.
+#
+# @return The path.
+#
+#quarkus.kubernetes.mounts.*.path=
+
+#
+# ReadOnly
+#
+# @return True if mount is readonly, False otherwise.
+#
+#quarkus.kubernetes.mounts.*.read-only=false
+
+#
+# Path within the volumeName from which the container's volumeName should be
+# mounted.
+#
+# @return The subPath.
+#
+#quarkus.kubernetes.mounts.*.sub-path=
+
+#
+# The name of the application. This value will be used for naming Kubernetes
+# resources like: - Deployment - Service and so on ...
+#
+#quarkus.kubernetes.name=${quarkus.container-image.name}
+
+#
+# The namespace the generated resources should belong to.
+# If not value is set, then the 'namespace' field will not be
+# added to the 'metadata' section of the generated manifests.
+# This in turn means that when the manifests are applied to a cluster,
+# the namespace will be resolved from the current Kubernetes context
+# (see https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/#context
+# for more details).
+#
+#quarkus.kubernetes.namespace=
+
+#
+# The nodePort to set when serviceType is set to node-port.
+#
+#quarkus.kubernetes.node-port=
+
+#
+# The name of the group this component belongs too
+#
+#quarkus.kubernetes.part-of=
+
+#
+# The port number. Refers to the container port.
+#
+#quarkus.kubernetes.ports.*.container-port=
+
+#
+# The host port.
+#
+#quarkus.kubernetes.ports.*.host-port=
+
+#
+# The application path (refers to web application path).
+#
+# @return The path, defaults to /.
+#
+#quarkus.kubernetes.ports.*.path=/
+
+#
+# The protocol.
+#
+#quarkus.kubernetes.ports.*.protocol=TCP
+
+#
+# When true (the default), emit a set of annotations to identify
+# services that should be scraped by prometheus for metrics.
+#
+# In configurations that use the Prometheus operator with ServiceMonitor,
+# annotations may not be necessary.
+#
+#quarkus.kubernetes.prometheus.annotations=true
+
+#
+# Define the annotation used to indicate the path to scrape.
+# By default, '/path' will be appended to the defined prefix.
+#
+#quarkus.kubernetes.prometheus.path=
+
+#
+# Define the annotation used to indicate the port to scrape.
+# By default, '/port' will be appended to the defined prefix.
+#
+#quarkus.kubernetes.prometheus.port=
+
+#
+# Define the annotation prefix used for scrape values, this value will be used
+# as the base for other annotation name defaults. Altering the base for generated
+# annotations can make it easier to define re-labeling rules and avoid unexpected
+# knock-on effects. The default value is 'prometheus.io'
+#
+# See Prometheus example:
+# https://github.com/prometheus/prometheus/blob/master/documentation/examples/prometheus-kubernetes.yml
+#
+#quarkus.kubernetes.prometheus.prefix=prometheus.io
+
+#
+# Define the annotation used to indicate the scheme to use for scraping
+# By default, '/scheme' will be appended to the defined prefix.
+#
+#quarkus.kubernetes.prometheus.scheme=
+
+#
+# Define the annotation used to indicate services that should be scraped.
+# By default, '/scrape' will be appended to the defined prefix.
+#
+#quarkus.kubernetes.prometheus.scrape=
+
+#
+# The name of the claim to mount.
+#
+#quarkus.kubernetes.pvc-volumes.*.claim-name=
+
+#
+# Default mode.
+# When specifying an octal number, leading zero must be present.
+#
+# @return The default mode.
+#
+#quarkus.kubernetes.pvc-volumes.*.default-mode=0600
+
+#
+# Optional
+#
+#quarkus.kubernetes.pvc-volumes.*.optional=false
+
+#
+# The command to use for the probe.
+#
+#quarkus.kubernetes.readiness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.kubernetes.readiness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.kubernetes.readiness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.kubernetes.readiness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.kubernetes.readiness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.kubernetes.readiness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.kubernetes.readiness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.kubernetes.readiness-probe.timeout=10s
+
+#
+# The number of desired pods
+#
+#quarkus.kubernetes.replicas=1
+
+#
+# CPU Requirements
+#
+#quarkus.kubernetes.resources.limits.cpu=
+
+#
+# Memory Requirements
+#
+#quarkus.kubernetes.resources.limits.memory=
+
+#
+# CPU Requirements
+#
+#quarkus.kubernetes.resources.requests.cpu=
+
+#
+# Memory Requirements
+#
+#quarkus.kubernetes.resources.requests.memory=
+
+#
+# Default mode.
+# When specifying an octal number, leading zero must be present.
+#
+# @return The default mode.
+#
+#quarkus.kubernetes.secret-volumes.*.default-mode=0600
+
+#
+# Optional
+#
+#quarkus.kubernetes.secret-volumes.*.optional=false
+
+#
+# The name of the secret to mount.
+#
+#quarkus.kubernetes.secret-volumes.*.secret-name=
+
+#
+# The service account
+#
+#quarkus.kubernetes.service-account=
+
+#
+# The type of service that will be generated for the application
+#
+#quarkus.kubernetes.service-type=ClusterIP
+
+#
+# The arguments
+#
+# @return The arguments.
+#
+#quarkus.kubernetes.sidecars.*.arguments=
+
+#
+# The commands
+#
+#quarkus.kubernetes.sidecars.*.command=
+
+#
+# The environment variable config map.
+#
+#quarkus.kubernetes.sidecars.*.env-vars.*.configmap=
+
+#
+# The environment variable field.
+#
+#quarkus.kubernetes.sidecars.*.env-vars.*.field=
+
+#
+# The environment variable name.
+#
+#quarkus.kubernetes.sidecars.*.env-vars.*.name=
+
+#
+# The environment variable secret.
+#
+#quarkus.kubernetes.sidecars.*.env-vars.*.secret=
+
+#
+# The environment variable value.
+#
+#quarkus.kubernetes.sidecars.*.env-vars.*.value=
+
+#
+# The optional list of ConfigMap names to load environment variables from.
+#
+#quarkus.kubernetes.sidecars.*.env.configmaps=
+
+#
+# The map associating environment variable names to their associated field references they take their value from.
+#
+#quarkus.kubernetes.sidecars.*.env.fields.*=
+
+#
+# The optional name of the ConfigMap from which a value is to be extracted.
+# Mutually exclusive with 'from-secret'.
+#
+#quarkus.kubernetes.sidecars.*.env.mapping.*.from-configmap=
+
+#
+# The optional name of the Secret from which a value is to be extracted.
+# Mutually exclusive with 'from-configmap'.
+#
+#quarkus.kubernetes.sidecars.*.env.mapping.*.from-secret=
+
+#
+# The key identifying the field from which the value is extracted.
+#
+#quarkus.kubernetes.sidecars.*.env.mapping.*.with-key=
+
+#
+# The optional list of Secret names to load environment variables from.
+#
+#quarkus.kubernetes.sidecars.*.env.secrets=
+
+#
+# The map associating environment name to its associated value.
+#
+#quarkus.kubernetes.sidecars.*.env.vars.*=
+
+#
+# The host under which the application is going to be exposed.
+#
+#quarkus.kubernetes.sidecars.*.host=
+
+#
+# The container image.
+#
+#quarkus.kubernetes.sidecars.*.image=
+
+#
+# Image pull policy.
+#
+#quarkus.kubernetes.sidecars.*.image-pull-policy=Always
+
+#
+# The image pull secret
+#
+#quarkus.kubernetes.sidecars.*.image-pull-secrets=
+
+#
+# The command to use for the probe.
+#
+#quarkus.kubernetes.sidecars.*.liveness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.kubernetes.sidecars.*.liveness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.kubernetes.sidecars.*.liveness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.kubernetes.sidecars.*.liveness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.kubernetes.sidecars.*.liveness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.kubernetes.sidecars.*.liveness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.kubernetes.sidecars.*.liveness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.kubernetes.sidecars.*.liveness-probe.timeout=10s
+
+#
+# The name of the volumeName to mount.
+#
+# @return The name.
+#
+#quarkus.kubernetes.sidecars.*.mounts.*.name=
+
+#
+# The path to mount.
+#
+# @return The path.
+#
+#quarkus.kubernetes.sidecars.*.mounts.*.path=
+
+#
+# ReadOnly
+#
+# @return True if mount is readonly, False otherwise.
+#
+#quarkus.kubernetes.sidecars.*.mounts.*.read-only=false
+
+#
+# Path within the volumeName from which the container's volumeName should be
+# mounted.
+#
+# @return The subPath.
+#
+#quarkus.kubernetes.sidecars.*.mounts.*.sub-path=
+
+#
+# The port number. Refers to the container port.
+#
+#quarkus.kubernetes.sidecars.*.ports.*.container-port=
+
+#
+# The host port.
+#
+#quarkus.kubernetes.sidecars.*.ports.*.host-port=
+
+#
+# The application path (refers to web application path).
+#
+# @return The path, defaults to /.
+#
+#quarkus.kubernetes.sidecars.*.ports.*.path=/
+
+#
+# The protocol.
+#
+#quarkus.kubernetes.sidecars.*.ports.*.protocol=TCP
+
+#
+# The command to use for the probe.
+#
+#quarkus.kubernetes.sidecars.*.readiness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.kubernetes.sidecars.*.readiness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.kubernetes.sidecars.*.readiness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.kubernetes.sidecars.*.readiness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.kubernetes.sidecars.*.readiness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.kubernetes.sidecars.*.readiness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.kubernetes.sidecars.*.readiness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.kubernetes.sidecars.*.readiness-probe.timeout=10s
+
+#
+# The service account.
+#
+#quarkus.kubernetes.sidecars.*.service-account=
+
+#
+# Working directory.
+#
+#quarkus.kubernetes.sidecars.*.working-dir=
+
+#
+# The version of the application.
+#
+#quarkus.kubernetes.version=${quarkus.container-image.tag}
+
+#
+# Working directory
+#
+#quarkus.kubernetes.working-dir=
+
+#
+# Password used to use to connect to the remote dev-mode application
+#
+#quarkus.live-reload.password=
+
+#
+# URL used to use to connect to the remote dev-mode application
+#
+#quarkus.live-reload.url=
+
+#
+# The names of additional resource files to watch for changes, triggering a reload on change. Directories are <em>not</em>
+# supported.
+#
+#quarkus.live-reload.watched-resources=
+
+#
+# The set of supported locales that can be consumed by the extensions.
+#
+# The locales must be specified in the IETF BCP 47 format e.g. en-US or fr-FR.
+#
+# For instance, the Hibernate Validator extension makes use of it.
+#
+#quarkus.locales=${user.language:en}-${user.country:}
+
+#
+# The names of the handlers to link to this category.
+#
+#quarkus.log.category.*.handlers=
+
+#
+# The log level for this category.
+#
+# Note that to get log levels below <code>INFO</code>,
+# the minimum level build time configuration option needs to be adjusted as well.
+#
+#quarkus.log.category.*.level=inherit
+
+#
+# The minimum log level for this category.
+# By default all categories are configured with <code>INFO</code> minimum level.
+#
+# To get runtime logging below <code>INFO</code>, e.g. <code>DEBUG</code> or <code>TRACE</code>,
+# the minimum level has to be adjusted at build time, the right log level needs to be provided at runtime.
+#
+# As an example, to get <code>TRACE</code> logging,
+# minimum level needs to be at <code>TRACE</code> and the runtime log level needs to match that.
+# To get <code>DEBUG</code> logging,
+# minimum level needs to be set at <code>DEBUG</code> or <code>TRACE</code> (as well as runtime log level).
+#
+#quarkus.log.category.*.min-level=inherit
+
+#
+# Specify whether or not this logger should send its output to its parent Logger
+#
+#quarkus.log.category.*.use-parent-handlers=true
+
+#
+# Indicates whether to log asynchronously
+#
+#quarkus.log.console.async=false
+
+#
+# Determine whether to block the publisher (rather than drop the message) when the queue is full
+#
+#quarkus.log.console.async.overflow=block
+
+#
+# The queue length to use before flushing writing
+#
+#quarkus.log.console.async.queue-length=512
+
+#
+# If the console logging should be in color. If undefined quarkus takes
+# best guess based on operating system and environment.
+# Note that this value will be ignored if an extension is present that takes
+# control of console formatting (e.g. an XML or JSON-format extension).
+#
+#quarkus.log.console.color=
+
+#
+# Specify how much the colors should be darkened.
+# Note that this value will be ignored if an extension is present that takes
+# control of console formatting (e.g. an XML or JSON-format extension).
+#
+#quarkus.log.console.darken=0
+
+#
+# If console logging should be enabled
+#
+#quarkus.log.console.enable=true
+
+#
+# The log format. Note that this value will be ignored if an extension is present that takes
+# control of console formatting (e.g. an XML or JSON-format extension).
+#
+#quarkus.log.console.format=%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] (%t) %s%e%n
+
+#
+# The console log level.
+#
+#quarkus.log.console.level=ALL
+
+#
+# Indicates whether to log asynchronously
+#
+#quarkus.log.file.async=false
+
+#
+# Determine whether to block the publisher (rather than drop the message) when the queue is full
+#
+#quarkus.log.file.async.overflow=block
+
+#
+# The queue length to use before flushing writing
+#
+#quarkus.log.file.async.queue-length=512
+
+#
+# If file logging should be enabled
+#
+#quarkus.log.file.enable=false
+
+#
+# The log format
+#
+#quarkus.log.file.format=%d{yyyy-MM-dd HH:mm:ss,SSS} %h %N[%i] %-5p [%c{3.}] (%t) %s%e%n
+
+#
+# The level of logs to be written into the file.
+#
+#quarkus.log.file.level=ALL
+
+#
+# The name of the file in which logs will be written.
+#
+#quarkus.log.file.path=quarkus.log
+
+#
+# File handler rotation file suffix.
+#
+# Example fileSuffix: .yyyy-MM-dd
+#
+#quarkus.log.file.rotation.file-suffix=
+
+#
+# The maximum number of backups to keep.
+#
+#quarkus.log.file.rotation.max-backup-index=1
+
+#
+# The maximum file size of the log file after which a rotation is executed.
+#
+#quarkus.log.file.rotation.max-file-size=
+
+#
+# Indicates whether to rotate log files on server initialization.
+#
+# You need to either set a 'max-file-size' or configure a 'file-suffix' for it to work.
+#
+#quarkus.log.file.rotation.rotate-on-boot=true
+
+#
+# The message starts to match
+#
+#quarkus.log.filter.*.if-starts-with=inherit
+
+#
+# The new log level for the filtered message, defaults to DEBUG
+#
+#quarkus.log.filter.*.target-level=DEBUG
+
+#
+# Indicates whether to log asynchronously
+#
+#quarkus.log.handler.console.*.async=false
+
+#
+# Determine whether to block the publisher (rather than drop the message) when the queue is full
+#
+#quarkus.log.handler.console.*.async.overflow=block
+
+#
+# The queue length to use before flushing writing
+#
+#quarkus.log.handler.console.*.async.queue-length=512
+
+#
+# If the console logging should be in color. If undefined quarkus takes
+# best guess based on operating system and environment.
+# Note that this value will be ignored if an extension is present that takes
+# control of console formatting (e.g. an XML or JSON-format extension).
+#
+#quarkus.log.handler.console.*.color=
+
+#
+# Specify how much the colors should be darkened.
+# Note that this value will be ignored if an extension is present that takes
+# control of console formatting (e.g. an XML or JSON-format extension).
+#
+#quarkus.log.handler.console.*.darken=0
+
+#
+# If console logging should be enabled
+#
+#quarkus.log.handler.console.*.enable=true
+
+#
+# The log format. Note that this value will be ignored if an extension is present that takes
+# control of console formatting (e.g. an XML or JSON-format extension).
+#
+#quarkus.log.handler.console.*.format=%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] (%t) %s%e%n
+
+#
+# The console log level.
+#
+#quarkus.log.handler.console.*.level=ALL
+
+#
+# Indicates whether to log asynchronously
+#
+#quarkus.log.handler.file.*.async=false
+
+#
+# Determine whether to block the publisher (rather than drop the message) when the queue is full
+#
+#quarkus.log.handler.file.*.async.overflow=block
+
+#
+# The queue length to use before flushing writing
+#
+#quarkus.log.handler.file.*.async.queue-length=512
+
+#
+# If file logging should be enabled
+#
+#quarkus.log.handler.file.*.enable=false
+
+#
+# The log format
+#
+#quarkus.log.handler.file.*.format=%d{yyyy-MM-dd HH:mm:ss,SSS} %h %N[%i] %-5p [%c{3.}] (%t) %s%e%n
+
+#
+# The level of logs to be written into the file.
+#
+#quarkus.log.handler.file.*.level=ALL
+
+#
+# The name of the file in which logs will be written.
+#
+#quarkus.log.handler.file.*.path=quarkus.log
+
+#
+# File handler rotation file suffix.
+#
+# Example fileSuffix: .yyyy-MM-dd
+#
+#quarkus.log.handler.file.*.rotation.file-suffix=
+
+#
+# The maximum number of backups to keep.
+#
+#quarkus.log.handler.file.*.rotation.max-backup-index=1
+
+#
+# The maximum file size of the log file after which a rotation is executed.
+#
+#quarkus.log.handler.file.*.rotation.max-file-size=
+
+#
+# Indicates whether to rotate log files on server initialization.
+#
+# You need to either set a 'max-file-size' or configure a 'file-suffix' for it to work.
+#
+#quarkus.log.handler.file.*.rotation.rotate-on-boot=true
+
+#
+# The app name used when formatting the message in RFC5424 format
+#
+#quarkus.log.handler.syslog.*.app-name=
+
+#
+# Indicates whether to log asynchronously
+#
+#quarkus.log.handler.syslog.*.async=false
+
+#
+# Determine whether to block the publisher (rather than drop the message) when the queue is full
+#
+#quarkus.log.handler.syslog.*.async.overflow=block
+
+#
+# The queue length to use before flushing writing
+#
+#quarkus.log.handler.syslog.*.async.queue-length=512
+
+#
+# Enables or disables blocking when attempting to reconnect a
+# {@link org.jboss.logmanager.handlers.SyslogHandler.Protocol#TCP
+# TCP} or {@link org.jboss.logmanager.handlers.SyslogHandler.Protocol#SSL_TCP SSL TCP} protocol
+#
+#quarkus.log.handler.syslog.*.block-on-reconnect=false
+
+#
+# If syslog logging should be enabled
+#
+#quarkus.log.handler.syslog.*.enable=false
+
+#
+# The IP address and port of the syslog server
+#
+#quarkus.log.handler.syslog.*.endpoint=localhost:514
+
+#
+# Sets the facility used when calculating the priority of the message as defined by RFC-5424 and RFC-3164
+#
+#quarkus.log.handler.syslog.*.facility=user-level
+
+#
+# The log message format
+#
+#quarkus.log.handler.syslog.*.format=%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] (%t) %s%e%n
+
+#
+# The name of the host the messages are being sent from
+#
+#quarkus.log.handler.syslog.*.hostname=
+
+#
+# The log level specifying, which message levels will be logged by syslog logger
+#
+#quarkus.log.handler.syslog.*.level=ALL
+
+#
+# Sets the protocol used to connect to the syslog server
+#
+#quarkus.log.handler.syslog.*.protocol=tcp
+
+#
+# Set the {@link SyslogType syslog type} this handler should use to format the message sent
+#
+#quarkus.log.handler.syslog.*.syslog-type=rfc5424
+
+#
+# Set to 'true' if the message should be truncated
+#
+#quarkus.log.handler.syslog.*.truncate=true
+
+#
+# Set to 'true' if the message being sent should be prefixed with the size of the message
+#
+#quarkus.log.handler.syslog.*.use-counting-framing=false
+
+#
+# The log level of the root category, which is used as the default log level for all categories.
+#
+# JBoss Logging supports Apache style log levels:
+#
+# * {@link org.jboss.logmanager.Level#FATAL}
+# * {@link org.jboss.logmanager.Level#ERROR}
+# * {@link org.jboss.logmanager.Level#WARN}
+# * {@link org.jboss.logmanager.Level#INFO}
+# * {@link org.jboss.logmanager.Level#DEBUG}
+# * {@link org.jboss.logmanager.Level#TRACE}
+#
+# In addition, it also supports the standard JDK log levels.
+#
+# @asciidoclet
+#
+#quarkus.log.level=INFO
+
+#
+# Whether or not logging metrics are published in case a metrics extension is present.
+#
+#quarkus.log.metrics.enabled=false
+
+#
+# The default minimum log level.
+#
+#quarkus.log.min-level=INFO
+
+#
+# The app name used when formatting the message in RFC5424 format
+#
+#quarkus.log.syslog.app-name=
+
+#
+# Indicates whether to log asynchronously
+#
+#quarkus.log.syslog.async=false
+
+#
+# Determine whether to block the publisher (rather than drop the message) when the queue is full
+#
+#quarkus.log.syslog.async.overflow=block
+
+#
+# The queue length to use before flushing writing
+#
+#quarkus.log.syslog.async.queue-length=512
+
+#
+# Enables or disables blocking when attempting to reconnect a
+# {@link org.jboss.logmanager.handlers.SyslogHandler.Protocol#TCP
+# TCP} or {@link org.jboss.logmanager.handlers.SyslogHandler.Protocol#SSL_TCP SSL TCP} protocol
+#
+#quarkus.log.syslog.block-on-reconnect=false
+
+#
+# If syslog logging should be enabled
+#
+#quarkus.log.syslog.enable=false
+
+#
+# The IP address and port of the syslog server
+#
+#quarkus.log.syslog.endpoint=localhost:514
+
+#
+# Sets the facility used when calculating the priority of the message as defined by RFC-5424 and RFC-3164
+#
+#quarkus.log.syslog.facility=user-level
+
+#
+# The log message format
+#
+#quarkus.log.syslog.format=%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] (%t) %s%e%n
+
+#
+# The name of the host the messages are being sent from
+#
+#quarkus.log.syslog.hostname=
+
+#
+# The log level specifying, which message levels will be logged by syslog logger
+#
+#quarkus.log.syslog.level=ALL
+
+#
+# Sets the protocol used to connect to the syslog server
+#
+#quarkus.log.syslog.protocol=tcp
+
+#
+# Set the {@link SyslogType syslog type} this handler should use to format the message sent
+#
+#quarkus.log.syslog.syslog-type=rfc5424
+
+#
+# Set to 'true' if the message should be truncated
+#
+#quarkus.log.syslog.truncate=true
+
+#
+# Set to 'true' if the message being sent should be prefixed with the size of the message
+#
+#quarkus.log.syslog.use-counting-framing=false
+
+#
+# Configures the application name.
+#
+#quarkus.mongodb.*.application-name=
+
+#
+# How long a connection can take to be opened before timing out.
+#
+#quarkus.mongodb.*.connect-timeout=
+
+#
+# Configures the connection string.
+# The format is:
+# ' mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database.collection][?options]]'
+#
+# 'mongodb://' is a required prefix to identify that this is a string in the standard connection format.
+#
+# 'username:password@' are optional. If given, the driver will attempt to login to a database after
+# connecting to a database server. For some authentication mechanisms, only the username is specified and the
+# password is not, in which case the ":" after the username is left off as well.
+#
+# 'host1' is the only required part of the connection string. It identifies a server address to connect to.
+#
+# ':portX' is optional and defaults to :27017 if not provided.
+#
+# '/database' is the name of the database to login to and thus is only relevant if the
+# 'username:password@' syntax is used. If not specified the 'admin' database will be used by default.
+#
+# '?options' are connection options. Note that if 'database' is absent there is still a '/'
+# required between the last host and the '?' introducing the options. Options are name=value pairs and the
+# pairs are separated by "&amp;".
+#
+# An alternative format, using the 'mongodb+srv' protocol, is:
+#
+# <pre>
+# mongodb+srv://[username:password@]host[/[database][?options]]
+# </pre>
+# 
+#  - 'mongodb+srv://' is a required prefix for this format.
+#  - 'username:password@' are optional. If given, the driver will attempt to login to a database after
+# connecting to a database server. For some authentication mechanisms, only the username is specified and the
+# password is not, in which case the ":" after the username is left off as well
+#  - 'host' is the only required part of the URI. It identifies a single host name for which SRV records
+# are looked up from a Domain Name Server after prefixing the host name with '"_mongodb._tcp"'. The
+# host/port for each SRV record becomes the seed list used to connect, as if each one were provided as host/port
+# pair in a URI using the normal mongodb protocol.
+#  - '/database' is the name of the database to login to and thus is only relevant if the
+# 'username:password@' syntax is used. If not specified the "admin" database will be used by default.
+#  - '?options' are connection options. Note that if 'database' is absent there is still a '/'
+# required between the last host and the '?' introducing the options. Options are name=value pairs and the
+# pairs are separated by "&amp;". Additionally with the mongodb+srv protocol, TXT records are looked up from a
+# Domain Name Server for the given host, and the text value of each one is prepended to any options on the URI
+# itself. Because the last specified value for any option wins, that means that options provided on the URI will
+# override any that are provided via TXT records.
+# 
+#
+#quarkus.mongodb.*.connection-string=
+
+#
+# Configures the authentication mechanism to use if a credential was supplied.
+# The default is unspecified, in which case the client will pick the most secure mechanism available based on the
+# sever version. For the GSSAPI and MONGODB-X509 mechanisms, no password is accepted, only the username.
+# Supported values: 'MONGO-CR|GSSAPI|PLAIN|MONGODB-X509'
+#
+#quarkus.mongodb.*.credentials.auth-mechanism=
+
+#
+# Allows passing authentication mechanism properties.
+#
+#quarkus.mongodb.*.credentials.auth-mechanism-properties.*=
+
+#
+# Configures the source of the authentication credentials.
+# This is typically the database that the credentials have been created. The value defaults to the database
+# specified in the path portion of the connection string or in the 'database' configuration property..
+# If the database is specified in neither place, the default value is 'admin'. This option is only
+# respected when using the MONGO-CR mechanism (the default).
+#
+#quarkus.mongodb.*.credentials.auth-source=
+
+#
+# Configures the password.
+#
+#quarkus.mongodb.*.credentials.password=
+
+#
+# Configures the username.
+#
+#quarkus.mongodb.*.credentials.username=
+
+#
+# Configure the database name.
+#
+#quarkus.mongodb.*.database=
+
+#
+# The frequency that the driver will attempt to determine the current state of each server in the cluster.
+#
+#quarkus.mongodb.*.heartbeat-frequency=
+
+#
+# Configures the MongoDB server addressed (one if single mode).
+# The addresses are passed as 'host:port'.
+#
+#quarkus.mongodb.*.hosts=127.0.0.1:27017
+
+#
+# When choosing among multiple MongoDB servers to send a request, the driver will only send that request to a
+# server whose ping time is less than or equal to the server with the fastest ping time plus the local threshold.
+#
+#quarkus.mongodb.*.local-threshold=
+
+#
+# Configures the time period between runs of the maintenance job.
+#
+#quarkus.mongodb.*.maintenance-frequency=
+
+#
+# Configures period of time to wait before running the first maintenance job on the connection pool.
+#
+#quarkus.mongodb.*.maintenance-initial-delay=
+
+#
+# Maximum idle time of a pooled connection. A connection that exceeds this limit will be closed.
+#
+#quarkus.mongodb.*.max-connection-idle-time=
+
+#
+# Maximum life time of a pooled connection. A connection that exceeds this limit will be closed.
+#
+#quarkus.mongodb.*.max-connection-life-time=
+
+#
+# Configures the maximum number of connections in the connection pool.
+#
+#quarkus.mongodb.*.max-pool-size=
+
+#
+# Configures the minimum number of connections in the connection pool.
+#
+#quarkus.mongodb.*.min-pool-size=
+
+#
+# Configures the read preferences.
+# Supported values are: 'primary|primaryPreferred|secondary|secondaryPreferred|nearest'
+#
+#quarkus.mongodb.*.read-preference=
+
+#
+# How long a socket read can take before timing out.
+#
+#quarkus.mongodb.*.read-timeout=
+
+#
+# Implies that the hosts given are a seed list, and the driver will attempt to find all members of the set.
+#
+#quarkus.mongodb.*.replica-set-name=
+
+#
+# How long the driver will wait for server selection to succeed before throwing an exception.
+#
+#quarkus.mongodb.*.server-selection-timeout=
+
+#
+# Whether to connect using TLS.
+#
+#quarkus.mongodb.*.tls=false
+
+#
+# If connecting with TLS, this option enables insecure TLS connections.
+#
+#quarkus.mongodb.*.tls-insecure=false
+
+#
+# Configures the journal writing aspect.
+# If set to 'true': the driver waits for the server to group commit to the journal file on disk.
+# If set to 'false': the driver does not wait for the server to group commit to the journal file on disk.
+#
+#quarkus.mongodb.*.write-concern.journal=true
+
+#
+# If set to 'true', the driver will retry supported write operations if they fail due to a network error.
+#
+#quarkus.mongodb.*.write-concern.retry-writes=false
+
+#
+# Configures the safety.
+# If set to 'true': the driver ensures that all writes are acknowledged by the MongoDB server, or else
+# throws an exception. (see also 'w' and 'wtimeoutMS').
+# If set fo
+#  - 'false': the driver does not ensure that all writes are acknowledged by the MongoDB server.
+#
+#quarkus.mongodb.*.write-concern.safe=true
+
+#
+# When set, the driver adds 'w: wValue' to all write commands. It requires 'safe' to be 'true'.
+# The value is typically a number, but can also be the 'majority' string.
+#
+#quarkus.mongodb.*.write-concern.w=
+
+#
+# When set, the driver adds 'wtimeout : ms ' to all write commands. It requires 'safe' to be
+# 'true'.
+#
+#quarkus.mongodb.*.write-concern.w-timeout=
+
+#
+# Configures the application name.
+#
+#quarkus.mongodb.application-name=
+
+#
+# How long a connection can take to be opened before timing out.
+#
+#quarkus.mongodb.connect-timeout=
+
+#
+# Configures the connection string.
+# The format is:
+# ' mongodb://[username:password@]host1[:port1][,host2[:port2],...[,hostN[:portN]]][/[database.collection][?options]]'
+#
+# 'mongodb://' is a required prefix to identify that this is a string in the standard connection format.
+#
+# 'username:password@' are optional. If given, the driver will attempt to login to a database after
+# connecting to a database server. For some authentication mechanisms, only the username is specified and the
+# password is not, in which case the ":" after the username is left off as well.
+#
+# 'host1' is the only required part of the connection string. It identifies a server address to connect to.
+#
+# ':portX' is optional and defaults to :27017 if not provided.
+#
+# '/database' is the name of the database to login to and thus is only relevant if the
+# 'username:password@' syntax is used. If not specified the 'admin' database will be used by default.
+#
+# '?options' are connection options. Note that if 'database' is absent there is still a '/'
+# required between the last host and the '?' introducing the options. Options are name=value pairs and the
+# pairs are separated by "&amp;".
+#
+# An alternative format, using the 'mongodb+srv' protocol, is:
+#
+# <pre>
+# mongodb+srv://[username:password@]host[/[database][?options]]
+# </pre>
+# 
+#  - 'mongodb+srv://' is a required prefix for this format.
+#  - 'username:password@' are optional. If given, the driver will attempt to login to a database after
+# connecting to a database server. For some authentication mechanisms, only the username is specified and the
+# password is not, in which case the ":" after the username is left off as well
+#  - 'host' is the only required part of the URI. It identifies a single host name for which SRV records
+# are looked up from a Domain Name Server after prefixing the host name with '"_mongodb._tcp"'. The
+# host/port for each SRV record becomes the seed list used to connect, as if each one were provided as host/port
+# pair in a URI using the normal mongodb protocol.
+#  - '/database' is the name of the database to login to and thus is only relevant if the
+# 'username:password@' syntax is used. If not specified the "admin" database will be used by default.
+#  - '?options' are connection options. Note that if 'database' is absent there is still a '/'
+# required between the last host and the '?' introducing the options. Options are name=value pairs and the
+# pairs are separated by "&amp;". Additionally with the mongodb+srv protocol, TXT records are looked up from a
+# Domain Name Server for the given host, and the text value of each one is prepended to any options on the URI
+# itself. Because the last specified value for any option wins, that means that options provided on the URI will
+# override any that are provided via TXT records.
+# 
+#
+#quarkus.mongodb.connection-string=
+
+#
+# Configures the authentication mechanism to use if a credential was supplied.
+# The default is unspecified, in which case the client will pick the most secure mechanism available based on the
+# sever version. For the GSSAPI and MONGODB-X509 mechanisms, no password is accepted, only the username.
+# Supported values: 'MONGO-CR|GSSAPI|PLAIN|MONGODB-X509'
+#
+#quarkus.mongodb.credentials.auth-mechanism=
+
+#
+# Allows passing authentication mechanism properties.
+#
+#quarkus.mongodb.credentials.auth-mechanism-properties.*=
+
+#
+# Configures the source of the authentication credentials.
+# This is typically the database that the credentials have been created. The value defaults to the database
+# specified in the path portion of the connection string or in the 'database' configuration property..
+# If the database is specified in neither place, the default value is 'admin'. This option is only
+# respected when using the MONGO-CR mechanism (the default).
+#
+#quarkus.mongodb.credentials.auth-source=
+
+#
+# Configures the password.
+#
+#quarkus.mongodb.credentials.password=
+
+#
+# Configures the username.
+#
+#quarkus.mongodb.credentials.username=
+
+#
+# Configure the database name.
+#
+#quarkus.mongodb.database=
+
+#
+# If set to true, the default clients will always be created even if there are no injection points that use them
+#
+#quarkus.mongodb.force-default-clients=false
+
+#
+# Whether or not an health check is published in case the smallrye-health extension is present.
+#
+#quarkus.mongodb.health.enabled=true
+
+#
+# The frequency that the driver will attempt to determine the current state of each server in the cluster.
+#
+#quarkus.mongodb.heartbeat-frequency=
+
+#
+# Configures the MongoDB server addressed (one if single mode).
+# The addresses are passed as 'host:port'.
+#
+#quarkus.mongodb.hosts=127.0.0.1:27017
+
+#
+# When choosing among multiple MongoDB servers to send a request, the driver will only send that request to a
+# server whose ping time is less than or equal to the server with the fastest ping time plus the local threshold.
+#
+#quarkus.mongodb.local-threshold=
+
+#
+# Configures the time period between runs of the maintenance job.
+#
+#quarkus.mongodb.maintenance-frequency=
+
+#
+# Configures period of time to wait before running the first maintenance job on the connection pool.
+#
+#quarkus.mongodb.maintenance-initial-delay=
+
+#
+# Maximum idle time of a pooled connection. A connection that exceeds this limit will be closed.
+#
+#quarkus.mongodb.max-connection-idle-time=
+
+#
+# Maximum life time of a pooled connection. A connection that exceeds this limit will be closed.
+#
+#quarkus.mongodb.max-connection-life-time=
+
+#
+# Configures the maximum number of connections in the connection pool.
+#
+#quarkus.mongodb.max-pool-size=
+
+#
+# Whether or not metrics are published in case a metrics extension is present.
+#
+#quarkus.mongodb.metrics.enabled=false
+
+#
+# Configures the minimum number of connections in the connection pool.
+#
+#quarkus.mongodb.min-pool-size=
+
+#
+# Configures the read preferences.
+# Supported values are: 'primary|primaryPreferred|secondary|secondaryPreferred|nearest'
+#
+#quarkus.mongodb.read-preference=
+
+#
+# How long a socket read can take before timing out.
+#
+#quarkus.mongodb.read-timeout=
+
+#
+# Implies that the hosts given are a seed list, and the driver will attempt to find all members of the set.
+#
+#quarkus.mongodb.replica-set-name=
+
+#
+# How long the driver will wait for server selection to succeed before throwing an exception.
+#
+#quarkus.mongodb.server-selection-timeout=
+
+#
+# Whether to connect using TLS.
+#
+#quarkus.mongodb.tls=false
+
+#
+# If connecting with TLS, this option enables insecure TLS connections.
+#
+#quarkus.mongodb.tls-insecure=false
+
+#
+# Configures the journal writing aspect.
+# If set to 'true': the driver waits for the server to group commit to the journal file on disk.
+# If set to 'false': the driver does not wait for the server to group commit to the journal file on disk.
+#
+#quarkus.mongodb.write-concern.journal=true
+
+#
+# If set to 'true', the driver will retry supported write operations if they fail due to a network error.
+#
+#quarkus.mongodb.write-concern.retry-writes=false
+
+#
+# Configures the safety.
+# If set to 'true': the driver ensures that all writes are acknowledged by the MongoDB server, or else
+# throws an exception. (see also 'w' and 'wtimeoutMS').
+# If set fo
+#  - 'false': the driver does not ensure that all writes are acknowledged by the MongoDB server.
+#
+#quarkus.mongodb.write-concern.safe=true
+
+#
+# When set, the driver adds 'w: wValue' to all write commands. It requires 'safe' to be 'true'.
+# The value is typically a number, but can also be the 'majority' string.
+#
+#quarkus.mongodb.write-concern.w=
+
+#
+# When set, the driver adds 'wtimeout : ms ' to all write commands. It requires 'safe' to be
+# 'true'.
+#
+#quarkus.mongodb.write-concern.w-timeout=
+
+#
+# If all character sets should be added to the native image. This increases image size
+#
+#quarkus.native.add-all-charsets=false
+
+#
+# Additional arguments to pass to the build process
+#
+#quarkus.native.additional-build-args=
+
+#
+# If all META-INF/services entries should be automatically registered
+#
+#quarkus.native.auto-service-loader-registration=false
+
+#
+# The docker image to use to do the image build
+#
+#quarkus.native.builder-image=${platform.quarkus.native.builder-image}
+
+#
+# If the native image server should be restarted
+#
+#quarkus.native.cleanup-server=false
+
+#
+# If this build should be done using a container runtime. If this is set docker will be used by default,
+# unless container-runtime is also set.
+#
+#quarkus.native.container-build=false
+
+#
+# The container runtime (e.g. docker) that is used to do an image based build. If this is set then
+# a container build is always done.
+#
+#quarkus.native.container-runtime=
+
+#
+# Options to pass to the container runtime
+#
+#quarkus.native.container-runtime-options=
+
+#
+# If the native image build should wait for a debugger to be attached before running. This is an advanced option
+# and is generally only intended for those familiar with GraalVM internals
+#
+#quarkus.native.debug-build-process=false
+
+#
+# If debug is enabled and debug symbols are generated.
+# The symbols will be generated in a separate .debug file.
+#
+#quarkus.native.debug.enabled=false
+
+#
+# If the bytecode of all proxies should be dumped for inspection
+#
+#quarkus.native.dump-proxies=false
+
+#
+# If all security services should be added to the native image
+#
+#quarkus.native.enable-all-security-services=false
+
+#
+# If a JVM based 'fallback image' should be created if native image fails. This is not recommended, as this is
+# functionally the same as just running the application in a JVM
+#
+#quarkus.native.enable-fallback-images=false
+
+#
+# If the HTTP url handler should be enabled, allowing you to do URL.openConnection() for HTTP URLs
+#
+#quarkus.native.enable-http-url-handler=true
+
+#
+# If the HTTPS url handler should be enabled, allowing you to do URL.openConnection() for HTTPS URLs
+#
+#quarkus.native.enable-https-url-handler=false
+
+#
+# If isolates should be enabled
+#
+#quarkus.native.enable-isolates=true
+
+#
+# @deprecated JNI is always enabled starting from GraalVM 19.3.1.
+#
+#quarkus.native.enable-jni=true
+
+#
+# If the reports on call paths and included packages/classes/methods should be generated
+#
+#quarkus.native.enable-reports=false
+
+#
+# If the native image server should be used. This can speed up compilation but can result in changes not always
+# being picked up due to cache invalidation not working 100%
+#
+#quarkus.native.enable-server=false
+
+#
+# If the resulting image should allow VM introspection
+#
+#quarkus.native.enable-vm-inspection=false
+
+#
+# If full stack traces are enabled in the resulting image
+#
+#quarkus.native.full-stack-traces=true
+
+#
+# The location of the Graal distribution
+#
+#quarkus.native.graalvm-home=${GRAALVM_HOME:}
+
+#
+# The location of the JDK
+#
+#quarkus.native.java-home=${java.home}
+
+#
+# The maximum Java heap to be used during the native image generation
+#
+#quarkus.native.native-image-xmx=
+
+#
+# If the debug port should be published when building with docker and debug-build-process is true
+#
+#quarkus.native.publish-debug-build-process-port=true
+
+#
+# If errors should be reported at runtime. This is a more relaxed setting, however it is not recommended as it
+# means
+# your application may fail at runtime if an unsupported feature is used by accident.
+#
+#quarkus.native.report-errors-at-runtime=false
+
+#
+# If exceptions should be reported with a full stack trace
+#
+#quarkus.native.report-exception-stack-traces=true
+
+#
+# A comma separated list of globs to match resource paths that should <b>not</b> be added to the native image.
+#
+# Use slash ('/') as a path separator on all platforms. Globs must not start with slash.
+#
+# Please refer to 'includes' for details about the glob syntax.
+#
+# By default, no resources are excluded.
+#
+# Example: Given that you have 'src/main/resources/red.png'
+# and 'src/main/resources/foo/green.png' in your source tree and one of your dependency JARs contains
+# 'bar/blue.png' file, with the following configuration
+#
+# <pre>
+# quarkus.native.resources.includes = **&#47;*.png
+# quarkus.native.resources.excludes = foo/**,**&#47;green.png
+# </pre>
+#
+# the resource 'red.png' will be available in the native image while the resources 'foo/green.png'
+# and 'bar/blue.png' will not be available in the native image.
+#
+#quarkus.native.resources.excludes=
+
+#
+# A comma separated list of globs to match resource paths that should be added to the native image.
+#
+# Use slash ('/') as a path separator on all platforms. Globs must not start with slash.
+#
+# By default, no resources are included.
+#
+# Example: Given that you have 'src/main/resources/ignored.png'
+# and 'src/main/resources/foo/selected.png' in your source tree and one of your dependency JARs contains
+# 'bar/some.txt' file, with the following configuration
+#
+# <pre>
+# quarkus.native.resources.includes = foo/**,bar/**&#47;*.txt
+# </pre>
+#
+# the files 'src/main/resources/foo/selected.png' and 'bar/some.txt' will be included in the native
+# image, while 'src/main/resources/ignored.png' will not be included.
+#
+# <h3>Supported glob features</h3>
+# <table>
+# <tr>
+# <th>Feature</th>
+# <th>Description</th>
+# </tr>
+# <tr>
+# <td><code>*</code></td>
+# <td>Matches a (possibly empty) sequence of characters that does not contain slash ('/')</td>
+# </tr>
+# <tr>
+# <td><code>**</code></td>
+# <td>Matches a (possibly empty) sequence of characters that may contain slash ('/')</td>
+# </tr>
+# <tr>
+# <td><code>?</code></td>
+# <td>Matches one character, but not slash</td>
+# </tr>
+# <tr>
+# <td><code>[abc]</code></td>
+# <td>Matches one character given in the bracket, but not slash</td>
+# </tr>
+# <tr>
+# <td><code>[a-z]</code></td>
+# <td>Matches one character from the range given in the bracket, but not slash</td>
+# </tr>
+# <tr>
+# <td><code>[!abc]</code></td>
+# <td>Matches one character not named in the bracket; does not match slash</td>
+# </tr>
+# <tr>
+# <td><code>[a-z]</code></td>
+# <td>Matches one character outside the range given in the bracket; does not match slash</td>
+# </tr>
+# <tr>
+# <td><code>{one,two,three}</code></td>
+# <td>Matches any of the alternating tokens separated by comma; the tokens may contain wildcards, nested
+# alternations and ranges</td>
+# </tr>
+# <tr>
+# <td><code>\</code></td>
+# <td>The escape character</td>
+# </tr>
+# </table>
+#
+# Note that there are three levels of escaping when passing this option via 'application.properties':
+# <ol>
+#  - 'application.properties' parser
+#  - MicroProfile Config list converter that splits the comma separated list
+#  - Glob parser
+# </ol>
+# All three levels use backslash ('\') as the escaping character. So you need to use an appropriate
+# number of backslashes depending on which level you want to escape.
+#
+# Note that Quarkus extensions typically include the resources they require by themselves. This option is
+# useful in situations when the built-in functionality is not sufficient.
+#
+#quarkus.native.resources.includes=
+
+#
+# Whether or not to add the build timestamp to the Kubernetes annotations
+# This is a very useful way to have manifests of successive builds of the same
+# application differ - thus ensuring that Kubernetes will apply the updated resources
+#
+#quarkus.openshift.add-build-timestamp=true
+
+#
+# If true, the 'app.kubernetes.io/version' label will be part of the selectors of Service and DeploymentConfig
+#
+#quarkus.openshift.add-version-to-label-selectors=true
+
+#
+# Custom annotations to add to all resources
+#
+#quarkus.openshift.annotations.*=
+
+#
+# The arguments
+#
+# @return The arguments
+#
+#quarkus.openshift.arguments=
+
+#
+# Filesystem type.
+#
+#quarkus.openshift.aws-elastic-block-store-volumes.*.fs-type=ext4
+
+#
+# The partition.
+#
+#quarkus.openshift.aws-elastic-block-store-volumes.*.partition=
+
+#
+# Wether the volumeName is read only or not.
+#
+#quarkus.openshift.aws-elastic-block-store-volumes.*.read-only=false
+
+#
+# The name of the disk to mount.
+#
+#quarkus.openshift.aws-elastic-block-store-volumes.*.volume-id=
+
+#
+# Disk caching mode.
+#
+#quarkus.openshift.azure-disk-volumes.*.caching-mode=ReadWrite
+
+#
+# The name of the disk to mount.
+#
+#quarkus.openshift.azure-disk-volumes.*.disk-name=
+
+#
+# The URI of the vhd blob object OR the resourceID of an Azure managed data disk if Kind is Managed
+#
+#quarkus.openshift.azure-disk-volumes.*.disk-uri=
+
+#
+# File system type.
+#
+#quarkus.openshift.azure-disk-volumes.*.fs-type=ext4
+
+#
+# Kind of disk.
+#
+#quarkus.openshift.azure-disk-volumes.*.kind=Managed
+
+#
+# Wether the volumeName is read only or not.
+#
+#quarkus.openshift.azure-disk-volumes.*.read-only=false
+
+#
+# Wether the volumeName is read only or not.
+#
+#quarkus.openshift.azure-file-volumes.*.read-only=false
+
+#
+# The secret name.
+#
+#quarkus.openshift.azure-file-volumes.*.secret-name=
+
+#
+# The share name.
+#
+#quarkus.openshift.azure-file-volumes.*.share-name=
+
+#
+# The commands
+#
+#quarkus.openshift.command=
+
+#
+# The name of the ConfigMap to mount.
+#
+#quarkus.openshift.config-map-volumes.*.config-map-name=
+
+#
+# Default mode.
+# When specifying an octal number, leading zero must be present.
+#
+# @return The default mode.
+#
+#quarkus.openshift.config-map-volumes.*.default-mode=0600
+
+#
+# Optional
+#
+#quarkus.openshift.config-map-volumes.*.optional=false
+
+#
+# The arguments
+#
+# @return The arguments.
+#
+#quarkus.openshift.containers.*.arguments=
+
+#
+# The commands
+#
+#quarkus.openshift.containers.*.command=
+
+#
+# The environment variable config map.
+#
+#quarkus.openshift.containers.*.env-vars.*.configmap=
+
+#
+# The environment variable field.
+#
+#quarkus.openshift.containers.*.env-vars.*.field=
+
+#
+# The environment variable name.
+#
+#quarkus.openshift.containers.*.env-vars.*.name=
+
+#
+# The environment variable secret.
+#
+#quarkus.openshift.containers.*.env-vars.*.secret=
+
+#
+# The environment variable value.
+#
+#quarkus.openshift.containers.*.env-vars.*.value=
+
+#
+# The optional list of ConfigMap names to load environment variables from.
+#
+#quarkus.openshift.containers.*.env.configmaps=
+
+#
+# The map associating environment variable names to their associated field references they take their value from.
+#
+#quarkus.openshift.containers.*.env.fields.*=
+
+#
+# The optional name of the ConfigMap from which a value is to be extracted.
+# Mutually exclusive with 'from-secret'.
+#
+#quarkus.openshift.containers.*.env.mapping.*.from-configmap=
+
+#
+# The optional name of the Secret from which a value is to be extracted.
+# Mutually exclusive with 'from-configmap'.
+#
+#quarkus.openshift.containers.*.env.mapping.*.from-secret=
+
+#
+# The key identifying the field from which the value is extracted.
+#
+#quarkus.openshift.containers.*.env.mapping.*.with-key=
+
+#
+# The optional list of Secret names to load environment variables from.
+#
+#quarkus.openshift.containers.*.env.secrets=
+
+#
+# The map associating environment name to its associated value.
+#
+#quarkus.openshift.containers.*.env.vars.*=
+
+#
+# The host under which the application is going to be exposed.
+#
+#quarkus.openshift.containers.*.host=
+
+#
+# The container image.
+#
+#quarkus.openshift.containers.*.image=
+
+#
+# Image pull policy.
+#
+#quarkus.openshift.containers.*.image-pull-policy=Always
+
+#
+# The image pull secret
+#
+#quarkus.openshift.containers.*.image-pull-secrets=
+
+#
+# The command to use for the probe.
+#
+#quarkus.openshift.containers.*.liveness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.openshift.containers.*.liveness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.openshift.containers.*.liveness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.openshift.containers.*.liveness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.openshift.containers.*.liveness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.openshift.containers.*.liveness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.openshift.containers.*.liveness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.openshift.containers.*.liveness-probe.timeout=10s
+
+#
+# The name of the volumeName to mount.
+#
+# @return The name.
+#
+#quarkus.openshift.containers.*.mounts.*.name=
+
+#
+# The path to mount.
+#
+# @return The path.
+#
+#quarkus.openshift.containers.*.mounts.*.path=
+
+#
+# ReadOnly
+#
+# @return True if mount is readonly, False otherwise.
+#
+#quarkus.openshift.containers.*.mounts.*.read-only=false
+
+#
+# Path within the volumeName from which the container's volumeName should be
+# mounted.
+#
+# @return The subPath.
+#
+#quarkus.openshift.containers.*.mounts.*.sub-path=
+
+#
+# The port number. Refers to the container port.
+#
+#quarkus.openshift.containers.*.ports.*.container-port=
+
+#
+# The host port.
+#
+#quarkus.openshift.containers.*.ports.*.host-port=
+
+#
+# The application path (refers to web application path).
+#
+# @return The path, defaults to /.
+#
+#quarkus.openshift.containers.*.ports.*.path=/
+
+#
+# The protocol.
+#
+#quarkus.openshift.containers.*.ports.*.protocol=TCP
+
+#
+# The command to use for the probe.
+#
+#quarkus.openshift.containers.*.readiness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.openshift.containers.*.readiness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.openshift.containers.*.readiness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.openshift.containers.*.readiness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.openshift.containers.*.readiness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.openshift.containers.*.readiness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.openshift.containers.*.readiness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.openshift.containers.*.readiness-probe.timeout=10s
+
+#
+# The service account.
+#
+#quarkus.openshift.containers.*.service-account=
+
+#
+# Working directory.
+#
+#quarkus.openshift.containers.*.working-dir=
+
+#
+# The environment variable config map.
+#
+#quarkus.openshift.env-vars.*.configmap=
+
+#
+# The environment variable field.
+#
+#quarkus.openshift.env-vars.*.field=
+
+#
+# The environment variable name.
+#
+#quarkus.openshift.env-vars.*.name=
+
+#
+# The environment variable secret.
+#
+#quarkus.openshift.env-vars.*.secret=
+
+#
+# The environment variable value.
+#
+#quarkus.openshift.env-vars.*.value=
+
+#
+# The optional list of ConfigMap names to load environment variables from.
+#
+#quarkus.openshift.env.configmaps=
+
+#
+# The map associating environment variable names to their associated field references they take their value from.
+#
+#quarkus.openshift.env.fields.*=
+
+#
+# The optional name of the ConfigMap from which a value is to be extracted.
+# Mutually exclusive with 'from-secret'.
+#
+#quarkus.openshift.env.mapping.*.from-configmap=
+
+#
+# The optional name of the Secret from which a value is to be extracted.
+# Mutually exclusive with 'from-configmap'.
+#
+#quarkus.openshift.env.mapping.*.from-secret=
+
+#
+# The key identifying the field from which the value is extracted.
+#
+#quarkus.openshift.env.mapping.*.with-key=
+
+#
+# The optional list of Secret names to load environment variables from.
+#
+#quarkus.openshift.env.secrets=
+
+#
+# The map associating environment name to its associated value.
+#
+#quarkus.openshift.env.vars.*=
+
+#
+# If true, an Openshift Route will be created
+#
+#quarkus.openshift.expose=false
+
+#
+# The OpenShift flavor / version to use.
+# Older versions of OpenShift have minor differrences in the labels and fields they support.
+# This option allows users to have their manifests automatically aligned to the OpenShift 'flavor' they use.
+#
+#quarkus.openshift.flavor=v4
+
+#
+# The directory of the repository to mount.
+#
+#quarkus.openshift.git-repo-volumes.*.directory=
+
+#
+# Git repoistory URL.
+#
+#quarkus.openshift.git-repo-volumes.*.repository=
+
+#
+# The commit hash to use.
+#
+#quarkus.openshift.git-repo-volumes.*.revision=
+
+#
+# The host under which the application is going to be exposed
+#
+#quarkus.openshift.host=
+
+#
+# The hostnames to resolve to the ip
+#
+# @return The path.
+#
+#quarkus.openshift.host-aliases.*.hostnames=
+
+#
+# The ip address
+#
+# @return The ip.
+#
+#quarkus.openshift.host-aliases.*.ip=
+
+#
+# Image pull policy
+#
+#quarkus.openshift.image-pull-policy=Always
+
+#
+# The image pull secret
+#
+#quarkus.openshift.image-pull-secrets=
+
+#
+# The arguments
+#
+# @return The arguments.
+#
+#quarkus.openshift.init-containers.*.arguments=
+
+#
+# The commands
+#
+#quarkus.openshift.init-containers.*.command=
+
+#
+# The environment variable config map.
+#
+#quarkus.openshift.init-containers.*.env-vars.*.configmap=
+
+#
+# The environment variable field.
+#
+#quarkus.openshift.init-containers.*.env-vars.*.field=
+
+#
+# The environment variable name.
+#
+#quarkus.openshift.init-containers.*.env-vars.*.name=
+
+#
+# The environment variable secret.
+#
+#quarkus.openshift.init-containers.*.env-vars.*.secret=
+
+#
+# The environment variable value.
+#
+#quarkus.openshift.init-containers.*.env-vars.*.value=
+
+#
+# The optional list of ConfigMap names to load environment variables from.
+#
+#quarkus.openshift.init-containers.*.env.configmaps=
+
+#
+# The map associating environment variable names to their associated field references they take their value from.
+#
+#quarkus.openshift.init-containers.*.env.fields.*=
+
+#
+# The optional name of the ConfigMap from which a value is to be extracted.
+# Mutually exclusive with 'from-secret'.
+#
+#quarkus.openshift.init-containers.*.env.mapping.*.from-configmap=
+
+#
+# The optional name of the Secret from which a value is to be extracted.
+# Mutually exclusive with 'from-configmap'.
+#
+#quarkus.openshift.init-containers.*.env.mapping.*.from-secret=
+
+#
+# The key identifying the field from which the value is extracted.
+#
+#quarkus.openshift.init-containers.*.env.mapping.*.with-key=
+
+#
+# The optional list of Secret names to load environment variables from.
+#
+#quarkus.openshift.init-containers.*.env.secrets=
+
+#
+# The map associating environment name to its associated value.
+#
+#quarkus.openshift.init-containers.*.env.vars.*=
+
+#
+# The host under which the application is going to be exposed.
+#
+#quarkus.openshift.init-containers.*.host=
+
+#
+# The container image.
+#
+#quarkus.openshift.init-containers.*.image=
+
+#
+# Image pull policy.
+#
+#quarkus.openshift.init-containers.*.image-pull-policy=Always
+
+#
+# The image pull secret
+#
+#quarkus.openshift.init-containers.*.image-pull-secrets=
+
+#
+# The command to use for the probe.
+#
+#quarkus.openshift.init-containers.*.liveness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.openshift.init-containers.*.liveness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.openshift.init-containers.*.liveness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.openshift.init-containers.*.liveness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.openshift.init-containers.*.liveness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.openshift.init-containers.*.liveness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.openshift.init-containers.*.liveness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.openshift.init-containers.*.liveness-probe.timeout=10s
+
+#
+# The name of the volumeName to mount.
+#
+# @return The name.
+#
+#quarkus.openshift.init-containers.*.mounts.*.name=
+
+#
+# The path to mount.
+#
+# @return The path.
+#
+#quarkus.openshift.init-containers.*.mounts.*.path=
+
+#
+# ReadOnly
+#
+# @return True if mount is readonly, False otherwise.
+#
+#quarkus.openshift.init-containers.*.mounts.*.read-only=false
+
+#
+# Path within the volumeName from which the container's volumeName should be
+# mounted.
+#
+# @return The subPath.
+#
+#quarkus.openshift.init-containers.*.mounts.*.sub-path=
+
+#
+# The port number. Refers to the container port.
+#
+#quarkus.openshift.init-containers.*.ports.*.container-port=
+
+#
+# The host port.
+#
+#quarkus.openshift.init-containers.*.ports.*.host-port=
+
+#
+# The application path (refers to web application path).
+#
+# @return The path, defaults to /.
+#
+#quarkus.openshift.init-containers.*.ports.*.path=/
+
+#
+# The protocol.
+#
+#quarkus.openshift.init-containers.*.ports.*.protocol=TCP
+
+#
+# The command to use for the probe.
+#
+#quarkus.openshift.init-containers.*.readiness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.openshift.init-containers.*.readiness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.openshift.init-containers.*.readiness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.openshift.init-containers.*.readiness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.openshift.init-containers.*.readiness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.openshift.init-containers.*.readiness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.openshift.init-containers.*.readiness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.openshift.init-containers.*.readiness-probe.timeout=10s
+
+#
+# The service account.
+#
+#quarkus.openshift.init-containers.*.service-account=
+
+#
+# Working directory.
+#
+#quarkus.openshift.init-containers.*.working-dir=
+
+#
+# Custom labels to add to all resources
+#
+#quarkus.openshift.labels.*=
+
+#
+# The command to use for the probe.
+#
+#quarkus.openshift.liveness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.openshift.liveness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.openshift.liveness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.openshift.liveness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.openshift.liveness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.openshift.liveness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.openshift.liveness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.openshift.liveness-probe.timeout=10s
+
+#
+# The name of the volumeName to mount.
+#
+# @return The name.
+#
+#quarkus.openshift.mounts.*.name=
+
+#
+# The path to mount.
+#
+# @return The path.
+#
+#quarkus.openshift.mounts.*.path=
+
+#
+# ReadOnly
+#
+# @return True if mount is readonly, False otherwise.
+#
+#quarkus.openshift.mounts.*.read-only=false
+
+#
+# Path within the volumeName from which the container's volumeName should be
+# mounted.
+#
+# @return The subPath.
+#
+#quarkus.openshift.mounts.*.sub-path=
+
+#
+# The name of the application. This value will be used for naming Kubernetes
+# resources like: - Deployment - Service and so on ...
+#
+#quarkus.openshift.name=${quarkus.container-image.name}
+
+#
+# The namespace the generated resources should belong to.
+# If not value is set, then the 'namespace' field will not be
+# added to the 'metadata' section of the generated manifests.
+# This in turn means that when the manifests are applied to a cluster,
+# the namespace will be resolved from the current Kubernetes context
+# (see https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/#context
+# for more details).
+#
+#quarkus.openshift.namespace=
+
+#
+# The nodePort to set when serviceType is set to nodePort
+#
+#quarkus.openshift.node-port=
+
+#
+# The name of the group this component belongs too
+#
+#quarkus.openshift.part-of=
+
+#
+# The port number. Refers to the container port.
+#
+#quarkus.openshift.ports.*.container-port=
+
+#
+# The host port.
+#
+#quarkus.openshift.ports.*.host-port=
+
+#
+# The application path (refers to web application path).
+#
+# @return The path, defaults to /.
+#
+#quarkus.openshift.ports.*.path=/
+
+#
+# The protocol.
+#
+#quarkus.openshift.ports.*.protocol=TCP
+
+#
+# When true (the default), emit a set of annotations to identify
+# services that should be scraped by prometheus for metrics.
+#
+# In configurations that use the Prometheus operator with ServiceMonitor,
+# annotations may not be necessary.
+#
+#quarkus.openshift.prometheus.annotations=true
+
+#
+# Define the annotation used to indicate the path to scrape.
+# By default, '/path' will be appended to the defined prefix.
+#
+#quarkus.openshift.prometheus.path=
+
+#
+# Define the annotation used to indicate the port to scrape.
+# By default, '/port' will be appended to the defined prefix.
+#
+#quarkus.openshift.prometheus.port=
+
+#
+# Define the annotation prefix used for scrape values, this value will be used
+# as the base for other annotation name defaults. Altering the base for generated
+# annotations can make it easier to define re-labeling rules and avoid unexpected
+# knock-on effects. The default value is 'prometheus.io'
+#
+# See Prometheus example:
+# https://github.com/prometheus/prometheus/blob/master/documentation/examples/prometheus-kubernetes.yml
+#
+#quarkus.openshift.prometheus.prefix=prometheus.io
+
+#
+# Define the annotation used to indicate the scheme to use for scraping
+# By default, '/scheme' will be appended to the defined prefix.
+#
+#quarkus.openshift.prometheus.scheme=
+
+#
+# Define the annotation used to indicate services that should be scraped.
+# By default, '/scrape' will be appended to the defined prefix.
+#
+#quarkus.openshift.prometheus.scrape=
+
+#
+# The name of the claim to mount.
+#
+#quarkus.openshift.pvc-volumes.*.claim-name=
+
+#
+# Default mode.
+# When specifying an octal number, leading zero must be present.
+#
+# @return The default mode.
+#
+#quarkus.openshift.pvc-volumes.*.default-mode=0600
+
+#
+# Optional
+#
+#quarkus.openshift.pvc-volumes.*.optional=false
+
+#
+# The command to use for the probe.
+#
+#quarkus.openshift.readiness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.openshift.readiness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.openshift.readiness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.openshift.readiness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.openshift.readiness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.openshift.readiness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.openshift.readiness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.openshift.readiness-probe.timeout=10s
+
+#
+# The number of desired pods
+#
+#quarkus.openshift.replicas=1
+
+#
+# CPU Requirements
+#
+#quarkus.openshift.resources.limits.cpu=
+
+#
+# Memory Requirements
+#
+#quarkus.openshift.resources.limits.memory=
+
+#
+# CPU Requirements
+#
+#quarkus.openshift.resources.requests.cpu=
+
+#
+# Memory Requirements
+#
+#quarkus.openshift.resources.requests.memory=
+
+#
+# Default mode.
+# When specifying an octal number, leading zero must be present.
+#
+# @return The default mode.
+#
+#quarkus.openshift.secret-volumes.*.default-mode=0600
+
+#
+# Optional
+#
+#quarkus.openshift.secret-volumes.*.optional=false
+
+#
+# The name of the secret to mount.
+#
+#quarkus.openshift.secret-volumes.*.secret-name=
+
+#
+# The service account
+#
+#quarkus.openshift.service-account=
+
+#
+# The type of service that will be generated for the application
+#
+#quarkus.openshift.service-type=ClusterIP
+
+#
+# The arguments
+#
+# @return The arguments.
+#
+#quarkus.openshift.sidecars.*.arguments=
+
+#
+# The commands
+#
+#quarkus.openshift.sidecars.*.command=
+
+#
+# The environment variable config map.
+#
+#quarkus.openshift.sidecars.*.env-vars.*.configmap=
+
+#
+# The environment variable field.
+#
+#quarkus.openshift.sidecars.*.env-vars.*.field=
+
+#
+# The environment variable name.
+#
+#quarkus.openshift.sidecars.*.env-vars.*.name=
+
+#
+# The environment variable secret.
+#
+#quarkus.openshift.sidecars.*.env-vars.*.secret=
+
+#
+# The environment variable value.
+#
+#quarkus.openshift.sidecars.*.env-vars.*.value=
+
+#
+# The optional list of ConfigMap names to load environment variables from.
+#
+#quarkus.openshift.sidecars.*.env.configmaps=
+
+#
+# The map associating environment variable names to their associated field references they take their value from.
+#
+#quarkus.openshift.sidecars.*.env.fields.*=
+
+#
+# The optional name of the ConfigMap from which a value is to be extracted.
+# Mutually exclusive with 'from-secret'.
+#
+#quarkus.openshift.sidecars.*.env.mapping.*.from-configmap=
+
+#
+# The optional name of the Secret from which a value is to be extracted.
+# Mutually exclusive with 'from-configmap'.
+#
+#quarkus.openshift.sidecars.*.env.mapping.*.from-secret=
+
+#
+# The key identifying the field from which the value is extracted.
+#
+#quarkus.openshift.sidecars.*.env.mapping.*.with-key=
+
+#
+# The optional list of Secret names to load environment variables from.
+#
+#quarkus.openshift.sidecars.*.env.secrets=
+
+#
+# The map associating environment name to its associated value.
+#
+#quarkus.openshift.sidecars.*.env.vars.*=
+
+#
+# The host under which the application is going to be exposed.
+#
+#quarkus.openshift.sidecars.*.host=
+
+#
+# The container image.
+#
+#quarkus.openshift.sidecars.*.image=
+
+#
+# Image pull policy.
+#
+#quarkus.openshift.sidecars.*.image-pull-policy=Always
+
+#
+# The image pull secret
+#
+#quarkus.openshift.sidecars.*.image-pull-secrets=
+
+#
+# The command to use for the probe.
+#
+#quarkus.openshift.sidecars.*.liveness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.openshift.sidecars.*.liveness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.openshift.sidecars.*.liveness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.openshift.sidecars.*.liveness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.openshift.sidecars.*.liveness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.openshift.sidecars.*.liveness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.openshift.sidecars.*.liveness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.openshift.sidecars.*.liveness-probe.timeout=10s
+
+#
+# The name of the volumeName to mount.
+#
+# @return The name.
+#
+#quarkus.openshift.sidecars.*.mounts.*.name=
+
+#
+# The path to mount.
+#
+# @return The path.
+#
+#quarkus.openshift.sidecars.*.mounts.*.path=
+
+#
+# ReadOnly
+#
+# @return True if mount is readonly, False otherwise.
+#
+#quarkus.openshift.sidecars.*.mounts.*.read-only=false
+
+#
+# Path within the volumeName from which the container's volumeName should be
+# mounted.
+#
+# @return The subPath.
+#
+#quarkus.openshift.sidecars.*.mounts.*.sub-path=
+
+#
+# The port number. Refers to the container port.
+#
+#quarkus.openshift.sidecars.*.ports.*.container-port=
+
+#
+# The host port.
+#
+#quarkus.openshift.sidecars.*.ports.*.host-port=
+
+#
+# The application path (refers to web application path).
+#
+# @return The path, defaults to /.
+#
+#quarkus.openshift.sidecars.*.ports.*.path=/
+
+#
+# The protocol.
+#
+#quarkus.openshift.sidecars.*.ports.*.protocol=TCP
+
+#
+# The command to use for the probe.
+#
+#quarkus.openshift.sidecars.*.readiness-probe.exec-action=
+
+#
+# The failure threshold to use.
+#
+#quarkus.openshift.sidecars.*.readiness-probe.failure-threshold=3
+
+#
+# The http path to use for the probe For this to work, the container port also
+# needs to be set
+#
+# Assuming the container port has been set (as per above comment), if
+# execAction or tcpSocketAction are not set, an http probe will be used
+# automatically even if no path is set (which will result in the root path
+# being used)
+#
+#quarkus.openshift.sidecars.*.readiness-probe.http-action-path=
+
+#
+# The amount of time to wait before starting to probe.
+#
+#quarkus.openshift.sidecars.*.readiness-probe.initial-delay=0
+
+#
+# The period in which the action should be called.
+#
+#quarkus.openshift.sidecars.*.readiness-probe.period=30s
+
+#
+# The success threshold to use.
+#
+#quarkus.openshift.sidecars.*.readiness-probe.success-threshold=1
+
+#
+# The tcp socket to use for the probe (the format is host:port).
+#
+#quarkus.openshift.sidecars.*.readiness-probe.tcp-socket-action=
+
+#
+# The amount of time to wait for each action.
+#
+#quarkus.openshift.sidecars.*.readiness-probe.timeout=10s
+
+#
+# The service account.
+#
+#quarkus.openshift.sidecars.*.service-account=
+
+#
+# Working directory.
+#
+#quarkus.openshift.sidecars.*.working-dir=
+
+#
+# The version of the application.
+#
+#quarkus.openshift.version=${quarkus.container-image.tag}
+
+#
+# Working directory
+#
+#quarkus.openshift.working-dir=
+
+#
+# Whether to automate the creation of AppCDS. This has not effect when a native binary is needed and will be ignored in
+# that case.
+# Furthermore, this option only works for Java 11+ and is considered experimental for the time being.
+# Finally, care must be taken to use the same exact JVM version when building and running the application.
+#
+#quarkus.package.create-appcds=false
+
+#
+# The entry point of the application. This can either be a a fully qualified name of a standard Java
+# class with a main method, or {@link io.quarkus.runtime.QuarkusApplication}.
+#
+# If your application has main classes annotated with {@link io.quarkus.runtime.annotations.QuarkusMain}
+# then this can also reference the name given in the annotation, to avoid the need to specify fully qualified
+# names in the config.
+#
+#quarkus.package.main-class=
+
+#
+# If the Implementation information should be included in the runner jar's MANIFEST.MF.
+#
+#quarkus.package.manifest.add-implementation-entries=true
+
+#
+# Custom manifest sections to be added to the MANIFEST.MF file.
+# An example of the user defined property:
+# quarkus.package.manifest.manifest-sections.{Section-Name}.{Entry-Key1}={Value1}
+# quarkus.package.manifest.manifest-sections.{Section-Name}.{Entry-Key2}={Value2}
+#
+#quarkus.package.manifest.manifest-sections.*.*=
+
+#
+# The output folder in which to place the output, this is resolved relative to the build
+# systems target directory.
+#
+#quarkus.package.output-directory=
+
+#
+# The name of the final artifact
+#
+#quarkus.package.output-name=
+
+#
+# The suffix that is applied to the runner jar and native images
+#
+#quarkus.package.runner-suffix=-runner
+
+#
+# The requested output type.
+#
+# The default built in types are 'jar', 'fast-jar' (a prototype more performant version of the default 'jar' type),
+# 'uber-jar' and 'native'.
+#
+#quarkus.package.type=jar
+
+#
+# If the java runner should be packed as an uberjar
+#
+# This is deprecated, you should use quarkus.package.type=uber-jar instead
+#
+#quarkus.package.uber-jar=false
+
+#
+# Files that should not be copied to the output artifact
+#
+#quarkus.package.user-configured-ignored-entries=
+
+#
+# This is an advanced option that only takes effect for the mutable-jar format.
+#
+# If this is specified a directory of this name will be created in the jar distribution. Users can place
+# jar files in this directory, and when re-augmentation is performed these will be processed and added to the
+# class-path.
+#
+# Note that before reaugmentation has been performed these jars will be ignored, and if they are updated the app
+# should be reaugmented again.
+#
+#quarkus.package.user-providers-directory=
+
+#
+# artifactId of the platform to use
+#
+#quarkus.platform.artifact-id=quarkus-universe-bom
+
+#
+# groupId of the platform to use
+#
+#quarkus.platform.group-id=io.quarkus
+
+#
+# version of the platform to use
+#
+#quarkus.platform.version=999-SNAPSHOT
+
+#
+# Profile that will be active when Quarkus launches
+#
+# Default value is 'prod'
+#
+#quarkus.profile=
+
+#
+# If this is true (the default) then JSON is set to the default media type. If a method has no
+# produces/consumes and there is no builtin provider than can handle the type
+# then we will assume the response should be JSON.
+#
+# Note that this will only take effect if a JSON provider has been installed, such as quarkus-resteasy-jsonb
+# or quarkus-resteasy-jackson.
+#
+#quarkus.resteasy-json.json-default=true
+
+#
+# If gzip is enabled
+#
+#quarkus.resteasy.gzip.enabled=false
+
+#
+# Maximum deflated file bytes size
+#
+# If the limit is exceeded, Resteasy will return Response
+# with status 413("Request Entity Too Large")
+#
+#quarkus.resteasy.gzip.max-input=10M
+
+#
+# Ignore all explict JAX-RS {@link Application} classes.
+# As multiple JAX-RS applications are not supported, this can be used to effectively merge all JAX-RS applications.
+#
+#quarkus.resteasy.ignore-application-classes=false
+
+#
+# Whether or not detailed JAX-RS metrics should be enabled if the smallrye-metrics
+# extension is present.
+#
+# See <a href=
+# "https://github.com/eclipse/microprofile-metrics/blob/2.3.x/spec/src/main/asciidoc/required-metrics.adoc#optional-rest">MicroProfile
+# Metrics: Optional REST metrics</a>.
+#
+# Deprecated. Use 'quarkus.smallrye-metrics.jaxrs.enabled'.
+#
+#quarkus.resteasy.metrics.enabled=false
+
+#
+# Set this to override the default path for JAX-RS resources if there are no
+# annotated application classes.
+#
+#quarkus.resteasy.path=/
+
+#
+# If this is true then JAX-RS will use only a single instance of a resource
+# class to service all requests.
+#
+# If this is false then it will create a new instance of the resource per
+# request.
+#
+# If the resource class has an explicit CDI scope annotation then the value of
+# this annotation will always be used to control the lifecycle of the resource
+# class.
+#
+# IMPLEMENTATION NOTE: 'javax.ws.rs.Path' turns into a CDI stereotype
+# with singleton scope. As a result, if a user annotates a JAX-RS resource with
+# a stereotype which has a different default scope the deployment fails with
+# IllegalStateException.
+#
+#quarkus.resteasy.singleton-resources=true
+
+#
+# If set to true, access to all methods of beans that have any security annotations on other members will be denied by
+# default.
+# E.g. if enabled, in the following bean, <code>methodB</code> will be denied.
+#
+# <pre>
+# {@literal @}ApplicationScoped
+# public class A {
+# {@literal @}RolesAllowed("admin")
+# public void methodA() {
+# ...
+# }
+# public void methodB() {
+# ...
+# }
+# }
+# </pre>
+#
+#quarkus.security.deny-unannotated-members=false
+
+#
+# if set to true, access to all JAX-RS resources will be denied by default
+#
+#quarkus.security.jaxrs.deny-unannotated-endpoints=false
+
+#
+# List of security providers to enable for reflection
+#
+#quarkus.security.security-providers=
+
+#
+# The buffer size to use for Servlet. If this is not specified the default will depend on the amount
+# of available memory. If there is less than 64mb it will default to 512b heap buffer, less that 128mb
+# 1k direct buffer and otherwise 16k direct buffers.
+#
+#quarkus.servlet.buffer-size=
+
+#
+# The context path to serve all Servlet context from. This will also affect any resources
+# that run as a Servlet, e.g. JAX-RS.
+#
+# Note that this is relative to the HTTP root path set in quarkus.http.root-path, so if the context path
+# is /bar and the http root is /foo then the actual Servlet path will be /foo/bar.
+#
+#quarkus.servlet.context-path=
+
+#
+# The default charset to use for reading and writing requests
+#
+#quarkus.servlet.default-charset=UTF-8
+
+#
+# If Servlet should use direct buffers, this gives maximum performance but can be problematic
+# in memory constrained environments
+#
+#quarkus.servlet.direct-buffers=
+
+#
+# The timeout to wait for running requests to finish. If this is not set then the application will exit immediately.
+#
+# Setting this timeout will incur a small performance penalty, as it requires active requests to be tracked.
+#
+#quarkus.shutdown.timeout=
+
+#
+# The relative path of the health group endpoint.
+#
+#quarkus.smallrye-health.group-path=/group
+
+#
+# The relative path of the liveness health-checking endpoint.
+#
+#quarkus.smallrye-health.liveness-path=/live
+
+#
+# The relative path of the readiness health-checking endpoint.
+#
+#quarkus.smallrye-health.readiness-path=/ready
+
+#
+# Root path for health-checking endpoints.
+#
+#quarkus.smallrye-health.root-path=/health
+
+#
+# Always include the UI. By default this will only be included in dev and test.
+# Setting this to true will also include the UI in Prod
+#
+#quarkus.smallrye-health.ui.always-include=false
+
+#
+# If Health UI should be enabled. By default, Health UI is enabled if it is included (see 'always-include').
+#
+#quarkus.smallrye-health.ui.enable=true
+
+#
+# The path where Health UI is available.
+# The value `/` is not allowed as it blocks the application from serving anything else.
+#
+#quarkus.smallrye-health.ui.root-path=/health-ui
+
+#
+# The relative path of the wellness health-checking endpoint.
+#
+#quarkus.smallrye-health.wellness-path=/well
+
+#
+# The MP-JWT configuration object
+#
+#quarkus.smallrye-jwt.enabled=true
+
+#
+# The name of the {@linkplain java.security.Provider} that supports SHA256withRSA signatures
+#
+#quarkus.smallrye-jwt.rsa-sig-provider=SunRsaSign
+
+#
+# Whether or not metrics published by Quarkus extensions should be enabled.
+#
+#quarkus.smallrye-metrics.extensions.enabled=true
+
+#
+# Whether or not detailed JAX-RS metrics should be enabled.
+#
+# See <a href=
+# "https://github.com/eclipse/microprofile-metrics/blob/2.3.x/spec/src/main/asciidoc/required-metrics.adoc#optional-rest">MicroProfile
+# Metrics: Optional REST metrics</a>.
+#
+#quarkus.smallrye-metrics.jaxrs.enabled=false
+
+#
+# Apply Micrometer compatibility mode, where instead of regular 'base' and 'vendor' metrics,
+# Quarkus exposes the same 'jvm' metrics that Micrometer does. Application metrics are unaffected by this mode.
+# The use case is to facilitate migration from Micrometer-based metrics, because original dashboards for JVM metrics
+# will continue working without having to rewrite them.
+#
+#quarkus.smallrye-metrics.micrometer.compatibility=false
+
+#
+# The path to the metrics handler.
+#
+#quarkus.smallrye-metrics.path=/metrics
+
+#
+# Enable native SSL support.
+#
+#quarkus.ssl.native=
+
+#
+# The profile to use when testing the native image
+#
+#quarkus.test.native-image-profile=prod
+
+#
+# Duration to wait for the native image to built during testing
+#
+#quarkus.test.native-image-wait-time=PT5M
+
+#
+# The profile to use when testing using @QuarkusTest
+#
+#quarkus.test.profile=test
+
+#
+# The core thread pool size. This number of threads will always be kept alive.
+#
+#quarkus.thread-pool.core-threads=1
+
+#
+# The executor growth resistance.
+#
+# A resistance factor applied after the core pool is full; values applied here will cause that fraction
+# of submissions to create new threads when no idle thread is available. A value of '0.0f' implies that
+# threads beyond the core size should be created as aggressively as threads within it; a value of '1.0f'
+# implies that threads beyond the core size should never be created.
+#
+#quarkus.thread-pool.growth-resistance=0
+
+#
+# The amount of time a thread will stay alive with no work.
+#
+#quarkus.thread-pool.keep-alive-time=30
+
+#
+# The maximum number of threads. If this is not specified then
+# it will be automatically sized to the greater of 8 * the number of available processors and 200.
+# For example if there are 4 processors the max threads will be 200.
+# If there are 48 processors it will be 384.
+#
+#quarkus.thread-pool.max-threads=
+
+#
+# Prefill core thread pool.
+# The core thread pool will be initialised with the core number of threads at startup
+#
+#quarkus.thread-pool.prefill=true
+
+#
+# The queue size. For most applications this should be unbounded
+#
+#quarkus.thread-pool.queue-size=
+
+#
+# The frequency at which the status of the thread pool should be checked during shutdown. Information about
+# waiting tasks and threads will be checked and possibly logged at this interval. Setting this key to an empty
+# value disables the shutdown check interval.
+#
+#quarkus.thread-pool.shutdown-check-interval=5
+
+#
+# The amount of time to wait for thread pool shutdown before tasks should be interrupted. If this value is
+# greater than or equal to the value for 'shutdown-timeout', then tasks will not be interrupted before
+# the shutdown timeout occurs.
+#
+#quarkus.thread-pool.shutdown-interrupt=10
+
+#
+# The shutdown timeout. If all pending work has not been completed by this time
+# then additional threads will be spawned to attempt to finish any pending tasks, and the shutdown process will
+# continue
+#
+#quarkus.thread-pool.shutdown-timeout=1M
+
+#
+# Enable trusting all certificates. Disable by default.
+#
+#quarkus.tls.trust-all=false
+
+#
+# Enables or disables the Vert.x cache.
+#
+#quarkus.vertx.caching=true
+
+#
+# Enables or disabled the Vert.x classpath resource resolver.
+#
+#quarkus.vertx.classpath-resolving=true
+
+#
+# Enables or disables the clustering.
+#
+#quarkus.vertx.cluster.clustered=false
+
+#
+# The host name.
+#
+#quarkus.vertx.cluster.host=localhost
+
+#
+# The ping interval.
+#
+#quarkus.vertx.cluster.ping-interval=20
+
+#
+# The ping reply interval.
+#
+#quarkus.vertx.cluster.ping-reply-interval=20
+
+#
+# The port.
+#
+#quarkus.vertx.cluster.port=
+
+#
+# The public host name.
+#
+#quarkus.vertx.cluster.public-host=
+
+#
+# The public port.
+#
+#quarkus.vertx.cluster.public-port=
+
+#
+# The number of event loops. 2 x the number of core by default.
+#
+#quarkus.vertx.event-loops-pool-size=
+
+#
+# The accept backlog.
+#
+#quarkus.vertx.eventbus.accept-backlog=
+
+#
+# The client authentication.
+#
+#quarkus.vertx.eventbus.client-auth=NONE
+
+#
+# The connect timeout.
+#
+#quarkus.vertx.eventbus.connect-timeout=60
+
+#
+# The idle timeout in milliseconds.
+#
+#quarkus.vertx.eventbus.idle-timeout=
+
+#
+# JKS config is disabled by default.
+#
+#quarkus.vertx.eventbus.key-certificate-jks=false
+
+#
+# Password of the key file.
+#
+#quarkus.vertx.eventbus.key-certificate-jks.password=
+
+#
+# Path of the key file (JKS format).
+#
+#quarkus.vertx.eventbus.key-certificate-jks.path=
+
+#
+# PEM Key/cert config is disabled by default.
+#
+#quarkus.vertx.eventbus.key-certificate-pem=false
+
+#
+# Comma-separated list of the path to the certificate files (Pem format).
+#
+#quarkus.vertx.eventbus.key-certificate-pem.certs=
+
+#
+# Comma-separated list of the path to the key files (Pem format).
+#
+#quarkus.vertx.eventbus.key-certificate-pem.keys=
+
+#
+# PFX config is disabled by default.
+#
+#quarkus.vertx.eventbus.key-certificate-pfx=false
+
+#
+# Password of the key.
+#
+#quarkus.vertx.eventbus.key-certificate-pfx.password=
+
+#
+# Path to the key file (PFX format).
+#
+#quarkus.vertx.eventbus.key-certificate-pfx.path=
+
+#
+# The receive buffer size.
+#
+#quarkus.vertx.eventbus.receive-buffer-size=
+
+#
+# The number of reconnection attempts.
+#
+#quarkus.vertx.eventbus.reconnect-attempts=0
+
+#
+# The reconnection interval in milliseconds.
+#
+#quarkus.vertx.eventbus.reconnect-interval=1
+
+#
+# Whether or not to reuse the address.
+#
+#quarkus.vertx.eventbus.reuse-address=true
+
+#
+# Whether or not to reuse the port.
+#
+#quarkus.vertx.eventbus.reuse-port=false
+
+#
+# The send buffer size.
+#
+#quarkus.vertx.eventbus.send-buffer-size=
+
+#
+# The so linger.
+#
+#quarkus.vertx.eventbus.soLinger=
+
+#
+# Enables or Disabled SSL.
+#
+#quarkus.vertx.eventbus.ssl=false
+
+#
+# Whether or not to keep the TCP connection opened (keep-alive).
+#
+#quarkus.vertx.eventbus.tcp-keep-alive=false
+
+#
+# Configure the TCP no delay.
+#
+#quarkus.vertx.eventbus.tcp-no-delay=true
+
+#
+# Configure the traffic class.
+#
+#quarkus.vertx.eventbus.traffic-class=
+
+#
+# Enables or disables the trust all parameter.
+#
+#quarkus.vertx.eventbus.trust-all=false
+
+#
+# JKS config is disabled by default.
+#
+#quarkus.vertx.eventbus.trust-certificate-jks=false
+
+#
+# Password of the key file.
+#
+#quarkus.vertx.eventbus.trust-certificate-jks.password=
+
+#
+# Path of the key file (JKS format).
+#
+#quarkus.vertx.eventbus.trust-certificate-jks.path=
+
+#
+# PEM Trust config is disabled by default.
+#
+#quarkus.vertx.eventbus.trust-certificate-pem=false
+
+#
+# Comma-separated list of the trust certificate files (Pem format).
+#
+#quarkus.vertx.eventbus.trust-certificate-pem.certs=
+
+#
+# PFX config is disabled by default.
+#
+#quarkus.vertx.eventbus.trust-certificate-pfx=false
+
+#
+# Password of the key.
+#
+#quarkus.vertx.eventbus.trust-certificate-pfx.password=
+
+#
+# Path to the key file (PFX format).
+#
+#quarkus.vertx.eventbus.trust-certificate-pfx.path=
+
+#
+# The size of the internal thread pool (used for the file system).
+#
+#quarkus.vertx.internal-blocking-pool-size=20
+
+#
+# The maximum amount of time the event loop can be blocked.
+#
+#quarkus.vertx.max-event-loop-execute-time=2
+
+#
+# The maximum amount of time the worker thread can be blocked.
+#
+#quarkus.vertx.max-worker-execute-time=60
+
+#
+# Enable or disable native transport
+#
+#quarkus.vertx.prefer-native-transport=false
+
+#
+# The maximum amount of time in seconds that a successfully resolved address will be cached.
+#
+# If not set explicitly, resolved addresses may be cached forever.
+#
+#quarkus.vertx.resolver.cache-max-time-to-live=2147483647
+
+#
+# The minimum amount of time in seconds that a successfully resolved address will be cached.
+#
+#quarkus.vertx.resolver.cache-min-time-to-live=0
+
+#
+# The amount of time in seconds that an unsuccessful attempt to resolve an address will be cached.
+#
+#quarkus.vertx.resolver.cache-negative-time-to-live=0
+
+#
+# Enables the async DNS resolver.
+#
+#quarkus.vertx.use-async-dns=false
+
+#
+# The amount of time before a warning is displayed if the event loop is blocked.
+#
+#quarkus.vertx.warning-exception-time=2
+
+#
+# The size of the worker thread pool.
+#
+#quarkus.vertx.worker-pool-size=20
