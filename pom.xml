@@ -10,7 +10,6 @@
     <module>i2scim-core</module>
     <module>i2scim-prov-memory</module>
     <module>i2scim-prov-mongo</module>
-    <module>i2scim-kafka</module>
     <module>i2scim-tests</module>
   </modules>
   <name>i2scim</name>
