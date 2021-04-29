@@ -11,6 +11,8 @@
     <module>i2scim-prov-memory</module>
     <module>i2scim-prov-mongo</module>
     <module>i2scim-tests</module>
+      <module>pkg-i2scim-prov-memory</module>
+      <module>pkg-i2scim-prov-mongodb</module>
   </modules>
   <name>i2scim</name>
   <description>SCIM v2 Server on Quarkus</description>

@@ -10,4 +10,5 @@ the appropriate schema in JSON.
 For storage, the server uses a persistence (backend) handler that can be extended to different data providers. The initial version supports MongoDB because of its support for JSON/BSON document semantics.
 
 Additional information:
-* [Configuration](Configuration.md) - I2 Configuration Properites
+* [Configuration](Configuration.md) - i2scim Configuration Properites
+* [Access Control](AccessControl.md) - Access Control Configuration
