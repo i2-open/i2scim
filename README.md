@@ -11,7 +11,7 @@ Additional information:
 * [Configuration](Configuration.md) - i2scim Configuration Properites
 * [Access Control](AccessControl.md) - Access Control Configuration
 
-##Features
+## Features
 
 i2scim supports the following features:
 * Dynamic schema support - i2scim can support schema files (as decribed in RFC7643) which can beloaded
@@ -33,12 +33,12 @@ at boot time. The server will automatically create endpoints and persistence map
     * IEventHandler enables deployment of asynchronous event handlers (e.g. for replication or security events)
     * Built on the [Quarkus](https://quarkus.io) platform
     
-##Deployment Packages
-###i2scim Mongo Provider
+## Deployment Packages
+###  i2scim Mongo Provider
 This packaging configures i2scim to run against a Mongo database cluster. Each i2scim node is stateless and depends on 
 a Mongo database platform for replication. See module [pkg-i2scim-prov-mongo](pkg-i2scim-prov-mongodb).
 
-###i2scim Memory Provider
+### i2scim Memory Provider
 Designed mainly for testing purposes, i2scim with Memory Provider stores data in memory and flushes data to a persistant volume
 on a periodic basis. The memory provider database is a JSON based representation of SCIM resources. See module [pkg-i2scim-prov-memory](pkg-i2scim-prov-memory).
     
