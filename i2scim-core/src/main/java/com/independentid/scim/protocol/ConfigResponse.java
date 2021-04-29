@@ -251,7 +251,7 @@ public class ConfigResponse extends ListResponse {
         // Indicate Patch supported
         gen.writeFieldName("patch");
         gen.writeStartObject();
-        gen.writeBooleanField("supported", false);
+        gen.writeBooleanField("supported", true);
         gen.writeEndObject();
 
         // Indicate Bulk support
