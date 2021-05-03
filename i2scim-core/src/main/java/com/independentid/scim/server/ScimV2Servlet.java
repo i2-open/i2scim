@@ -98,6 +98,7 @@ public class ScimV2Servlet extends HttpServlet {
 			super.service(req, resp);
 	}
 
+
 	@Counted(name="scim.ops.patch.count",description="Counts the number of SCIM Patch requests")
 	@Timed (name="scim.ops.patch.timer",description = "Measures SCIM Patch operation times")
 	protected void doPatch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -148,14 +149,19 @@ public class ScimV2Servlet extends HttpServlet {
 		complete(op);
 	}
 
+	@Counted(name="scim.ops.head.count",description="Counts the number of SCIM HEAD requests")
+	@Timed (name="scim.ops.head.timer",description = "Measures SCIM HEAD times")
+	protected void doHead(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+		HeadOp op = new HeadOp(req,resp);
+		complete(op);
+	}
+
 	@Counted(name="scim.ops.get.count",description="Counts the number of SCIM Get requests")
 	@Timed (name="scim.ops.get.timer",description = "Measures SCIM Get operation times")
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
-
 		String path = reqPath(req);
-		
 		//Used when jwks-certs needs to be served locally (usually for testing)
 		if (path.startsWith("/certs")) {
 
@@ -169,21 +175,9 @@ public class ScimV2Servlet extends HttpServlet {
 			instream.close();
 			return;
 		}
-		if (path.startsWith("/v2"))
-			path = path.substring(3);
-		
-		if (path.startsWith("/test") ) {
-			logger.debug(" Servlet test endpoint called");
-			resp.getWriter()
-				.print("Hello Tester!");
-			return;
-		}
-		
-		
+
 		GetOp op = new GetOp(req,resp);
-
 		complete(op);
-
 	}
 
 	@Counted(name="scim.ops.bulk.count",description="Counts the number of SCIM Bulk requests")
