@@ -20,6 +20,7 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.security.AciSet;
+import okhttp3.internal.http1.Http1Codec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -97,10 +98,7 @@ public class ResourceResponse extends ScimResponse {
 		/* Note: Normally this.ctx and sctx are the same. However server may modify
 		 * sctx after result set creation (or have chosen to insert an override). 
 		 */
-		
-		HttpServletResponse resp = ctx.getHttpServletResponse(); 
-		
-		
+
 		// For single results, just return the object itself.
 		ScimResource resource = getResultResource();
 		try {
@@ -109,17 +107,22 @@ public class ResourceResponse extends ScimResponse {
 			//TODO This should not happen
 			logger.error("Unexpected exception serializing a response value: "+e.getMessage(),e);
 		}
+
+		setHeaders(ctx);
+	}
+
+	public void setHeaders(RequestCtx ctx) {
+		HttpServletResponse resp = ctx.getHttpServletResponse();
 		if (resp != null) {
 			resp.setStatus(getStatus());
 			if (this.lastMod != null)
 				resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
 			if (this.getLocation() != null)
-				resp.setHeader("Location", this.getLocation());
+				resp.setHeader(ScimParams.HEADER_LOCATION, this.getLocation());
 			if (this.etag != null) {
-				resp.setHeader("ETag", "\"" + this.etag + "\"");
+				resp.setHeader(ScimParams.HEADER_ETAG, "\"" + this.etag + "\"");
 			}
 		}
-		
 	}
 
 	@Override

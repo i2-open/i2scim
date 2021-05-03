@@ -369,6 +369,9 @@ public class MongoProvider implements IScimProvider {
 			if (res == null && ctx.hasNoClientFilter()) {
 				return new ScimResponse(ScimResponse.ST_NOTFOUND,null,null);
 			}
+			// Process etag If-None-Match & lastmodified header if present
+			if (res != null && res.checkGetPreConditionFail(ctx))
+				return new ScimResponse(ScimResponse.ST_NOTMODIFIED,null,null);
 
 			//String json = JSON.serialize(res);
 			
@@ -445,11 +448,12 @@ public class MongoProvider implements IScimProvider {
 	public ScimResponse put(RequestCtx ctx, final ScimResource replaceResource)
 			throws ScimException, BackendException {
 		MongoScimResource origRes = (MongoScimResource) getResource(ctx);
+
 		if (origRes == null )
 			return new ScimResponse(ScimResponse.ST_NOTFOUND, null, null);
-		if (!origRes.checkPreCondition(ctx))
+		if (origRes.checkModPreConditionFail(ctx))
 			return new ScimResponse(new PreconditionFailException(
-					"ETag predcondition does not match"));
+					"Predcondition does not match"));
 		origRes.replaceResAttributes(replaceResource, ctx);  
 		return this.putResource(origRes, ctx);
 	}
@@ -459,6 +463,9 @@ public class MongoProvider implements IScimProvider {
 			throws ScimException, BackendException {
 		ctx.setEncodeExtensions(true);
 		MongoScimResource mres = (MongoScimResource) getResource(ctx);
+		if (mres.checkModPreConditionFail(ctx))
+			return new ScimResponse(new PreconditionFailException(
+					"Predcondition does not match"));
 		mres.modifyResource(req, ctx);
 		// Modify resource will update the meta.revision
 		return this.putResource(mres, ctx);
