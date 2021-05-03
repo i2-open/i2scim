@@ -163,6 +163,21 @@ public class ListResponse extends ScimResponse {
 		serialize(gen, sctx, false);
 	}
 
+	@Override
+	public void setHeaders(RequestCtx ctx) {
+		HttpServletResponse resp = ctx.getHttpServletResponse();
+		if (resp != null) {
+			resp.setStatus(getStatus());
+			if (this.lastMod != null)
+				resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
+			if (this.getLocation() != null)
+				resp.setHeader(ScimParams.HEADER_LOCATION, this.getLocation());
+			if (this.etag != null) {
+				resp.setHeader(ScimParams.HEADER_ETAG, "\"" + this.etag + "\"");
+			}
+		}
+	}
+
 	/* (non-Javadoc)
 	 * @see com.independentid.scim.protocol.ScimResponse#serialize(com.fasterxml.jackson.core.JsonGenerator, com.independentid.scim.protocol.RequestCtx)
 	 */
@@ -175,8 +190,6 @@ public class ListResponse extends ScimResponse {
 		/* Note: Normally this.ctx and sctx are the same. However server may modify
 		 * sctx after result set creation (or have chosen to insert an override). 
 		 */
-		
-		HttpServletResponse resp = ctx.getHttpServletResponse(); 
 
 		// For multiple or filtered results, return the result in a ListResponse
 		gen.writeStartObject();
@@ -203,17 +216,7 @@ public class ListResponse extends ScimResponse {
 		gen.writeEndArray();
 		gen.writeEndObject();
 		// Set Last Modified based on the most recently modified result in the set.
-		if (resp != null) {
-			if (this.lastMod != null)
-				resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
-
-			resp.setStatus(this.getStatus());
-			String loc = getLocation();
-
-			if (loc != null)
-				resp.setHeader("Location", loc);
-			// TODO should we check for response size of 0 for not found?
-		}
+		setHeaders(ctx);
 	}
 
 	@Override

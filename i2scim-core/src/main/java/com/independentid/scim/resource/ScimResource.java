@@ -33,6 +33,8 @@ import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 public class ScimResource implements IResourceModifier, IBulkIdTarget {
@@ -1151,25 +1153,74 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	}
 
 	@Override
-	public boolean checkPreCondition(RequestCtx ctx) throws PreconditionFailException {
+	public boolean checkModPreConditionFail(RequestCtx ctx) throws PreconditionFailException {
 		
 		//If inbound request context has no etag header, then no pre-condition.
-		if (ctx == null || ctx.getVersion() == null)
+		if (ctx == null || (ctx.getIfMatch() == null && ctx.getUnmodSince() == null))
 			return true;
-		// TODO Implement match pre-condition processing
-		@SuppressWarnings("unused")
+
 		String imatch = ctx.getIfMatch();
-		@SuppressWarnings("unused")
-		String nmatch = ctx.getIfNoneMatch();
-		
-		String curVersion;
-		try {
-			curVersion = this.calcVersionHash();
-		} catch (ScimException e) {
-			throw new PreconditionFailException("Failed to calculate current version: "+e.getMessage(),e);
+
+		if (imatch != null) {
+			String curVersion = getMeta().getVersion();
+			try {
+				if (curVersion == null)
+					curVersion = this.calcVersionHash();
+			} catch (ScimException e) {
+				throw new PreconditionFailException("Failed to calculate current version: "+e.getMessage(),e);
+			}
+			return !imatch.equals(curVersion);
+				 // fails if version does not match
 		}
-		String etag = ctx.getVersion();
-		return etag.equals(curVersion);
+
+
+		if (ctx.getUnmodSince() != null) {
+			Instant unmodsince = ctx.getUnmodSinceDate();
+			Date reslmdate = getMeta().getLastModifiedDate();
+			// Because RFC7232 defines HTTP_Date (RFC1123), comparison can only be made on the nearest second.
+			long diff = ChronoUnit.SECONDS.between(reslmdate.toInstant(),unmodsince);
+			return diff < 0;  // fail if resource mod date is greater
+
+		}
+
+		return false;
+	}
+
+	@Override
+	public boolean checkGetPreConditionFail(RequestCtx ctx) throws PreconditionFailException {
+		//If inbound request context has no etag header, then no pre-condition.
+		if (ctx == null || (ctx.getIfNoneMatch() == null && ctx.getModSince() == null))
+			return false;
+
+		String nmatch = ctx.getIfNoneMatch();
+
+		if (nmatch != null) {
+			String curVersion = getMeta().getVersion();
+			try {
+				if (curVersion == null)
+					curVersion = this.calcVersionHash();
+			} catch (ScimException e) {
+				throw new PreconditionFailException("Failed to calculate current version: " + e.getMessage(), e);
+			}
+
+			return nmatch.equals(curVersion);
+				  // fails if not match equals
+		}
+		if (ctx.getModSince() != null) {
+			Instant modsince = ctx.getModSinceDate();
+
+			Date reslmdate = getMeta().getLastModifiedDate();
+
+			// Because RFC7232 defines HTTP_Date or RFC1123, comparison can only be made on the nearest second.
+			long diff = ChronoUnit.SECONDS.between(reslmdate.toInstant(),modsince);
+
+			// Fails when resource mod date is <= modsince
+
+			System.out.println("comp="+diff);
+			return diff > -1;  // fail if resource mod date is same or older
+		}
+
+		return false;
 	}
 
 	/* (non-Javadoc)

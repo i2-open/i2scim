@@ -21,10 +21,10 @@ import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.BulkOps;
 import com.independentid.scim.op.Operation;
-import com.independentid.scim.security.AccessControl;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
+import com.independentid.scim.security.AccessControl;
 import com.independentid.scim.security.AciSet;
 import com.independentid.scim.security.ScimBasicIdentityProvider;
 import com.independentid.scim.serializer.JsonUtil;
@@ -38,6 +38,7 @@ import java.io.InputStream;
 import java.security.Principal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.*;
 
 /**
@@ -54,11 +55,17 @@ public class RequestCtx {
 
 	//private static final Logger logger = LoggerFactory.getLogger(RequestCtx.class);
 
-	final static SimpleDateFormat headDate = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");
-	
-	//protected HttpServletRequest req;
-	
-	//protected ServletContext sctx;
+	public final static SimpleDateFormat headDate = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");
+	/*
+	  This code is more robust but had timezone issues. Keep for future enhancement?
+	final static DateTimeFormatter FORMAT_TIME_RFC1123 = DateTimeFormatter.RFC_1123_DATE_TIME;
+	final static DateTimeFormatter FORMAT_TIME_RFC1036 = DateTimeFormatter.ofPattern("EEE, dd MMM yyyy HH:mm:ss zzz");
+	final static DateTimeFormatter FORMAT_TIME_ANSI = DateTimeFormatter.ofPattern("EEE MMM d HH:mm:ss yyyy");
+	final static DateTimeFormatter[] TIME_FORMATS = new DateTimeFormatter[] {
+			FORMAT_TIME_RFC1036, FORMAT_TIME_RFC1123, FORMAT_TIME_ANSI
+	};
+
+	 */
 	
 	protected String path;
 	
@@ -91,7 +98,8 @@ public class RequestCtx {
 	
 	protected String match = null;
 	protected String nmatch = null;
-	protected String since = null;
+	protected String modsince = null;
+	protected String unmodsince = null;
 
 	protected AccessControl.Rights right;
 		
@@ -178,11 +186,6 @@ public class RequestCtx {
 		this.sortOrder = null;		
 		setStartIndex(null);
 		setCount(null);
-		
-		
-		//if (logger.isDebugEnabled())
-		//	logger.debug("Bulk RequestCtx parsed with path: "+this.path);
-
 	}
 	
 	/**
@@ -271,9 +274,10 @@ public class RequestCtx {
 		//Preconditions
 		this.etag = allHeaders.get(ScimParams.HEADER_ETAG);
 				
-		this.match = allHeaders.get(ScimParams.HEADER_IFMATCH);
-		this.nmatch = allHeaders.get(ScimParams.HEADER_IFNONEMATCH);
-		this.since = allHeaders.get(ScimParams.HEADER_IFUNMODSINCE);
+		this.match = trimQuotes(allHeaders.get(ScimParams.HEADER_IFMATCH));
+		this.nmatch = trimQuotes(allHeaders.get(ScimParams.HEADER_IFNONEMATCH));
+		this.modsince = trimQuotes(allHeaders.get(ScimParams.HEADER_IFMODSINCE));
+		this.unmodsince = trimQuotes(allHeaders.get(ScimParams.HEADER_IFUNMODSINCE));
 		
 		if (body != null) {
 			parseSearchBody(body);
@@ -294,8 +298,6 @@ public class RequestCtx {
 	 * @throws ScimException for invalid filter, invalid parameters etc.
 	 */
 	public RequestCtx(HttpServletRequest req, HttpServletResponse resp, SchemaManager schemaManager) throws ScimException {
-		//this.req = request;
-		//sctx = request.getServletContext();
 		this.req = req;
 		this.tid = schemaManager.generateTransactionId();
 		this.smgr = schemaManager;
@@ -339,57 +341,29 @@ public class RequestCtx {
 		
 		ind = req.getParameter(ScimParams.QUERY_count);
 		setCount(ind);
-		
-		//Preconditions
-		this.etag = req.getParameter(ScimParams.HEADER_ETAG);
 
-		this.match = req.getParameter(ScimParams.HEADER_IFMATCH);
-		this.nmatch = req.getParameter(ScimParams.HEADER_IFNONEMATCH);
-		this.since = req.getParameter(ScimParams.HEADER_IFUNMODSINCE);
-		
-		// If this was a POST search request, parse the body for parameters
-		//* this can't be invoked here becaues cmgr will not be ready. Moved to SearchOp doPreOperation
-		/*
-		if (parseBody) {
-			ServletInputStream input = req.getInputStream();
-			parseSearchBody(input);
-		}
-		 */
-		
+		//Preconditions
+		this.etag = trimQuotes(req.getHeader(ScimParams.HEADER_ETAG));
+
+		this.match = trimQuotes(req.getHeader(ScimParams.HEADER_IFMATCH));
+		this.nmatch = trimQuotes(req.getHeader(ScimParams.HEADER_IFNONEMATCH));
+		this.unmodsince = trimQuotes(req.getHeader(ScimParams.HEADER_IFUNMODSINCE));
+		this.modsince = trimQuotes(req.getHeader(ScimParams.HEADER_IFMODSINCE));
+
 		if (this.sortOrder != null && !(this.sortOrder.equals("ascending")
 				|| this.sortOrder.equals("descending")))
 			throw new InvalidValueException("Invalid value for 'sortOrder' specified. Must be 'ascending' or 'descending'.");
+	}
 
-		//if (logger.isDebugEnabled())
-		//	logger.debug((parseBody?"Body ":"URL ")+"RequestCtx parsed path: "+this.getPath());
-
+	private String trimQuotes(String val) {
+		if (val != null && val.startsWith("\""))
+			return val.replaceAll("^\"|\"$", "");
+		return val;
 	}
 
 	protected void parseSecurityContext(HttpServletRequest req) {
 		//TODO to be implemented.
 	}
-	/*
-	protected void parseSecurityContext() {
-		secAuth = SecurityContextHolder.getContext().getAuthentication();
-		if (secAuth != null) {
-			hasSecAuth = true;
-			secSubject = secAuth.getName();
-		
-		} else
-			return;
-		secRoles = new ArrayList<String>();
-		
-		
-		Collection<? extends GrantedAuthority> authorities = secAuth.getAuthorities();
-		if (authorities == null) throw new IllegalStateException("No user currently logged in");
-
-		   
-		for (GrantedAuthority grantedAuthority : authorities) {
-			secRoles.add(grantedAuthority.getAuthority().toLowerCase());
-		}
-	
-	}
-	*/
 
 	public boolean isPostSearch() {
 		return this.postSearch;
@@ -543,6 +517,9 @@ public class RequestCtx {
 	}
 	
 	public void parsePath() {
+		if (path.startsWith("/v2/"))
+			path = path.substring(3);
+
 		if (!path.contains("/")) {
 			if (path.isEmpty())
 				return;
@@ -554,7 +531,7 @@ public class RequestCtx {
 			return;
 		}
 		String[] elems = path.split("/");
-		//System.out.println("\nPath=["+path+"]\n");
+
 		switch (elems.length) {
 			case 0:
 				endpoint = "/";
@@ -670,16 +647,21 @@ public class RequestCtx {
 	}
 	
 	public String getUnmodSince() {
-		return this.since;
+		return this.unmodsince;
 	}
 	
-	public Date getUnmodSinceDate() throws ParseException {
-		if (this.since == null) return null;
-		
-		return headDate.parse(this.since);
-		
+	public Instant getUnmodSinceDate() {
+		return parseHttpDate(this.unmodsince);
 	}
-	
+
+	public String getModSince() {
+		return this.modsince;
+	}
+
+	public Instant getModSinceDate() {
+		return parseHttpDate(this.modsince);
+	}
+
 	public String getBulkId() {
 		return this.bulkId;
 	}
@@ -716,12 +698,7 @@ public class RequestCtx {
 	 * @return True if no filter was originally requested.
 	 */
 	public boolean hasNoClientFilter() { return this.clientNoFilterSpecd; }
-	
-	/*
-	public HttpServletRequest getHttpRequest() {
-		return this.req;
-	}
-	*/
+
 	public ServletContext getServletContext() {
 		return this.sctx;
 	}
@@ -733,8 +710,7 @@ public class RequestCtx {
 	public HttpServletRequest getHttpServletRequest() {
 		return this.req;
 	}
-	
-	
+
 	public String toString() {
 		return this.path;
 	}
@@ -874,4 +850,15 @@ public class RequestCtx {
 	}
 
 	public boolean isReplicaOp() { return this.isReplicaOp; }
+
+	static Instant parseHttpDate (String httpdate) {
+		if (httpdate == null) return null;
+
+		try {
+			return headDate.parse(httpdate).toInstant();
+		} catch (ParseException ignore) {
+		}
+
+		return null;  // If we can't parse, just ignore
+	}
 }

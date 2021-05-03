@@ -15,6 +15,9 @@
 
 package com.independentid.scim.protocol;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 public class ScimParams {
 
 	public final static String QUERY_attributes = "attributes";
@@ -30,7 +33,9 @@ public class ScimParams {
 	public final static String HEADER_IFMATCH = "If-Match";
 	public final static String HEADER_IFNONEMATCH = "If-None-Match";
 	public final static String HEADER_IFUNMODSINCE = "If-Unmodified-Since";
+	public final static String HEADER_IFMODSINCE = "If-Modified-Since";
 	public final static String HEADER_IFRANGE = "If-Range";
+	public final static String HEADER_LOCATION = "Location";
 
 	public final static String SCHEMA_API_ListResponse = "urn:ietf:params:scim:api:messages:2.0:ListResponse";
 	public final static String SCHEMA_API_SearchRequest = "urn:ietf:params:scim:api:messages:2.0:SearchRequest";

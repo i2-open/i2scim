@@ -421,6 +421,10 @@ public class MemoryProvider implements IScimProvider {
 			return new ScimResponse(ScimResponse.ST_NOTFOUND,null,null);
 		}
 
+		// Process etag If-None-Match & lastmodified header if present
+		if (res != null && res.checkGetPreConditionFail(ctx))
+			return new ScimResponse(ScimResponse.ST_NOTMODIFIED,null,null);
+
 		// if this is a get of a specific resource return the object
 		if (res != null && ctx.hasNoClientFilter()) {
 			if (ctx.getFilter() != null) {
@@ -469,11 +473,11 @@ public class MemoryProvider implements IScimProvider {
 		if (origRes == null)
 			return new ScimResponse(ScimResponse.ST_NOTFOUND, null, null);
 
-		if (!origRes.checkPreCondition(ctx))
+		if (origRes.checkModPreConditionFail(ctx))
 			return new ScimResponse(new PreconditionFailException(
-					"ETag predcondition does not match"));
+					"Predcondition does not match"));
 
-		ScimResource temp ;
+		ScimResource temp;
 		try {
 			temp = origRes.copy(null);
 		} catch (ParseException e) {
@@ -495,6 +499,9 @@ public class MemoryProvider implements IScimProvider {
 
 		if (origRes == null)
 			return new ScimResponse(ScimResponse.ST_NOTFOUND, null, null);
+		if (origRes.checkModPreConditionFail(ctx))
+			return new ScimResponse(new PreconditionFailException(
+					"Predcondition does not match"));
 		ScimResource temp;
 		try {
 			temp = origRes.copy(null);
