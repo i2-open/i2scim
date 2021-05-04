@@ -23,6 +23,7 @@ import com.independentid.scim.schema.Attribute;
 import com.mongodb.client.model.Filters;
 import org.bson.conversions.Bson;
 import org.bson.types.Decimal128;
+import org.bson.types.ObjectId;
 
 
 public class MongoFilterMapper {
@@ -51,7 +52,9 @@ public class MongoFilterMapper {
         switch (filter.getOperator()) {
 
             case AttributeFilter.FILTEROP_EQ:
-                if (filter.getAttribute().getCaseExact())
+                if (aname.equals("_id"))
+                    obj = Filters.eq("_id",new ObjectId(filter.asString()));
+                else if (filter.getAttribute().getCaseExact())
                     obj = Filters.eq(aname, filter.asString());
                 else
                     obj = Filters.regex(aname,"^" + filter.asQuotedString() + "$","i");
@@ -61,7 +64,9 @@ public class MongoFilterMapper {
                 break;
 
             case AttributeFilter.FILTEROP_NE:
-                if (filter.getAttribute().getCaseExact())
+                if (aname.equals("_id"))
+                    obj = Filters.eq("_id",new ObjectId(filter.asString()));
+                else if (filter.getAttribute().getCaseExact())
                     obj = Filters.eq(aname, filter.asString());
                 else
                     obj = Filters.regex(aname,"^" + filter.asQuotedString() + "$","i");
@@ -151,8 +156,11 @@ public class MongoFilterMapper {
             aname = attr.getName();
         else
             aname = attr.getRelativePath();
+
         if (aname.contains("$ref"))
             aname = aname.replace("$ref","href");
+        if (aname.equalsIgnoreCase("id"))
+            aname = "_id";
 
         if (filter.isExtensionAttribute()) {
             // In order for the mongo query to work, the extensionId object has to be added to the path.

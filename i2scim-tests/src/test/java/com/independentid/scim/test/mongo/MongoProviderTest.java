@@ -17,15 +17,14 @@ package com.independentid.scim.test.mongo;
 
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.mongo.MongoProvider;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.protocol.ScimParams;
-import com.independentid.scim.protocol.ScimResponse;
+import com.independentid.scim.protocol.*;
 import com.independentid.scim.resource.ExtensionValues;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.StringValue;
@@ -73,9 +72,10 @@ public class MongoProviderTest {
 	static MongoProvider mp = null;
 
 	private static final String testUserFile1 = "classpath:/schema/TestUser-bjensen.json";
-	//private static final String testUserFile2 = "classpath:/schema/TestUser-jsmith.json";
+	private static final String testUserFile2 = "classpath:/schema/TestUser-jsmith.json";
 
-	private static String user1url; //,user2url;
+	private static String user1uid,grpid;
+	private static String user1url,user2url,grpurl; //,user2url;
 
 	@Test
 	public void a_providerTest() {
@@ -125,6 +125,9 @@ public class MongoProviderTest {
 					.as("Check user created success")
 					.isEqualTo(ScimResponse.ST_CREATED);
 
+			assertThat(resp).isInstanceOf(ResourceResponse.class);
+			ResourceResponse rresp = (ResourceResponse) resp;
+			user1uid = rresp.getId();
 			String body = getResponseBody(resp,ctx);
 			logger.debug("Body:\n"+body);
 
@@ -158,6 +161,21 @@ public class MongoProviderTest {
 			assertThat(body)
 					.as("Is a uniqueness error")
 					.contains(ScimResponse.ERR_TYPE_UNIQUENESS);
+
+			logger.info("\tB2. Adding JSmith...");
+			// add jsmith
+			userStream = ConfigMgr.findClassLoaderResource(testUserFile2);
+			assert userStream != null;
+			node = JsonUtil.getJsonTree(userStream);
+			//,user2;
+			ScimResource user2 = new ScimResource(smgr, node, "Users");
+			user2.setId(null);  // Mongo won't exxcept external ids
+			ctx = new RequestCtx("/Users",null,null,smgr);
+			resp = mp.create(ctx, user2);
+			user2url = resp.getLocation();
+			assertThat (resp.getStatus())
+					.as("Check user created success")
+					.isEqualTo(ScimResponse.ST_CREATED);
 
 
 		} catch (IOException | ParseException | ScimException e) {
@@ -279,7 +297,7 @@ public class MongoProviderTest {
 	@Test
 	public void e_ScimSearchValPathUserTest() {
 
-		logger.info("\tD. Searching user from backend with filter=UserName eq bjensen@example.com and addresses[country eq \\\"USA\\\" and type eq \\\"home\\\"]");
+		logger.info("\tE. Searching user from backend with filter=UserName eq bjensen@example.com and addresses[country eq \\\"USA\\\" and type eq \\\"home\\\"]");
 
 
 		try {
@@ -330,8 +348,7 @@ public class MongoProviderTest {
 
 	@Test
 	public void f_updateUserTest() {
-		logger.info("\t E. Modify user with PUT Test");
-
+		logger.info("\tF. Modify user with PUT Test");
 
 		try {
 			RequestCtx ctx = new RequestCtx(user1url,null,null,smgr);
@@ -388,11 +405,55 @@ public class MongoProviderTest {
 		}
 	}
 
+	private String memberObj(String ref) {
+		String id = ref.substring(ref.lastIndexOf("/")+1);
+		return "{ \"value\": \""+id+"\",\n"+
+				"    \"$ref\": \""+ref+"\"}";
+	}
+
 	@Test
-	public void g_ScimDeleteUserTest() {
+	public void g_AddGroupTest() throws JsonProcessingException, ScimException, ParseException {
+		logger.info("\tG. Add Group Test(also second container)");
 
-		logger.info("Deleting user from backend");
+		String jsonGroup = "{\n" +
+				"     \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],\n" +
+				"     \"displayName\": \"TEST Tour Guides\",\n" +
+				"     \"members\": [\n";
+		jsonGroup = jsonGroup + memberObj(user1url)+",\n"+memberObj(user2url)+"\n]}";
+		JsonNode node = JsonUtil.getJsonTree(jsonGroup);
+		ScimResource grpRes = new ScimResource(smgr,node,"Groups");
+		RequestCtx ctx = new RequestCtx("/Groups",null,null,smgr);
+		ScimResponse  resp = mp.create(ctx,grpRes);
+		assertThat(resp.getStatus())
+				.as("Confirm group created")
+				.isEqualTo(ScimResponse.ST_CREATED);
+		grpurl = resp.getLocation();
+	}
 
+	@Test
+	public void h_GlobalSearchTest() throws ScimException, BackendException {
+		logger.info("\tH. Global Search Test");
+
+		String filter = "members.value eq "+user1uid+" or id eq "+user1uid; // we want to match a resource in each container
+		RequestCtx ctx = new RequestCtx(null,null,filter,smgr);
+
+		ScimResponse resp = mp.get(ctx);
+
+		assertThat(resp.getStatus())
+				.isEqualTo(ScimResponse.ST_OK);
+
+		assertThat(resp)
+				.as("Check for ListResponse")
+				.isInstanceOf(ListResponse.class);
+		ListResponse lresp = (ListResponse) resp;
+		assertThat(lresp.getSize())
+				.as("Should be two matches")
+				.isEqualTo(2);
+	}
+
+	@Test
+	public void i_ScimDeleteUserTest() {
+		logger.info("\tI. Deleting user test");
 
 		try {
 			RequestCtx ctx = new RequestCtx(user1url,null,null,smgr);

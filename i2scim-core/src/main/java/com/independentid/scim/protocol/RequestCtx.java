@@ -202,16 +202,17 @@ public class RequestCtx {
 		this.id = id;
 		this.tid = schemaManager.generateTransactionId();
 		StringBuilder buf = new StringBuilder();
-		
-		if (resEndpoint != null) {
-			if (!resEndpoint.startsWith("/"))
-				buf.append('/');
-			buf.append(resEndpoint);
-			if (!resEndpoint.endsWith("/"))
-				buf.append('/');
-			if (id !=null)
-				buf.append(id);
-		}
+		if (resEndpoint == null)
+			resEndpoint = "/";
+
+		if (!resEndpoint.startsWith("/"))
+			buf.append('/');
+		buf.append(resEndpoint);
+		if (!resEndpoint.endsWith("/"))
+			buf.append('/');
+		if (id !=null)
+			buf.append(id);
+
 		this.path = buf.toString();
 		parsePath();
 		if (filter != null) {
@@ -517,15 +518,15 @@ public class RequestCtx {
 	}
 	
 	public void parsePath() {
+		if (path == null || path.isEmpty()) {
+			path = "/";
+			endpoint = path;
+			id = null;
+			return;
+		}
 		if (path.startsWith("/v2/"))
 			path = path.substring(3);
 
-		if (!path.contains("/")) {
-			if (path.isEmpty())
-				return;
-			endpoint = path;
-			return;
-		}
 		if (path.equals(ScimParams.PATH_GLOBAL_SEARCH)) {
 			this.postSearch = true;
 			return;
@@ -635,7 +636,7 @@ public class RequestCtx {
 	 * @return true if the request is at the root (does not have an endpoint)
 	 */
 	public boolean isRoot() {
-		return (this.endpoint == null);
+		return (this.endpoint == null  || this.endpoint.equals("/"));
 	}
 	
 	public String getIfMatch() {

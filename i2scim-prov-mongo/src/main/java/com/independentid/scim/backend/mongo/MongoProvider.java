@@ -393,55 +393,56 @@ public class MongoProvider implements IScimProvider {
 			else
 				return new ListResponse(ctx, maxResults);  // return an empty response
 		}
-		
-		String type = ctx.getResourceContainer();
-		if (type == null)
-			throw new NotImplementedException("Root searching not implemented");
-		
-		MongoCollection<Document> col = this.scimDb.getCollection(type);
+
+		ArrayList<String> containers = new ArrayList<>();
+		if (ctx.isRoot()) {
+			for (ResourceType type : schemaManager.getResourceTypes())
+				containers.add(type.getTypePath());
+		} else
+			containers.add(ctx.getResourceContainer());
+
+		// Set up for potential multi-item list response
+		ArrayList<ScimResource> vals = new ArrayList<>();
 
 		Bson query;
 		Filter filt = ctx.getFilter();
-		
 		if (filt == null)
 			query = new Document();
 		else
 			query = MongoFilterMapper.mapFilter(filt, false, false);
-		
 		if (logger.isDebugEnabled())
 			logger.debug("Query: "+query.toString());
 		// TODO mapFilter could do imprecise mapping to handle unindexed
-		// data since filter is checked after
 
-		FindIterable<Document> fiter = col.find(query);
-		MongoCursor<Document> iter = fiter.iterator();
-		// If there are no results return empty set.
-		if (!iter.hasNext())
-			return new ListResponse(ctx, maxResults);
+		for (String type : containers) { // check one or more containers
+			MongoCollection<Document> col = this.scimDb.getCollection(type);
 
-		// Multi-object response.
-		ArrayList<ScimResource> vals = new ArrayList<>();
+			FindIterable<Document> fiter = col.find(query);
+			MongoCursor<Document> iter = fiter.iterator();
+			// If there are no results return empty set.
+			if (!iter.hasNext())
+				continue; // do the next type
+				//return new ListResponse(ctx, maxResults);
 
-		while (iter.hasNext()) {
-			Document res = iter.next();
+			while (iter.hasNext()) {
+				Document res = iter.next();
 
-			try {
-				ScimResource sres = mapUtil.mapScimResource(res, type);
-			
-				// if (Filter.checkMatch(sres, ctx))
-				vals.add(sres);
-			} catch (SchemaException e) {
-				logger.warn("Unhandled exception: "+e.getLocalizedMessage(),e);
-				return new ScimResponse(ScimResponse.ST_INTERNAL,e.getLocalizedMessage(),null);
-				/*
-				throw new BackendException(
-						"Unknown parsing exception parsing data from MongoDB."
-								+ e.getMessage(), e);
-								*/
+				try {
+					ScimResource sres = mapUtil.mapScimResource(res, type);
+
+					// if (Filter.checkMatch(sres, ctx))
+					vals.add(sres);
+				} catch (SchemaException e) {
+					logger.warn("Unhandled exception: "+e.getLocalizedMessage(),e);
+					return new ScimResponse(ScimResponse.ST_INTERNAL,e.getLocalizedMessage(),null);
+				}
 			}
 		}
-		return new ListResponse(vals, ctx,maxResults);
 
+		if (vals.size() == 0)
+			return new ListResponse(ctx, maxResults);
+
+		return new ListResponse(vals, ctx,maxResults);
 	}
 
 	@Override

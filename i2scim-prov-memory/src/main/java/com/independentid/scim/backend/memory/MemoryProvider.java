@@ -397,6 +397,7 @@ public class MemoryProvider implements IScimProvider {
 					}
 				}
 			} else {
+				// this method supports root base searches where path is "/"
 				Set<String> candidates = evaluateFilter(filter, ctx.getResourceContainer());
 
 				for (String id : candidates) {

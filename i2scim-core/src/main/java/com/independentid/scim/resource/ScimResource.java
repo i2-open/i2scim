@@ -1157,7 +1157,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		
 		//If inbound request context has no etag header, then no pre-condition.
 		if (ctx == null || (ctx.getIfMatch() == null && ctx.getUnmodSince() == null))
-			return true;
+			return false;
 
 		String imatch = ctx.getIfMatch();
 
