@@ -64,6 +64,43 @@ An important aspect of SCIM is that all resource URIs a permanent - not subject 
 identifier, external references (e.g. such as to Users within Groups) are not subject to link breakages. This provides SCIM services with 
 a natural form of referential integrity.
 
+#### An example SCIM Resource document:
+```json
+{
+ "schemas":
+   ["urn:ietf:params:scim:schemas:core:2.0:User",
+     "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"],
+
+ "id": "2819c223-7f76-453a-413861904646",
+ "externalId": "701984",
+
+ "userName": "bjensen@example.com",
+ "name": {
+   "formatted": "Ms. Barbara J Jensen, III",
+   "familyName": "Jensen",
+   "givenName": "Barbara",
+   "middleName": "Jane",
+   "honorificPrefix": "Ms.",
+   "honorificSuffix": "III"
+ },
+ "...other core attrs...": "..vals.",
+
+ "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User": {
+   "employeeNumber": "701984",
+   "costCenter": "4130",
+   "...other extension attrs...": "..vals."
+ },
+
+ "meta": {
+   "resourceType": "User",
+   "created": "2010-01-23T04:56:22Z",
+   "lastModified": "2011-05-13T04:42:34Z",
+   "version": "W\/\"3694e05e9dff591\"",
+   "location":
+     "https://example.com/v2/Users/2819c223-7f76-453a-413861904646"
+ }
+}
+```
 ### SCIM API / Protocol
 SCIM Protocol [RFC7644](https://tools.ietf.org/html/rfc7644) is technically just a profile of HTTP 
 [RFC7230-40](https://tools.ietf.org/html/rfc7230). In other words, SCIM is just a REST-ful API that 
@@ -83,6 +120,27 @@ PUT it back.
 org/html/rfc6902). While slightly more complex for clients than HTTP PUT, PATCH allows discrete attribute modification without having 
 to transmit the whole resource. For example, modifying a Group with a 100K or millions of members becomes difficult 
 to handle in Javascript, not to mention the overhead and security risk in transferring such large values.
+
+Example SCIM JSON Patch Request to a Group resource (identified by the request URL):
+````json
+    { "schemas": ["urn:ietf:params:scim:api:messages:2.0:PatchOp"],
+      "Operations":[
+        {
+            "op":"add",
+            "path":"members",
+            "value":[
+                {
+                "display": "Babs Jensen",
+                "$ref":
+                    "https://example.com/v2/Users/2819c223...413861904646",
+                "value": "2819c223-7f76-453a-919d-413861904646"
+                }
+            ]
+        },
+    ... + additional operations if needed ...
+      ]
+    }
+````
   
 * DELETE: Is used to delete a resource specified by the request URL.
 
