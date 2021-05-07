@@ -6,7 +6,7 @@ This repository is private and all materials are Copyright of IndependentID.com
 
 ![scim](docs/SCIM_B-and-W_792x270.jpg)
 
-SCIM is an IETF specified protocol and schema designed to support simple cloud identity management over a RESTful HTTP
+SCIM is an IETF specified protocol and schema designed to support simple cloud identity management over a REST-ful HTTP
 service. Note: the SCIM acronym stands for System for Cross-domain Identity Management.
 See: [simplecloud.info](https://simplecloud.info). 
 
@@ -14,7 +14,7 @@ See: [simplecloud.info](https://simplecloud.info).
 
 In the JSON world schema can be a controversial topic. In the SCIM world because many service providers will
 implement SCIM, there had to be a way to tell SCIM clients how to read and understand endpoints with slightly 
-different set ups. For example, one server may have only Users and Groups (the most common), but other servers may
+different set-ups. For example, one server may have only Users and Groups (the most common), but other servers may
 have other custom resource types like Devices, Applications, etc.
 
 In a SCIM server, resources are collected in top-level containers known as *Resource Types*. Each resource (record) 
@@ -48,7 +48,7 @@ is used:
 
 ### Core Attributes
 SCIM defines the following core attributes that are present in every SCIM Resource:
-* `id` - Every resource has a permanent (immutable) resource identifier. To access a resource, the URL is alwasy of 
+* `id` - Every resource has a permanent (immutable) resource identifier. To access a resource, the URL is always of 
   the form `https://<serverdns>/<ResourceType>/<id>` where:
     * `<serverdns>` is the domain name of the server
     * `<ResourceType>` is the type of resource such as `Users` or `Groups`
@@ -60,13 +60,13 @@ SCIM defines the following core attributes that are present in every SCIM Resour
 * `meta` - Contains metadata about the resource such as `version`, `lastModified`, `resourceType`, and `location`.
 * `externalid` - an identifier used by an external client to uniquely reference the resource (optional).
 
-An important aspect of SCIM is that all resource URIs a permenant - not subject to change. By using a globally unique 
+An important aspect of SCIM is that all resource URIs a permanent - not subject to change. By using a globally unique 
 identifier, external references (e.g. such as to Users within Groups) are not subject to link breakages. This provides SCIM services with 
 a natural form of referential integrity.
 
 ### SCIM API / Protocol
 SCIM Protocol [RFC7644](https://tools.ietf.org/html/rfc7644) is technically just a profile of HTTP 
-[RFC7230-40](https://tools.ietf.org/html/rfc7230). In other words, SCIM is just a RESTful API that 
+[RFC7230-40](https://tools.ietf.org/html/rfc7230). In other words, SCIM is just a REST-ful API that 
 defines things like create, read/search, update and delete methods using HTTP methods. 
 
 * CREATE: Is used to create an object in SCIM, the HTTP POST method is used where the body of the request is simply a 
@@ -80,7 +80,7 @@ read-only, SCIM defines a flexible approach making it easy for a client to simpl
 PUT it back.
 
 * PATCH: Is used to modify a SCIM Resource using a format similar to JSON Patch [RFC6902](https://tools.ietf.
-org/html/rfc6902). While slightly more complex for clients than HTTP PUT, PATCH allows descreat attribute modification without having 
+org/html/rfc6902). While slightly more complex for clients than HTTP PUT, PATCH allows discrete attribute modification without having 
 to transmit the whole resource. For example, modifying a Group with a 100K or millions of members becomes difficult 
 to handle in Javascript, not to mention the overhead and security risk in transferring such large values.
   
@@ -97,7 +97,7 @@ version value.
  
 ## Where is SCIM Used?
 In some cases, SCIM is deployed as a
-directory server such as with Microsoft Azure or Oracle Identity Cloust Service (IDCS). As a directory, many
+directory server such as with Microsoft Azure or Oracle Identity Cloud Service (IDCS). As a directory, many
 applications can access a common stateful store for User profile information. Similarly SCIM 
 servers often serve as the backing store for OAuth Authorization and OpenId Connect systems. 
 
@@ -111,16 +111,16 @@ does not work off of a fixed schema and structure. **i2scim** parses JSON schema
 maps SCIM resources to a provider (a persistence service or database). **i2scim** may be easily extended to support new
 schema and resources simply by defining the appropriate schema in JSON.
 
-For persistance, the server defines an Interface `IScimProvider` handler that can be implemented to support 
+For persistence, the server defines an Interface `IScimProvider` handler that can be implemented to support 
 different providers, or services. The initial version supports a MongoDB provider and an in-memory provider that stores 
-JSON documents to a persistance volume (disk).
+JSON documents to a persistence volume (disk).
 
 Additional information:
 
 * Quick Starts
     * Deploying i2scim-memory and
     * Deploying i2scim-mongo.
-* [Configuration](Configuration.md) - i2scim Configuration Properites
+* [Configuration](Configuration.md) - i2scim Configuration Properties
 * [Access Control](AccessControl.md) - Access Control Configuration
 
 ## What can i2scim be used for?
@@ -136,9 +136,10 @@ i2scim is a kubernetes enabled service which can support the following scenarios
 
 i2scim supports the following features:
 
-* Dynamic schema support - i2scim can support schema files (as decribed in RFC7643) which can beloaded at boot time. The
+* Dynamic schema support - i2scim can support schema files (as described in RFC7643) which can be loaded at boot 
+  time. The
   server will automatically create endpoints and persistence mappings to support the provided json configuration.
-* Full SCIMV2 (RFC7644) protocol support including JSON Patch. Bulk support is planned for a future release.
+* Full SCIM V2 (RFC7644) protocol support including JSON Patch. Bulk support is planned for a future release.
 * Support for HTTP HEAD method and HTTP Conditional [RFC7232] qualifiers.
 * Kubernetes deployment using docker on Intel and ARM64 (e.g. Raspberry Pi).
 * DevOps Health, Liveness and performance interceptor support ready (e.g. grafana)
@@ -163,13 +164,13 @@ i2scim supports the following features:
     * `IScimPlugin` interface enables pre and post transaction custom actions
     * `IEventHandler` interface enables deployment of asynchronous event handlers (e.g. for replication or security
       events)
-    * Built on the [Quarkus](https://quarkus.io) platform version 1.13.1 for smaller deployables with faster startup
+    * Built on the [Quarkus](https://quarkus.io) platform version 1.13.1 for smaller deployments with faster startup
       running in Docker containers.
 
 ## Deployment Packages
 
 i2scim currently has 2 deployment packages that enable fast deployment on a Kubernetes cluster. One package is
-configured to run the Mongo DB and the other the in Memmory database.
+configured to run the Mongo DB and the other the in Memory database.
 
 ### i2scim Mongo Provider
 
@@ -178,7 +179,7 @@ Mongo database platform for replication. See module [pkg-i2scim-prov-mongo](pkg-
 
 ### i2scim Memory Provider
 
-Designed mainly for testing purposes, i2scim with Memory Provider stores data in memory and flushes data to a persistant
+Designed mainly for testing purposes, i2scim with Memory Provider stores data in memory and flushes data to a persistent
 volume on a periodic basis. The memory provider database is a JSON based representation of SCIM resources. See
 module [pkg-i2scim-prov-memory](pkg-i2scim-prov-memory).
 
