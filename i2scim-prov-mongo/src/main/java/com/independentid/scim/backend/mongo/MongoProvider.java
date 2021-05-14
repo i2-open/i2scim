@@ -116,7 +116,7 @@ public class MongoProvider implements IScimProvider {
 			singleton = this;
 		if (this.ready)
 			return; // only run once
-		// this.scfg = cfg;
+
 		logger.info("======Initializing SCIM MongoDB Provider======");
 		logger.info("\tUsing MongoDB: "+this.dbUrl+", Database: "+this.scimDbName);
 
@@ -188,15 +188,6 @@ public class MongoProvider implements IScimProvider {
 		 */
 
 		Document doc = MongoMapUtil.mapResource(res);
-
-		// resobj.put("_id", new ObjectId(id));
-		// resobj.removeField("id"); // don't need duplicate
-
-		/*
-		 * Set<String> fields = resobj.keySet(); for (String field : fields) {
-		 * System.err.println("Field: " + field); }
-		 */
-		
 
 		MongoDatabase sDb = getDbConnection();
 
@@ -300,7 +291,7 @@ public class MongoProvider implements IScimProvider {
 
 		MongoCollection<Document> col =  getDbConnection().getCollection(SystemSchemas.RESTYPE_CONFIG);
 
-		// If this is a brand new databse, return null
+		// If this is a brand new database, return null
 		if (col.countDocuments() == 0)
 			return null;
 

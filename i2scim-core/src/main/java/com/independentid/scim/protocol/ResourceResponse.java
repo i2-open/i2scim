@@ -20,7 +20,6 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.security.AciSet;
-import okhttp3.internal.http1.Http1Codec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

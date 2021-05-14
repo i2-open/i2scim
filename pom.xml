@@ -5,7 +5,7 @@
   <groupId>com.independentid</groupId>
   <artifactId>i2scim-parent</artifactId>
   <packaging>pom</packaging>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.5.0-Alpha</version>
   <modules>
     <module>i2scim-core</module>
     <module>i2scim-prov-memory</module>
@@ -29,6 +29,7 @@
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
     <quarkus.platform.version>1.13.1.Final</quarkus.platform.version>
     <surefire-plugin.version>3.0.0-M5</surefire-plugin.version>
+    <i2scim.version>0.5.0-Alpha</i2scim.version>
   </properties>
   <dependencyManagement>
     <dependencies>

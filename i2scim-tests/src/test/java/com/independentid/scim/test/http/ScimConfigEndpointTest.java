@@ -89,14 +89,14 @@ public class ScimConfigEndpointTest {
 
         //We need a rest template to run
 
-        HttpResponse resp = executeGet("/test");
+        HttpResponse resp = executeGet(ScimParams.PATH_SERV_PROV_CFG);
         assert resp != null;
         HttpEntity body = resp.getEntity();
         String res = EntityUtils.toString(body);
 
         assertThat(res)
-                .as("Default test endpoint works")
-                .isEqualTo("Hello Tester!");
+                .as("Service provider config returned")
+                .contains(ScimParams.SCHEMA_SCHEMA_ServiceProviderConfig);
 
     }
 
@@ -203,7 +203,7 @@ public class ScimConfigEndpointTest {
                 .isEqualTo(ScimResponse.ST_NOTFOUND);
 
         // This tests that a filter can be executed against ServiceProviderConfig
-        req = "/ServiceProviderConfig?filter=" + URLEncoder.encode("patch.supported eq false", StandardCharsets.UTF_8);
+        req = "/ServiceProviderConfig?filter=" + URLEncoder.encode("patch.supported eq true", StandardCharsets.UTF_8);
         httpResponse = executeGet(req);
         assert httpResponse != null;
         HttpEntity entity = httpResponse.getEntity();
@@ -231,7 +231,7 @@ public class ScimConfigEndpointTest {
                 .contains(ScimResponse.SCHEMA_LISTRESP);
 
         //This should return an empty ListResponse (no match)
-        req = "/ServiceProviderConfig?filter=" + URLEncoder.encode("patch.supported eq true", StandardCharsets.UTF_8);
+        req = "/ServiceProviderConfig?filter=" + URLEncoder.encode("patch.supported eq false", StandardCharsets.UTF_8);
         httpResponse = executeGet(req);
         assert httpResponse != null;
         entity = httpResponse.getEntity();

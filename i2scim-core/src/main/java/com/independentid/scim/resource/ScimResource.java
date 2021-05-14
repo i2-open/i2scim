@@ -1327,4 +1327,13 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			}
 		}
 	}
+
+	public static ScimResourceBuilder builder(SchemaManager schemaManager, String type) {
+		return new ScimResourceBuilder(schemaManager,type);
+	}
+
+	public static ScimResourceBuilder builder(SchemaManager schemaManager, InputStream stream) throws ScimException, IOException, ParseException {
+		return new ScimResourceBuilder(schemaManager,stream);
+	}
+
 }

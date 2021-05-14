@@ -125,8 +125,32 @@ public class SchemaManager {
 
     private boolean loadedFromProvider = false;
 
-    public SchemaManager() {
+    SchemaManager() {
 
+    }
+
+
+    /**
+     * This constructor used for command line instantiation or versions without server.
+     * @param schemaPath The file path to the JSON formatted SCIM schema file
+     * @param typesPath File path to the JSON formatted Resource type config file
+     * @throws IOException Thrown when JSON config file cannot be loaded
+     * @throws ScimException Thrown due to a JSON parsing error
+     */
+     public SchemaManager(String schemaPath, String typesPath) throws IOException, ScimException {
+        InputStream schStream = ConfigMgr.findClassLoaderResource(schemaPath);
+        parseSchemaConfig(schStream);
+        schStream.close();
+
+        InputStream stream = ConfigMgr.findClassLoaderResource(typesPath);
+        parseResourceTypes(stream);
+        stream.close();
+
+        stream = ConfigMgr.findClassLoaderResource("classpath:/schema/scimCommonSchema.json");
+        parseCoreSchema(stream);
+        stream.close();
+        logger.info("Loaded: "+getResourceTypes().size()+" resource types, "+getSchemas().size()+" schemas.");
+        initialized = true;
     }
 
     /**
@@ -283,8 +307,13 @@ public class SchemaManager {
         if (filePath == null)
             throw new ScimException("SCIM default schema file path is null.");
 
+        InputStream stream = ConfigMgr.findClassLoaderResource(filePath);
+        parseCoreSchema(stream);
+
+    }
+
+    protected void parseCoreSchema(InputStream stream) throws IOException, ScimException {
         try {
-            InputStream stream = ConfigMgr.findClassLoaderResource(filePath);
 
             if (stream == null)
                 throw new IOException("Schema file must not be null");
@@ -305,12 +334,12 @@ public class SchemaManager {
                     logger.debug("\t....Attribute Schema loaded>" + schema.getId());
                 //System.out.println("Debug: Schema loaded>"+schema.getId());
             } catch (SchemaException e) {
-                logger.warn("SchemaException while parsing Schema Core Attribute config: " + filePath + ", " + e.getLocalizedMessage(), e);
+                logger.warn("SchemaException while parsing Schema Core Attribute config: " + e.getLocalizedMessage(), e);
             }
 
         } catch (JsonProcessingException e) {
             throw new ScimException(
-                    "JSON parsing exception processing schema core configuration: " + filePath,
+                    "JSON parsing exception processing schema core configuration: " + e.getLocalizedMessage(),
                     e);
         }
     }
@@ -845,7 +874,6 @@ public class SchemaManager {
         }
         return attrs;
     }
-
 
 }
 

@@ -80,7 +80,7 @@ public class ScimResourceTest {
 	final static String entSchema = "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User";
 	
 	static ScimResource user1,user2 = null;
-	
+
 	/**
 	 * This test checks that a JSON user can be parsed into a SCIM Resource
 	 */
@@ -94,9 +94,9 @@ public class ScimResourceTest {
 			assert userStream != null;
 
 			//InputStream userStream = this.resourceloader.getResource(testUserFile1).getInputStream();
-			JsonNode node = JsonUtil.getJsonTree(userStream);
-			user1 = new ScimResource(smgr,node, "Users");
-			String outString = user1.toString();
+			ScimResourceBuilder builder = ScimResource.builder(smgr,userStream);
+			user1 = builder.build();
+			String outString = user1.toJsonString();
 			logger.debug("User loaded: \n"+ outString);
 			assertThat(outString)
 					.as("User1 contains the certificate")
@@ -105,8 +105,7 @@ public class ScimResourceTest {
 			userStream.close();
 			
 			userStream = ConfigMgr.findClassLoaderResource(testUserFile2);
-			node = JsonUtil.getJsonTree(userStream);
-			user2 = new ScimResource(smgr,node, "Users");
+			user2 = ScimResource.builder(smgr,userStream).build();
 			logger.debug("User loaded: \n"+user2);
 			
 			assertThat(user1)

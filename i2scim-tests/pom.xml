@@ -20,7 +20,7 @@
     <parent>
         <artifactId>i2scim-parent</artifactId>
         <groupId>com.independentid</groupId>
-        <version>0.0.1-SNAPSHOT</version>
+        <version>0.5.0-Alpha</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -33,6 +33,35 @@
     <dependencies>
         <dependency>
             <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-rest-client-jackson</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-resteasy-jackson</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.independentid</groupId>
+            <artifactId>i2scim-core</artifactId>
+            <version>0.5.0-Alpha</version>
+        </dependency>
+        <dependency>
+            <groupId>com.independentid</groupId>
+            <artifactId>i2scim-prov-memory</artifactId>
+            <version>0.5.0-Alpha</version>
+        </dependency>
+        <dependency>
+            <groupId>com.independentid</groupId>
+            <artifactId>i2scim-prov-mongo</artifactId>
+            <version>0.5.0-Alpha</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bitbucket.cowwoc</groupId>
+            <artifactId>diff-match-patch</artifactId>
+            <version>1.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
             <artifactId>quarkus-junit5</artifactId>
             <scope>test</scope>
         </dependency>
@@ -41,32 +70,17 @@
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>com.independentid</groupId>
-            <artifactId>i2scim-core</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>com.independentid</groupId>
-            <artifactId>i2scim-prov-memory</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-
-        </dependency>
-        <dependency>
-            <groupId>com.independentid</groupId>
-            <artifactId>i2scim-prov-mongo</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
-
-        </dependency>
-        <dependency>
-            <groupId>org.bitbucket.cowwoc</groupId>
-            <artifactId>diff-match-patch</artifactId>
-            <version>1.2</version>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>1.4.1</version>
+                <configuration>
+                    <rules><dependencyConvergence/></rules>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.jboss.jandex</groupId>
                 <artifactId>jandex-maven-plugin</artifactId>
