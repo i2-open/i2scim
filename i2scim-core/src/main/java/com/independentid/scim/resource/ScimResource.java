@@ -50,7 +50,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 
 	protected List<String> schemas;
 	public static Schema commonSchema;
-	protected Schema coreSchema;
+	protected Schema mainSchema;
 	protected ResourceType type;
 	protected String container;
 
@@ -145,8 +145,12 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		this.type = smgr.getResourceTypeByPath(container);
 		if (this.type == null)
 			this.type = smgr.getResourceTypeByName(container);
-		if (this.type != null)
-			this.coreSchema = smgr.getSchemaById(this.type.getSchema());
+		if (this.type != null) {
+			this.schemas = new ArrayList<>();
+			this.schemas.add(this.type.getSchema());
+			this.schemas.addAll(this.getExtensions().keySet());
+			this.mainSchema = smgr.getSchemaById(this.type.getSchema());
+		}
 	
 	}
 	
@@ -211,7 +215,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			return;
 		}
 
-		if (attr.getSchema().equals(coreSchema.getId())) {
+		if (attr.getSchema().equals(mainSchema.getId())) {
 			if (rootAttribute.isMultiValued()) {
 				if (addval instanceof MultiValue) {
 					MultiValue rval =(MultiValue) this.getValue(rootAttribute);
@@ -257,7 +261,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		
 		// The attribute is an extension attribute
 		Schema eschema = smgr.getSchemaById(attr.getSchema());
-		if (!eschema.getId().equalsIgnoreCase(this.coreSchema.getId())) {
+		if (!eschema.getId().equalsIgnoreCase(this.mainSchema.getId())) {
 			ExtensionValues map = this.extAttrVals.get(eschema.getId());
 			if (map == null) {
 				// This occurs if the existing resource did not have the extension previously
@@ -356,7 +360,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 * @return The <Schema> for the main content of the <ScimResource>.
 	 */
 	public Schema getBodySchema() {
-		return this.coreSchema;
+		return this.mainSchema;
 	}
 	
 	public void parseJson(JsonNode node, SchemaManager schemaManager) throws ParseException, ScimException {
@@ -396,7 +400,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 				}
 				if (this.type == null)
 					throw new SchemaException("Unable to determine resource type: "+this.id);
-				this.coreSchema = smgr.getSchemaById(this.type.getSchema());
+				this.mainSchema = smgr.getSchemaById(this.type.getSchema());
 				this.container = this.type.getTypePath();
 			}
 		} else
@@ -451,7 +455,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 				continue;
 			}
 			//else process as attribute
-			Attribute attr = coreSchema.getAttribute(field);
+			Attribute attr = mainSchema.getAttribute(field);
 			
 			//TODO: When flex-schema is enabled, use ValueUtil.getType to
 			//create a virtual attribute to allow undefined attributes.

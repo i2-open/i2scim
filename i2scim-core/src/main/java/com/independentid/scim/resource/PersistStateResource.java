@@ -52,7 +52,7 @@ public class PersistStateResource extends ScimResource {
 	}
 
 	private void initSchemas() {
-		coreSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
+		mainSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 		setId(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 		type = smgr.getResourceTypeById(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 

@@ -4,20 +4,21 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.independentid</groupId>
   <artifactId>i2scim-parent</artifactId>
-  <packaging>pom</packaging>
   <version>0.5.0-Alpha</version>
+  <packaging>pom</packaging>
+  <name>i2scim</name>
+  <description>SCIM v2 Server on Quarkus</description>
   <modules>
     <module>i2scim-core</module>
     <module>i2scim-prov-memory</module>
     <module>i2scim-prov-mongo</module>
     <module>i2scim-tests</module>
-      <module>pkg-i2scim-prov-memory</module>
-      <module>pkg-i2scim-prov-mongodb</module>
+    <module>pkg-i2scim-prov-memory</module>
+    <module>pkg-i2scim-prov-mongodb</module>
   </modules>
-  <name>i2scim</name>
-  <description>SCIM v2 Server on Quarkus</description>
   <properties>
     <compiler-plugin.version>3.8.1</compiler-plugin.version>
+    <i2scim.version>0.5.0-Alpha</i2scim.version>
     <maven.compiler.parameters>true</maven.compiler.parameters>
     <maven.compiler.source>11</maven.compiler.source>
     <maven.compiler.target>11</maven.compiler.target>
@@ -29,7 +30,6 @@
     <quarkus.platform.group-id>io.quarkus</quarkus.platform.group-id>
     <quarkus.platform.version>1.13.1.Final</quarkus.platform.version>
     <surefire-plugin.version>3.0.0-M5</surefire-plugin.version>
-    <i2scim.version>0.5.0-Alpha</i2scim.version>
   </properties>
   <dependencyManagement>
     <dependencies>
@@ -43,8 +43,10 @@
     </dependencies>
   </dependencyManagement>
   <dependencies>
-
-
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-container-image-docker</artifactId>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -64,18 +66,16 @@
         </executions>
       </plugin>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>${compiler-plugin.version}</version>
       </plugin>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>${surefire-plugin.version}</version>
         <configuration>
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
-            <maven.home>${maven.home}</maven.home>,
+            <maven.home>${maven.home}</maven.home>
           </systemPropertyVariables>
         </configuration>
       </plugin>
@@ -105,7 +105,6 @@
             </executions>
           </plugin>
           <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-failsafe-plugin</artifactId>
             <version>${surefire-plugin.version}</version>
             <executions>
@@ -121,7 +120,6 @@
             </executions>
           </plugin>
           <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-dependency-plugin</artifactId>
             <version>3.1.2</version>
             <executions>
@@ -137,9 +135,7 @@
             </executions>
           </plugin>
         </plugins>
-
       </build>
-
       <properties>
         <quarkus.package.type>native</quarkus.package.type>
       </properties>

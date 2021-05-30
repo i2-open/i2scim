@@ -137,7 +137,14 @@ public class SchemaManager {
      * @throws IOException Thrown when JSON config file cannot be loaded
      * @throws ScimException Thrown due to a JSON parsing error
      */
-     public SchemaManager(String schemaPath, String typesPath) throws IOException, ScimException {
+    public SchemaManager(String schemaPath, String typesPath) throws IOException, ScimException, BackendException {
+        this.schemaPath = schemaPath;
+        this.resourceTypePath = typesPath;
+        this.coreSchemaPath = "/schema/scimCommonSchema.json";
+
+        this.systemSchemas = new SystemSchemas();
+        this.systemSchemas.defineConfigStateSchema();
+
         InputStream schStream = ConfigMgr.findClassLoaderResource(schemaPath);
         parseSchemaConfig(schStream);
         schStream.close();
@@ -149,7 +156,7 @@ public class SchemaManager {
         stream = ConfigMgr.findClassLoaderResource("classpath:/schema/scimCommonSchema.json");
         parseCoreSchema(stream);
         stream.close();
-        logger.info("Loaded: "+getResourceTypes().size()+" resource types, "+getSchemas().size()+" schemas.");
+        logger.info("Loaded: " + getResourceTypes().size() + " resource types, " + getSchemas().size() + " schemas.");
         initialized = true;
     }
 
@@ -165,7 +172,8 @@ public class SchemaManager {
         if (initialized)
             return;
         logger.info("SchemaManager initializing");
-        generator = backendHandler.getGenerator();
+        if (backendHandler != null)
+            generator = backendHandler.getGenerator();
 
         loadedFromProvider = false;
         // Load the default schemas first. This allows new instances of provider ability to boot.
@@ -304,8 +312,10 @@ public class SchemaManager {
     protected void loadCoreSchema() throws ScimException, IOException {
         String filePath = this.coreSchemaPath;
 
-        if (filePath == null)
-            throw new ScimException("SCIM default schema file path is null.");
+        if (filePath == null) {
+            filePath = "/schema/scimCommonSchema.json";
+        }
+           // throw new ScimException("SCIM default schema file path is null.");
 
         InputStream stream = ConfigMgr.findClassLoaderResource(filePath);
         parseCoreSchema(stream);

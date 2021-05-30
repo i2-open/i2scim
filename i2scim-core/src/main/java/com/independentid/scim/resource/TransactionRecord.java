@@ -20,7 +20,6 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.Operation;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.schema.*;
-import io.quarkus.security.identity.SecurityIdentity;
 
 import java.security.Principal;
 import java.text.ParseException;
@@ -69,7 +68,7 @@ public class TransactionRecord extends ScimResource {
     }
 
     private  void initSchemas() {
-        super.coreSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_SYNCREC);
+        super.mainSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_SYNCREC);
 
         super.type = smgr.getResourceTypeById(ScimParams.SCHEMA_SCHEMA_SYNCREC);
 

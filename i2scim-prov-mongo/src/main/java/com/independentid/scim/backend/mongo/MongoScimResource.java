@@ -116,7 +116,7 @@ public class MongoScimResource extends ScimResource {
 		// Look for all the core schema vals
 		//Schema core = cfg.getSchemaById(coreSchemaId);
 		
-		Attribute[] attrs = coreSchema.getAttributes();
+		Attribute[] attrs = mainSchema.getAttributes();
 		for (Attribute attr : attrs) {
 			Value val = MongoMapUtil.mapBsonDocument(attr, doc);
 			if (smgr.isVirtualAttr(attr)) {
