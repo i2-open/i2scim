@@ -42,5 +42,13 @@
             <artifactId>i2scim-prov-mongo</artifactId>
             <version>0.5.0-Alpha</version>
         </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-kubernetes</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-kubernetes-config</artifactId>
+        </dependency>
     </dependencies>
 </project>

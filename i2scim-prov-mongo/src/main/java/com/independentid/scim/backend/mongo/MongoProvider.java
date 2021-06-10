@@ -44,6 +44,10 @@ import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
@@ -92,6 +96,12 @@ public class MongoProvider implements IScimProvider {
 	@ConfigProperty(name = "scim.prov.mongo.dbname", defaultValue="SCIM")
 	String scimDbName;
 
+	@ConfigProperty(name = "scim.prov.mongo.username")
+	String dbUser;
+
+	@ConfigProperty(name = "scim.prov.mongo.password")
+	String dbPwd;
+
 	@ConfigProperty(name = ConfigMgr.SCIM_QUERY_MAX_RESULTSIZE, defaultValue= ConfigMgr.SCIM_QUERY_MAX_RESULTS_DEFAULT)
 	protected int maxResults;
 	
@@ -112,13 +122,28 @@ public class MongoProvider implements IScimProvider {
 	//Note: We don't want auto start. Normally Backendhandler invokes this.
 	public synchronized void init() {
 
+		if (!dbUrl.contains("@") && dbUser != null) {
+			logger.info("Connecting to Mongo using admin user: "+dbUser);
+			try {
+				String userInfo = dbUser+":"+dbPwd;
+				URI mUrl = new URI(dbUrl);
+				URI newUrl = new URI(mUrl.getScheme()+"://"+userInfo+"@"+mUrl.getAuthority()+ mUrl.getRawPath());
+				dbUrl = newUrl.toString();
+			} catch (URISyntaxException e) {
+				logger.error("Received exception: "+e.getMessage(),e);
+			}
+		} else {
+			if (!dbUrl.contains("@"))
+				logger.warn("Attempting to connect to Mongo with unauthenticated connection.");
+		}
+
 		if (singleton == null)
 			singleton = this;
 		if (this.ready)
 			return; // only run once
 
 		logger.info("======Initializing SCIM MongoDB Provider======");
-		logger.info("\tUsing MongoDB: "+this.dbUrl+", Database: "+this.scimDbName);
+		logger.info("\tConnecting to database: "+this.scimDbName);
 
 		// Connect to the instance define by injected dbUrl value
 		if (mclient == null)

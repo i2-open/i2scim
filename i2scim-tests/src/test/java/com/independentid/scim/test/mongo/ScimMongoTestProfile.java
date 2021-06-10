@@ -29,15 +29,17 @@ public class ScimMongoTestProfile implements QuarkusTestProfile {
                 "scim.prov.mongo.uri","mongodb://localhost:27017",
 
                 "scim.prov.providerClass", MongoProvider.class.getName(),
+                "scim.prov.mongo.username","admin",
+                "scim.prov.mongo.password","t0p-Secret",
 
+                "scim.schema.path","classpath:/schema/scimSchemaTest.json"
+        ));
+        cmap.putAll(Map.of(
                 "quarkus.http.test-port","0",
                 "quarkus.log.min-level","DEBUG",
                 "logging.level.com.independentid.scim","INFO",
                 "quarkus.log.category.\"com.independentid.scim.test\".level","INFO",
 
-                "scim.schema.path","classpath:/schema/scimSchemaTest.json"
-        ));
-        cmap.putAll(Map.of(
                 "scim.security.enable", "false",
                 "scim.event.enable","false",
                 "scim.root.dir","."  //enables local debug testing

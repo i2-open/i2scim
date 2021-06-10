@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: i2scim-pv1
+  labels:
+    app: i2scim
+spec:
+#  Because Mongo deployment is stateless, PV is only for logs etc
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes: [ReadWriteMany]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+  nfs:
+    path: /nfs/data/i2scim-pv/rep1
+    server: 10.1.10.110
+    readOnly: false
+---

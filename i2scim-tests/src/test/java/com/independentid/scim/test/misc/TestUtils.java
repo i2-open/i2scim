@@ -43,6 +43,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.text.ParseException;
 
@@ -67,6 +69,12 @@ public class TestUtils {
 
     @ConfigProperty(name="scim.prov.mongo.dbname",defaultValue = "testSCIM")
     String scimDbName;
+
+    @ConfigProperty(name = "scim.prov.MONGO.username")
+    String dbUser;
+
+    @ConfigProperty(name = "scim.prov.mongo.password")
+    String dbPwd;
 
     private MongoClient mclient = null;
 
@@ -103,6 +111,21 @@ public class TestUtils {
     }
 
     void resetMongoDb(MongoProvider mongoProvider) throws ScimException, BackendException, IOException {
+        if (!dbUrl.contains("@") && dbUser != null) {
+            logger.info("Connecting to Mongo using admin user: "+dbUser);
+            try {
+                String userInfo = dbUser+":"+dbPwd;
+                URI mUrl = new URI(dbUrl);
+                URI newUrl = new URI(mUrl.getScheme()+"://"+userInfo+"@"+mUrl.getAuthority()+ mUrl.getRawPath());
+                dbUrl = newUrl.toString();
+            } catch (URISyntaxException e) {
+                logger.error("Received exception: "+e.getMessage(),e);
+            }
+        } else {
+            if (!dbUrl.contains("@"))
+                logger.warn("Attempting to connect to Mongo with unauthenticated connection.");
+        }
+
         logger.warn("\t*** Resetting Mongo database ["+scimDbName+"] ***");
         if (mclient == null)
             mclient = MongoClients.create(dbUrl);

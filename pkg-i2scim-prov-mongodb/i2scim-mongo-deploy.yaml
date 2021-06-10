@@ -40,7 +40,7 @@ spec:
       containers:
         - name: i2scim
           imagePullPolicy: Always
-          image: independentid/i2scim:0.2
+          image: independentid/i2scim-mongo:0.5.0-Alpha
           livenessProbe:
             failureThreshold: 3
             httpGet:
@@ -65,15 +65,9 @@ spec:
             periodSeconds: 30
             successThreshold: 1
             timeoutSeconds: 10
-          env:
-            - name: scim.event.enable
-              value: "false"
-            - name: scim.prov.mongo.uri
-              value: mongodb://localhost:27017
-            - name: scim.prov.mongo.dbname
-              value: SCIM
-            - name: scim.prov.mongo.indexes
-              value: User:userName,User:emails.value,Group:displayName
+          envFrom:
+            - configMapRef:
+                name: i2scim-mongo-config
           volumeMounts:
             - mountPath: /scim
               name: i2scim-pvc
@@ -87,7 +81,7 @@ spec:
           matchLabels:
             app: i2scim
         storageClassName: nfs
-        accessModes: [ ReadWriteOnce ]
+        accessModes: [ ReadWriteMany ]
         resources:
           requests:
-            storage: 50Gi
+            storage: 1Gi

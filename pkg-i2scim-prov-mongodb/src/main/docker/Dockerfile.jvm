@@ -7,24 +7,24 @@
 #
 # Then, build the image with:
 #
-# docker build -f src/main/docker/Dockerfile.jvm -t independentid/i2scim .
+# docker build -f src/main/docker/Dockerfile.jvm -t independentid/i2scim-mongo:<version> .
 #
 # For multi-platform use:
-# docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim:0.2 .
+# docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mongo:<version> .
 #
 # Then run the container using:
 #
-# docker run -i --rm -p 8080:8080 independentid/i2scim
+# docker run -i --rm -p 8080:8080 independentid/i2scim-mongo
 #
 # To mount the /Scim voluem use something like (where /<hostpath> is a local directory path):
-#  docker run -i --rm --mount type=bind,source=/<hostpath>,target=/scim -p 80:8080 independentid/i2scim:test
+#  docker run -i --rm --mount type=bind,source=/<hostpath>,target=/scim -p 80:8080 independentid/i2scim-mongo:<version>
 #
 # If you want to include the debug port into your docker image
 # you will have to expose the debug port (default 5005) like this :  EXPOSE 8080 5050
 #
 # Then run the container using :
 #
-# docker run -i --rm -p 8080:8080 -p 5005:5005 -e JAVA_ENABLE_DEBUG="true" quarkus/scim-quarkus-jvm
+# docker run -i --rm -p 8080:8080 -p 5005:5005 -e JAVA_ENABLE_DEBUG="true" independentid/i2scim-mongo:<version>
 #
 ###
 FROM registry.access.redhat.com/ubi8/ubi-minimal:8.3
