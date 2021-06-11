@@ -96,10 +96,10 @@ public class MongoProvider implements IScimProvider {
 	@ConfigProperty(name = "scim.prov.mongo.dbname", defaultValue="SCIM")
 	String scimDbName;
 
-	@ConfigProperty(name = "scim.prov.mongo.username")
+	@ConfigProperty(name = "scim.prov.mongo.username",defaultValue = "UNDEFINED")
 	String dbUser;
 
-	@ConfigProperty(name = "scim.prov.mongo.password")
+	@ConfigProperty(name = "scim.prov.mongo.password",defaultValue = "UNDEFINED")
 	String dbPwd;
 
 	@ConfigProperty(name = ConfigMgr.SCIM_QUERY_MAX_RESULTSIZE, defaultValue= ConfigMgr.SCIM_QUERY_MAX_RESULTS_DEFAULT)
@@ -122,7 +122,7 @@ public class MongoProvider implements IScimProvider {
 	//Note: We don't want auto start. Normally Backendhandler invokes this.
 	public synchronized void init() {
 
-		if (!dbUrl.contains("@") && dbUser != null) {
+		if (!dbUrl.contains("@") && !dbUser.equals("UNDEFINED")) {
 			logger.info("Connecting to Mongo using admin user: "+dbUser);
 			try {
 				String userInfo = dbUser+":"+dbPwd;

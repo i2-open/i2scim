@@ -70,10 +70,10 @@ public class TestUtils {
     @ConfigProperty(name="scim.prov.mongo.dbname",defaultValue = "testSCIM")
     String scimDbName;
 
-    @ConfigProperty(name = "scim.prov.MONGO.username")
+    @ConfigProperty(name = "scim.prov.mongo.username",defaultValue = "UNDEFINED")
     String dbUser;
 
-    @ConfigProperty(name = "scim.prov.mongo.password")
+    @ConfigProperty(name = "scim.prov.mongo.password",defaultValue = "t0p-Secret")
     String dbPwd;
 
     private MongoClient mclient = null;

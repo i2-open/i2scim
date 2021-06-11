@@ -28,7 +28,7 @@ public class ScimAuthTestProfile implements QuarkusTestProfile {
                 "scim.prov.providerClass", MongoProvider.class.getName(),
                 "scim.prov.mongo.test", "true",
                 "scim.prov.mongo.dbname", "secTestSCIM",
-                "scim.prov.mongo.uri", "mongodb://localhost:27017",
+                "scim.prov.mongo.uri", "mongodb://admin:t0p-Secret@localhost:27017",
 
                 "scim.security.enable", "true",
 
