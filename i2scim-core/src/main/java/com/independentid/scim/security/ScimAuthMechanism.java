@@ -68,8 +68,13 @@ public class ScimAuthMechanism implements HttpAuthenticationMechanism {
         String authz = context.request().headers().get(HttpHeaderNames.AUTHORIZATION);
 
         if (authz == null) {
-            if (cmgr.isSecurityEnabled())
+            // Assume the ScimSecurityFilter will decide regarding anonymous
+            /*
+            String path = context.request().absoluteURI();
+            if (cmgr.isSecurityEnabled() && !path.contains("/health"))
                 return Uni.createFrom().failure(new AuthenticationFailedException());
+
+             */
 
             // This is an anonymous user
             SecurityIdentity identity = QuarkusSecurityIdentity.builder()

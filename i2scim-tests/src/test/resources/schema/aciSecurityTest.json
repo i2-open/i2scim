@@ -41,7 +41,7 @@
       "targetFilter":"meta.resourceType eq User",
       "targetAttrs" :"username,displayName,emails,name,phoneNumbers",
       "rights" : "read",
-      "actors" : ["any"]
+      "actors" : ["role=user bearer root"]
     },
     {
       "path" : "/Users",
@@ -49,7 +49,7 @@
       "targetFilter":"meta.resourceType eq User",
       "targetAttrs" :"username",
       "rights" : "search",
-      "actors" : ["any"]
+      "actors" : ["role=user bearer root"]
     },
 
     {
@@ -64,14 +64,14 @@
       "name" : "Allow unauthenticated access to ServiceProviderConfig",
       "targetAttrs" :"*",
       "rights" : "read, search",
-      "actors" : ["any"]
+      "actors" : ["role=user bearer root"]
     },
     {
       "path" : "/ResourceTypes",
       "name" : "Allow unauthenticated access to ServiceProviderConfig",
       "targetAttrs" :"*",
       "rights" : "read, search",
-      "actors" : ["any"]
+      "actors" : ["role=user bearer root"]
     }
   ]
 }

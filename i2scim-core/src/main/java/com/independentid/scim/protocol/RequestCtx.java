@@ -29,6 +29,7 @@ import com.independentid.scim.security.AciSet;
 import com.independentid.scim.security.ScimBasicIdentityProvider;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.security.identity.SecurityIdentity;
+import org.apache.http.HttpHeaders;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
@@ -861,5 +862,12 @@ public class RequestCtx {
 		}
 
 		return null;  // If we can't parse, just ignore
+	}
+
+	public boolean isAnonymous() {
+		if (this.req == null)
+			return true;
+		return this.req.getHeader(HttpHeaders.AUTHORIZATION) == null;
+
 	}
 }

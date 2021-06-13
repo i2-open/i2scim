@@ -100,17 +100,32 @@ public class ScimSecurityFilter implements Filter {
             if (logger.isDebugEnabled())
                 logger.debug("\tEvaluating request for: User=" + identity.getPrincipal().getName() + ", Type=" + identity.getPrincipal().getClass().toString());
 
+            HttpServletRequest hrequest;
+            if (request instanceof HttpServletRequest) {
+                 hrequest = (HttpServletRequest) request;
+            } else {
+                logger.error("Unexpected servlet request type received: "+request.getClass().toString());
+                return;
+            }
+
+            // Liveness/health check do not require authorization
+            if (hrequest.getPathInfo().startsWith("/q")) {
+                // allow healthcheck to proceed
+                chain.doFilter(request,response);
+                return;
+            }
+
             RequestCtx ctx = (RequestCtx) request.getAttribute(RequestCtx.REQUEST_ATTRIBUTE);
             if (ctx == null) {
                 try {
-                    ctx = new RequestCtx((HttpServletRequest) request, (HttpServletResponse) response, schemaManager);
+                    ctx = new RequestCtx(hrequest, (HttpServletResponse) response, schemaManager);
                     request.setAttribute(RequestCtx.REQUEST_ATTRIBUTE, ctx);
                 } catch (ScimException e) {
                     e.printStackTrace();
                 }
             }
             assert ctx != null;
-            assignOperationRights((HttpServletRequest) request, ctx);
+            assignOperationRights(hrequest, ctx);
             if (amgr.filterRequestandInitAcis(ctx, identity)) {
                 chain.doFilter(request, response);
                 return;

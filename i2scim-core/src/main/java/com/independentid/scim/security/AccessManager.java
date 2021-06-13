@@ -19,6 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ForbiddenException;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.core.err.UnauthorizedException;
 import com.independentid.scim.op.CreateOp;
 import com.independentid.scim.op.DeleteOp;
 import com.independentid.scim.op.Operation;
@@ -28,6 +29,7 @@ import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
+
 import io.quarkus.security.identity.SecurityIdentity;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
@@ -291,8 +293,11 @@ public class AccessManager {
         return filters;
     }
 
-    private static void markOpUnauthorized (Operation op, String reason) {
-        op.setCompletionError(new ForbiddenException(reason));
+    private static void markOpUnauthorized(Operation op, String reason) {
+        if (op.getRequestCtx().isAnonymous())
+            op.setCompletionError(new UnauthorizedException(reason));
+        else
+            op.setCompletionError(new ForbiddenException(reason));
     }
 
     public String toString() {

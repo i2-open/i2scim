@@ -30,6 +30,7 @@ import io.quarkus.test.junit.TestProfile;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -84,21 +85,6 @@ public class ScimHealthTest {
 	private static String bJensonUrl = null;
 	private static String jSmithUrl = null;
 
-	static CloseableHttpClient htclient ;
-	
-	private synchronized CloseableHttpResponse execute(HttpUriRequest req) throws IOException {
-		return htclient.execute(req);
-	}
-
-	@BeforeAll
-	public static void init() {
-		htclient = HttpClients.createDefault();
-	}
-
-	@AfterAll
-	public static void shutdown() throws IOException {
-		htclient.close();
-	}
 	/**
 	 * This test actually resets and re-initializes the SCIM Mongo test database.
 	 */
@@ -122,7 +108,7 @@ public class ScimHealthTest {
 		HttpGet get = new HttpGet(rUrl.toString());
 		get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
-		CloseableHttpResponse resp = execute(get);
+		HttpResponse resp = TestUtils.executeRequest(get);
 
 		assertThat(resp.getStatusLine().getStatusCode())
 				.as("Check health response received ok")
@@ -146,11 +132,21 @@ public class ScimHealthTest {
 		HttpGet get = new HttpGet(rUrl.toString());
 		//get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
-		CloseableHttpResponse resp = execute(get);
+		HttpResponse resp = TestUtils.executeRequest(get);
 
 		assertThat(resp.getStatusLine().getStatusCode())
 				.as("Check health response received ok")
-				.isEqualTo(ScimResponse.ST_UNAUTHORIZED);
+				.isEqualTo(ScimResponse.ST_OK);
+
+		rUrl = new URL(baseUrl,"/q/health");
+		get = new HttpGet(rUrl.toString());
+		//get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+
+		resp = TestUtils.executeRequest(get);
+
+		assertThat(resp.getStatusLine().getStatusCode())
+				.as("Check health response received ok")
+				.isEqualTo(ScimResponse.ST_OK);
 
 	}
 
@@ -173,7 +169,7 @@ public class ScimHealthTest {
 		post.setEntity(reqEntity);
 		post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
-		CloseableHttpResponse resp = execute(post);
+		HttpResponse resp = TestUtils.executeRequest(post);
 
 		logger.debug("Response is: "+resp.getStatusLine());
 		String body = EntityUtils.toString(resp.getEntity());
@@ -216,9 +212,6 @@ public class ScimHealthTest {
 		assertThat(body)
 				.as("Contains an extension value Tour Operations")
 				.contains("Tour Operations");
-
-		resp.close();
-
 	}
 
 	@Test
@@ -238,7 +231,7 @@ public class ScimHealthTest {
 				userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
 		reqEntity.setChunked(false);
 		post.setEntity(reqEntity);
-		CloseableHttpResponse resp = execute(post);
+		HttpResponse resp = TestUtils.executeRequest(post);
 		assertThat(resp.getStatusLine().getStatusCode())
 				.as("Check JSmith added")
 				.isEqualTo(ScimResponse.ST_CREATED);
@@ -247,7 +240,6 @@ public class ScimHealthTest {
 			jSmithUrl = headers[0].getValue();
 		else
 			fail("Missing location in creation response for JSmith");
-		resp.close();
 	}
 
 	@Test
@@ -256,7 +248,7 @@ public class ScimHealthTest {
 		HttpGet get = new HttpGet(rUrl.toString());
 		get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		get.addHeader(HttpHeaders.ACCEPT, "application/json");
-		CloseableHttpResponse resp = execute(get);
+		HttpResponse resp = TestUtils.executeRequest(get);
 		HttpEntity entity = resp.getEntity();
 
 		String body = EntityUtils.toString(entity);
@@ -266,29 +258,24 @@ public class ScimHealthTest {
 				.as("Check health response received ok")
 				.isEqualTo(ScimResponse.ST_OK);
 
-		resp.close();
-
 		rUrl = new URL(baseUrl,"/metrics/application");
 		get = new HttpGet(rUrl.toString());
 		get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		get.addHeader(HttpHeaders.ACCEPT, "application/json");
-		resp = execute(get);
+		resp = TestUtils.executeRequest(get);
 		body = EntityUtils.toString(resp.getEntity());
 		logger.info("/metrics/application\n"+body);
 		assertThat(body)
 				.as("Confirm 2 create operations")
 				.contains("\"com.independentid.scim.server.ScimV2Servlet.scim.ops.create.count\": 2,");
-		resp.close();
-
 
 		rUrl = new URL(baseUrl,"/metrics");
 		get = new HttpGet(rUrl.toString());
 		get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		get.addHeader(HttpHeaders.ACCEPT, "application/json");
-		resp = execute(get);
+		resp = TestUtils.executeRequest(get);
 		body = EntityUtils.toString(resp.getEntity());
 		logger.info("/metrics\n"+body);
-		resp.close();
 
 	}
 
