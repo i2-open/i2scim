@@ -239,42 +239,47 @@ public class ConfigMgr {
 
 		ValueUtil.initialize(this);
 
-		File cfile = new File(rootFile,"test.prop");
-		Properties tprop = new Properties();
-		System.out.println("SCIM Environment Run Properties");
-		System.out.printf("%-50s %s\n","Property","Value");
-		List<String> pvals = new ArrayList<>();
-		for(String prop : sysconf.getPropertyNames())
-			pvals.add(prop);
-		Collections.sort(pvals);
-		for(String prop : pvals) {
-			try {
-				Optional<String> val = sysconf.getOptionalValue(prop,String.class);
-				String pval = "<optional>";
-				if (val.isPresent()) {
-					pval = val.get();
-					tprop.put(prop,pval);
+		if (logger.isDebugEnabled()) {
+			// Dump diagnostic information to the logs...
+			Properties tprop = new Properties();
+			logger.debug("SCIM Environment Run Properties");
+			logger.debug(String.format("%-50s %s\n","Property","Value"));
+			List<String> pvals = new ArrayList<>();
+			for(String prop : sysconf.getPropertyNames())
+				pvals.add(prop);
+			Collections.sort(pvals);
+			for(String prop : pvals) {
+				try {
+					Optional<String> val = sysconf.getOptionalValue(prop,String.class);
+					String pval = "<optional>";
+					if (val.isPresent()) {
+						pval = val.get();
+						tprop.put(prop,pval);
+					}
+					int len = prop.length();
+					if (len >= 50) {
+						int trim = len-50;
+
+						prop = "< " + prop.substring(trim+2); // trim the left side
+					}
+					String mask = "********************************";
+					if(prop.startsWith("scim.security.root") && !prop.equals("scim.security.root.enable") ||
+							prop.contains("password"))
+						pval = mask.substring(0,pval.length()-1);
+					logger.debug(String.format("%-50s %s\n",prop,pval));
+					///System.out.printf("%-50s %s\n",prop,pval);
+
+				} catch (Exception ignore) {
+
 				}
-				int len = prop.length();
-				if (len >= 50) {
-					int trim = len-50;
-
-					prop = "< " + prop.substring(trim+2); // trim the left side
-				}
-				String mask = "********************************";
-				if(prop.startsWith("scim.security.root") && !prop.equals("scim.security.root.enable"))
-					pval = mask.substring(0,pval.length()-1);
-				System.out.printf("%-50s %s\n",prop,pval);
-
-			} catch (Exception ignore) {
-
 			}
+			File cfile = new File(rootFile,"test.prop");
+			Date now = Date.from(Instant.now());
+			FileOutputStream writer = new FileOutputStream(cfile);
+			tprop.store(writer,
+					"# Properties captured "+now);
+			writer.close();
 		}
-		Date now = Date.from(Instant.now());
-		FileOutputStream writer = new FileOutputStream(cfile);
-		tprop.store(writer,
-				"# Properties captured "+now);
-		writer.close();
 
 		File dir = new File(logDir);
 		if (!dir.exists()) {
@@ -352,8 +357,19 @@ public class ConfigMgr {
 			mapFile = mapFile.substring(10);
 		//System.out.println("File requested:\t"+mapFile);
 
-		return ConfigMgr.class.getResourceAsStream(mapFile);
+		logger.debug("Attempting to read: "+mapFile);
+		InputStream input = ConfigMgr.class.getResourceAsStream(mapFile);
+		if (input == null) {
+			try {
+				input = new FileInputStream(mapFile);
+			} catch (FileNotFoundException e) {
+				System.err.println("\tERROR: Unable to open file.");
+				logger.error("Unable to open: "+file);
+				return null;
+			}
+		}
 
+		return input;
 	}
 
 	

@@ -2,6 +2,7 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: i2scim-pv1
+  namespace: scim-mem
   labels:
     app: i2scim
 spec:
@@ -23,6 +24,7 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: i2scim-pv2
+  namespace: scim-mem
   labels:
     app: i2scim
 spec:
@@ -44,6 +46,7 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: i2scim-pv3
+  namespace: scim-mem
   labels:
     app: i2scim
 spec:
@@ -60,3 +63,21 @@ spec:
     path: /nfs/data/i2scim-pv/rep3
     server: 10.1.10.110
     readOnly: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: scim-mem
+  name: i2scim-pvc
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: nfs
+  resources:
+    requests:
+      storage: 5Gi
+  selector:
+    matchLabels:
+      app: i2scim
+---
+

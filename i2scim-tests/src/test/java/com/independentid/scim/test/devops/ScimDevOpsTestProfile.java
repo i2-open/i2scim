@@ -25,7 +25,7 @@ public class ScimDevOpsTestProfile implements QuarkusTestProfile {
     public Map<String, String> getConfigOverrides() {
         Map<String, String> cmap = new HashMap<>(Map.of(
                 "scim.prov.mongo.dbname", "healthTestSCIM",
-                "scim.prov.mongo.uri", "mongodb://localhost:27017",
+                "scim.prov.mongo.uri", "mongodb://admin:t0p-Secret@localhost:27017",
 
                 "quarkus.http.test-port", "0",
                 "quarkus.log.min-level","DEBUG",

@@ -1,0 +1,53 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: scim-mem
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: i2scim-root
+  namespace: scim-mem
+type: Opaque
+data:
+  #Base64 encoded values
+  scim.security.root.username: YWRtaW4=
+  scim.security.root.password: YWRtaW4=
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: scim-mem
+  name: i2scim-mem-config
+data:
+  scim.event.enable: "false"
+  scim.prov.providerClass: com.independentid.scim.backend.memory.MemoryProvider
+  scim.prov.memory.dir: "/scim/data"
+  scim.prov.memory.file: "scimdb.json"
+  scim.prov.memory.maxbackups: "10"
+  scim.prov.memory.backup.mins: "60"
+    # Indicates the attributes to be indexed
+  scim.prov.memory.indexes: User:userName,User:emails.value,Group:displayName
+
+    # Security Configuration
+  scim.security.enable: "true"
+    # Locations of the acis.json file to use
+  scim.security.acis: "/config/acis.json"
+  scim.security.root.enable: "true"
+    # When basic is enabled, i2scim will attempt to process HTTP Basic Auth against User resources
+    # located in the Memory provider database.
+  scim.security.authen.basic: "true"
+
+    # Configuration for JWT authentication
+  scim.security.authen.jwt: "false"
+
+    # The JWT claim used to match RBAC scopes used in acis processing
+  scim.security.authen.jwt.claim.scope: "scope"
+
+    # See: Quarkus Using JWT RBAC for configuration details
+    # https://quarkus.io/guides/security-jwt
+  quarkus.smallrye-jwt.enabled: "true"
+  smallrye.jwt.verify.key.location: "/certs/jwks-certs.json"
+  smallrye.jwt.always-check-authorization: "true"
+  mp.jwt.verify.issuer: "http://10.1.10.109:8180/auth/realms/dev"
+---

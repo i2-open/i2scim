@@ -49,6 +49,7 @@
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-kubernetes-config</artifactId>
         </dependency>
+
     </dependencies>
 
 </project>

@@ -2,6 +2,7 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: i2scim-pv1
+  namespace: scim-mongo
   labels:
     app: i2scim
 spec:

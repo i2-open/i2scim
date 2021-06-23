@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: scim-mongo
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mongo-db-cred
+  namespace: scim-mongo
+type: Opaque
+data:
+  scim.prov.mongo.username: YWRtaW4=
+  scim.prov.mongo.password: dDBwLVNlY3JldA==
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: i2scim-root
+  namespace: scim-mongo
+type: Opaque
+data:
+  scim.security.root.username: YWRtaW4=
+  scim.security.root.password: YWRtaW4=
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: scim-mongo
+  name: i2scim-mongo-config
+data:
+  scim.event.enable: "false"
+  scim.prov.providerClass: "com.independentid.scim.backend.mongo.MongoProvider"
+
+  # Provide the connection URL for Mongo here
+  scim.prov.mongo.uri: "mongodb://db-mongodb:27017"
+
+  # The Mongo database name to use for i2scim
+  scim.prov.mongo.dbname: "SCIM"
+
+  # Indicates the attributes to be indexed
+  scim.prov.mongo.indexes: "User:userName,User:emails.value,Group:displayName"
+
+  # Security Configuration
+  scim.security.enable: "true"
+
+  scim.resourcetype.path: "/config/resourceTypes.json"
+  scim.schema.path: "/config/scimSchema.json"
+  scim.coreSchema.path: "/config/scimCommonSchema.json"
+
+  # Locations of the acis.json file to use
+  scim.security.acis: "/config/acis.json"
+  scim.security.root.enable: "true"
+  # When basic is enabled, i2scim will attempt to process HTTP Basic Auth against User resources
+  # located in the Mongo database.
+  scim.security.authen.basic: "true"
+
+  # Configuration for JWT authentication
+  scim.security.authen.jwt: "false"
+
+  # The JWT claim used to match RBAC scopes used cd in acis processing
+  scim.security.authen.jwt.claim.scope: "scope"
+
+  # See: Quarkus Using JWT RBAC for configuration details
+  # https://quarkus.io/guides/security-jwt
+  quarkus.smallrye-jwt.enabled: "true"
+  smallrye.jwt.verify.key.location: "/certs/jwks-certs.json"
+  smallrye.jwt.always-check-authorization: "true"
+  mp.jwt.verify.issuer: "http://10.1.10.109:8180/auth/realms/dev"
+---

@@ -1,0 +1,116 @@
+#!/bin/bash
+#
+# Copyright (c) 2021.
+#
+# Confidential and Proprietary
+#
+# This unpublished source code may not be distributed outside
+# “Independent Identity Org”. without express written permission of
+# Phillip Hunt.
+#
+# People at companies that have signed necessary non-disclosure
+# agreements may only distribute to others in the company that are
+# bound by the same confidentiality agreement and distribution is
+# subject to the terms of such agreement.
+#
+
+# This script runs the maven build and builds the docker packages
+
+function show_usage (){
+    printf "Usage: $0 [options [parameters]]\n"
+    printf "\n"
+    printf "Options:\n"
+    printf " -t|--test, run maven tests\n"
+    printf " --tag [tag-version], Specify tag number\n"
+    printf " -b|--build, maven build only"
+    printf " -h|--help, Print help\n"
+
+return 0
+}
+
+function show_complete () {
+    echo "*************************************************"
+    echo "  COMPLETE: "$(date +"%Y-%m-%d %H:%M:%S")
+    echo "*************************************************"
+    return 0
+}
+
+skip=true
+rtag="0.5.0-Alpha"
+buildOnly=0
+
+echo "*************************************************"
+echo "  Starting i2scim Build "
+
+while [ ! -z "$1" ]; do
+  case "$1" in
+     --test|-t)
+         shift
+         echo "\tTests requested"
+         skip=false
+         ;;
+     --build|-b)
+         shift
+         echo "\tSkipping Docker build"
+         buildOnly=1
+         ;;
+     --tag)
+         shift
+         rtag=$1
+         ;;
+     *)
+        show_usage
+        ;;
+  esac
+shift
+done
+
+echo "\tTag: $rtag"
+echo "\tStarting: "$(date +"%Y-%m-%d %H:%M:%S")
+echo "*************************************************"
+
+echo "\n\tStarting maven packaging..."
+
+mvn clean package -DskipTests=$skip
+retVal=$?
+if [ $retVal -ne 0 ]
+then
+  echo "Error performing maven packaging i2scim: "+$retVal
+  exit $retVal
+fi
+
+if [ $buildOnly -eq 1 ]
+then
+  show_complete
+  exit 0
+fi
+
+echo ""
+echo "\tStarting Docker build i2scim-mem..."
+echo ""
+
+cd ./pkg-i2scim-prov-memory
+docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mem:$rtag .
+retVal=$?
+if [ $retVal -ne 0 ]
+then
+  echo "Docker error packaging i2scim-mem: "+$retVal
+  exit $retVal
+fi
+cp target/kubernetes/kubernetes.yml ./4-i2scim-memory-deploy.yml
+
+echo ""
+echo "\tStarting Docker build i2scim-mongo..."
+echo ""
+
+cd ../pkg-i2scim-prov-mongodb
+docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mongo:$rtag .
+retVal=$?
+if [ retVal -ne 0 ]
+then
+  echo "Docker error packaging i2scim-mongo: "+$retVal
+  exit $retVal
+fi
+cp target/kubernetes/kubernetes.yml ./4-i2scim-mongo-deploy.yml
+
+show_complete

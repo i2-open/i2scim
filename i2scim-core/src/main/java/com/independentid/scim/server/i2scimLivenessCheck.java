@@ -15,32 +15,29 @@
 
 package com.independentid.scim.server;
 
-import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.PoolManager;
-import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.schema.SchemaManager;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.health.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Resource;
 import javax.enterprise.inject.Instance;
 import javax.inject.Inject;
 import javax.inject.Named;
 import javax.inject.Singleton;
-import java.io.IOException;
-import java.text.ParseException;
 
 /**
  * Liveness allows devops to interrogate if the server is instantiated. It does not test readiness.
  */
 @Liveness
 @Singleton
-public class LivenessCheck implements HealthCheck {
-
+public class i2scimLivenessCheck implements HealthCheck {
+    private final Logger logger = LoggerFactory.getLogger(i2scimLivenessCheck.class);
     @Inject
     @Resource(name="ConfigMgr")
     ConfigMgr configMgr;
