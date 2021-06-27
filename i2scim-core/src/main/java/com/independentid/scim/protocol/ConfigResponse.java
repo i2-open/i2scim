@@ -116,7 +116,8 @@ public class ConfigResponse extends ListResponse {
 
                     for (Schema sch : smgr.getSchemas()) {
                         try {
-
+                            if(sch.getId().equals(ScimParams.SCHEMA_SCHEMA_Common))
+                                continue;
                             this.entries.add(new ScimResource(smgr, sch.toJsonNode(), ScimParams.PATH_TYPE_SCHEMAS));
                         } catch (ParseException | ScimException e) {
                             // THis should not happen because it would be caught elsewhere in boot

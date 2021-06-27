@@ -118,7 +118,9 @@
       {
         "name" : "profileUrl",
         "type" : "reference",
-        "referenceTypes" : ["external"],
+        "referenceTypes" : [
+          "external"
+        ],
         "multiValued" : false,
         "description" : "A fully qualified URL to a page representing the User's online profile",
         "required" : false,
@@ -186,7 +188,7 @@
         "name" : "active",
         "type" : "boolean",
         "multiValued" : false,
-        "description" : "A Boolean value indicating the User's sdministrative status.",
+        "description" : "A Boolean value indicating the User's administrative status.",
         "required" : false,
         "mutability" : "readWrite",
         "returned" : "default"
@@ -195,9 +197,9 @@
         "name" : "password",
         "type" : "string",
         "multiValued" : false,
-        "description" : "The User's clear text password.  This attributeis intended to be used as a means to specify an initial password when creating a new User or to reset an existing User's password.",
+        "description" : "The User's clear text password.  This attribute is intended to be used as a means to specify an initial password when creating a new User or to reset an existing User's password.",
         "required" : false,
-        "caseExact" : false,
+        "caseExact" : true,
         "mutability" : "writeOnly",
         "returned" : "never",
         "uniqueness" : "none"
@@ -395,7 +397,9 @@
           {
             "name" : "value",
             "type" : "reference",
-            "referenceTypes" : ["external"],
+            "referenceTypes" : [
+              "external"
+            ],
             "multiValued" : false,
             "description" : "URL of a photo of the User.",
             "required" : false,
@@ -567,7 +571,7 @@
             "description" : "The URI of the corresponding Group resource to which the user belongs",
             "readOnly" : false,
             "required" : false,
-            "caseExact" : false,
+            "caseExact" : true,
             "mutability" : "readOnly",
             "returned" : "default",
             "uniqueness" : "none"
@@ -661,7 +665,7 @@
         "name" : "roles",
         "type" : "complex",
         "multiValued" : true,
-        "description" : "A list of roles for the User that collectively represent who the User is; e.g., 'Student', 'Faculty'.", 
+        "description" : "A list of roles for the User that collectively represent who the User is; e.g., 'Student', 'Faculty'.",
         "required" : false,
         "subAttributes" : [
           {
@@ -693,7 +697,9 @@
             "description" : "A label indicating the attribute's function.",
             "required" : false,
             "caseExact" : false,
-            "canonicalValues" : [],
+            "canonicalValues" : [
+              
+            ],
             "mutability" : "readWrite",
             "returned" : "default",
             "uniqueness" : "none"
@@ -748,7 +754,9 @@
             "description" : "A label indicating the attribute's function.",
             "required" : false,
             "caseExact" : false,
-            "canonicalValues" : [],
+            "canonicalValues" : [
+              
+            ],
             "mutability" : "readWrite",
             "returned" : "default",
             "uniqueness" : "none"
@@ -769,8 +777,7 @@
     ],
     "meta" : {
       "resourceType" : "Schema",
-      "location" : 
-        "/v2/Schemas/urn:ietf:params:scim:schemas:core:2.0:User"
+      "location" : "/v2/Schemas/urn:ietf:params:scim:schemas:core:2.0:User"
     }
   },
   {
@@ -817,7 +824,7 @@
             "multiValued" : false,
             "description" : "The URI of the corresponding to the member resource of this Group.",
             "required" : false,
-            "caseExact" : false,
+            "caseExact" : true,
             "mutability" : "immutable",
             "returned" : "default",
             "uniqueness" : "none"
@@ -844,8 +851,7 @@
     ],
     "meta" : {
       "resourceType" : "Schema",
-      "location" : 
-        "/v2/Schemas/urn:ietf:params:scim:schemas:core:2.0:Group"
+      "location" : "/v2/Schemas/urn:ietf:params:scim:schemas:core:2.0:Group"
     }
   },
   {
@@ -857,7 +863,7 @@
         "name" : "employeeNumber",
         "type" : "string",
         "multiValued" : false,
-        "description" : "Numeric or alphanumeric identifier assigned to a person, on order of hire or association with an organization.",
+        "description" : "Numeric or alphanumeric identifier assigned to a person, typically based on order of hire or association with an organization.",
         "required" : false,
         "caseExact" : false,
         "mutability" : "readWrite",
@@ -935,7 +941,7 @@
             "multiValued" : false,
             "description" : "The URI of the SCIM resource representing the User's manager.  REQUIRED.",
             "required" : false,
-            "caseExact" : false,
+            "caseExact" : true,
             "mutability" : "readWrite",
             "returned" : "default",
             "uniqueness" : "none"
@@ -958,8 +964,7 @@
     ],
     "meta" : {
       "resourceType" : "Schema",
-      "location" : 
-"/v2/Schemas/urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
+      "location" : "/v2/Schemas/urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
     }
   }
 ]

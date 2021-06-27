@@ -87,6 +87,9 @@ public class SchemaManager {
     @ConfigProperty(name = "scim.coreSchema.path", defaultValue = "classpath:/schema/scimCommonSchema.json")
     String coreSchemaPath;
 
+    @ConfigProperty(name = "scim.serverSchema.path", defaultValue = "classpath:/schema/scimFixedSchema.json")
+    String serverSchemaPath;
+
     @ConfigProperty(name = "scim.prov.persist.schema", defaultValue = "true")
     boolean persistSchema;
 
@@ -147,14 +150,18 @@ public class SchemaManager {
         this.systemSchemas.defineConfigStateSchema();
 
         InputStream schStream = ConfigMgr.findClassLoaderResource(schemaPath);
+        if (schStream == null) throw new IOException("File: "+schemaPath+", not found.");
         parseSchemaConfig(schStream);
         schStream.close();
 
+
         InputStream stream = ConfigMgr.findClassLoaderResource(typesPath);
+        if (stream == null) throw new IOException("File: "+typesPath+", not found.");
         parseResourceTypes(stream);
         stream.close();
 
         stream = ConfigMgr.findClassLoaderResource("classpath:/schema/scimCommonSchema.json");
+        if (stream == null) throw new IOException("File: /schema/scimCommonSchema.json, not found.");
         parseCoreSchema(stream);
         stream.close();
         logger.info("Loaded: " + getResourceTypes().size() + " resource types, " + getSchemas().size() + " schemas.");
@@ -178,9 +185,11 @@ public class SchemaManager {
 
         loadedFromProvider = false;
         // Load the default schemas first. This allows new instances of provider ability to boot.
+        // In case this is a reload, reset the current Schemas
+        schIdMap.clear();
         loadDefaultSchema();
         loadDefaultResourceTypes();
-        loadCoreSchema();
+        loadCommonAttrSchema();
 
         initVirtualValueConstructors();
 
@@ -310,16 +319,15 @@ public class SchemaManager {
      * @throws ScimException when a parsing error (e.g. JSON parsing) occurs locating default schema.
      * @throws IOException   when attempting to read files (e.g. not found).
      */
-    protected void loadCoreSchema() throws ScimException, IOException {
-        String filePath = this.coreSchemaPath;
+    protected void loadCommonAttrSchema() throws ScimException, IOException {
 
-        if (filePath == null) {
-            filePath = "/schema/scimCommonSchema.json";
-        }
-           // throw new ScimException("SCIM default schema file path is null.");
-
-        InputStream stream = ConfigMgr.findClassLoaderResource(filePath);
+        // Load the core attributes for all resource types
+        InputStream stream = ConfigMgr.findClassLoaderResource(this.coreSchemaPath);
         parseCoreSchema(stream);
+
+        // Load the server schemas like ServiceProviderConfig, ResourceTypes, Schemas
+        stream = ConfigMgr.findClassLoaderResource(this.serverSchemaPath);
+        parseSchemaConfig(stream);
 
     }
 
@@ -394,9 +402,6 @@ public class SchemaManager {
 
         logger.debug("\t..Parsing Schema Config.");
         JsonNode node = JsonUtil.getJsonTree(stream);
-
-        // In case this is a reload, reset the current Schemas
-        schIdMap.clear();
 
         Iterator<JsonNode> iter;
         if (node.isObject()) {
