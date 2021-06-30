@@ -46,7 +46,6 @@ data:
 
   scim.resourcetype.path: "/config/resourceTypes.json"
   scim.schema.path: "/config/scimSchema.json"
-  scim.coreSchema.path: "/config/scimCommonSchema.json"
 
   # Locations of the acis.json file to use
   scim.security.acis: "/config/acis.json"

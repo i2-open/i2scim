@@ -29,6 +29,9 @@ data:
     # Indicates the attributes to be indexed
   scim.prov.memory.indexes: User:userName,User:emails.value,Group:displayName
 
+  scim.resourcetype.path: "/config/resourceTypes.json"
+  scim.schema.path: "/config/scimSchema.json"
+
     # Security Configuration
   scim.security.enable: "true"
     # Locations of the acis.json file to use

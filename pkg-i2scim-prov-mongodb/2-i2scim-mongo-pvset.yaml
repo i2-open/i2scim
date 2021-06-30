@@ -1,23 +1,66 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: i2scim-pv1
+  name: i2scim-mongo-pv1
   namespace: scim-mongo
   labels:
     app: i2scim
 spec:
-#  Because Mongo deployment is stateless, PV is only for logs etc
   capacity:
-    storage: 5Gi
+    storage: 50Gi
   volumeMode: Filesystem
-  accessModes: [ReadWriteMany]
+  accessModes: [ReadWriteOnce]
   persistentVolumeReclaimPolicy: Retain
-  storageClassName: nfs
+  storageClassName: i2scimlog
   mountOptions:
     - hard
     - nfsvers=4.1
   nfs:
-    path: /nfs/data/i2scim-pv/rep1
+    path: /nfs/data/i2scim-mongo-pv/rep1
+    server: 10.1.10.110
+    readOnly: false
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: i2scim-mongo-pv2
+  namespace: scim-mongo
+  labels:
+    app: i2scim
+spec:
+  capacity:
+    storage: 50Gi
+  volumeMode: Filesystem
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: i2scimlog
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+  nfs:
+    path: /nfs/data/i2scim-mongo-pv/rep2
+    server: 10.1.10.110
+    readOnly: false
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: i2scim-mongo-pv3
+  namespace: scim-mongo
+  labels:
+    app: i2scim
+spec:
+  capacity:
+    storage: 50Gi
+  volumeMode: Filesystem
+  accessModes: [ReadWriteOnce]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: i2scimlog
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+  nfs:
+    path: /nfs/data/i2scim-mongo-pv/rep3
     server: 10.1.10.110
     readOnly: false
 ---

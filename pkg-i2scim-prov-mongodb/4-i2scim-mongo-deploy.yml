@@ -5,14 +5,14 @@ metadata:
   annotations:
     prometheus.io/port: "8080"
     prometheus.io/scheme: http
-    app.quarkus.io/commit-id: af4c05973ed004b16003ed85880c2a3266390331
+    app.quarkus.io/commit-id: b38f9a5fd09f6fe2c5c09bfcdee800d5908d41e8
     app.quarkus.io/vcs-url: https://github.com/independentid/i2scim.git
-    app.quarkus.io/build-timestamp: 2021-06-22 - 18:49:16 +0000
+    app.quarkus.io/build-timestamp: 2021-06-29 - 17:36:09 +0000
     prometheus.io/scrape: "true"
     prometheus.io/path: /metrics
   labels:
-    app.kubernetes.io/version: 0.5.0-Alpha
     app.kubernetes.io/name: i2scim-mongo
+    app.kubernetes.io/version: 0.5.0-Alpha
   name: i2scim-mongo
   namespace: scim-mongo
 ---
@@ -22,9 +22,9 @@ metadata:
   annotations:
     prometheus.io/port: "8080"
     prometheus.io/scheme: http
-    app.quarkus.io/commit-id: af4c05973ed004b16003ed85880c2a3266390331
+    app.quarkus.io/commit-id: b38f9a5fd09f6fe2c5c09bfcdee800d5908d41e8
     app.quarkus.io/vcs-url: https://github.com/independentid/i2scim.git
-    app.quarkus.io/build-timestamp: 2021-06-22 - 18:49:16 +0000
+    app.quarkus.io/build-timestamp: 2021-06-29 - 17:36:09 +0000
     prometheus.io/scrape: "true"
     prometheus.io/path: /metrics
   labels:
@@ -61,35 +61,35 @@ metadata:
   annotations:
     prometheus.io/port: "8080"
     prometheus.io/scheme: http
-    app.quarkus.io/commit-id: af4c05973ed004b16003ed85880c2a3266390331
+    app.quarkus.io/commit-id: b38f9a5fd09f6fe2c5c09bfcdee800d5908d41e8
     app.quarkus.io/vcs-url: https://github.com/independentid/i2scim.git
-    app.quarkus.io/build-timestamp: 2021-06-22 - 18:49:16 +0000
+    app.quarkus.io/build-timestamp: 2021-06-29 - 17:36:09 +0000
     prometheus.io/scrape: "true"
     prometheus.io/path: /metrics
   labels:
-    app.kubernetes.io/version: 0.5.0-Alpha
     app.kubernetes.io/name: i2scim-mongo
+    app.kubernetes.io/version: 0.5.0-Alpha
   name: i2scim-mongo
   namespace: scim-mongo
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app.kubernetes.io/version: 0.5.0-Alpha
       app.kubernetes.io/name: i2scim-mongo
+      app.kubernetes.io/version: 0.5.0-Alpha
   template:
     metadata:
       annotations:
         prometheus.io/port: "8080"
         prometheus.io/scheme: http
-        app.quarkus.io/commit-id: af4c05973ed004b16003ed85880c2a3266390331
+        app.quarkus.io/commit-id: b38f9a5fd09f6fe2c5c09bfcdee800d5908d41e8
         app.quarkus.io/vcs-url: https://github.com/independentid/i2scim.git
-        app.quarkus.io/build-timestamp: 2021-06-22 - 18:49:16 +0000
+        app.quarkus.io/build-timestamp: 2021-06-29 - 17:36:09 +0000
         prometheus.io/scrape: "true"
         prometheus.io/path: /metrics
       labels:
-        app.kubernetes.io/version: 0.5.0-Alpha
         app.kubernetes.io/name: i2scim-mongo
+        app.kubernetes.io/version: 0.5.0-Alpha
       namespace: scim-mongo
     spec:
       containers:
@@ -99,12 +99,12 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         envFrom:
+        - secretRef:
+            name: mongo-db-cred
         - configMapRef:
             name: i2scim-mongo-config
         - secretRef:
             name: i2scim-root
-        - secretRef:
-            name: mongo-db-cred
         image: independentid/i2scim-mongo:0.5.0-Alpha
         imagePullPolicy: Always
         livenessProbe:
@@ -137,6 +137,10 @@ spec:
           name: configschema
           readOnly: true
           subPath: ""
+        - mountPath: /scim
+          name: i2scim-mongo-pvc
+          readOnly: false
+          subPath: ""
       imagePullSecrets:
       - name: regcred
       serviceAccount: i2scim-mongo
@@ -146,3 +150,7 @@ spec:
           name: i2scim-config-schema
           optional: false
         name: configschema
+      - name: i2scim-mongo-pvc
+        persistentVolumeClaim:
+          claimName: i2scim-mongo-pvc
+          readOnly: false

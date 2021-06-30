@@ -98,7 +98,7 @@ then
   echo "Docker error packaging i2scim-mem: "+$retVal
   exit $retVal
 fi
-cp target/kubernetes/kubernetes.yml ./4-i2scim-memory-deploy.yml
+#cp target/kubernetes/kubernetes.yml ./4-i2scim-memory-deploy.yml
 
 echo ""
 echo "\tStarting Docker build i2scim-mongo..."
@@ -107,11 +107,11 @@ echo ""
 cd ../pkg-i2scim-prov-mongodb
 docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mongo:$rtag .
 retVal=$?
-if [ retVal -ne 0 ]
+if [ $retVal -ne 0 ]
 then
   echo "Docker error packaging i2scim-mongo: "+$retVal
   exit $retVal
 fi
-cp target/kubernetes/kubernetes.yml ./4-i2scim-mongo-deploy.yml
+#cp target/kubernetes/kubernetes.yml ./4-i2scim-mongo-deploy.yml
 
 show_complete
