@@ -61,6 +61,9 @@ public class AccessManager {
     @ConfigProperty(name = "scim.security.acis", defaultValue = "classpath:/schema/acis.json")
     String acisPath;
 
+    @ConfigProperty(name = "scim.security.enable", defaultValue = "true")
+    boolean aciEnable;
+
     @Inject
     @Resource(name="SchemaMgr")
     SchemaManager smgr;
@@ -80,9 +83,17 @@ public class AccessManager {
 
     @PostConstruct
     public void init() throws IOException {
+        if (!aciEnable) {
+            logger.warn("Access control is *disabled*.");
+            return;
+        }
         logger.info("Access Manager starting using: "+this.acisPath);
 
         InputStream aciStream = ConfigMgr.findClassLoaderResource(this.acisPath);
+        if (aciStream == null) {
+            logger.error("Unable to locate ACI json file: "+this.acisPath);
+            throw new IOException("Missing ACI configuration.");
+        }
         JsonNode node = JsonUtil.getJsonTree(aciStream);
         JsonNode acis = node.get("acis");
         for (JsonNode anode : acis) {
