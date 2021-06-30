@@ -1,0 +1,205 @@
+[ {
+  "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:ResourceType" ],
+  "id" : "ServiceProviderConfig",
+  "name" : "ServiceProviderConfig",
+  "endpoint" : "/ServiceProviderConfig",
+  "description" : "Schema Discovery Endpoint",
+  "schema" : "urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig",
+  "meta" : {
+    "created" : "2020-07-29T00:00:00Z",
+    "lastModified" : "2020-07-29T00:00:00Z",
+    "resourceType" : "ResourceType",
+    "version" : "beta0",
+    "location" : "/ResourceTypes/ServiceProviderConfig",
+    "acis" : [ {
+      "path" : "/ResourceTypes",
+      "name" : "Allow unauthenticated access to ServiceProviderConfig",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "any" ]
+    }, {
+      "path" : "/",
+      "name" : "Self and employee access to read information",
+      "targetFilter" : null,
+      "targetAttrs" : "*,-password",
+      "rights" : "read,search",
+      "actors" : [ "self", "filter=null" ]
+    }, {
+      "path" : "/",
+      "name" : "Administrators can read, search, compare all records and operational attributes",
+      "targetAttrs" : "*,+",
+      "rights" : "read,search",
+      "actors" : [ "role=admin", "role=test" ]
+    }, {
+      "path" : "/",
+      "name" : "Root can update all systems",
+      "targetAttrs" : "*,+",
+      "rights" : "add,modify,delete",
+      "actors" : [ "role=admin", "role=test" ]
+    } ]
+  }
+}, {
+  "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:ResourceType" ],
+  "id" : "ResourceType",
+  "name" : "ResourceType",
+  "endpoint" : "/ResourceTypes",
+  "description" : "Resource Types Discovery Endpoint",
+  "schema" : "urn:ietf:params:scim:schemas:core:2.0:ResourceType",
+  "meta" : {
+    "created" : "2020-07-29T00:00:00Z",
+    "lastModified" : "2020-07-29T00:00:00Z",
+    "resourceType" : "ResourceType",
+    "version" : "beta0",
+    "location" : "/ResourceTypes/ResourceType",
+    "acis" : [ {
+      "path" : "/ResourceTypes",
+      "name" : "Allow unauthenticated access to ServiceProviderConfig",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "any" ]
+    }, {
+      "path" : "/",
+      "name" : "Self and employee access to read information",
+      "targetFilter" : null,
+      "targetAttrs" : "*,-password",
+      "rights" : "read,search",
+      "actors" : [ "self", "filter=null" ]
+    }, {
+      "path" : "/",
+      "name" : "Administrators can read, search, compare all records and operational attributes",
+      "targetAttrs" : "*,+",
+      "rights" : "read,search",
+      "actors" : [ "role=admin", "role=test" ]
+    }, {
+      "path" : "/",
+      "name" : "Root can update all systems",
+      "targetAttrs" : "*,+",
+      "rights" : "add,modify,delete",
+      "actors" : [ "role=admin", "role=test" ]
+    } ]
+  }
+}, {
+  "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:ResourceType" ],
+  "id" : "Schema",
+  "name" : "Schema",
+  "endpoint" : "/Schemas",
+  "description" : "Schema Discovery Endpoint",
+  "schema" : "urn:ietf:params:scim:schemas:core:2.0:Schema",
+  "meta" : {
+    "created" : "2020-07-29T00:00:00Z",
+    "lastModified" : "2020-07-29T00:00:00Z",
+    "resourceType" : "ResourceType",
+    "version" : "beta0",
+    "location" : "/ResourceTypes/Schema",
+    "acis" : [ {
+      "path" : "/ResourceTypes",
+      "name" : "Allow unauthenticated access to ServiceProviderConfig",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "any" ]
+    }, {
+      "path" : "/",
+      "name" : "Self and employee access to read information",
+      "targetFilter" : null,
+      "targetAttrs" : "*,-password",
+      "rights" : "read,search",
+      "actors" : [ "self", "filter=null" ]
+    }, {
+      "path" : "/",
+      "name" : "Administrators can read, search, compare all records and operational attributes",
+      "targetAttrs" : "*,+",
+      "rights" : "read,search",
+      "actors" : [ "role=admin", "role=test" ]
+    }, {
+      "path" : "/",
+      "name" : "Root can update all systems",
+      "targetAttrs" : "*,+",
+      "rights" : "add,modify,delete",
+      "actors" : [ "role=admin", "role=test" ]
+    } ]
+  }
+}, {
+  "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:ResourceType" ],
+  "id" : "Group",
+  "name" : "Group",
+  "endpoint" : "/Groups",
+  "description" : "Group endpoint",
+  "schema" : "urn:ietf:params:scim:schemas:core:2.0:Group",
+  "meta" : {
+    "created" : "2010-01-23T04:56:22Z",
+    "lastModified" : "2011-05-13T04:42:34Z",
+    "resourceType" : "ResourceType",
+    "version" : "W/\"3694e05e9dff595\"",
+    "location" : "/ResourceTypes/Group",
+    "acis" : [ {
+      "path" : "/ResourceTypes",
+      "name" : "Allow unauthenticated access to ServiceProviderConfig",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "any" ]
+    }, {
+      "path" : "/",
+      "name" : "Self and employee access to read information",
+      "targetFilter" : null,
+      "targetAttrs" : "*,-password",
+      "rights" : "read,search",
+      "actors" : [ "self", "filter=null" ]
+    }, {
+      "path" : "/",
+      "name" : "Administrators can read, search, compare all records and operational attributes",
+      "targetAttrs" : "*,+",
+      "rights" : "read,search",
+      "actors" : [ "role=admin", "role=test" ]
+    }, {
+      "path" : "/",
+      "name" : "Root can update all systems",
+      "targetAttrs" : "*,+",
+      "rights" : "add,modify,delete",
+      "actors" : [ "role=admin", "role=test" ]
+    } ]
+  }
+}, {
+  "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:ResourceType" ],
+  "id" : "User",
+  "name" : "User",
+  "endpoint" : "/Users",
+  "description" : "User Account",
+  "schema" : "urn:ietf:params:scim:schemas:core:2.0:User",
+  "schemaExtensions" : [ {
+    "schema" : "urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
+    "required" : false
+  } ],
+  "meta" : {
+    "created" : "2010-01-23T04:56:22Z",
+    "lastModified" : "2011-05-13T04:42:34Z",
+    "resourceType" : "ResourceType",
+    "version" : "W/\"3694e05e9dff595\"",
+    "location" : "/ResourceTypes/User",
+    "acis" : [ {
+      "path" : "/ResourceTypes",
+      "name" : "Allow unauthenticated access to ServiceProviderConfig",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "any" ]
+    }, {
+      "path" : "/",
+      "name" : "Self and employee access to read information",
+      "targetFilter" : null,
+      "targetAttrs" : "*,-password",
+      "rights" : "read,search",
+      "actors" : [ "self", "filter=null" ]
+    }, {
+      "path" : "/",
+      "name" : "Administrators can read, search, compare all records and operational attributes",
+      "targetAttrs" : "*,+",
+      "rights" : "read,search",
+      "actors" : [ "role=admin", "role=test" ]
+    }, {
+      "path" : "/",
+      "name" : "Root can update all systems",
+      "targetAttrs" : "*,+",
+      "rights" : "add,modify,delete",
+      "actors" : [ "role=admin", "role=test" ]
+    } ]
+  }
+} ]
