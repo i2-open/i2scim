@@ -22,8 +22,8 @@ JSON documents to a persistence volume (disk).
 Additional information:
 
 * Quick Starts
-    * Deploying i2scim using memory database
-    * Deploying i2scim using MongoDb.
+    * Deploying i2scim using memory database(TBD).
+    * [Deploying i2scim using MongoDb on K8S](pkg-i2scim-prov-mongodb/i2scim-mongo-k8s.md).
 * Documentation
     * [Configuration](Configuration.md) - i2scim Configuration Properties
     * [Access Control](AccessControl.md) - Access Control Configuration
