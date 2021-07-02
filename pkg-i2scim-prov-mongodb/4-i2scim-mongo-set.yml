@@ -56,7 +56,7 @@ subjects:
   name: i2scim-mongo
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   annotations:
     prometheus.io/port: "8080"
@@ -72,6 +72,7 @@ metadata:
   name: i2scim-mongo
   namespace: scim-mongo
 spec:
+  serviceName: i2scim-mongo
   replicas: 2
   selector:
     matchLabels:
@@ -138,7 +139,7 @@ spec:
           readOnly: true
           subPath: ""
         - mountPath: /scim
-          name: i2scim-mongo-pvc
+          name: scimroot
           readOnly: false
           subPath: ""
       imagePullSecrets:
@@ -150,7 +151,13 @@ spec:
           name: i2scim-config-schema
           optional: false
         name: configschema
-      - name: i2scim-mongo-pvc
-        persistentVolumeClaim:
-          claimName: i2scim-mongo-pvc
-          readOnly: false
+  volumeClaimTemplates:
+    - metadata:
+        name: scimroot
+      spec:
+        storageClassName: i2scimlog
+        accessModes:
+          - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: 1Gi
