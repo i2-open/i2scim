@@ -93,6 +93,9 @@
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <maven.home>${maven.home}</maven.home>
           </systemPropertyVariables>
+          <excludes>
+            <exclude>**/LoadScimClusterTest.java</exclude>
+          </excludes>
         </configuration>
       </plugin>
     </plugins>

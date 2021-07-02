@@ -170,36 +170,10 @@
     } ]
   } ],
   "meta" : {
-    "created" : "2021-06-27T11:48:46Z",
-    "lastModified" : "2021-06-27T11:48:46Z",
+    "created" : "2021-07-02T10:58:22Z",
+    "lastModified" : "2021-07-02T10:58:22Z",
     "resourceType" : "Schema",
-    "location" : "/Schemas/urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig",
-    "acis" : [ {
-      "path" : "/Schemas",
-      "name" : "Allow unauthenticated access to ServiceProviderConfig",
-      "targetAttrs" : "*",
-      "rights" : "read,search",
-      "actors" : [ "any" ]
-    }, {
-      "path" : "/",
-      "name" : "Self and employee access to read information",
-      "targetFilter" : null,
-      "targetAttrs" : "*,-password",
-      "rights" : "read,search",
-      "actors" : [ "self", "filter=null" ]
-    }, {
-      "path" : "/",
-      "name" : "Administrators can read, search, compare all records and operational attributes",
-      "targetAttrs" : "*,+",
-      "rights" : "read,search",
-      "actors" : [ "role=admin", "role=test" ]
-    }, {
-      "path" : "/",
-      "name" : "Root can update all systems",
-      "targetAttrs" : "*,+",
-      "rights" : "add,modify,delete",
-      "actors" : [ "role=admin", "role=test" ]
-    } ]
+    "location" : "/Schemas/urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"
   }
 }, {
   "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:Schema" ],
@@ -282,36 +256,10 @@
     } ]
   } ],
   "meta" : {
-    "created" : "2021-06-27T11:48:46Z",
-    "lastModified" : "2021-06-27T11:48:46Z",
+    "created" : "2021-07-02T10:58:22Z",
+    "lastModified" : "2021-07-02T10:58:22Z",
     "resourceType" : "Schema",
-    "location" : "/Schemas/urn:ietf:params:scim:schemas:core:2.0:ResourceType",
-    "acis" : [ {
-      "path" : "/Schemas",
-      "name" : "Allow unauthenticated access to ServiceProviderConfig",
-      "targetAttrs" : "*",
-      "rights" : "read,search",
-      "actors" : [ "any" ]
-    }, {
-      "path" : "/",
-      "name" : "Self and employee access to read information",
-      "targetFilter" : null,
-      "targetAttrs" : "*,-password",
-      "rights" : "read,search",
-      "actors" : [ "self", "filter=null" ]
-    }, {
-      "path" : "/",
-      "name" : "Administrators can read, search, compare all records and operational attributes",
-      "targetAttrs" : "*,+",
-      "rights" : "read,search",
-      "actors" : [ "role=admin", "role=test" ]
-    }, {
-      "path" : "/",
-      "name" : "Root can update all systems",
-      "targetAttrs" : "*,+",
-      "rights" : "add,modify,delete",
-      "actors" : [ "role=admin", "role=test" ]
-    } ]
+    "location" : "/Schemas/urn:ietf:params:scim:schemas:core:2.0:ResourceType"
   }
 }, {
   "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:Schema" ],
@@ -584,36 +532,10 @@
     "required" : true
   } ],
   "meta" : {
-    "created" : "2021-06-27T11:48:46Z",
-    "lastModified" : "2021-06-27T11:48:46Z",
+    "created" : "2021-07-02T10:58:22Z",
+    "lastModified" : "2021-07-02T10:58:22Z",
     "resourceType" : "Schema",
-    "location" : "/Schemas/urn:ietf:params:scim:schemas:core:2.0:Schema",
-    "acis" : [ {
-      "path" : "/Schemas",
-      "name" : "Allow unauthenticated access to ServiceProviderConfig",
-      "targetAttrs" : "*",
-      "rights" : "read,search",
-      "actors" : [ "any" ]
-    }, {
-      "path" : "/",
-      "name" : "Self and employee access to read information",
-      "targetFilter" : null,
-      "targetAttrs" : "*,-password",
-      "rights" : "read,search",
-      "actors" : [ "self", "filter=null" ]
-    }, {
-      "path" : "/",
-      "name" : "Administrators can read, search, compare all records and operational attributes",
-      "targetAttrs" : "*,+",
-      "rights" : "read,search",
-      "actors" : [ "role=admin", "role=test" ]
-    }, {
-      "path" : "/",
-      "name" : "Root can update all systems",
-      "targetAttrs" : "*,+",
-      "rights" : "add,modify,delete",
-      "actors" : [ "role=admin", "role=test" ]
-    } ]
+    "location" : "/Schemas/urn:ietf:params:scim:schemas:core:2.0:Schema"
   }
 }, {
   "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:Schema" ],
@@ -1274,27 +1196,7 @@
   } ],
   "meta" : {
     "resourceType" : "Schema",
-    "location" : "/v2/Schemas/urn:ietf:params:scim:schemas:core:2.0:User",
-    "acis" : [ {
-      "path" : "/",
-      "name" : "Self and employee access to read information",
-      "targetFilter" : null,
-      "targetAttrs" : "*,-password",
-      "rights" : "read,search",
-      "actors" : [ "self", "filter=null" ]
-    }, {
-      "path" : "/",
-      "name" : "Administrators can read, search, compare all records and operational attributes",
-      "targetAttrs" : "*,+",
-      "rights" : "read,search",
-      "actors" : [ "role=admin", "role=test" ]
-    }, {
-      "path" : "/",
-      "name" : "Root can update all systems",
-      "targetAttrs" : "*,+",
-      "rights" : "add,modify,delete",
-      "actors" : [ "role=admin", "role=test" ]
-    } ]
+    "location" : "/v2/Schemas/urn:ietf:params:scim:schemas:core:2.0:User"
   }
 }, {
   "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:Schema" ],
@@ -1353,27 +1255,7 @@
   } ],
   "meta" : {
     "resourceType" : "Schema",
-    "location" : "/v2/Schemas/urn:ietf:params:scim:schemas:core:2.0:Group",
-    "acis" : [ {
-      "path" : "/",
-      "name" : "Self and employee access to read information",
-      "targetFilter" : null,
-      "targetAttrs" : "*,-password",
-      "rights" : "read,search",
-      "actors" : [ "self", "filter=null" ]
-    }, {
-      "path" : "/",
-      "name" : "Administrators can read, search, compare all records and operational attributes",
-      "targetAttrs" : "*,+",
-      "rights" : "read,search",
-      "actors" : [ "role=admin", "role=test" ]
-    }, {
-      "path" : "/",
-      "name" : "Root can update all systems",
-      "targetAttrs" : "*,+",
-      "rights" : "add,modify,delete",
-      "actors" : [ "role=admin", "role=test" ]
-    } ]
+    "location" : "/v2/Schemas/urn:ietf:params:scim:schemas:core:2.0:Group"
   }
 }, {
   "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:Schema" ],
@@ -1471,27 +1353,7 @@
   } ],
   "meta" : {
     "resourceType" : "Schema",
-    "location" : "/v2/Schemas/urn:ietf:params:scim:schemas:extension:enterprise:2.0:User",
-    "acis" : [ {
-      "path" : "/",
-      "name" : "Self and employee access to read information",
-      "targetFilter" : null,
-      "targetAttrs" : "*,-password",
-      "rights" : "read,search",
-      "actors" : [ "self", "filter=null" ]
-    }, {
-      "path" : "/",
-      "name" : "Administrators can read, search, compare all records and operational attributes",
-      "targetAttrs" : "*,+",
-      "rights" : "read,search",
-      "actors" : [ "role=admin", "role=test" ]
-    }, {
-      "path" : "/",
-      "name" : "Root can update all systems",
-      "targetAttrs" : "*,+",
-      "rights" : "add,modify,delete",
-      "actors" : [ "role=admin", "role=test" ]
-    } ]
+    "location" : "/v2/Schemas/urn:ietf:params:scim:schemas:extension:enterprise:2.0:User"
   }
 }, {
   "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:Schema" ],
@@ -1672,36 +1534,10 @@
     "required" : true
   } ],
   "meta" : {
-    "created" : "2021-06-27T11:48:46Z",
-    "lastModified" : "2021-06-27T11:48:46Z",
+    "created" : "2021-07-02T10:58:22Z",
+    "lastModified" : "2021-07-02T10:58:22Z",
     "resourceType" : "Schema",
-    "location" : "/Schemas/urn:ietf:params:scim:schemas:core:2.0:Common",
-    "acis" : [ {
-      "path" : "/Schemas",
-      "name" : "Allow unauthenticated access to ServiceProviderConfig",
-      "targetAttrs" : "*",
-      "rights" : "read,search",
-      "actors" : [ "any" ]
-    }, {
-      "path" : "/",
-      "name" : "Self and employee access to read information",
-      "targetFilter" : null,
-      "targetAttrs" : "*,-password",
-      "rights" : "read,search",
-      "actors" : [ "self", "filter=null" ]
-    }, {
-      "path" : "/",
-      "name" : "Administrators can read, search, compare all records and operational attributes",
-      "targetAttrs" : "*,+",
-      "rights" : "read,search",
-      "actors" : [ "role=admin", "role=test" ]
-    }, {
-      "path" : "/",
-      "name" : "Root can update all systems",
-      "targetAttrs" : "*,+",
-      "rights" : "add,modify,delete",
-      "actors" : [ "role=admin", "role=test" ]
-    } ]
+    "location" : "/Schemas/urn:ietf:params:scim:schemas:core:2.0:Common"
   }
 }, {
   "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:Schema" ],
@@ -1757,35 +1593,9 @@
     "required" : false
   } ],
   "meta" : {
-    "created" : "2021-06-27T11:48:46Z",
-    "lastModified" : "2021-06-27T11:48:46Z",
+    "created" : "2021-07-02T10:58:22Z",
+    "lastModified" : "2021-07-02T10:58:22Z",
     "resourceType" : "Schema",
-    "location" : "/Schemas/SyncRec",
-    "acis" : [ {
-      "path" : "/Schemas",
-      "name" : "Allow unauthenticated access to ServiceProviderConfig",
-      "targetAttrs" : "*",
-      "rights" : "read,search",
-      "actors" : [ "any" ]
-    }, {
-      "path" : "/",
-      "name" : "Self and employee access to read information",
-      "targetFilter" : null,
-      "targetAttrs" : "*,-password",
-      "rights" : "read,search",
-      "actors" : [ "self", "filter=null" ]
-    }, {
-      "path" : "/",
-      "name" : "Administrators can read, search, compare all records and operational attributes",
-      "targetAttrs" : "*,+",
-      "rights" : "read,search",
-      "actors" : [ "role=admin", "role=test" ]
-    }, {
-      "path" : "/",
-      "name" : "Root can update all systems",
-      "targetAttrs" : "*,+",
-      "rights" : "add,modify,delete",
-      "actors" : [ "role=admin", "role=test" ]
-    } ]
+    "location" : "/Schemas/SyncRec"
   }
 } ]
