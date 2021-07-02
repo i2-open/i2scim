@@ -394,10 +394,13 @@ public class MemoryProvider implements IScimProvider {
 				String path = ctx.getResourceContainer();
 				if (path == null || path.equals("/")) {
 					for (ScimResource res : this.mainMap.values()) {
+						if (res.getId().equals(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE))
+							continue; // ConfigState canoot be returned externally.
 						if (results.size() < maxResults) {
 							res.refreshVirtualAttrs();
 							results.add(res); // return raw copy to trigger virtual values
-						}
+						} else
+							break;
 					}
 				} else {
 					Map<String, ScimResource> map = this.containerMaps.get(path);
