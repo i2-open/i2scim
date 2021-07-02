@@ -391,11 +391,23 @@ public class MemoryProvider implements IScimProvider {
 			ArrayList<ScimResource> results = new ArrayList<>();
 			if (filter == null) {
 
-				for (ScimResource res : this.mainMap.values()) {
-					if (results.size() < maxResults) {
-						res.refreshVirtualAttrs();
-						results.add(res); // return raw copy to trigger virtual values
+				String path = ctx.getResourceContainer();
+				if (path == null || path.equals("/")) {
+					for (ScimResource res : this.mainMap.values()) {
+						if (results.size() < maxResults) {
+							res.refreshVirtualAttrs();
+							results.add(res); // return raw copy to trigger virtual values
+						}
 					}
+				} else {
+					Map<String, ScimResource> map = this.containerMaps.get(path);
+					if (map != null)
+						for (ScimResource res : map.values()) {
+							if (results.size() < maxResults) {
+								res.refreshVirtualAttrs();
+								results.add(res); // return raw copy to trigger virtual values
+							}
+						}
 				}
 			} else {
 				// this method supports root base searches where path is "/"

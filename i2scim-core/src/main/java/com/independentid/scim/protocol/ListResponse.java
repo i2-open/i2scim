@@ -19,8 +19,11 @@ package com.independentid.scim.protocol;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.core.err.TooManyException;
+import com.independentid.scim.resource.Meta;
 import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.security.AciSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,9 +48,12 @@ public class ListResponse extends ScimResponse {
 	
 	protected Date lastMod;
 	protected int totalRes;
+
 	protected RequestCtx ctx;
 	protected int smax;  // max server response size
 	protected String id;
+	public List<Attribute> sortAttrs;
+	public boolean isDescend = false;
 
 	protected ArrayList<ScimResource> entries = new ArrayList<>();
 	
@@ -64,6 +70,7 @@ public class ListResponse extends ScimResponse {
 		if (this.ctx.count == 0 || this.ctx.count > maxResults)
 			this.ctx.count = this.smax;
 		this.totalRes = 0;
+
 		this.id = null;
 		this.lastMod = null;
 		
@@ -83,7 +90,7 @@ public class ListResponse extends ScimResponse {
 	public ListResponse(final ScimResource val, RequestCtx ctx) {
 		super();
 		this.ctx = ctx;
-		
+		initSort(ctx); // just in case this class is extended, otherwise not needed.
 		setLocation(val.getMeta().getLocation());
 		
 		this.etag = val.getMeta().getVersion();
@@ -91,20 +98,38 @@ public class ListResponse extends ScimResponse {
 		this.id = val.getId();
 		this.entries.add(val);
 		this.totalRes = 1;
+
 		
 	}
 	
 	public String getId() {
 		return this.id;
 	}
-	
+
+	public void initSort(RequestCtx ctx) {
+		if (ctx.sortBy == null) {
+			this.sortAttrs = null;
+			return;
+		}
+		if (ctx.sortOrder != null)
+			this.isDescend = ctx.sortOrder.toLowerCase(Locale.ROOT).startsWith("d");
+
+		this.sortAttrs = new ArrayList<>();
+		String[] sortAttrsReq = ctx.sortBy.split(",");
+		SchemaManager smgr = ctx.getSchemaMgr();
+		for (String attrReq: sortAttrsReq) {
+			Attribute attr = smgr.findAttribute(attrReq,ctx);
+			if (attr != null)
+				this.sortAttrs.add(attr);
+		}
+	}
 	
 	public ListResponse(final List<ScimResource> vals, RequestCtx ctx, int maxResults) throws ScimException {
 		super();
 		this.ctx = ctx;
 		this.smax = maxResults;
 		this.id = null;
-		
+		initSort(ctx);
 		if (this.ctx.count == 0 || this.ctx.count > maxResults)
 			this.ctx.count = this.smax;
 		
@@ -113,23 +138,24 @@ public class ListResponse extends ScimResponse {
 			setError(new TooManyException());
 			
 		} else {
+
 		
 			int start = ctx.startIndex-1;
-			int count = ctx.count;
-			int stop = start + count;
-			/*
+
+			int stop = start + ctx.count;
+
 			if (stop > this.totalRes) {
 				stop = this.totalRes;
-				count = stop - start;
 			}
-			 */
 
-			
-			for (int i = start; (i < this.ctx.count && i < this.totalRes); i++) {
+			for (int i = start; (i < stop && i < this.totalRes); i++) {
 				ScimResource resource = vals.get(i);
-				Date mdate = resource.getMeta().getLastModifiedDate();
-				if (mdate != null &&(lastMod == null || mdate.after(lastMod)))
-					lastMod = mdate;
+				Meta meta = resource.getMeta();
+				if (meta != null) {
+					Date mdate = meta.getLastModifiedDate();
+					if (mdate != null && (lastMod == null || mdate.after(lastMod)))
+						lastMod = mdate;
+				}
 				this.entries.add(resource);
 			}
 			
@@ -179,6 +205,43 @@ public class ListResponse extends ScimResponse {
 		}
 	}
 
+	public void doSort() {
+		if (this.sortAttrs == null)
+			return; // sort not requested.
+
+		ScimResource[] resources = entries.toArray(new ScimResource[0]);
+		Arrays.sort(resources, new Comparator<ScimResource>() {
+			@Override
+			public int compare(ScimResource o1, ScimResource o2) {
+				List<Attribute> sortAttrs = ListResponse.this.sortAttrs;
+				for (Attribute attr: sortAttrs) {
+					Value val1 = o1.getValue(attr);
+					Value val2 = o2.getValue(attr);
+					if (val1 == null && val2 == null)
+						continue;
+					int res;
+					if (val1 == null || val2 == null) {
+						if (val1 == null)
+							res = 1;  // This algorithm will sort missing values after non-null values
+						else
+							res = -1;
+					} else
+						res = val1.compareTo(val2);
+					if (res == 0)
+						continue; // try the next sort in the list
+					if (ListResponse.this.isDescend)
+						return -1 * res;
+					return res;
+				}
+				return 0;
+			}
+		});
+
+		entries = new ArrayList<>();
+		entries.addAll(Arrays.asList(resources));
+
+	}
+
 	/* (non-Javadoc)
 	 * @see com.independentid.scim.protocol.ScimResponse#serialize(com.fasterxml.jackson.core.JsonGenerator, com.independentid.scim.protocol.RequestCtx)
 	 */
@@ -191,6 +254,8 @@ public class ListResponse extends ScimResponse {
 		/* Note: Normally this.ctx and sctx are the same. However server may modify
 		 * sctx after result set creation (or have chosen to insert an override). 
 		 */
+
+		doSort();
 
 		// For multiple or filtered results, return the result in a ListResponse
 		gen.writeStartObject();

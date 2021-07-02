@@ -234,9 +234,10 @@ public class ConfigResponse extends ListResponse {
         gen.writeEndArray();
 
         // Identify the server
-        gen.writeStringField("ProductName", "IndependentId SCIM Test Directory");
+        gen.writeStringField("ProductName", "Independent Identity i2scim Directory");
         //gen.writeStringField("ProductId", "BigDirectory");
-        gen.writeStringField("ProductVersion", "V1.0");
+        gen.writeStringField("ProductVersion", "V0.5.0-Alpha");
+
 
         /* Not defined in standard schema.
         gen.writeArrayFieldStart("ScimVersionSupport");
@@ -247,7 +248,7 @@ public class ConfigResponse extends ListResponse {
         // Documentation
         // TODO set up web documentation URL
 
-        gen.writeStringField("documentationUri", "https://independentid.com/scim");
+        gen.writeStringField("documentationUri", "http://i2scim.io");
 
 
         // Indicate Patch supported
@@ -257,6 +258,7 @@ public class ConfigResponse extends ListResponse {
         gen.writeEndObject();
 
         // Indicate Bulk support
+
         gen.writeFieldName("bulk");
         gen.writeStartObject();
         gen.writeBooleanField("supported", false);
@@ -268,7 +270,7 @@ public class ConfigResponse extends ListResponse {
         gen.writeFieldName("filter");
         gen.writeStartObject();
         gen.writeBooleanField("supported", true);
-        gen.writeNumberField("maxResults", 0);
+        gen.writeNumberField("maxResults", cmgr.getMaxResults());
         gen.writeEndObject();
 
         // Change Password support

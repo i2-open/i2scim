@@ -94,7 +94,7 @@ public class RequestCtx {
 	
 	protected int startIndex = 1; // start with result n
 
-	protected int count = 100; // number of results to return
+	protected int count = 0; // number of results to return
 	
 	protected String etag = null;
 	
@@ -287,8 +287,8 @@ public class RequestCtx {
 			
 		}
 		
-		if (this.sortOrder != null && !(this.sortOrder.equals("ascending")
-				|| this.sortOrder.equals("descending")))
+		if (this.sortOrder != null && !(this.sortOrder.startsWith("a")
+				|| this.sortOrder.startsWith("d")))
 			throw new InvalidValueException("Invalid value for 'sortOrder' specified. Must be 'ascending' or 'descending'.");
 
 	}
@@ -353,8 +353,8 @@ public class RequestCtx {
 		this.unmodsince = trimQuotes(req.getHeader(ScimParams.HEADER_IFUNMODSINCE));
 		this.modsince = trimQuotes(req.getHeader(ScimParams.HEADER_IFMODSINCE));
 
-		if (this.sortOrder != null && !(this.sortOrder.equals("ascending")
-				|| this.sortOrder.equals("descending")))
+		if (this.sortOrder != null && !(this.sortOrder.startsWith("a")
+				|| this.sortOrder.startsWith("d")))
 			throw new InvalidValueException("Invalid value for 'sortOrder' specified. Must be 'ascending' or 'descending'.");
 	}
 
@@ -461,11 +461,11 @@ public class RequestCtx {
 		
 		vnode = node.get("startIndex");
 		if (vnode != null)
-			this.startIndex = vnode.asInt();
-		
+			setStartIndex(vnode.asText()); // use the setter for consistency with url processing
+
 		vnode = node.get("count");
 		if (vnode != null)
-			this.count = vnode.asInt();
+			setCount(vnode.asText());  // use the setter for consistency with url processing
 
 		this.postSearch = true;
 	}
@@ -510,12 +510,22 @@ public class RequestCtx {
 			startIndex = 1;
 		
 	}
-	
+
+	/**
+	 * @return The number of items per page to be returned. 0 means unlimited.
+	 */
+	public int getCount() {
+		return count;
+	}
+
+	/**
+	 * @param ind A String value indicating the requested number of items per page. Null or "0" means unlimited.
+	 */
 	public void setCount(String ind) {
 		if (ind != null)
 			count = Integer.parseInt(ind);
 		else
-			count = 100;
+			count = 0;
 		
 	}
 	
