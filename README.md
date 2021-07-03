@@ -1,29 +1,29 @@
 # i2scim.io
 
-# What is **i2scim**
+# What is **i2scim**?
 
-**i2scim** is a kubernetes deployable server implementation of the IETF SCIM specification for provisioning of 
+**i2scim** is a Kubernetes (K8S) deployable server implementation of the IETF SCIM specification for provisioning of 
 Identities as an directory service. **i2scim** is as a generalized SCIM engine that supports configured endpoints 
 and schemas defined in json. Unlike other SCIM implementations, **i2scim** does not have fixed resource types.
 **i2scim** reads a K8S `configMap` containing JSON formatted definitions of resources and attributes (aka SCIM Schema).
 At its core, **i2scim** is a JSON document centric engine that converts from the SCIM Restful HTTP API to backend 
-persistance services such as MongoDb.
+persistence services such as MongoDb.
 
 **i2scim** is extensible in key ways:
-* It can configured to support custom attributes/claims, and object types for specific purpose applicatiosn
+* It can configured to support custom attributes/claims, and object types for specific purpose applications
 * For deployers looking to implement SCIM as a standard User provisioning API for their application, **i2scim** may be
 adapted to act as a gateway to internal proprietary identity APIs by implementing a custom provider.
 * It has a built in events interface that can be used to trigger async events and notifications (more to come).
 
 But wait, what is IETF SCIM? 
-- For more information on SCIM, See [What is SCIM](#What is SCIM) below.
+- For more information on SCIM, See "What is SCIM?" below.
 
 ## What is i2scim useful for?
-**i2scim** is a kubernetes deployable service which can support the following scenarios:
+**i2scim** is a K8S deployable service that supports scenarios such as:
 * An extensible identity data store for customer/user accounts shared by one or more services in a kubernetes cluster.
 * An account provisioning service for integration with enterprise provisioning connectors.
-* Enhanceable to act as a gateway to an internal database or API.
-* An event engine that can be used to trigger and receibe asynchronous events via message queues such as Apache Kafka.
+* A standardized, interoperable web gateway for an internal database or API.
+* An event engine that can be used to trigger and receive asynchronous events via message queues such as Apache Kafka.
   
 ## How do I get started?
 
@@ -34,7 +34,7 @@ But wait, what is IETF SCIM?
     * [Configuration](Configuration.md) - i2scim Configuration Properties
     * [Access Control](AccessControl.md) - Access Control Configuration
 
-## i2scim Details
+## i2scim Feature Details
 
 * Configurable schema support - i2scim supports resource type schema definitions (as described in RFC7643) loaded 
   through K8S ConfigMap definitions. 
@@ -76,7 +76,7 @@ deployment.
 Open Source i2scim is maintained by Independent Identity Incorporated on a best effort sponsored basis.
 For more information, please email [info@independentid.com](mailto:pinfo@independentid.com).
 -----
-## What is SCIM
+## What is SCIM?
 
 SCIM (System for Cross-domain Identity Management) is an IETF specified protocol and schema designed to support 
 simple cloud identity management over a REST-ful HTTP service.
@@ -101,7 +101,7 @@ recognized that every SCIM service provider would likely be somewhat different. 
 the SCIM schema was developed. 
 
 How SCIM and XML are alike:
-* Schema defines attributes, their syntax, mutability, optionaly, visibility, etc.
+* Schema defines attributes, their syntax, mutability, optionality, visibility, etc.
 * The ability to register attribute names and their meanings (with IANA).
 
 How SCIM and XML are NOT alike:
