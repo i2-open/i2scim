@@ -1,8 +1,11 @@
 # i2scim.io
 
+![i2scim.io](github-logo-i2scim.png)
+
 # What is **i2scim**?
 
-**i2scim** is a Kubernetes (K8S) deployable server implementation of the IETF SCIM specification for provisioning of 
+**i2scim** is an APL2 licensed project built as Kubernetes (K8S) deployable server implementation of the IETF SCIM 
+specification for provisioning of 
 Identities as an directory service. **i2scim** is as a generalized SCIM engine that supports configured endpoints 
 and schemas defined in json. Unlike other SCIM implementations, **i2scim** does not have fixed resource types.
 **i2scim** reads a K8S `configMap` containing JSON formatted definitions of resources and attributes (aka SCIM Schema).
@@ -29,7 +32,7 @@ But wait, what is IETF SCIM?
 
 * Quick Starts
     * Deploying i2scim using memory database(TBD).
-    * [Deploying i2scim using MongoDb on K8S](../pkg-i2scim-prov-mongodb/i2scim-mongo-k8s.md).
+    * [Deploying i2scim using MongoDb on K8S](i2scim-mongo-k8s.md).
 * General Documentation
     * [Configuration](Configuration.md) - i2scim Configuration Properties
     * [Access Control](AccessControl.md) - Access Control Configuration
