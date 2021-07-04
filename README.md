@@ -81,7 +81,7 @@ For more information, please email [info@independentid.com](mailto:pinfo@indepen
 SCIM (System for Cross-domain Identity Management) is an IETF specified protocol and schema designed to support 
 simple cloud identity management over a REST-ful HTTP service.
 See: 
- * [Introduction to SCIM](Intro-to-SCIM.md).
+ * [Introduction to SCIM](docs/Intro-to-SCIM.md).
  * [SimpleCloud SCIM Information](https://simplecloud.info). 
 
 In SCIM, objects are called `Resources` which have an identified schema. Like XML, a SCIM Schema describes an object,

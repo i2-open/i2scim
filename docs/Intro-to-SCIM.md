@@ -2,7 +2,7 @@
 
 ## Introduction to SCIM
 
-![scim](docs/SCIM_B-and-W_792x270.jpg)
+![scim](SCIM_B-and-W_792x270.jpg)
 
 SCIM protocol enables developers to support a standard way to provision, update, and manage identities
 from customer and partner organizations. SCIM helps reduce costs integrating services by:
