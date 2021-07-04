@@ -29,10 +29,10 @@ But wait, what is IETF SCIM?
 
 * Quick Starts
     * Deploying i2scim using memory database(TBD).
-    * [Deploying i2scim using MongoDb on K8S](pkg-i2scim-prov-mongodb/i2scim-mongo-k8s.md).
+    * [Deploying i2scim using MongoDb on K8S](../pkg-i2scim-prov-mongodb/i2scim-mongo-k8s.md).
 * General Documentation
-    * [Configuration](docs/Configuration.md) - i2scim Configuration Properties
-    * [Access Control](docs/AccessControl.md) - Access Control Configuration
+    * [Configuration](Configuration.md) - i2scim Configuration Properties
+    * [Access Control](AccessControl.md) - Access Control Configuration
 
 ## i2scim Feature Details
 
@@ -46,7 +46,7 @@ But wait, what is IETF SCIM?
 * Event system enables support for enhancements such as Apache Kafka and server-to-server multi-master replication (see
   other).
 * Security features
-    * [Access Control](docs/AccessControl.md) support - acis are defined in json format (as a configuration file) and are an evolved  
+    * [Access Control](AccessControl.md) support - acis are defined in json format (as a configuration file) and are an evolved  
       version of many popular LDAP server ACI formats. i2scim acis are intended ot support the requirements defined in:
       [RFC2820](https://datatracker.ietf.org/doc/rfc2820/).
     * HTTP Authentication Mechanisms
@@ -69,7 +69,7 @@ But wait, what is IETF SCIM?
 
 Note: Inter-SCIM server replication services are not currently part of this project and are currently only supported as
 part of a database cluster. For fault-tolerant scaled systems use i2scim deployed
-with a [MongoDB cluster on K8S](pkg-i2scim-prov-mongodb/i2scim-mongo-k8s.md) along with an enterprise MongoDB
+with a [MongoDB cluster on K8S](../pkg-i2scim-prov-mongodb/i2scim-mongo-k8s.md) along with an enterprise MongoDB
 deployment.
 
 ## Where can I get more help if needed?
@@ -81,7 +81,7 @@ For more information, please email [info@independentid.com](mailto:pinfo@indepen
 SCIM (System for Cross-domain Identity Management) is an IETF specified protocol and schema designed to support 
 simple cloud identity management over a REST-ful HTTP service.
 See: 
- * [Introduction to SCIM](docs/Intro-to-SCIM.md).
+ * [Introduction to SCIM](Intro-to-SCIM.md).
  * [SimpleCloud SCIM Information](https://simplecloud.info). 
 
 In SCIM, objects are called `Resources` which have an identified schema. Like XML, a SCIM Schema describes an object,
