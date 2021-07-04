@@ -1,5 +1,3 @@
-# i2scim.io
-
 ![i2scim.io](github-logo-i2scim.png)
 
 # What is **i2scim**?
@@ -30,6 +28,7 @@ But wait, what is IETF SCIM?
   
 ## How do I get started?
 
+* Link to [GitHub Repository](https://github.com/i2-open/i2scim)
 * Quick Starts
     * Deploying i2scim using memory database(TBD).
     * [Deploying i2scim using MongoDb on K8S](i2scim-mongo-k8s.md).
