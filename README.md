@@ -20,7 +20,7 @@ But wait, what is IETF SCIM?
 
 ## What is i2scim useful for?
 **i2scim** is a K8S deployable service that supports scenarios such as:
-* An extensible identity data store for customer/user accounts shared by one or more services in a kubernetes cluster.
+* An extensible identity data store for customer/user accounts shared by one or more services in a K8S cluster.
 * An account provisioning service for integration with enterprise provisioning connectors.
 * A standardized, interoperable web gateway for an internal database or API.
 * An event engine that can be used to trigger and receive asynchronous events via message queues such as Apache Kafka.
@@ -31,8 +31,8 @@ But wait, what is IETF SCIM?
     * Deploying i2scim using memory database(TBD).
     * [Deploying i2scim using MongoDb on K8S](pkg-i2scim-prov-mongodb/i2scim-mongo-k8s.md).
 * General Documentation
-    * [Configuration](Configuration.md) - i2scim Configuration Properties
-    * [Access Control](AccessControl.md) - Access Control Configuration
+    * [Configuration](docs/Configuration.md) - i2scim Configuration Properties
+    * [Access Control](docs/AccessControl.md) - Access Control Configuration
 
 ## i2scim Feature Details
 
@@ -46,7 +46,7 @@ But wait, what is IETF SCIM?
 * Event system enables support for enhancements such as Apache Kafka and server-to-server multi-master replication (see
   other).
 * Security features
-    * [Access Control](AccessControl.md) support - acis are defined in json format (as a configuration file) and are an evolved  
+    * [Access Control](docs/AccessControl.md) support - acis are defined in json format (as a configuration file) and are an evolved  
       version of many popular LDAP server ACI formats. i2scim acis are intended ot support the requirements defined in:
       [RFC2820](https://datatracker.ietf.org/doc/rfc2820/).
     * HTTP Authentication Mechanisms
