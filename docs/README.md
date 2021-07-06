@@ -2,7 +2,7 @@
 
 # What is **i2scim**?
 
-**i2scim** is an APL2 licensed project built as Kubernetes (K8S) deployable server implementation of the IETF SCIM 
+**i2scim** is a Kubernetes (K8S) deployable server implementation of the IETF SCIM 
 specification for provisioning of 
 Identities as an directory service. **i2scim** is as a generalized SCIM engine that supports configured endpoints 
 and schemas defined in json. Unlike other SCIM implementations, **i2scim** does not have fixed resource types.
@@ -10,8 +10,10 @@ and schemas defined in json. Unlike other SCIM implementations, **i2scim** does 
 At its core, **i2scim** is a JSON document centric engine that converts from the SCIM Restful HTTP API to backend 
 persistence services such as MongoDb.
 
+This open source project licensed under the Apache License 2.0.
+
 **i2scim** is extensible in key ways:
-* It can configured to support custom attributes/claims, and object types for specific purpose applications
+* It can configured to support custom attributes/claims, and object types for special purposes
 * For deployers looking to implement SCIM as a standard User provisioning API for their application, **i2scim** may be
 adapted to act as a gateway to internal proprietary identity APIs by implementing a custom provider.
 * It has a built in events interface that can be used to trigger async events and notifications (more to come).
@@ -28,7 +30,11 @@ But wait, what is IETF SCIM?
   
 ## How do I get started?
 
-* Link to [GitHub Repository](https://github.com/i2-open/i2scim)
+* Github
+    * [GitHub Repository](https://github.com/i2-open/i2scim)
+    * [Discussions](https://github.com/i2-open/i2scim/discussions)
+    * [Issues](https://github.com/i2-open/i2scim/issues)
+    * [Contributing](CONTRIBUTING.md)
 * Quick Starts
     * Deploying i2scim using memory database(TBD).
     * [Deploying i2scim using MongoDb on K8S](i2scim-mongo-k8s.md).
