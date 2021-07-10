@@ -50,7 +50,7 @@ But wait, what is IETF SCIM?
   release.
 * Support for HTTP HEAD and HTTP Conditional [RFC7232](https://datatracker.ietf.org/doc/html/rfc7232) qualifiers.
 * Kubernetes deployment using docker on Intel and ARM64 (e.g. Raspberry Pi).
-* DevOps Health, Liveness and performance interceptor support ready (e.g. grafana)
+* SmallRye DevOps Health, Liveness and performance interceptor support ready (e.g. grafana).
 * Event system enables support for enhancements such as Apache Kafka and server-to-server multi-master replication (see
   other).
 * Security features
@@ -63,21 +63,24 @@ But wait, what is IETF SCIM?
         * [RFC7617](https://tools.ietf.org/html/rfc7617) HTTP Basic - i2scim supports HTTP basic authentication of users
           against Users stored in i2scim.
     * Secure password support using PBKDF2 (Password Basked Key Derivation Function 2) with salt and pepper hash for
-      FIPS 140 compliance
+      FIPS 140 compliance.
     * Note: at this time, i2scim does not support a web (html) interface and does not have built in support for
       session control (cookies) for browsers. Each HTTP request is individually authenticated and authorized.
 * Other features:
-    * i2scim may be adapted to front-end other databases and API through its provider interface.
-    * Supports "virtual" attribute extensions enabling custom mapping and handling (e.g. password policy)
-    * `IScimPlugin` interface enables pre and post transaction custom actions
+    * i2scim may be adapted to act as a gateway (by implelementing the IScimProvider interface) databases and API 
+      services.
+    * Supports "virtual" attribute extensions enabling custom mapping and handling (e.g. password policy).
+    * `IScimPlugin` interface enables pre and post transaction custom actions.
     * `IEventHandler` interface enables deployment of asynchronous event handlers (e.g. for replication or security
       events)
-    * Built on the [Quarkus](https://quarkus.io) platform version 1.13.1 for smaller deployments with faster startup
+      `IVirtualValue` enables support for derived or calculated values.
+    * Built on the [Quarkus](https://quarkus.io) platform version 1.13.6.Final for smaller deployments with faster 
+      startup
       running in Docker containers.
 
 Note: Inter-SCIM server replication services are not currently part of this project and are currently only supported as
 part of a database cluster. For fault-tolerant scaled systems use i2scim deployed
-with a [MongoDB cluster on K8S](../pkg-i2scim-prov-mongodb/i2scim-mongo-k8s.md) along with an enterprise MongoDB
+with a [MongoDB cluster on K8S](i2scim-mongo-k8s.md) along with an enterprise MongoDB
 deployment.
 
 ## Where can I get more help if needed?

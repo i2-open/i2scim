@@ -1,8 +1,25 @@
 # i2scim Configuration
 
+i2scim is configured using environment properties and JSON configuration files.
+
+## Configuration files
+
+### acis.json
+The `acis.json` contains the access policies for the server. For more information see [Access Control](AccessControl.md).
+
+### resourceTypes.json
+Contains the definitions about what resources are defined in the server. The format corresponds to that
+returned from the `/ResourceTypes` endpoint and is described in 
+[RFC7643 Section 6](https://datatracker.ietf.org/doc/html/rfc7643#section-6).
+
+### scimSchema.json
+Contains the attribute definitions and properties for documents within SCIM. The format of this file corresponds 
+with the `/Schemas` endpoint of a normal SCIM server and is defined in [RFC7643 Section 7](https://datatracker.ietf.org/doc/html/rfc7643#section-7).
+
+## Environment Properties
 The following properties are used to configure the I2 SCIM server:
 
-## Basic
+### Basic
 
 The I2 SCIM server implements a dynamically configured schema system. That is to say, there are no *hard-coded* resource types and new ones may be added on demand. In the current release, the system requires a reboot to load new definitions.
 
@@ -18,7 +35,7 @@ The I2 SCIM server implements a dynamically configured schema system. That is to
 
 **logging.level.com.independentid.scim** - The console logging level desired. (DEFAULT: info)
 
-## Persistence
+### Persistence
 As currently implemented, I2 SCIM supports the MongoDB as its persistence database due to it document centric architecture. 
 
 **scim.provider.bean** - Indicates a named bean that implements the IScimProvider interface. (Default: MongoDao / I2 SCIM MongoProvider).
@@ -33,7 +50,7 @@ As currently implemented, I2 SCIM supports the MongoDB as its persistence databa
 
 **scim.mongodb.test** - When enabled, the I2 SCIM Server will re-initialize the database including re-loading the default schema from json files. CAUTION: This will destroy all data identified by scim.mongodb.dbname. (Default: false) 
 
-## Security
+### Security
 
 **scim.security.acis.path** - The path to JSON file containing the server access control instructions (acis).
 
@@ -48,7 +65,7 @@ As currently implemented, I2 SCIM supports the MongoDB as its persistence databa
 **smallrye.jwt.verify.key.location** - The URI used to locate the JWKS public key set for the token issuer.  This method is preferred as the server can load new keys automatically should the issuer change keys.
 
 
-## SCIM Protocol
+### SCIM Protocol
 **scim.query.max.resultsize** - The maximum number of resources returned in a query (DEFAULT: 1000).
 
 **scim.bulk.max.ops** - The maximum number of operations that can be submitted in a single bulk request (DEFAULT: 1000).
