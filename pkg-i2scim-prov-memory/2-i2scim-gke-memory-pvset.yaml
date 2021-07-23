@@ -1,0 +1,17 @@
+#
+# Persistent Volume Claim for Google Cloud using GKE
+#
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: scim-mem
+  name: i2scim-pvc
+spec:
+  storageClassName: premium-rwo
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+

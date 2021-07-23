@@ -1,3 +1,6 @@
+#
+# PV and PVC set for running on NFS volume (e.g. on bare metal cluster)
+#
 apiVersion: v1
 kind: PersistentVolume
 metadata:
