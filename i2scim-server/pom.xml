@@ -25,37 +25,19 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>pkg-i2scim-prov-memory</artifactId>
+    <artifactId>i2scim-server</artifactId>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
     </properties>
+
     <dependencies>
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-core</artifactId>
             <version>0.6.dev</version>
         </dependency>
-        <dependency>
-            <groupId>com.independentid</groupId>
-            <artifactId>i2scim-server</artifactId>
-            <version>0.6.dev</version>
-        </dependency>
-        <dependency>
-            <groupId>com.independentid</groupId>
-            <artifactId>i2scim-prov-memory</artifactId>
-            <version>0.6.dev</version>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-kubernetes</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-kubernetes-config</artifactId>
-        </dependency>
 
     </dependencies>
-
 </project>
