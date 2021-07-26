@@ -1,0 +1,18 @@
+#
+# Persistent Volume Claim for Google Cloud using GKE. The pvc is only for system and access logs
+# and some server state, property files.
+#
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: scim-mongo
+  name: i2scim-pvc
+spec:
+  storageClassName: standard
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+

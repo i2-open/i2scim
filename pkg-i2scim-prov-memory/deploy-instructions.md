@@ -15,8 +15,14 @@ To deploy i2scim in Kubernetes, 4 files are provided as templates as follows:
 * `1-i2scim-memory-configs.yaml` Defines the basic environment settings for the i2scim server. 
   This includes defining secrets such as the root account for the server.
    
-* `2-i2scim-memory-pvset.yaml` Defines the persistent volume sets and claims for the i2scim server. Modify this 
-   file to create your kubernetes persistent volumes. These volumes will be used by i2sciim to persist scim data.
+* Persistent volume set definitions: 
+    - `2-i2scim-memory-pvset.yaml` defines the persistent volume sets and claims for the 
+  i2scim server using NFS (e.g. on bare metal cluster). 
+    - `2-i2scim-gke-memory-pvset.yaml` defines a persistent volume 
+  claim for Google Cloud. 
+      
+  Modify these files as needed to create your kubernetes persistent volumes. These volumes will be used by i2sciim to 
+  persist SCIM data. Set the volume size to match the expected data set size.
    
 * `3-i2scim-config-schema.yaml` Defines the data model and access control the server will provide. i2scim works by
   automatically loading schema definitions and resource types at run time.  Modify these configmaps to change the data 
