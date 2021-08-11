@@ -21,10 +21,7 @@ import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ForbiddenException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.core.err.UnauthorizedException;
-import com.independentid.scim.op.CreateOp;
-import com.independentid.scim.op.DeleteOp;
-import com.independentid.scim.op.Operation;
-import com.independentid.scim.op.PutOp;
+import com.independentid.scim.op.*;
 import com.independentid.scim.protocol.Filter;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
@@ -281,7 +278,8 @@ public class AccessManager {
     public static void checkReturnResults(Operation op) {
         AciSet set = op.getRequestCtx().getAcis();
         ScimResponse resp = op.getScimResponse();
-        resp.applyAciSet(set);
+        if (resp != null)
+            resp.applyAciSet(set);
         if (logger.isDebugEnabled())
             logger.debug("Retrieve ACIs being evaluated:\n"+ set.getAcis().toString());
     }
@@ -291,6 +289,13 @@ public class AccessManager {
         AciSet set = ctx.getAcis();
         if (!set.checkPutPreOp(op))
             markOpUnauthorized(op, "SCIM PUT unauthorized due to aci targetFilter rule");
+    }
+
+    public static void checkPatchOp(PatchOp op) {
+        RequestCtx ctx = op.getRequestCtx();
+        AciSet set = ctx.getAcis();
+        if (!set.checkPatchPreOp(op))
+            markOpUnauthorized(op, "SCIM PATCH unauthorized due to aci targetFilter rule");
     }
 
     public static List<Filter> getTargetFilterList(Operation op) {

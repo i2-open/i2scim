@@ -23,7 +23,6 @@ import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.BadFilterException;
-import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.core.err.DuplicateTxnException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.AttributeFilter;
@@ -229,7 +228,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 	public Value toValue() {
 		try {
 			return new ComplexValue(attr,this.toJsonNode());
-		} catch (ConflictException | ParseException | SchemaException e) {
+		} catch (ParseException | SchemaException e) {
 			logger.error("Unexpected exception converting Meta to ComplexValue: "+e.getLocalizedMessage(),e);
 		}
 		return null;
@@ -371,7 +370,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 					this.revisions = (MultiValue) ValueUtil.parseJson(null,attr.getSubAttribute(META_REVISIONS), item, null);
 			} else
 				this.revisions = null;
-		} catch (ConflictException | ParseException e) {
+		} catch (ParseException e) {
 			e.printStackTrace();
 		}
 	}

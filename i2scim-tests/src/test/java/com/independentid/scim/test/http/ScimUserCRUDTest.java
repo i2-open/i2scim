@@ -490,7 +490,7 @@ public class ScimUserCRUDTest {
 		String req = "/Users?sortBy=name.givenName";
 		logger.info("\t\tGET "+req);
 
-		HttpResponse resp = TestUtils.executeGet(baseUrl,req);
+		CloseableHttpResponse resp = TestUtils.executeGet(baseUrl,req);
 		assertThat(resp.getStatusLine().getStatusCode())
 				.as("Confirm success returned as status OK")
 				.isEqualTo(ScimResponse.ST_OK);
@@ -508,6 +508,7 @@ public class ScimUserCRUDTest {
 		assertThat(jansenIndex)
 				.as("Barbara comes before Jim")
 				.isLessThan(smithIndex);
+		resp.close();
 
 		logger.info("\tF2. Performing sort by attribute test - descending");
 		req = "/Users?sortBy=name.givenName&sortOrder=descend";
@@ -529,6 +530,7 @@ public class ScimUserCRUDTest {
 		assertThat(jansenIndex)
 				.as("Barbara comes after Jim")
 				.isGreaterThan(smithIndex);
+		resp.close();
 
 		logger.info("\tF3. Performing sort by multiple attribute test - ascending");
 		req = "/Users?sortBy=title,name.familyName&sortOrder=asc";
@@ -550,6 +552,7 @@ public class ScimUserCRUDTest {
 		assertThat(jansenIndex)
 				.as("Barbara comes before Jim")
 				.isLessThan(smithIndex);
+		resp.close();
 
 		logger.info("\tF4. Performing sort by multiple attribute test - descending");
 		req = "/Users?sortBy=title,name.familyName&sortOrder=descending";
@@ -571,24 +574,27 @@ public class ScimUserCRUDTest {
 		assertThat(jansenIndex)
 				.as("Barbara comes before Jim")
 				.isGreaterThan(smithIndex);
+		resp.close();
 
 		logger.info("\tF5. Retrieving 1st page of result with pagesize of 1");
-		req = "/Users?sortBy=title,name.familyName&sortOrder=descending&startIndex=1&count=1";
+		req = "/Users?sortBy=User:name.familyName&sortOrder=descending&startIndex=1&count=1";
 		logger.info("\t\tGET "+req);
 		resp = TestUtils.executeGet(baseUrl,req);
 		assertThat(resp.getStatusLine().getStatusCode())
 				.as("Confirm success returned as status OK")
 				.isEqualTo(ScimResponse.ST_OK);
 		body = EntityUtils.toString(resp.getEntity());
-
+		System.out.println("Should not contain Jim Smith!...");
+		System.out.println(body);
 		smithIndex = body.indexOf("Jim");
 		jansenIndex = body.indexOf("Barb");
 		assertThat(smithIndex)
-				.as("Smith is not present")
-				.isEqualTo(-1);
-		assertThat(jansenIndex)
-				.as("Jansen is present")
+				.as("Smith is  present")
 				.isGreaterThan(0);
+		assertThat(jansenIndex)
+				.as("Jansen is absent")
+				.isEqualTo(-1);
+		resp.close();
 
 		logger.info("\tF5. Retrieving 2st page of result with pagesize of 1");
 		req = "/Users?sortBy=title,name.familyName&sortOrder=descending&startIndex=2&count=1";
@@ -602,12 +608,12 @@ public class ScimUserCRUDTest {
 		smithIndex = body.indexOf("Jim");
 		jansenIndex = body.indexOf("Barb");
 		assertThat(smithIndex)
-				.as("Smith is present")
-				.isGreaterThan(0);
-		assertThat(jansenIndex)
-				.as("Jansen is not present")
+				.as("Smith is absent")
 				.isEqualTo(-1);
-
+		assertThat(jansenIndex)
+				.as("Jansen is present")
+				.isGreaterThan(0);
+		resp.close();
 	}
 	
 	@Test

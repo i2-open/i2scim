@@ -189,6 +189,11 @@ public class RequestCtx {
 		setStartIndex(null);
 		setCount(null);
 	}
+
+	public RequestCtx(String path, SchemaManager schemaManager) {
+		this.path = path;
+		this.smgr = schemaManager;
+	}
 	
 	/**
 	 * Constructor typically used to generate internal requests for resources

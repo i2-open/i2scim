@@ -19,6 +19,7 @@ package com.independentid.scim.protocol;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
@@ -35,14 +36,17 @@ import java.util.List;
 public class JsonPatchRequest {
 	
 	protected final ArrayList<JsonPatchOp> ops;
+	protected RequestCtx ctx;
 
 	/**
 	 * @param jsonPatchReq A pointer to  SCIM Json Modify request message to be parsed.
+	 * @param ctx RequestCtx object for the request. Primarily used for SchemaManager access
 	 * @throws SchemaException Thrown when a missing or required attribute is detected
 	 * @throws InvalidValueException Thrown when a Patch operation is missing a required value
 	 */
-	public JsonPatchRequest(JsonNode jsonPatchReq) throws SchemaException, InvalidValueException {
+	public JsonPatchRequest(JsonNode jsonPatchReq, RequestCtx ctx) throws SchemaException, InvalidValueException, BadFilterException {
 		this.ops = new ArrayList<>();
+		this.ctx = ctx;
 		parseJson(jsonPatchReq);
 	}
 
@@ -59,7 +63,7 @@ public class JsonPatchRequest {
 		this.ops.add(op);
 	}
 
-	public void parseJson(JsonNode node) throws SchemaException, InvalidValueException {
+	public void parseJson(JsonNode node) throws SchemaException, InvalidValueException, BadFilterException {
 		JsonNode snode = node.get(ScimParams.ATTR_SCHEMAS);
 		if (snode == null) throw new SchemaException("JSON is missing 'schemas' attribute.");
 
@@ -87,10 +91,10 @@ public class JsonPatchRequest {
 		Iterator<JsonNode> oiter = opsnode.elements();
 		while (oiter.hasNext()) {
 			JsonNode oper = oiter.next();
-			JsonPatchOp op = new JsonPatchOp(oper);
+			JsonPatchOp op = new JsonPatchOp(oper, ctx);
 			this.ops.add(op);
 		}	
-		}
+	}
 	
 	public int getSize() {
 		return this.ops.size();
@@ -124,6 +128,14 @@ public class JsonPatchRequest {
 		for(JsonPatchOp op : ops)
 			opsNode.add(op.toJsonNode());
 		return node;
+	}
+
+	public static JsonPatchBuilder builder() {
+		return new JsonPatchBuilder();
+	}
+
+	public static JsonPatchBuilder builder(JsonPatchOp op) {
+		return new JsonPatchBuilder(op);
 	}
 
 }

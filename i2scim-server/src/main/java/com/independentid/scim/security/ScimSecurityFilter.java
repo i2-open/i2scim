@@ -109,8 +109,11 @@ public class ScimSecurityFilter implements Filter {
                 return;
             }
 
+            String path = hrequest.getPathInfo();
+            if (path == null)
+                path = hrequest.getRequestURI();
             // Liveness/health check do not require authorization
-            if (hrequest.getPathInfo().startsWith("/q")) {
+            if (path.startsWith("/q")) {
                 // allow healthcheck to proceed
                 chain.doFilter(request,response);
                 return;

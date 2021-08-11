@@ -228,7 +228,7 @@ public class ScimConstraintsTest {
 		HttpResponse resp = TestUtils.executeRequest(request);
 
 		assertThat(resp.getStatusLine().getStatusCode())
-				.as("Cofirm not modified since")
+				.as("Confirm not modified since")
 				.isEqualTo(ScimResponse.ST_NOTMODIFIED);
 
 		request = new HttpGet(req);
@@ -355,7 +355,8 @@ public class ScimConstraintsTest {
 		ArrayNode anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
 		anode.add(patchOp.toJsonNode());
 
-		JsonPatchRequest jpr = new JsonPatchRequest(reqJson);  // test the Json Parser constructor
+		RequestCtx ctx = new RequestCtx(req,smgr);
+		JsonPatchRequest jpr = new JsonPatchRequest(reqJson, ctx);  // test the Json Parser constructor
 
 		String patchRequestBody = jpr.toJsonNode().toPrettyString();
 
@@ -398,7 +399,7 @@ public class ScimConstraintsTest {
 		anode = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
 		anode.add(patchOp.toJsonNode());
 
-		jpr = new JsonPatchRequest(reqJson);  // test the Json Parser constructor
+		jpr = new JsonPatchRequest(reqJson, ctx);  // test the Json Parser constructor
 		patchRequestBody = jpr.toJsonNode().toPrettyString();
 
 		// try a request that fails due to out of date etag

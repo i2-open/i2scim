@@ -304,7 +304,7 @@ public class ScimPatchTest {
 		anode.add(patchOp.toJsonNode());
 
 		RequestCtx ctx = new RequestCtx(user2url,null,null,smgr);
-		jpr = new JsonPatchRequest(reqJson);  // test the Json Parser constructor
+		jpr = new JsonPatchRequest(reqJson, ctx);  // test the Json Parser constructor
 
 		assertThat(jpr.getSize())
 				.as("Check one operation parsed")
@@ -339,6 +339,7 @@ public class ScimPatchTest {
 	@Test
 	public void e_NoTargetTest() throws IOException {
 		logger.info("E. Checking No Target Response");
+		// This is a valid request, however, there is no type equal to blah so No_target
 		JsonPatchOp faultyValueOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REMOVE,"phoneNumbers[type eq blah].value",null);
 		jpr = new JsonPatchRequest();
 		jpr.addOperation(faultyValueOp);

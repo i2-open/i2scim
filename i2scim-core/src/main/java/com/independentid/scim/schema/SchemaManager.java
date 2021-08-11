@@ -24,8 +24,10 @@ import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.IIdentifierGenerator;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.protocol.ListResponse;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
+import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.pwd.PasswordToken;
 import com.independentid.scim.resource.GroupsValue;
 import com.independentid.scim.resource.Meta;
@@ -114,18 +116,19 @@ public class SchemaManager {
     private final static LinkedHashMap<Attribute, Constructor<?>> virtualAttrMapJsonConstructors = new LinkedHashMap<>();
     private final static LinkedHashMap<Attribute, Constructor<?>> virtualAttrMapValueConstructors = new LinkedHashMap<>();
     private final static LinkedHashMap<Attribute, Constructor<?>> virtualAttrCalculatedConstructors = new LinkedHashMap<>();
-    private final static LinkedHashMap<String, Schema> schIdMap = new LinkedHashMap<>();
-    private final static LinkedHashMap<String, Schema> schNameMap = new LinkedHashMap<>();
+
+    private final  LinkedHashMap<String, Schema> schIdMap = new LinkedHashMap<>();
+    private final  LinkedHashMap<String, Schema> schNameMap = new LinkedHashMap<>();
 
     //private TreeMap<String,Attribute> vals = new TreeMap<String,Attribute>();
 
-    private final static LinkedHashMap<String, ResourceType> rTypesById = new LinkedHashMap<>();
-    private final static HashMap<String, ResourceType> rTypePaths = new HashMap<>();
+    private final  LinkedHashMap<String, ResourceType> rTypesById = new LinkedHashMap<>();
+    private final  HashMap<String, ResourceType> rTypePaths = new HashMap<>();
 
     //private ServletConfig scfg = null;
     IIdentifierGenerator generator;
 
-    private static boolean initialized = false;
+    private  boolean initialized = false;
 
     private boolean loadedFromProvider = false;
 
@@ -133,6 +136,39 @@ public class SchemaManager {
 
     }
 
+    /**
+     * This constructor used for command line instantiation or versions without server.
+     * @param schemaStream An InputStream containing the JSON formatted SCIM schema file. May be a ListResponse stream (e.g. loaded from a /Schemas endpoint)
+     * @param typeStream An InputStream containing the JSON formatted Resource type config file. May be a ListResponse stream (e.g. loaded from a /ResourceTypes endpoint)
+     * @throws IOException Thrown when JSON config file cannot be loaded
+     * @throws ScimException Thrown due to a JSON parsing error
+     */
+    public SchemaManager(InputStream schemaStream, InputStream typeStream) throws IOException, ScimException {
+        this.schemaPath = null;
+        this.resourceTypePath = null;
+
+        //because this constructor isn't part of injection, these values need to be set
+        this.coreSchemaPath = "/schema/scimCommonSchema.json";
+        this.serverSchemaPath = "/schema/scimFixedSchema.json";
+
+        this.systemSchemas = new SystemSchemas();
+        this.systemSchemas.defineConfigStateSchema();
+
+        loadCommonAttrSchema();  // laod common attribute definitions and fixed schema
+
+        parseSchemaConfig(schemaStream);
+        schemaStream.close();
+
+        parseResourceTypes(typeStream);
+        typeStream.close();
+
+        InputStream stream = ConfigMgr.findClassLoaderResource("classpath:/schema/scimCommonSchema.json");
+        if (stream == null) throw new IOException("File: /schema/scimCommonSchema.json, not found.");
+        parseCoreSchema(stream);
+        stream.close();
+        logger.info("Loaded: " + getResourceTypes().size() + " resource types, " + getSchemas().size() + " schemas.");
+        initialized = true;
+    }
 
     /**
      * This constructor used for command line instantiation or versions without server.
@@ -141,13 +177,19 @@ public class SchemaManager {
      * @throws IOException Thrown when JSON config file cannot be loaded
      * @throws ScimException Thrown due to a JSON parsing error
      */
-    public SchemaManager(String schemaPath, String typesPath) throws IOException, ScimException, BackendException {
+    public SchemaManager(String schemaPath, String typesPath) throws IOException, ScimException {
+
+        //because this constructor isn't part of injection, these values need to be set
         this.schemaPath = schemaPath;
         this.resourceTypePath = typesPath;
+
         this.coreSchemaPath = "/schema/scimCommonSchema.json";
+        this.serverSchemaPath = "/schema/scimFixedSchema.json";
 
         this.systemSchemas = new SystemSchemas();
         this.systemSchemas.defineConfigStateSchema();
+
+        loadCommonAttrSchema();  // laod common attribute definitions and fixed schema
 
         InputStream schStream = ConfigMgr.findClassLoaderResource(schemaPath);
         if (schStream == null) throw new IOException("File: "+schemaPath+", not found.");
@@ -396,7 +438,7 @@ public class SchemaManager {
         }
     }
 
-    protected void parseSchemaConfig(InputStream stream) throws IOException {
+    protected void parseSchemaConfig(InputStream stream) throws IOException, SchemaException {
         if (stream == null)
             throw new IOException("Schema file must not be null");
 
@@ -406,8 +448,21 @@ public class SchemaManager {
         Iterator<JsonNode> iter;
         if (node.isObject()) {
             //The outer element is an object {} rather than []
-            node = node.get(0);
 
+            // This may be a ListResponse when loading schema from another server.
+            JsonNode snode = node.get(ScimParams.ATTR_SCHEMAS);
+            if (snode != null) {
+                String schema = snode.get(0).asText();
+
+                if (schema != null &&
+                        schema.equalsIgnoreCase(ScimResponse.SCHEMA_LISTRESP)) {
+                    JsonNode cnt = node.get(ListResponse.ATTR_TOTRES);
+                    if (cnt == null || cnt.asInt() == 0)
+                        throw new SchemaException("No Schema detected in ListResponse formatted Input. Check source.");
+                    node = node.get(ListResponse.ATTR_RESOURCES);
+                }
+            } else
+                node = node.get(0);
         }
         if (node.isArray()) {
             iter = node.iterator();
@@ -530,9 +585,23 @@ public class SchemaManager {
         Iterator<JsonNode> iter;
         if (node.isObject()) {
             //The outer element is an object {} rather than []
-            node = node.get(0);
 
+            // This may be a ListResponse when loading resource types from another server.
+            JsonNode snode = node.get(ScimParams.ATTR_SCHEMAS);
+            if (snode != null) {
+                String schema = snode.get(0).asText();
+
+                if (schema != null &&
+                        schema.equalsIgnoreCase(ScimResponse.SCHEMA_LISTRESP)) {
+                    JsonNode cnt = node.get(ListResponse.ATTR_TOTRES);
+                    if (cnt == null || cnt.asInt() == 0)
+                        throw new SchemaException("No resource types detected in ListResponse formatted Input. Check source.");
+                    node = node.get(ListResponse.ATTR_RESOURCES);
+                }
+            } else
+                node = node.get(0);
         }
+
         if (node.isArray()) {
             iter = node.iterator();
             while (iter.hasNext()) {

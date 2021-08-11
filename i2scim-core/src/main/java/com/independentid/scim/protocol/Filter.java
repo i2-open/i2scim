@@ -17,6 +17,7 @@
 package com.independentid.scim.protocol;
 
 import com.independentid.scim.core.err.BadFilterException;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.Attribute;
@@ -74,7 +75,7 @@ public abstract class Filter {
 		return this.filter;
 	} 
 	
-	public static Filter parseFilter(String filterStr, @NotNull RequestCtx ctx) throws BadFilterException {
+	public static Filter parseFilter(String filterStr, RequestCtx ctx) throws BadFilterException {
 		return parseFilter(filterStr, null, ctx);
 	}
 
@@ -201,11 +202,18 @@ public abstract class Filter {
 							String valueFilterStr = filterStr.substring(vPathStartIndex+1,i);
 							Filter clause = new ValuePathFilter(aname,valueFilterStr,ctx);
 							clauses.add(clause);
+							if (i+1 < filterStr.length() && filterStr.charAt(i+1) != ' ') {
+								i++;
+								// advance forward to the end of the phrase (ignore sub-attribute for the purposes of a filter)
+								while (i < filterStr.length() && filterStr.charAt(i) != ' ')
+									i++;
+							}
 							//reset for next phrase
 							vPathStartIndex = -1;
 							wordIndex = -1;
 							isAttr = false;
 						}
+
 					default:
 						
 					}

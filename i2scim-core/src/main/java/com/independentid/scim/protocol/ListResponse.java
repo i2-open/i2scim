@@ -43,6 +43,10 @@ import java.util.*;
 public class ListResponse extends ScimResponse {
 	private static final Logger logger = LoggerFactory.getLogger(ListResponse.class);
 
+	public static final String ATTR_RESOURCES = "Resources";
+	public static final String ATTR_TOTRES = "totalResults";
+	public static final String ATTR_ITEMPERPAGE = "itemsPerPage";
+	public static final String ATTR_STARTINDEX = "startIndex";
 
 	public final static SimpleDateFormat headDate = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");
 	
@@ -138,7 +142,7 @@ public class ListResponse extends ScimResponse {
 			setError(new TooManyException());
 			
 		} else {
-
+			List<ScimResource> sorted = doSort(vals);
 		
 			int start = ctx.startIndex-1;
 
@@ -149,7 +153,7 @@ public class ListResponse extends ScimResponse {
 			}
 
 			for (int i = start; (i < stop && i < this.totalRes); i++) {
-				ScimResource resource = vals.get(i);
+				ScimResource resource = sorted.get(i);
 				Meta meta = resource.getMeta();
 				if (meta != null) {
 					Date mdate = meta.getLastModifiedDate();
@@ -158,6 +162,8 @@ public class ListResponse extends ScimResponse {
 				}
 				this.entries.add(resource);
 			}
+
+			sorted = null;
 			
 			
 			if (this.entries.size() == 1 && ctx.getPathId() != null) {
@@ -205,41 +211,38 @@ public class ListResponse extends ScimResponse {
 		}
 	}
 
-	public void doSort() {
+	public List<ScimResource> doSort(List<ScimResource> vals) {
 		if (this.sortAttrs == null)
-			return; // sort not requested.
+			return vals; // sort not requested.
 
-		ScimResource[] resources = entries.toArray(new ScimResource[0]);
-		Arrays.sort(resources, new Comparator<ScimResource>() {
-			@Override
-			public int compare(ScimResource o1, ScimResource o2) {
-				List<Attribute> sortAttrs = ListResponse.this.sortAttrs;
-				for (Attribute attr: sortAttrs) {
-					Value val1 = o1.getValue(attr);
-					Value val2 = o2.getValue(attr);
-					if (val1 == null && val2 == null)
-						continue;
-					int res;
-					if (val1 == null || val2 == null) {
-						if (val1 == null)
-							res = 1;  // This algorithm will sort missing values after non-null values
-						else
-							res = -1;
-					} else
-						res = val1.compareTo(val2);
-					if (res == 0)
-						continue; // try the next sort in the list
-					if (ListResponse.this.isDescend)
-						return -1 * res;
-					return res;
-				}
-				return 0;
+		ScimResource[] resources = vals.toArray(new ScimResource[0]);
+		Arrays.sort(resources, (o1, o2) -> {
+			List<Attribute> sortAttrs = ListResponse.this.sortAttrs;
+			for (Attribute attr: sortAttrs) {
+				Value val1 = o1.getValue(attr);
+				Value val2 = o2.getValue(attr);
+				if (val1 == null && val2 == null)
+					continue;
+				int res;
+				if (val1 == null || val2 == null) {
+					if (val1 == null)
+						res = 1;  // This algorithm will sort missing values after non-null values
+					else
+						res = -1;
+				} else
+					res = val1.compareTo(val2);
+				if (res == 0)
+					continue; // try the next sort in the list
+				if (ListResponse.this.isDescend)
+					return -1 * res;
+				return res;
 			}
+			return 0;
 		});
 
-		entries = new ArrayList<>();
-		entries.addAll(Arrays.asList(resources));
-
+		ArrayList<ScimResource> res = new ArrayList<>();
+		res.addAll(Arrays.asList(resources));
+		return res;
 	}
 
 	/* (non-Javadoc)
@@ -255,17 +258,17 @@ public class ListResponse extends ScimResponse {
 		 * sctx after result set creation (or have chosen to insert an override). 
 		 */
 
-		doSort();
+		//doSort();
 
 		// For multiple or filtered results, return the result in a ListResponse
 		gen.writeStartObject();
-		gen.writeArrayFieldStart("schemas");
+		gen.writeArrayFieldStart(ScimParams.ATTR_SCHEMAS);
 		gen.writeString(ScimResponse.SCHEMA_LISTRESP);
 		gen.writeEndArray();
-		gen.writeNumberField("totalResults",this.totalRes);
-		gen.writeNumberField("itemsPerPage",this.entries.size());
-		gen.writeNumberField("startIndex", this.ctx.startIndex);
-		gen.writeArrayFieldStart("Resources");
+		gen.writeNumberField(ATTR_TOTRES,this.totalRes);
+		gen.writeNumberField(ATTR_ITEMPERPAGE,this.entries.size());
+		gen.writeNumberField(ATTR_STARTINDEX, this.ctx.startIndex);
+		gen.writeArrayFieldStart(ATTR_RESOURCES);
 		
 		Iterator<ScimResource> iter = this.entries();
 		

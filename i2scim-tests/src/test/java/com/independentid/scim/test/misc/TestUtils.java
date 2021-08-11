@@ -31,6 +31,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -84,7 +85,7 @@ public class TestUtils {
         return rUrl.toString();
     }
 
-    public static HttpResponse executeGet(URL baseUrl, String req) throws MalformedURLException {
+    public static CloseableHttpResponse executeGet(URL baseUrl, String req) throws MalformedURLException {
         //if (req.startsWith("/"))
         req = mapPathToReqUrl(baseUrl, req);
         try {
@@ -96,7 +97,7 @@ public class TestUtils {
         return null;
     }
 
-    public static HttpResponse executeRequest(HttpUriRequest req) throws IOException {
+    public static CloseableHttpResponse executeRequest(HttpUriRequest req) throws IOException {
         //if (req.startsWith("/"))
 
         return HttpClientBuilder.create().build().execute(req);

@@ -105,7 +105,7 @@ public class ScimHealthTest {
 
 	@Test
 	public void b1_initialHealthCheckJwt() throws IOException {
-		URL rUrl = new URL(baseUrl,"/health");
+		URL rUrl = new URL(baseUrl,"/q/health");
 		HttpGet get = new HttpGet(rUrl.toString());
 		get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
@@ -129,7 +129,7 @@ public class ScimHealthTest {
 
 	@Test
 	public void b2_initialHealthCheckAnon() throws IOException {
-		URL rUrl = new URL(baseUrl,"/health");
+		URL rUrl = new URL(baseUrl,"/q/health");
 		HttpGet get = new HttpGet(rUrl.toString());
 		//get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 

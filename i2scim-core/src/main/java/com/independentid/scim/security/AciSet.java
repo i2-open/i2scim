@@ -16,26 +16,26 @@
 
 package com.independentid.scim.security;
 
-import com.independentid.scim.op.CreateOp;
-import com.independentid.scim.op.DeleteOp;
-import com.independentid.scim.op.Operation;
-import com.independentid.scim.op.PutOp;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.independentid.scim.op.*;
 import com.independentid.scim.protocol.Filter;
+import com.independentid.scim.protocol.JsonPatchOp;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.SchemaManager;
 import io.quarkus.security.identity.SecurityIdentity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * An AciSet contains a set of ACIs applicable to a specific SCIM path. Each set only has one SCIM method (right)
  * at a time. The set also provides the combined set of attributes allowed for a transaction based on the client requesting.
  */
 public class AciSet {
+    private final Logger logger = LoggerFactory.getLogger(AciSet.class);
     public final String path;
 
     /*
@@ -326,6 +326,8 @@ public class AciSet {
     }
 
     public boolean checkPutPreOp(PutOp op) {
+        if (op.isError())
+            return true; // operation is in error - let the error return
         if (hasAcis() && right.equals(AccessControl.Rights.modify)) {
             RequestCtx ctx = op.getRequestCtx();
 
@@ -334,6 +336,68 @@ public class AciSet {
                 if (isAttributeNotAllowed(attr))
                     res.blockAttribute(attr);
             }
+            List<Filter> tfilters = getTargetFilters(acis);
+            if (!tfilters.isEmpty())
+                // There are target filters that must be applied. Modify the request context with the targetFilter values.
+                ctx.combineFilters(tfilters);
+
+            // For put, the operation is allowed to proceed once disallowed attributes removed.
+            return true;
+        }
+        return false;
+    }
+
+    public boolean checkPatchPreOp(PatchOp op) {
+        if (op.isError())
+            return true; // operation is in error - let the error return
+
+        if (hasAcis() && right.equals(AccessControl.Rights.modify)) {
+            RequestCtx ctx = op.getRequestCtx();
+
+            SchemaManager schemaManager = ctx.getSchemaMgr();
+            Iterator<JsonPatchOp> iter = op.getPatchRequest().iterator();
+            while (iter.hasNext()) {
+                JsonPatchOp pop = iter.next();
+                if (pop.path == null) {  // Path omitted cases mean value contains top-level attributes.
+                    if (pop.jsonValue == null)
+                        continue;  // probably invalid, we will allow to fail later
+                    Iterator<String> fiter = pop.jsonValue.fieldNames();
+                    boolean invalid = false;
+                    while (fiter.hasNext()) {
+                        String field = fiter.next();
+                        Attribute attr = schemaManager.findAttribute(field,ctx);
+                        if (attr == null)
+                            continue;  //undefined attribute, ignore it for now
+                        if (isAttributeNotAllowed(attr)) {
+                            if (pop.jsonValue instanceof ObjectNode) {
+                                ObjectNode onode = (ObjectNode) pop.jsonValue;
+                                onode.remove(field);  // strip the blocked attribute
+                                if (onode.isEmpty()) // if no fields left, operation is invalid
+                                    invalid = true;
+                            } else
+                                logger.error("Unexpected error: Was expecting JsonPatchOp.value to be an ObjectNode instance.!");
+                        }
+                        if (invalid)
+                            return false;
+                    }
+                } else {  // This is a single attribute operation
+                    String attributeName = pop.path;
+                    if (pop.path.contains("[")) {
+                        attributeName = pop.path.substring(0, pop.path.indexOf("["));
+                        int vend = pop.path.indexOf(']');
+                        if (pop.path.length() > vend + 1) {
+                            String sub = pop.path.substring(vend + 1);
+                            attributeName = attributeName + sub;
+                        }
+                    }
+                    Attribute attr = schemaManager.findAttribute(attributeName, ctx);
+                    if (attr == null)
+                        continue;
+                    if (isAttributeNotAllowed(attr))
+                        return false;
+                }
+            }
+
             List<Filter> tfilters = getTargetFilters(acis);
             if (!tfilters.isEmpty())
                 // There are target filters that must be applied. Modify the request context with the targetFilter values.

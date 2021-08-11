@@ -17,7 +17,6 @@
 package com.independentid.scim.test.sub;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.resource.ReferenceValue;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
@@ -25,7 +24,10 @@ import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 
 import java.text.ParseException;
 
@@ -83,7 +85,7 @@ public class ReferenceValueTest {
 			refval1 = new ReferenceValue(refAttr,node);
 			node = jnodetest2.get("$ref");
 			refval2 = new ReferenceValue(refAttr,node);
-		} catch (ConflictException | SchemaException | ParseException e) {
+		} catch (SchemaException | ParseException e) {
 			fail("Exception constructing ReferenceValue: "+e.getMessage(),e);
 		}
 		assertThat(refval1)
@@ -104,7 +106,7 @@ public class ReferenceValueTest {
 			assertThat(refval2)
 				.as("Reference Value equality test")
 				.isEqualTo(dup);
-		} catch (ConflictException | SchemaException | ParseException e) {
+		} catch (SchemaException | ParseException e) {
 			//should not happen if previous test succeeded.
 			fail("Failed attempting to instantiate ReferenceValue during equality test",e);
 		}

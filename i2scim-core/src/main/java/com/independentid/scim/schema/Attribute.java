@@ -351,12 +351,25 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
 				for (String val: canonicalValues)
 					anode.add(val);
 			}
-
-
 		}
+
+		if (this.type.equals(TYPE_Reference) &&
+			this.referenceTypes != null && this.referenceTypes.size() > 0) {
+			ArrayNode array = node.putArray("referenceTypes");
+			for (String val : this.referenceTypes)
+				array.add(val);
+		}
+
+		node.put("multiValued",this.multiValued);
+		node.put("required",this.required);
+
+		if (this.subAttributes.size() > 0) {
+			ArrayNode array = node.putArray("subAttributes");
+			for (Attribute attr : this.subAttributes.values())
+				array.add(attr.toJsonNode());
+		}
+
 		return node;
-
-
 	}
 
 	@Override

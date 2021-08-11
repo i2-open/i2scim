@@ -87,7 +87,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		
 	}
 
-	protected ScimResource(SchemaManager smgr) {
+	public ScimResource(SchemaManager smgr) {
 		this.smgr = smgr;
 		commonSchema = smgr.getSchemaById(ScimParams.SCHEMA_SCHEMA_Common);
 		this.coreAttrVals = new LinkedHashMap<>();
@@ -385,8 +385,8 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		JsonNode metaNode = node.get(ScimParams.ATTR_META);
 		//Note: a SCIM schema or ResourceType might not have a meta
 		Attribute mattr = commonSchema.getAttribute(ScimParams.ATTR_META);
-		attrsInUse.add(mattr);
 		if (metaNode != null) {
+
 			this.meta = new Meta(metaNode);
 
 			if (this.type == null) {
@@ -406,7 +406,8 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			}
 		} else
 			this.meta = new Meta();
-		
+
+		attrsInUse.add(mattr);
 		// We will override meta resource type based on where this object is written (driven by type)
 		this.meta.setResourceType(this.getResourceType());
 		
@@ -666,12 +667,11 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 	 * @param attr The new Attribute to be added
 	 * @param node The JsonNode containing the attribute.
 	 * @param isReplace Boolean indicating if existing values are replaced (changes multivalue processing)
-	 * @throws ConflictException Exception thrown by ValueUtil when parsing types
 	 * @throws SchemaException Thrown when an invalid value is parsed compared to the defined attribue
 	 * @throws ParseException Thrown due to JSON parsing error
 	 */
 	protected void processAttribute(LinkedHashMap<Attribute, Value> map,
-			Attribute attr, JsonNode node, boolean isReplace) throws ConflictException, SchemaException,
+			Attribute attr, JsonNode node, boolean isReplace) throws SchemaException,
 			ParseException {
 		
 		JsonNode attrNode = node.get(attr.getName());
@@ -741,7 +741,14 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 		}
 		return null;
 	}
-	
+
+	public Value getValue(String attrname) throws SchemaException {
+		Attribute attr = smgr.findAttribute(attrname,null);
+		if (attr == null)
+			throw new SchemaException("Undefined attribute: "+attrname);
+		return getValue(attr);
+	}
+
 	/**
 	 * Return a value based on the attribute definition (which includes the
 	 * attributes name, path, and schema). This procedure automatically checks
@@ -864,6 +871,10 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 			}
 			// Now we have simple attribute manipulation
 			Attribute tattr = jpath.getTargetAttribute();
+
+			if (jpath.hasVpathSubAttr())
+				tattr = tattr.getSubAttribute(jpath.getSubAttrName());
+
 			switch (op.op){
 			case JsonPatchOp.OP_ACTION_ADD:
 				try {
@@ -1331,14 +1342,6 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
 				((IVirtualValue)val).refreshValues();
 			}
 		}
-	}
-
-	public static ScimResourceBuilder builder(SchemaManager schemaManager, String type) {
-		return new ScimResourceBuilder(schemaManager,type);
-	}
-
-	public static ScimResourceBuilder builder(SchemaManager schemaManager, InputStream stream) throws ScimException, IOException, ParseException {
-		return new ScimResourceBuilder(schemaManager,stream);
 	}
 
 }

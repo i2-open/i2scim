@@ -271,6 +271,7 @@ public class Schema implements ScimSerializer  {
 			Iterator<JsonNode> iter = attrs.elements();
 			while (iter.hasNext()) {
 				JsonNode anode = iter.next();
+
 				Attribute attr = new Attribute(anode, null);
 				
 				//Generate the full schema path for the attr

@@ -37,7 +37,7 @@ function show_complete () {
 }
 
 skip=true
-rtag="0.5.0-Alpha"
+rtag="0.6.dev"
 buildOnly=0
 
 echo "*************************************************"

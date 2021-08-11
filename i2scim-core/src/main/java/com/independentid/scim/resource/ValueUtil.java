@@ -62,12 +62,11 @@ public class ValueUtil {
      * @param bulkIdResolver This resolver is used for bulk operations where an Identifier may be temporary.
      * @return The parsed <Value> instance. See com.independentid.scim.resource package for sub-classes (Complex,
      * String, Boolean, DateTime, Binary, Reference).
-     * @throws ConflictException May be thrown by ValueUtil parser.
      * @throws SchemaException   May be thrown by ValueUtil parser.
      * @throws ParseException    May be thrown by ValueUtil parser.
      */
     public static Value parseJson(@NotNull ScimResource res, Attribute attr, JsonNode fnode, IBulkIdResolver bulkIdResolver)
-            throws ConflictException, SchemaException, ParseException {
+            throws SchemaException, ParseException {
         // TODO Should we treat as string by default when parsing unknown
         // schema?
         if (attr == null)

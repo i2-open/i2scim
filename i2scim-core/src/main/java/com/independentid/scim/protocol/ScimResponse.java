@@ -84,6 +84,7 @@ public class ScimResponse implements ScimSerializer {
 	private String location;
 	private String detail;
 	protected String etag;
+	protected ScimException exception;
 	
 	public ScimResponse() {
 		this.status = ST_OK;
@@ -91,6 +92,7 @@ public class ScimResponse implements ScimSerializer {
 		this.location = null;
 		this.detail = null;
 		this.etag = null;
+		this.exception = null;
 	}
 	
 	public ScimResponse(int status, String detail, String scimType) {
@@ -98,6 +100,7 @@ public class ScimResponse implements ScimSerializer {
 		this.detail = detail;
 		this.stype = scimType;
 		this.etag = null;
+		this.exception = null;
 	}
 	
 	public ScimResponse(ScimException e) {
@@ -105,6 +108,11 @@ public class ScimResponse implements ScimSerializer {
 		setDetail(e.getDetail());
 		setScimErrorType(e.getScimType());
 		setDetail(e.getDetail());
+		this.exception = e;
+	}
+
+	public ScimException getException() {
+		return this.exception;
 	}
 
 	@Override
@@ -254,6 +262,7 @@ public class ScimResponse implements ScimSerializer {
 		setStatus(e.getStatus());
 		setScimErrorType(e.getScimType());
 		setDetail(e.getDetail());
+		this.exception = e;
 	}
 
 	/**
