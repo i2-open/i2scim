@@ -48,9 +48,10 @@ import java.util.regex.Pattern;
 
 
 /**
- * @author pjdhunt A general SCIM / MongoDb bidirectional mapping utility.
+ * A general SCIM / MongoDb bidirectional mapping utility.
+ *
+ * @author pjdhunt
  */
-//@ApplicationScoped
 @Singleton
 public class MongoMapUtil {
     private final static Logger logger = LoggerFactory.getLogger(MongoMapUtil.class);
@@ -64,10 +65,10 @@ public class MongoMapUtil {
     String[] indexes;
 
     /**
-     * Converts a <ScimResource> object to a Mongo <Document>. Conversion does not modify original ScimResource.
+     * Converts a {@link ScimResource} object to a Mongo {@link Document}. Conversion does not modify original ScimResource.
      * Performs necessary "id" to "_id" conversion.
-     * @param res The <ScimResource> object to be mapped to Mongo.
-     * @return A <Document> translation of the provided SCIM resource.
+     * @param res The {@link ScimResource} object to be mapped to Mongo.
+     * @return A {@link Document} translation of the provided SCIM resource.
      */
     public static Document mapResource(final ScimResource res) {
         Document doc = new Document();
@@ -137,7 +138,7 @@ public class MongoMapUtil {
      * Returns a Map of Document. The keys are the encoded schema URIs for the extension schemas and Document holds the
      * attributes for that extension.
      * @param res The ScimResource whose extension schemas are to be mapped.
-     * @return A Map<String,Document> whose keys are the encoded URIs and the value is a DBObject containing mapped
+     * @return A {@link Map} whose keys are the encoded URIs and the value is a DBObject containing mapped
      * claims.
      */
     public static Map<String, Document> mapExtensions(final ScimResource res) {
@@ -158,9 +159,9 @@ public class MongoMapUtil {
     }
 
     /**
-     * Maps any Scim <Value> or sub-class into a corresponding BSON <Object>
-     * @param val A SCIM <Value> to be mapped (e.g. StringValue, BooleanValue, ReferenceValue, MultiValue etc)
-     * @return A corresponding Java or Mongo BSON <Object>  (e.g. String, Boolean, URI, <Document>)
+     * Maps any Scim {@link Value} or sub-class into a corresponding BSON {@link Object}
+     * @param val A SCIM {@link Value} to be mapped (e.g. StringValue, BooleanValue, ReferenceValue, MultiValue etc)
+     * @return A corresponding Java or Mongo BSON {@link Object}  (e.g. String, Boolean, URI, {@link Document})
      */
     public static Object mapValue(Value val) {
         if (val instanceof MultiValue)
@@ -258,7 +259,7 @@ public class MongoMapUtil {
      * Generates and converts a SCIM JsonNode value. Leaves the original document unmodified. Performs necessary "_id"
      * to "id" conversion.
      * @param doc The original Mongo Document to be converted
-     * @return a <JsonNode> object containing SCIM object (ready for using in ScimResource constructor)
+     * @return a {@link JsonNode} object containing SCIM object (ready for using in ScimResource constructor)
      * @throws JsonProcessingException May be thrown by Jackson JSON parser.
      */
     public static JsonNode toScimJsonNode(final Document doc) throws JsonProcessingException {
@@ -285,7 +286,8 @@ public class MongoMapUtil {
      * @param attr  An Attribute specifying the attribute to be mapped from the Document
      * @param value A java object value (coming from BSON docs) containing a value to be mapped to BSON (e.g. String,
      *              Boolean, Date, URI...)
-     * @return A SCIM <Value> object.
+     * @throws SchemaException if value cannot be mapped
+     * @return A SCIM {@link Value} object.
      */
     @SuppressWarnings("unchecked")
     public static Value mapBson(Attribute attr, Object value) throws SchemaException {
@@ -318,12 +320,12 @@ public class MongoMapUtil {
     }
 
     /**
-     * Used to map a SCIM Attribute value that is represented in Mongo as a <Document> and returns a SCIM <Value> type
-     * object. Note @See <MongoScimResource> to convert an entire Mongo collection <Document> to create a <ScimResource>
+     * Used to map a SCIM Attribute value that is represented in Mongo as a Document and returns a SCIM Value type
+     * object. Note see {@link MongoScimResource} to convert an entire Mongo collection Document to create a ScimResource
      * object.
-     * @param attr         The <Attribute> to be retrieved from the containerDoc.
-     * @param containerDoc A Mongo BSON <Document> that contains 1 or more sub-objects (attributes) to be mapped.
-     * @return A SCIM <Value> object for the requested attr or NULL.
+     * @param attr         The Attribute to be retrieved from the containerDoc.
+     * @param containerDoc A Mongo BSON Document that contains 1 or more sub-objects (attributes) to be mapped.
+     * @return A SCIM {@link Value} object for the requested attr or NULL.
      * @throws SchemaException thrown due to an invalid schema or malformed attribute error
      */
     public static Value mapBsonDocument(final Attribute attr, final Document containerDoc) throws SchemaException {
@@ -421,10 +423,10 @@ public class MongoMapUtil {
     }
 
     /**
-     * Converts an Array of objects to a SCIM <MultiValue> representation.
-     * @param attr   The multi-value <Attribute> to be represented.
-     * @param values A <List> of Java objects to be mapped.
-     * @return A <MultiValue> representation of the Array of objects that have been mapped.
+     * Converts an Array of objects to a SCIM {@link MultiValue} representation.
+     * @param attr   The multi-value {@link Attribute} to be represented.
+     * @param values A List of Java objects to be mapped.
+     * @return A MultiValue representation of the Array of objects that have been mapped.
      */
     public static MultiValue mapBson(@NotNull final Attribute attr, final List<Object> values) throws SchemaException {
 
@@ -438,10 +440,10 @@ public class MongoMapUtil {
     }
 
     /**
-     * Takes a Mongo <Document> holding a set of attributes to be mapped as a SCIM <ComplexValue>.
-     * @param attr The parent <Attribute> that defines the set of sub-attributes to be mapped from the provided doc.
-     * @param doc  A <Document> containing one or more sub-attributes to be mapped.
-     * @return A <ComplexValue> representation of the Mongo <Document>
+     * Takes a Mongo Document holding a set of attributes to be mapped as a SCIM {@link ComplexValue}.
+     * @param attr The parent {@link Attribute} that defines the set of sub-attributes to be mapped from the provided doc.
+     * @param doc  A {@link Document} containing one or more sub-attributes to be mapped.
+     * @return A {@link ComplexValue} representation of the Mongo {@link Document}
      */
     public static ComplexValue mapBsonComplex(@NotNull final Attribute attr, final Document doc) throws SchemaException {
         LinkedHashMap<Attribute, Value> vals = new LinkedHashMap<>();
@@ -457,12 +459,12 @@ public class MongoMapUtil {
     }
 
     /**
-     * Using the provided <Document>, looks for a SCIM Schema extension object (which is based64 encoded in Mongo) and
-     * converts to a SCIM <ExtensionValues> representation.
-     * @param schema       A <Schema> object representing the schema id to be mapped from the provided container
-     *                     <Document>.
-     * @param containerDoc A <Document> containing the extension schema object to be mapped.
-     * @return A SCIM <ExtensionValues> object mapped from the containing <Document>
+     * Using the provided Document, looks for a SCIM Schema extension object (which is based64 encoded in Mongo) and
+     * converts to a SCIM {@link ExtensionValues} representation.
+     * @param schema       A {@link Schema} object representing the schema id to be mapped from the provided container
+     *                     Document.
+     * @param containerDoc A {@link Document} containing the extension schema object to be mapped.
+     * @return A SCIM ExtensionValues object mapped from the containing Document
      */
     public static ExtensionValues mapBsonExtension(Schema schema, final Document containerDoc) {
         String mschema = ScimResource.SCHEMA_EXT_PREFIX + Base64.encode(schema.getId().getBytes());
