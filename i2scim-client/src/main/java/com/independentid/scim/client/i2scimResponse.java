@@ -43,7 +43,7 @@ import java.util.Iterator;
 /**
  * i2scimResponse takes an HttpResponse and parses response SCIM payloads and error messages for easy access.
  */
-public class i2scimResponse extends ScimResponse  implements Iterator<ScimResource> {
+public class i2scimResponse extends ScimResponse implements Iterator<ScimResource> {
     CloseableHttpResponse resp;
     private final i2scimClient client;
     private boolean hasMore = true;  // indicates more streaming to parse
@@ -61,10 +61,10 @@ public class i2scimResponse extends ScimResponse  implements Iterator<ScimResour
 
     /**
      * This constructor initiated by i2scimClient
-     * @param client The i2scimClient initiating the response
+     * @param client   The i2scimClient initiating the response
      * @param response The HttpResponse received.
-     * @throws IOException occurs when pulling data from HttpResponse.getEntity
-     * @throws ScimException is thrown when a SCIM parsing error occurs.  Server errors conveyed through methods
+     * @throws IOException    occurs when pulling data from HttpResponse.getEntity
+     * @throws ScimException  is thrown when a SCIM parsing error occurs.  Server errors conveyed through methods
      * @throws ParseException occurs when parsing URL, dates, etc.
      */
     i2scimResponse(i2scimClient client, CloseableHttpResponse response) throws IOException, ScimException, ParseException {
@@ -115,23 +115,25 @@ public class i2scimResponse extends ScimResponse  implements Iterator<ScimResour
 
     /**
      * Indicates i2scimResponse detected an error response from the server
-     * @return true of HttpStatus >= 400
+     * @return true of HttpStatus greater than or equal to 400
      */
     public boolean hasError() {
         return (getStatus() >= 400);
     }
 
     /**
-     * @return For single entry responses, the location is the URL of the entity returned. For all List Responses, it is the location of the query.
+     * @return For single entry responses, the location is the URL of the entity returned. For all List Responses, it is
+     * the location of the query.
      */
     public String getLocation() {
         return this.location;
     }
 
     /**
-     * Initializes the parsing stream and determines if the returned stream is a single resource, a ListResponse. Note: not called if there is an error.
-     * @throws IOException May occur when reading the HttpEntity.getContent() stream
-     * @throws ScimException May occur parsing a SCIM result
+     * Initializes the parsing stream and determines if the returned stream is a single resource, a ListResponse. Note:
+     * not called if there is an error.
+     * @throws IOException    May occur when reading the HttpEntity.getContent() stream
+     * @throws ScimException  May occur parsing a SCIM result
      * @throws ParseException May occur parsing strings, dates, etc.
      */
     private void initializeIterator() throws IOException, ScimException, ParseException {
@@ -161,7 +163,8 @@ public class i2scimResponse extends ScimResponse  implements Iterator<ScimResour
                     while (!parser.nextToken().equals(JsonToken.END_ARRAY)) {
                         String schemaVal = parser.getValueAsString();
                         if (schemaVal.equalsIgnoreCase(ScimParams.SCHEMA_API_ListResponse)) {
-                            isList = true; isSingle = false;
+                            isList = true;
+                            isSingle = false;
                         }
                         array.add(schemaVal);
                     }
@@ -188,7 +191,7 @@ public class i2scimResponse extends ScimResponse  implements Iterator<ScimResour
                 default:
                     parser.nextToken();
                     JsonNode node = JsonUtil.getMapper().readTree(parser);
-                    root.set(name,node);
+                    root.set(name, node);
 
             }
         }
@@ -212,8 +215,8 @@ public class i2scimResponse extends ScimResponse  implements Iterator<ScimResour
 
     /**
      * Parses the next resource in the stream.
-     * @throws IOException May occur when reading the HttpEntity.getContent() stream
-     * @throws ScimException May occur parsing a SCIM result
+     * @throws IOException    May occur when reading the HttpEntity.getContent() stream
+     * @throws ScimException  May occur parsing a SCIM result
      * @throws ParseException May occur parsing strings, dates, etc.
      */
     private void loadNextResource() throws IOException, ScimException, ParseException {
@@ -221,7 +224,7 @@ public class i2scimResponse extends ScimResponse  implements Iterator<ScimResour
             return;
 
         JsonNode node = JsonUtil.getMapper().readTree(parser);
-        this.nextRes = new ScimResource(client.getSchemaManager(),node,null);
+        this.nextRes = new ScimResource(client.getSchemaManager(), node, null);
         if (parser.nextToken().equals(JsonToken.END_ARRAY)) {
             hasMore = false;
             parser.close(); // close the stream
@@ -229,8 +232,8 @@ public class i2scimResponse extends ScimResponse  implements Iterator<ScimResour
     }
 
     /**
-     * Check HttpStatus and headers to determine what type of error has occurred if any. If HttpStatus 400, the
-     * response body is parsed for the SCIM error details.
+     * Check HttpStatus and headers to determine what type of error has occurred if any. If HttpStatus 400, the response
+     * body is parsed for the SCIM error details.
      * @throws IOException Thrown when reading the HttpEntity.
      */
     private void checkErrorResponse() throws IOException {
@@ -248,64 +251,64 @@ public class i2scimResponse extends ScimResponse  implements Iterator<ScimResour
                 String msg;
                 if (entity != null) {
 
-                        msg = EntityUtils.toString(entity);
-                        JsonNode node = JsonUtil.getJsonTree(msg);
-                        JsonNode typNode = node.get("scimType");
-                        String type = "";
-                        String det = null;
-                        if (typNode != null) {
-                            type = typNode.asText();
-                            JsonNode detNode = node.get("detail");
-                            if (detNode != null)
-                                det = detNode.asText();
-                        }
-                        switch (type) {
-                            case ScimResponse.ERR_TYPE_BADVAL:
-                                setError(new InvalidValueException(det == null ?
-                                        "A required value was missing or invalid" : det));
-                                return;
-                            case ScimResponse.ERR_TYPE_FILTER:
-                                setError( new BadFilterException(det == null ?
-                                        "The specified filter was invalid" : det));
-                                return;
-                            case ScimResponse.ERR_TYPE_TOOMANY:
-                                setError( new TooManyException(det == null ?
-                                        "The specified filter yields more results than the server is willing to calculate" : det));
-                                return;
-                            case ScimResponse.ERR_TYPE_UNIQUENESS:
-                                setError(new ScimException(det == null ?
-                                        "One or more unique attribute values in use." : det, ScimResponse.ERR_TYPE_UNIQUENESS));
-                                return;
-                            case ScimResponse.ERR_TYPE_MUTABILITY:
-                                setError(new ScimException(det == null ?
-                                        "An attempted modification was not compatible with an attributes mutability." : det, ScimResponse.ERR_TYPE_MUTABILITY));
-                                return;
-                            case ScimResponse.ERR_TYPE_SYNTAX:
-                                setError(new InvalidSyntaxException(det == null ?
-                                        "The request body structure was invalid." : det));
-                                return;
-                                // TODO: invalidPath implemented in i2scim server
-                            case ScimResponse.ERR_TYPE_PATH:
-                                setError(new ScimException(det == null ?
-                                        "The attribute supplied was undefined, malformed, or invalid." : det, ScimResponse.ERR_TYPE_PATH));
-                                return;
-                            case ScimResponse.ERR_TYPE_TARGET:
-                                setError(new NoTargetException(det == null ?
-                                        "The path attribute did not yield an attribute that could be operated on." : det));
-                                return;
-                            case ScimResponse.ERR_TYPE_BADVERS:
-                                setError(new ScimException(det == null ?
-                                        "The specified SCIM protocol version is not supported" : det, ScimResponse.ERR_TYPE_BADVERS));
-                                return;
-                                // TODO: i2scim currently does not report sensitive errors!
-                            case "sensitive":
-                                setError(new ScimException(det == null ?
-                                        "The specified request cannot be completed due to passing of sensitive information in a URI. Use POST." : det, "sensitive"));
-                                return;
-                            default:
-                                setError(new ScimException(det, type));
-                                return;
-                        }
+                    msg = EntityUtils.toString(entity);
+                    JsonNode node = JsonUtil.getJsonTree(msg);
+                    JsonNode typNode = node.get("scimType");
+                    String type = "";
+                    String det = null;
+                    if (typNode != null) {
+                        type = typNode.asText();
+                        JsonNode detNode = node.get("detail");
+                        if (detNode != null)
+                            det = detNode.asText();
+                    }
+                    switch (type) {
+                        case ScimResponse.ERR_TYPE_BADVAL:
+                            setError(new InvalidValueException(det == null ?
+                                    "A required value was missing or invalid" : det));
+                            return;
+                        case ScimResponse.ERR_TYPE_FILTER:
+                            setError(new BadFilterException(det == null ?
+                                    "The specified filter was invalid" : det));
+                            return;
+                        case ScimResponse.ERR_TYPE_TOOMANY:
+                            setError(new TooManyException(det == null ?
+                                    "The specified filter yields more results than the server is willing to calculate" : det));
+                            return;
+                        case ScimResponse.ERR_TYPE_UNIQUENESS:
+                            setError(new ScimException(det == null ?
+                                    "One or more unique attribute values in use." : det, ScimResponse.ERR_TYPE_UNIQUENESS));
+                            return;
+                        case ScimResponse.ERR_TYPE_MUTABILITY:
+                            setError(new ScimException(det == null ?
+                                    "An attempted modification was not compatible with an attributes mutability." : det, ScimResponse.ERR_TYPE_MUTABILITY));
+                            return;
+                        case ScimResponse.ERR_TYPE_SYNTAX:
+                            setError(new InvalidSyntaxException(det == null ?
+                                    "The request body structure was invalid." : det));
+                            return;
+                        // TODO: invalidPath implemented in i2scim server
+                        case ScimResponse.ERR_TYPE_PATH:
+                            setError(new ScimException(det == null ?
+                                    "The attribute supplied was undefined, malformed, or invalid." : det, ScimResponse.ERR_TYPE_PATH));
+                            return;
+                        case ScimResponse.ERR_TYPE_TARGET:
+                            setError(new NoTargetException(det == null ?
+                                    "The path attribute did not yield an attribute that could be operated on." : det));
+                            return;
+                        case ScimResponse.ERR_TYPE_BADVERS:
+                            setError(new ScimException(det == null ?
+                                    "The specified SCIM protocol version is not supported" : det, ScimResponse.ERR_TYPE_BADVERS));
+                            return;
+                        // TODO: i2scim currently does not report sensitive errors!
+                        case "sensitive":
+                            setError(new ScimException(det == null ?
+                                    "The specified request cannot be completed due to passing of sensitive information in a URI. Use POST." : det, "sensitive"));
+                            return;
+                        default:
+                            setError(new ScimException(det, type));
+                            return;
+                    }
 
                 }
                 return;
@@ -376,8 +379,8 @@ public class i2scimResponse extends ScimResponse  implements Iterator<ScimResour
     }
 
     /**
-     * Returns the total number of results. NOTE: because this client uses a streaming parser, the value may not
-     * be set if the service provider put the "totalResults" attribute after "Resources" in the JSON response document.
+     * Returns the total number of results. NOTE: because this client uses a streaming parser, the value may not be set
+     * if the service provider put the "totalResults" attribute after "Resources" in the JSON response document.
      * @return The value of ListResponse totalResults attribute
      */
     public int getTotalResults() {
@@ -385,8 +388,9 @@ public class i2scimResponse extends ScimResponse  implements Iterator<ScimResour
     }
 
     /**
-     * Returns the total number of items per page in the ListResponse. NOTE: because this client uses a streaming parser, the value may not
-     * be set if the service provider put the "itermsPerPage" attribute after "Resources" in the JSON response document.
+     * Returns the total number of items per page in the ListResponse. NOTE: because this client uses a streaming
+     * parser, the value may not be set if the service provider put the "itermsPerPage" attribute after "Resources" in
+     * the JSON response document.
      * @return The value of ListResponse itermsPerPage attribute
      */
     public int getItemsPerPage() {
@@ -394,8 +398,9 @@ public class i2scimResponse extends ScimResponse  implements Iterator<ScimResour
     }
 
     /**
-     * Returns the startIndex value when using paged results. NOTE: because this client uses a streaming parser, the value may not
-     * be set if the service provider put the "startIndex" attribute after "Resources" in the JSON response document.
+     * Returns the startIndex value when using paged results. NOTE: because this client uses a streaming parser, the
+     * value may not be set if the service provider put the "startIndex" attribute after "Resources" in the JSON
+     * response document.
      * @return The value of ListResponse startIndex attribute
      */
     public int getStartIndex() {

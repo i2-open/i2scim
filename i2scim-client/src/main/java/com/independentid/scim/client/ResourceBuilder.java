@@ -71,7 +71,7 @@ public class ResourceBuilder {
     /**
      * Adds a String value to the named attribute. Note: if Attribute is multi-valued, the value is added to the set of
      * values, otherwise the existing value is replaced.
-     * @param name The name of the attribute to be added.
+     * @param name  The name of the attribute to be added.
      * @param value A String to be added as a value
      * @return The resource builder.
      * @throws SchemaException is thrown when the attribute could not be located or is of the wrong type.
@@ -88,7 +88,7 @@ public class ResourceBuilder {
     /**
      * Adds a Boolean value to the named attribute. Note: if Attribute is multi-valued, the value is added to the set of
      * values, otherwise the existing value is replaced.
-     * @param name The name of a Boolean Attribute
+     * @param name  The name of a Boolean Attribute
      * @param value A boolean used to set its value
      * @return The resource builder.
      * @throws SchemaException is thrown when the attribute could not be located or is of the wrong type.
@@ -105,7 +105,7 @@ public class ResourceBuilder {
     /**
      * Adds a Date value to the named attribute. Note: if Attribute is multi-valued, the value is added to the set of
      * values, otherwise the existing value is replaced.
-     * @param name The name of a Date Attribute
+     * @param name  The name of a Date Attribute
      * @param value A Date used to set its value
      * @return The resource builder.
      * @throws SchemaException is thrown when the attribute could not be located or is of the wrong type.
@@ -122,7 +122,7 @@ public class ResourceBuilder {
     /**
      * Adds a Decimal value to the named attribute. Note: if Attribute is multi-valued, the value is added to the set of
      * values, otherwise the existing value is replaced.
-     * @param name The name of a Decimal Attribute
+     * @param name  The name of a Decimal Attribute
      * @param value A BigDecimal used to set its value
      * @return The resource builder.
      * @throws SchemaException is thrown when the attribute could not be located or is of the wrong type.
@@ -137,9 +137,9 @@ public class ResourceBuilder {
     }
 
     /**
-     * Adds an integer value to the named attribute. Note: if Attribute is multi-valued, the value is added to the set of
-     * values, otherwise the existing value is replaced.
-     * @param name The name of an Integer Attribute
+     * Adds an integer value to the named attribute. Note: if Attribute is multi-valued, the value is added to the set
+     * of values, otherwise the existing value is replaced.
+     * @param name  The name of an Integer Attribute
      * @param value An integer used to set its value
      * @return The resource builder.
      * @throws SchemaException is thrown when the attribute could not be located or is of the wrong type.
@@ -156,7 +156,7 @@ public class ResourceBuilder {
     /**
      * Adds a Binary value to the named attribute. Note: if Attribute is multi-valued, the value is added to the set of
      * values, otherwise the existing value is replaced.
-     * @param name The name of a Binary Attribute
+     * @param name  The name of a Binary Attribute
      * @param value An array of bytes (byte[]) used to set its value
      * @return The resource builder.
      * @throws SchemaException is thrown when the attribute could not be located or is of the wrong type.
@@ -171,9 +171,9 @@ public class ResourceBuilder {
     }
 
     /**
-     * Adds a Base64 encoded binary value to the named attribute. Note: if Attribute is multi-valued, the value is added to the set of
-     * values, otherwise the existing value is replaced.
-     * @param name The name of a Binary Attribute
+     * Adds a Base64 encoded binary value to the named attribute. Note: if Attribute is multi-valued, the value is added
+     * to the set of values, otherwise the existing value is replaced.
+     * @param name     The name of a Binary Attribute
      * @param b64value A String containing a Base64 encoded value used to set its value
      * @return The resource builder.
      * @throws SchemaException is thrown when the attribute could not be located or is of the wrong type.
@@ -188,8 +188,8 @@ public class ResourceBuilder {
     }
 
     /**
-     * If the attribute is MultiValued, the ComplexAttribute will be added to the set of values. Otherwise, the
-     * complex value replaces the current value.
+     * If the attribute is MultiValued, the ComplexAttribute will be added to the set of values. Otherwise, the complex
+     * value replaces the current value.
      * @param val The {@link ComplexValue} to be added
      * @return The current builder context
      * @throws SchemaException if values are not compatible
@@ -218,9 +218,9 @@ public class ResourceBuilder {
      * @throws SchemaException If the attribute name cannot be located
      */
     public ResourceBuilder removeAttribute(String name) throws SchemaException {
-        Attribute attr = client.getSchemaManager().findAttribute(name,null);
+        Attribute attr = client.getSchemaManager().findAttribute(name, null);
         if (attr == null)
-            throw new SchemaException("Attribute "+name+" is not defined.");
+            throw new SchemaException("Attribute " + name + " is not defined.");
         return removeAttribute(attr);
     }
 
@@ -246,17 +246,20 @@ public class ResourceBuilder {
     /**
      * @return Returns the built {@link ScimResource} as a JSON {@link String}
      */
-    public String buildString() { return this.resource.toJsonString(); }
+    public String buildString() {
+        return this.resource.toJsonString();
+    }
 
     /**
-     * @return A {@link StringEntity] containing the constructed SCIM Resource.
+     * @return A {@link StringEntity} containing the constructed SCIM Resource.
      */
     public HttpEntity buildHttpEntity() {
         return new StringEntity(this.resource.toJsonString(), ScimParams.SCIM_MIME_TYPE);
     }
 
     /**
-     * This method creates a SCIM Resource using the HTTP POST command. The URI for the request is constructed from the {@link ScimResource}.
+     * This method creates a SCIM Resource using the HTTP POST command. The URI for the request is constructed from the
+     * {@link ScimResource}.
      * @param params Optional SCIM request modifiers (e.g. attributes)
      * @return A {@link ScimResource} representation of the result returned by the server.
      * @throws ScimException      when an SCIM protocol error occurs
@@ -267,13 +270,13 @@ public class ResourceBuilder {
     public ScimResource create(ScimReqParams params) throws IOException, ScimException, URISyntaxException, ParseException {
         if (this.client == null)
             throw new IOException("SCIM client not defined.");
-        i2scimResponse resp = client.create(this.resource,params);
+        i2scimResponse resp = client.create(this.resource, params);
         if (resp.hasError()) {
             ScimException e = resp.getException();
             if (e != null)
                 throw e;
             else
-                throw new ScimException("Message: "+resp.getDetail()+", type="+resp.getScimErrorType());
+                throw new ScimException("Message: " + resp.getDetail() + ", type=" + resp.getScimErrorType());
         }
 
         ScimResource res = resp.next();
@@ -282,7 +285,8 @@ public class ResourceBuilder {
     }
 
     /**
-     * This method modifies a SCIM Resource using the HTTP PUT command as per RFC7644. The URI for the request is constructed from the {@link ScimResource}.
+     * This method modifies a SCIM Resource using the HTTP PUT command as per RFC7644. The URI for the request is
+     * constructed from the {@link ScimResource}.
      * @param params Optional SCIM request modifiers (e.g. attributes)
      * @return A {@link ScimResource} representation of the result returned by the server.
      * @throws ScimException      when an SCIM protocol error occurs
@@ -294,13 +298,13 @@ public class ResourceBuilder {
         if (this.client == null)
             throw new IOException("SCIM client not defined.");
 
-        i2scimResponse resp = client.put(this.resource,params);
+        i2scimResponse resp = client.put(this.resource, params);
         if (resp.hasError()) {
             ScimException e = resp.getException();
             if (e != null)
                 throw e;
             else
-                throw new ScimException("Message: "+resp.getDetail()+", type="+resp.getScimErrorType());
+                throw new ScimException("Message: " + resp.getDetail() + ", type=" + resp.getScimErrorType());
         }
 
         ScimResource res = resp.next();
@@ -314,7 +318,7 @@ public class ResourceBuilder {
      * @return A ComplexValue.Builder is returned
      */
     public ComplexValue.Builder getComplexBuilder(String name) {
-        Attribute attr = client.schemaManager.findAttribute(name,null);
+        Attribute attr = client.schemaManager.findAttribute(name, null);
         return ComplexValue.getBuilder(attr);
     }
 

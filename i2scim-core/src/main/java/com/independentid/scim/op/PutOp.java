@@ -45,6 +45,7 @@ public class PutOp extends Operation implements IBulkOp {
      * Used in bulk requests for put requests. Provide the JsonNode of the data element of a bulk operation
      * @param data       The JsonNode of a data element of a SCIM Bulk operation
      * @param ctx        The associated bulk operation RequestCtx
+     * @param parent     The BulkOps parent object to the current operation (or null if single operation)
      * @param requestNum If part of a series of bulk operations, the request number
      */
     public PutOp(JsonNode data, RequestCtx ctx, BulkOps parent, int requestNum) {
@@ -143,14 +144,14 @@ public class PutOp extends Operation implements IBulkOp {
     public JsonNode getJsonReplicaOp() {
         if (!super.getStats().completionError) {
             ObjectNode node = JsonUtil.getMapper().createObjectNode();
-            node.put(BulkOps.PARAM_METHOD,Bulk_Method_PUT);
-            node.put(BulkOps.PARAM_PATH,ctx.getPath());
+            node.put(BulkOps.PARAM_METHOD, Bulk_Method_PUT);
+            node.put(BulkOps.PARAM_PATH, ctx.getPath());
             // CTX should be null to ensure entire structure emitted
-            node.set(BulkOps.PARAM_DATA,newResource.toJsonNode(null));
+            node.set(BulkOps.PARAM_DATA, newResource.toJsonNode(null));
 
             OpStat stats = getStats();
-            node.put(BulkOps.PARAM_SEQNUM,stats.executionNum);
-            node.put(BulkOps.PARAM_ACCEPTDATE,stats.getFinishDateStr());
+            node.put(BulkOps.PARAM_SEQNUM, stats.executionNum);
+            node.put(BulkOps.PARAM_ACCEPTDATE, stats.getFinishDateStr());
             if (ctx != null)
                 node.put(BulkOps.PARAM_TRANID, ctx.getTranId());
             return node;

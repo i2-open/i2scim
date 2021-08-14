@@ -148,7 +148,7 @@ public class MongoFilterMapTest {
 
     };
 
-    int[] searchResultCnt = new int[] {
+    int[] searchResultCnt = new int[]{
             1,
             1,
             1,
@@ -179,7 +179,7 @@ public class MongoFilterMapTest {
             1,
             1,
 
-            1,1,1,2
+            1, 1, 1, 2
     };
 
 
@@ -198,15 +198,15 @@ public class MongoFilterMapTest {
         logger.info("========== MongoProvider Filter Test ==========");
 
         try {
-            testUtils.resetProvider();
+            testUtils.resetProvider(true);
         } catch (ScimException | BackendException | IOException e) {
-            fail("Unable to restart test database: "+e.getMessage());
+            fail("Unable to restart test database: " + e.getMessage());
         }
         mp = (MongoProvider) handler.getProvider();
         logger.debug("\tLoading sample data.");
 
-        Attribute loginCnt = smgr.findAttribute("loginCnt",null);
-        Attribute loginStrength = smgr.findAttribute("loginStrength",null);
+        Attribute loginCnt = smgr.findAttribute("loginCnt", null);
+        Attribute loginStrength = smgr.findAttribute("loginStrength", null);
 
         assertThat(loginCnt)
                 .as("Check test schema loaded")
@@ -219,8 +219,8 @@ public class MongoFilterMapTest {
         JsonNode node = JsonUtil.getJsonTree(userStream);
         user1 = new ScimResource(smgr, node, "Users");
         user1.setId(null);  // When adding directly, id must be NULL!
-        IntegerValue lcnt = new IntegerValue(loginCnt,1234);
-        DecimalValue lstr = new DecimalValue(loginStrength,BigDecimal.valueOf(3.4));
+        IntegerValue lcnt = new IntegerValue(loginCnt, 1234);
+        DecimalValue lstr = new DecimalValue(loginStrength, BigDecimal.valueOf(3.4));
         user1.addValue(lcnt);
         user1.addValue(lstr);
 
@@ -229,8 +229,8 @@ public class MongoFilterMapTest {
         node = JsonUtil.getJsonTree(userStream);
         user2 = new ScimResource(smgr, node, "Users");
         user2.setId(null);  // When adding directly, id must be NULL!
-        lcnt = new IntegerValue(loginCnt,1);
-        lstr = new DecimalValue(loginStrength,BigDecimal.valueOf(1.00));
+        lcnt = new IntegerValue(loginCnt, 1);
+        lstr = new DecimalValue(loginStrength, BigDecimal.valueOf(1.00));
         user2.addValue(lcnt);
         user2.addValue(lstr);
         RequestCtx ctx = new RequestCtx("/Users", null, null, smgr);
@@ -262,15 +262,15 @@ public class MongoFilterMapTest {
             RequestCtx ctx1, ctx2;
             try {
                 ctx1 = new RequestCtx(user1loc, null, testArray[i][1], smgr);
-                logger.debug("Parsed filt:\t"+ctx1.getFilter().toString());
+                logger.debug("Parsed filt:\t" + ctx1.getFilter().toString());
                 ctx2 = new RequestCtx(user2loc, null, testArray[i][1], smgr);
                 ScimResource res1 = mp.getResource(ctx1);
                 ScimResource res2 = mp.getResource(ctx2);
 
                 if (matches[i][0])
                     assertThat(res1)
-                        .as("Checking user 1 filter#" + i)
-                        .isNotNull();
+                            .as("Checking user 1 filter#" + i)
+                            .isNotNull();
                 else
                     assertThat(res1)
                             .as("Checking user 1 filter#" + i)
@@ -307,7 +307,7 @@ public class MongoFilterMapTest {
                 continue;  // password cannot be matched in general searches.
             try {
                 ctx = new RequestCtx("Users", null, testArray[i][1], smgr);
-                logger.debug("Parsed filt:\t"+ctx.getFilter().toString());
+                logger.debug("Parsed filt:\t" + ctx.getFilter().toString());
                 ScimResponse resp = mp.get(ctx);
 
                 assertThat(resp)
@@ -315,7 +315,7 @@ public class MongoFilterMapTest {
                         .isInstanceOf(ListResponse.class);
                 ListResponse lr = (ListResponse) resp;
                 assertThat(lr.getSize())
-                        .as("Filter#"+i+" has "+ searchResultCnt[i]+" matches.")
+                        .as("Filter#" + i + " has " + searchResultCnt[i] + " matches.")
                         .isEqualTo(searchResultCnt[i]);
 
             } catch (ScimException e) {

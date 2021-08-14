@@ -22,55 +22,58 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 /**
- * @author pjdhunt
- * The BulkResponse contains one or more operations to be included in a SCIM Bulk Response per Section 3.7.3 RFC7644
+ * @author pjdhunt The BulkResponse contains one or more operations to be included in a SCIM Bulk Response per Section
+ * 3.7.3 RFC7644
  */
 public class BulkResponse extends ScimResponse {
-//TODO: This code has not JUnit code and is not fully implemented.
+	//TODO: This code has not JUnit code and is not fully implemented.
 	protected final RequestCtx ctx;
 	protected final ArrayList<Operation> ops;
 	protected int httpstat = 200;
 	protected String stype = null;
 	protected String detail = null;
 	//protected int failOnErrors = 0; //the count of maximum errors before failing.
-	
+
 	/**
-	 * 
+	 * Bulk response handles serializing results for one or more bulk request operations
+	 * @param ctx The original request context.
 	 */
 	public BulkResponse(RequestCtx ctx) {
-		
+
 		this.ctx = ctx;
 		this.ops = new ArrayList<>();
-		
+
 	}
 
 	/**
-	 * 
+	 * Bulk response handles serializing results for one or more bulk request operations
+	 * @param ctx  The original request context.
+	 * @param resp A completed SCIM {@link Operation} whose result needs to be serialized
 	 */
-	public BulkResponse(RequestCtx ctx,Operation resp) {
-		
+	public BulkResponse(RequestCtx ctx, Operation resp) {
+
 		this.ctx = ctx;
 		this.ops = new ArrayList<>();
 		this.ops.add(resp);
-	
+
 	}
 
 	/**
-	 * @param resp a completed <Operation> object to be added to the response.
+	 * @param resp a completed {@link Operation} object to be added to the response.
 	 */
 	public void addOpResp(Operation resp) {
 		this.ops.add(resp);
 	}
-	
+
 	public void setHttpStatus(int stat) {
 		this.httpstat = stat;
 	}
-	
+
 	public void setScimTypeError(String scimType, String detail) {
 		this.stype = scimType;
 		this.detail = detail;
 	}
-	
+
 	public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException {
 		if (this.httpstat >= 400) {
 			gen.writeStartObject();
@@ -80,20 +83,20 @@ public class BulkResponse extends ScimResponse {
 			if (this.stype != null)
 				gen.writeStringField("scimType", this.stype);
 			if (this.detail != null)
-				gen.writeStringField("detail",this.detail);
+				gen.writeStringField("detail", this.detail);
 			gen.writeNumberField("status", this.httpstat);
 			gen.writeEndObject();
 			// Setting status will now be done by the caller (Operation.java)
 			//resp.setStatus(this.httpstat);
 			return;
 		}
-		
+
 		gen.writeStartObject();
 		gen.writeArrayFieldStart("schemas");
 		gen.writeString(ScimParams.SCHEMA_API_BulkResponse);
 		gen.writeEndArray();
 		gen.writeArrayFieldStart("Operations");
-		
+
 		// Write all the operations out.
 		for (Operation op : this.ops) {
 			if (!op.isDone())
@@ -101,7 +104,7 @@ public class BulkResponse extends ScimResponse {
 			//TODO is this the correct response
 			op.doResponse(gen);
 		}
-		
+
 		gen.writeEndArray();
 		gen.writeEndObject();
 

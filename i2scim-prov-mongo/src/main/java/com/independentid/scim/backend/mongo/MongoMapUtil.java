@@ -22,7 +22,6 @@ import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.*;
-import com.independentid.scim.resource.Meta;
 import com.independentid.scim.serializer.JsonUtil;
 import org.bson.Document;
 import org.bson.internal.Base64;
@@ -49,7 +48,6 @@ import java.util.regex.Pattern;
 
 /**
  * A general SCIM / MongoDb bidirectional mapping utility.
- *
  * @author pjdhunt
  */
 @Singleton
@@ -61,12 +59,12 @@ public class MongoMapUtil {
     @Inject
     SchemaManager schemaManager;
 
-    @ConfigProperty(name = "scim.prov.mongo.indexes", defaultValue=MongoProvider.DEFAULT_MONGO_INDEXES)
+    @ConfigProperty(name = "scim.prov.mongo.indexes", defaultValue = MongoProvider.DEFAULT_MONGO_INDEXES)
     String[] indexes;
 
     /**
-     * Converts a {@link ScimResource} object to a Mongo {@link Document}. Conversion does not modify original ScimResource.
-     * Performs necessary "id" to "_id" conversion.
+     * Converts a {@link ScimResource} object to a Mongo {@link Document}. Conversion does not modify original
+     * ScimResource. Performs necessary "id" to "_id" conversion.
      * @param res The {@link ScimResource} object to be mapped to Mongo.
      * @return A {@link Document} translation of the provided SCIM resource.
      */
@@ -102,7 +100,7 @@ public class MongoMapUtil {
                 metaDoc.append(Meta.META_VERSION, meta.getVersion());
 
             if (meta.getRevisions() != null)
-                metaDoc.append(Meta.META_REVISIONS,MongoMapUtil.mapValue(meta.getRevisions()));
+                metaDoc.append(Meta.META_REVISIONS, MongoMapUtil.mapValue(meta.getRevisions()));
 
             doc.append("meta", metaDoc);
         }
@@ -138,8 +136,7 @@ public class MongoMapUtil {
      * Returns a Map of Document. The keys are the encoded schema URIs for the extension schemas and Document holds the
      * attributes for that extension.
      * @param res The ScimResource whose extension schemas are to be mapped.
-     * @return A {@link Map} whose keys are the encoded URIs and the value is a DBObject containing mapped
-     * claims.
+     * @return A {@link Map} whose keys are the encoded URIs and the value is a DBObject containing mapped claims.
      */
     public static Map<String, Document> mapExtensions(final ScimResource res) {
         Map<String, Document> map = new LinkedHashMap<>();
@@ -286,8 +283,8 @@ public class MongoMapUtil {
      * @param attr  An Attribute specifying the attribute to be mapped from the Document
      * @param value A java object value (coming from BSON docs) containing a value to be mapped to BSON (e.g. String,
      *              Boolean, Date, URI...)
-     * @throws SchemaException if value cannot be mapped
      * @return A SCIM {@link Value} object.
+     * @throws SchemaException if value cannot be mapped
      */
     @SuppressWarnings("unchecked")
     public static Value mapBson(Attribute attr, Object value) throws SchemaException {
@@ -321,8 +318,8 @@ public class MongoMapUtil {
 
     /**
      * Used to map a SCIM Attribute value that is represented in Mongo as a Document and returns a SCIM Value type
-     * object. Note see {@link MongoScimResource} to convert an entire Mongo collection Document to create a ScimResource
-     * object.
+     * object. Note see {@link MongoScimResource} to convert an entire Mongo collection Document to create a
+     * ScimResource object.
      * @param attr         The Attribute to be retrieved from the containerDoc.
      * @param containerDoc A Mongo BSON Document that contains 1 or more sub-objects (attributes) to be mapped.
      * @return A SCIM {@link Value} object for the requested attr or NULL.
@@ -381,9 +378,9 @@ public class MongoMapUtil {
             case Attribute.TYPE_Decimal:
                 Object bval = containerDoc.get(name);
                 if (bval instanceof Decimal128)
-                    val = mapBson(attr, ((Decimal128)bval).bigDecimalValue());
+                    val = mapBson(attr, ((Decimal128) bval).bigDecimalValue());
                 else  // try string parse
-                    val = mapBson(attr,new BigDecimal(containerDoc.getString(name)));
+                    val = mapBson(attr, new BigDecimal(containerDoc.getString(name)));
 
         }
 
@@ -427,6 +424,7 @@ public class MongoMapUtil {
      * @param attr   The multi-value {@link Attribute} to be represented.
      * @param values A List of Java objects to be mapped.
      * @return A MultiValue representation of the Array of objects that have been mapped.
+     * @throws SchemaException may occur when mapping incompatible or undefined schema
      */
     public static MultiValue mapBson(@NotNull final Attribute attr, final List<Object> values) throws SchemaException {
 
@@ -441,9 +439,11 @@ public class MongoMapUtil {
 
     /**
      * Takes a Mongo Document holding a set of attributes to be mapped as a SCIM {@link ComplexValue}.
-     * @param attr The parent {@link Attribute} that defines the set of sub-attributes to be mapped from the provided doc.
+     * @param attr The parent {@link Attribute} that defines the set of sub-attributes to be mapped from the provided
+     *             doc.
      * @param doc  A {@link Document} containing one or more sub-attributes to be mapped.
      * @return A {@link ComplexValue} representation of the Mongo {@link Document}
+     * @throws SchemaException may occur when mapping incompatible or undefined schema
      */
     public static ComplexValue mapBsonComplex(@NotNull final Attribute attr, final Document doc) throws SchemaException {
         LinkedHashMap<Attribute, Value> vals = new LinkedHashMap<>();
@@ -487,16 +487,16 @@ public class MongoMapUtil {
     }
 
     public PersistStateResource mapConfigState(int rcnt, int scnt) {
-        return new PersistStateResource(schemaManager,rcnt,scnt);
+        return new PersistStateResource(schemaManager, rcnt, scnt);
     }
 
     public PersistStateResource mapConfigState(Document persistDoc) throws ScimException, ParseException, JsonProcessingException {
-        if(persistDoc == null)
+        if (persistDoc == null)
             return null;
         String jsonstr = persistDoc.toJson();
         JsonNode jdoc = JsonUtil.getJsonTree(jsonstr);
 
-        return new PersistStateResource(schemaManager,jdoc,null, SystemSchemas.RESTYPE_CONFIG);
+        return new PersistStateResource(schemaManager, jdoc, null, SystemSchemas.RESTYPE_CONFIG);
     }
 
     public ScimResource mapScimResource(Document res, String type) throws ScimException, BackendException {
@@ -513,7 +513,7 @@ public class MongoMapUtil {
 
     public Schema mapSchema(Document doc) throws SchemaException, JsonProcessingException {
         JsonNode jdoc = JsonUtil.getJsonTree(doc.toJson());
-        return new Schema(schemaManager,jdoc);
+        return new Schema(schemaManager, jdoc);
     }
 
     public ResourceType mapResourceType(Document doc) throws JsonProcessingException, SchemaException {

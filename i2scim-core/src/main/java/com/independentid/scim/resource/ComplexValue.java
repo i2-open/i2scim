@@ -247,9 +247,9 @@ public class ComplexValue extends Value {
      * @throws SchemaException thrown if attribute is not found or is not a Complex attribute
      */
     public static Builder getBuilder(SchemaManager schemaManager, String attributeName) throws SchemaException {
-        Attribute attr = schemaManager.findAttribute(attributeName,null);
+        Attribute attr = schemaManager.findAttribute(attributeName, null);
         if (attr == null)
-            throw new SchemaException("Undefined attribute: "+attributeName);
+            throw new SchemaException("Undefined attribute: " + attributeName);
         return getBuilder(attr);
     }
 
@@ -258,18 +258,19 @@ public class ComplexValue extends Value {
      * @param complexAttribute An {@link Attribute} which defines the complex attribute to be constructed
      * @return a builder for ComplexValue
      */
-    public static Builder getBuilder(Attribute complexAttribute)  {
+    public static Builder getBuilder(Attribute complexAttribute) {
         return new ComplexValue.Builder(complexAttribute);
     }
 
     /**
-     * Builder to enable construction of Complex attribute Values. May be invoked using i2scimClient or ComplexValue.getBuilder
+     * Builder to enable construction of Complex attribute Values. May be invoked using i2scimClient or
+     * ComplexValue.getBuilder
      */
     public static class Builder {
         private ComplexValue val;
         Attribute attr;
 
-        Builder(@NotNull Attribute complexAttribute)  {
+        Builder(@NotNull Attribute complexAttribute) {
 
             try {
                 this.val = new ComplexValue(complexAttribute, (JsonNode) null);
@@ -281,10 +282,11 @@ public class ComplexValue extends Value {
 
         /**
          * Adds a StringValue to the complex attribute value
-         * @param name the name of the sub-attribute to be added
+         * @param name  the name of the sub-attribute to be added
          * @param value a String value
          * @return the Complex Value builder
-         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong type
+         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong
+         *                         type
          */
         public Builder withStringAttribute(String name, String value) throws SchemaException {
             Attribute attr = this.val.getAttribute().getSubAttribute(name);
@@ -297,10 +299,11 @@ public class ComplexValue extends Value {
 
         /**
          * Adds a boolean value to the complex attribute value
-         * @param name the name of the sub-attribute to be added
+         * @param name  the name of the sub-attribute to be added
          * @param value a boolean value
          * @return the Complex Value builder
-         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong type
+         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong
+         *                         type
          */
         public Builder withBooleanAttribute(String name, boolean value) throws SchemaException {
             Attribute attr = this.val.getAttribute().getSubAttribute(name);
@@ -313,10 +316,11 @@ public class ComplexValue extends Value {
 
         /**
          * Adds a date value to the complex attribute value
-         * @param name the name of the sub-attribute to be added
+         * @param name  the name of the sub-attribute to be added
          * @param value a Date value
          * @return the Complex Value builder
-         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong type
+         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong
+         *                         type
          */
         public Builder withDateAttribute(String name, Date value) throws SchemaException {
             Attribute attr = this.val.getAttribute().getSubAttribute(name);
@@ -329,10 +333,11 @@ public class ComplexValue extends Value {
 
         /**
          * Adds a decimal value to the complex attribute value
-         * @param name the name of the sub-attribute to be added
+         * @param name  the name of the sub-attribute to be added
          * @param value a BigDecimal value
          * @return the Complex Value builder
-         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong type
+         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong
+         *                         type
          */
         public Builder withDecimalAttribute(String name, BigDecimal value) throws SchemaException {
             Attribute attr = this.val.getAttribute().getSubAttribute(name);
@@ -345,10 +350,11 @@ public class ComplexValue extends Value {
 
         /**
          * Adds a Integer value to the complex attribute value
-         * @param name the name of the sub-attribute to be added
+         * @param name  the name of the sub-attribute to be added
          * @param value an int value
          * @return the Complex Value builder
-         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong type
+         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong
+         *                         type
          */
         public Builder withIntegerAttribute(String name, int value) throws SchemaException {
             Attribute attr = this.val.getAttribute().getSubAttribute(name);
@@ -361,10 +367,11 @@ public class ComplexValue extends Value {
 
         /**
          * Adds a binary value to the complex attribute value
-         * @param name the name of the sub-attribute to be added
+         * @param name  the name of the sub-attribute to be added
          * @param value a byte[] array containing the binary value
          * @return the Complex Value builder
-         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong type
+         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong
+         *                         type
          */
         public Builder withBinaryAttribute(String name, byte[] value) throws SchemaException {
             Attribute attr = this.val.getAttribute().getSubAttribute(name);
@@ -377,10 +384,11 @@ public class ComplexValue extends Value {
 
         /**
          * Adds a binary value to the complex attribute value
-         * @param name the name of the sub-attribute to be added
+         * @param name     the name of the sub-attribute to be added
          * @param b64value a Base64 encoded binary string value
          * @return the Complex Value builder
-         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong type
+         * @throws SchemaException thrown if attribute name is not a sub-attribute of the Complex attribute or is wrong
+         *                         type
          */
         public Builder withBinaryAttribute(String name, String b64value) throws SchemaException {
             Attribute attr = this.val.getAttribute().getSubAttribute(name);
@@ -396,12 +404,12 @@ public class ComplexValue extends Value {
          * @param jsonObject A {@link JsonNode} object containing 1 or more attributes
          * @return the Complex Value builder
          * @throws SchemaException thrown if contained attributes not part of the current Complex parent attribute
-         * @throws ParseException if a JSON parsing error occurs
+         * @throws ParseException  if a JSON parsing error occurs
          */
         public Builder withJsonObject(JsonNode jsonObject) throws SchemaException, ParseException {
             if (jsonObject.isArray())
                 throw new SchemaException("Arrays not supported. Use MultiValue builder");
-            val = new ComplexValue(attr,jsonObject,null);
+            val = new ComplexValue(attr, jsonObject, null);
             return this;
         }
 
@@ -409,14 +417,16 @@ public class ComplexValue extends Value {
          * Allows a Json String object containing one or more attributes to be added to the complex value
          * @param jsonString A {@link String} representing a JSON object containing 1 or more attributes
          * @return the Complex Value builder
-         * @throws SchemaException thrown if contained attributes not part of the current Complex parent attribute
-         * @throws ParseException if a JSON parsing error occurs
+         * @throws JsonProcessingException occurs when the JSON content of the input string is not valid
+         * @throws SchemaException         thrown if contained attributes not part of the current Complex parent
+         *                                 attribute
+         * @throws ParseException          if a JSON parsing error occurs
          */
         public Builder withJsonObject(String jsonString) throws JsonProcessingException, SchemaException, ParseException {
 
-                JsonNode node = JsonUtil.getJsonTree(jsonString);
+            JsonNode node = JsonUtil.getJsonTree(jsonString);
 
-               return withJsonObject(node);
+            return withJsonObject(node);
         }
 
         /**

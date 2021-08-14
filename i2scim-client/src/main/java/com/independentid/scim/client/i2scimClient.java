@@ -89,8 +89,9 @@ public class i2scimClient {
      * desired. This can be disabled with {@link i2scimClient#setIgnoreServiceProviderConfig(boolean)}.
      * @param serverRootUrl The URL of the SCIM server root to contact.
      * @param authorization The authorization header value to use
-     * @throws ScimException when an SCIM protocol error occurs
-     * @throws IOException   due to connection issues
+     * @throws ScimException      when an SCIM protocol error occurs
+     * @throws IOException        due to connection issues
+     * @throws URISyntaxException due to an invalid serverRootUrl
      */
     public i2scimClient(String serverRootUrl, String authorization)
             throws ScimException, IOException, URISyntaxException {
@@ -104,8 +105,9 @@ public class i2scimClient {
      * i2scimClient#setIgnoreServiceProviderConfig(boolean)}.
      * @param serverRootUrl The URL of the SCIM server root to contact.
      * @param cred          A {@link UsernamePasswordCredentials} credential containing a username and password
-     * @throws ScimException when an SCIM protocol error occurs
-     * @throws IOException   due to connection issues
+     * @throws ScimException      when an SCIM protocol error occurs
+     * @throws IOException        due to connection issues
+     * @throws URISyntaxException due to an invalid serverRootUrl
      */
     public i2scimClient(String serverRootUrl, UsernamePasswordCredentials cred)
             throws ScimException, IOException, URISyntaxException {
@@ -167,8 +169,9 @@ public class i2scimClient {
      * @param schemaPath        A local file path for a SCIM schema JSON file (what schemas are defined). If NULL,
      *                          schema and resource types will be loaded from service provider.
      * @param resourceTypesPath A local file path for a SCIM Resource Types JSON file or NULL.
-     * @throws ScimException when an SCIM protocol error occurs
-     * @throws IOException   due to connection issues
+     * @throws ScimException      when an SCIM protocol error occurs
+     * @throws IOException        due to connection issues
+     * @throws URISyntaxException due to an invalid serverRootUrl
      */
     public i2scimClient(String serverRootUrl, String authorization, String schemaPath, String resourceTypesPath)
             throws ScimException, IOException, URISyntaxException {
@@ -419,8 +422,8 @@ public class i2scimClient {
     }
 
     /**
-     * Returns a SCIM Patch request builder. This method is used to construct a JsonPatchRequest used in conjunction with
-     * a SCIM PATCH operation.
+     * Returns a SCIM Patch request builder. This method is used to construct a JsonPatchRequest used in conjunction
+     * with a SCIM PATCH operation.
      * @return A {@link JsonPatchBuilder} object enabling construction of a SCIM Patch request using builder pattern
      */
     public JsonPatchBuilder getPatchRequestBuilder() {
@@ -454,7 +457,7 @@ public class i2scimClient {
      * supported on this method per RFC7644 indicating any request with a filter must return a List.
      * @param path   The path to a SCIM resource that returns a single object
      * @param params Scim request params {@link ScimReqParams}  (attributes requested, etc)
-     * @return A parsed {@link ScimResource} containing the object or if not found.
+     * @return A {@link i2scimResponse} containing the object or objects or appropriate SCIM error
      * @throws ScimException      when an SCIM protocol error occurs
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
@@ -500,7 +503,7 @@ public class i2scimClient {
      * @param filter A SCIM filter see <a href="https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2">RFC7644
      *               Sec 3.4.2.2</a>
      * @param params Scim request params {@link ScimReqParams}  (attributes requested, etc)
-     * @return An array of {@link ScimResource} objects matching the request.
+     * @return A {@link i2scimResponse} containing the object or objects or appropriate SCIM error
      * @throws ScimException      when an SCIM protocol error occurs
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
@@ -529,7 +532,7 @@ public class i2scimClient {
      * @param filter A SCIM filter <a href="https://datatracker.ietf.org/doc/html/rfc7644#section-3.4.2.2">RFC7644 Sec
      *               3.4.2.2</a>
      * @param params Scim request params {@link ScimReqParams}  (attributes requested, etc)
-     * @return An array of {@link ScimResource} objects matching the request.
+     * @return A {@link i2scimResponse} containing the object or objects or appropriate SCIM error
      * @throws ScimException      when an SCIM protocol error occurs
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
@@ -608,7 +611,7 @@ public class i2scimClient {
      * @param res    The {@link ScimResource} to be created on the service provider. If the resource includes an "id"
      *               the service provider will usually ignore it.
      * @param params Optional SCIM request modifiers (e.g. attributes)
-     * @return A {@link ScimResource} representation of the result returned by the server.
+     * @return A {@link i2scimResponse} containing the object response or appropriate SCIM error
      * @throws ScimException      when an SCIM protocol error occurs
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
@@ -639,7 +642,7 @@ public class i2scimClient {
      * This method performs a SCIM PUT request. The URI for the request is constructed from the {@link ScimResource}.
      * @param res    The {@link ScimResource} to be replaced on the service provider
      * @param params Optional SCIM request modifiers (e.g. attributes)
-     * @return A {@link ScimResource} representation of the result returned by the server.
+     * @return A {@link i2scimResponse} containing the object response or appropriate SCIM error
      * @throws ScimException      when an SCIM protocol error occurs
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
@@ -700,7 +703,7 @@ public class i2scimClient {
      * @param path   The relative path of the object to be modified
      * @param req    A {@link JsonPatchRequest} containing one or more {@link JsonPatchOp} operations.
      * @param params Optional SCIM request parameters or NULL
-     * @return A {@link ScimResource} representation of the modified object returned by the server
+     * @return A {@link i2scimResponse} containing the object response or appropriate SCIM error
      * @throws ScimException      when an SCIM protocol error occurs
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
@@ -727,6 +730,7 @@ public class i2scimClient {
      * Performs a SCIM Delete of the resource specified by path.
      * @param path   The relative path of the object to be deleted.
      * @param params Scim Request containing optional pre-conditions for the request
+     * @return A {@link i2scimResponse} containing the object response or appropriate SCIM error
      * @throws ScimException      when an SCIM protocol error occurs
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws IOException        due to connection issues
@@ -748,6 +752,7 @@ public class i2scimClient {
      * resource.
      * @param path   The relative path of the object to be checked.
      * @param params Scim Request containing optional pre-conditions for the request
+     * @return A {@link i2scimResponse} containing the object response or appropriate SCIM error
      * @throws ScimException      when an SCIM protocol error occurs
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
@@ -857,8 +862,8 @@ public class i2scimClient {
 
 
     /**
-     * @return The {@link SchemaManager} instance used by the i2scimClient. May be used to look up SCIM {@link com.independentid.scim.schema.Schema} and
-     * {@link Attribute} definitions.
+     * @return The {@link SchemaManager} instance used by the i2scimClient. May be used to look up SCIM {@link
+     * com.independentid.scim.schema.Schema} and {@link Attribute} definitions.
      */
     public SchemaManager getSchemaManager() {
         return this.schemaManager;

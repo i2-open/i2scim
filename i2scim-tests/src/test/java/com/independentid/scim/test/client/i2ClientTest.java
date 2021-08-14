@@ -54,7 +54,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -103,9 +102,9 @@ public class i2ClientTest {
 
         logger.info("\t0. Resetting database");
         try {
-            testUtils.resetProvider();
+            testUtils.resetProvider(true);
         } catch (ScimException | BackendException | IOException e) {
-            fail("Exception occurred during database reset: "+e.getMessage(),e);
+            fail("Exception occurred during database reset: " + e.getMessage(), e);
         }
 
         logger.info("\t1. Using auto-load schema basic auth");
@@ -130,7 +129,7 @@ public class i2ClientTest {
             client = test;
 
             SchemaManager smgr = client.getSchemaManager();
-            Attribute name = smgr.findAttribute("User:name",null);
+            Attribute name = smgr.findAttribute("User:name", null);
             assertThat(name)
                     .as("Check User:name is defined")
                     .isNotNull();
@@ -204,7 +203,7 @@ public class i2ClientTest {
     }
 
     @Test
-    public void b_addTest() throws IOException,ParseException {
+    public void b_addTest() throws IOException, ParseException {
         logger.info("B. Performing Add test");
 
         logger.info("\t1. Builder Tests");
@@ -275,11 +274,11 @@ public class i2ClientTest {
                             ).buildMultiValue())
                     .addMultiValueAttribute(client.getMultiValueBuilder("addresses")
                             .withComplexValue(client.getComplexValueBuilder("addresses")
-                                    .withStringAttribute("streetAddress","100 W Broadway Ave")
-                                    .withStringAttribute("locality","Vancouver")
-                                    .withStringAttribute("region","BC")
-                                    .withStringAttribute("country","CA")
-                                    .withStringAttribute("type","work")
+                                    .withStringAttribute("streetAddress", "100 W Broadway Ave")
+                                    .withStringAttribute("locality", "Vancouver")
+                                    .withStringAttribute("region", "BC")
+                                    .withStringAttribute("country", "CA")
+                                    .withStringAttribute("type", "work")
                                     .buildComplexValue())
                             .withJsonString(addressHollywood)
                             .buildMultiValue())
@@ -289,24 +288,24 @@ public class i2ClientTest {
             orig = builder.build();
 
         } catch (IOException e) {
-            fail("IO Error communicating with server: "+e.getMessage());
+            fail("IO Error communicating with server: " + e.getMessage());
         } catch (ScimException e) {
-            fail("SCIM error: "+e.getMessage());
+            fail("SCIM error: " + e.getMessage());
         } catch (ParseException e) {
-            fail("JSON Parsing exception: "+e.getMessage(),e);
+            fail("JSON Parsing exception: " + e.getMessage(), e);
         }
 
         try {
             logger.info("\t2. Builder create Test");
             result = builder.create(null);
         } catch (IOException e) {
-            fail("IO Error communicating with server: "+e.getMessage());
+            fail("IO Error communicating with server: " + e.getMessage());
         } catch (ScimException e) {
-            fail("SCIM error: "+e.getMessage());
+            fail("SCIM error: " + e.getMessage());
         } catch (URISyntaxException e) {
-            fail("URI Syntax error",e);
+            fail("URI Syntax error", e);
         } catch (ParseException e) {
-            fail("JSON Parsing exception: "+e.getMessage(),e);
+            fail("JSON Parsing exception: " + e.getMessage(), e);
         }
 
         assertThat(orig)
@@ -330,16 +329,16 @@ public class i2ClientTest {
             // this should cause a Bad Request - duplicate
             result = builder.create(null);
         } catch (IOException e) {
-            fail("IO Error communicating with server: "+e.getMessage());
+            fail("IO Error communicating with server: " + e.getMessage());
         } catch (ScimException e) {
             assertThat(e.getScimType())
                     .as("Duplicate error received")
                     .isEqualTo(ScimResponse.ERR_TYPE_UNIQUENESS);
             wasDup = true;
         } catch (URISyntaxException e) {
-            fail("URI Syntax error",e);
+            fail("URI Syntax error", e);
         } catch (ParseException e) {
-            fail("JSON Parsing exception: "+e.getMessage(),e);
+            fail("JSON Parsing exception: " + e.getMessage(), e);
         }
         assertThat(wasDup)
                 .as("Duplicate was detected")
@@ -353,7 +352,7 @@ public class i2ClientTest {
             try {
                 ScimResource res = client.getResourceBuilder(userStream).build();
 
-                i2scimResponse response =  client.create(res,null);
+                i2scimResponse response = client.create(res, null);
 
                 assertThat(response.hasError())
                         .as("Has no error")
@@ -368,16 +367,16 @@ public class i2ClientTest {
                         .as("Check location is not blank")
                         .isNotNull();
             } catch (URISyntaxException e) {
-               fail("Unexpected URI Exception: "+e.getMessage());
+                fail("Unexpected URI Exception: " + e.getMessage());
             } catch (ScimException e) {
-                fail ("Received SCIM error: "+e.getMessage(),e);
+                fail("Received SCIM error: " + e.getMessage(), e);
             }
         } else
-            fail("Unable to locate: "+testUserFile1);
+            fail("Unable to locate: " + testUserFile1);
 
         userStream = ConfigMgr.findClassLoaderResource(testUserFile2);
         try {
-            i2scimResponse response = client.create(client.getResourceBuilder(userStream).build(),null);
+            i2scimResponse response = client.create(client.getResourceBuilder(userStream).build(), null);
             assertThat(response.getStatus())
                     .as("User2 was added.")
                     .isEqualTo(HttpStatus.SC_CREATED);
@@ -386,15 +385,15 @@ public class i2ClientTest {
                     .as("Check location is not blank")
                     .isNotNull();
         } catch (ScimException e) {
-            fail ("Received SCIM error: "+e.getMessage(),e);
+            fail("Received SCIM error: " + e.getMessage(), e);
 
         } catch (URISyntaxException e) {
-            fail("Unexpected URI Exception: "+e.getMessage());
+            fail("Unexpected URI Exception: " + e.getMessage());
         }
 
         logger.info("\t4. Load Resource from File");
 
-        File user1File = new File("target/test-classes"+testUserFile1);  // chop off the leading / to get relative
+        File user1File = new File("target/test-classes" + testUserFile1);  // chop off the leading / to get relative
         assertThat(user1File)
                 .as("User1 file was located.")
                 .exists();
@@ -412,7 +411,7 @@ public class i2ClientTest {
         logger.info("\t1. Get specific resource test");
 
         // This test will cause a single result to be returned from user. This tests the single-result parse mode
-        i2scimResponse resp = client.get(user1Url,null);
+        i2scimResponse resp = client.get(user1Url, null);
 
         assertThat(resp.hasError())
                 .as("Has no error")
@@ -433,7 +432,7 @@ public class i2ClientTest {
         logger.info("\t2a. GET If Modified test");
         ScimReqParams params = new ScimReqParams();
         params.setHead_ifModSince(modificationDate);
-        resp = client.get(user1Url,params);
+        resp = client.get(user1Url, params);
         assertThat(resp.getStatus())
                 .as("Confirm not modified")
                 .isEqualTo(HttpStatus.SC_NOT_MODIFIED);
@@ -449,7 +448,7 @@ public class i2ClientTest {
         logger.info("\t2b. GET If Not Match test");
         params = new ScimReqParams();
         params.setHead_ifNoMatch(etag);
-        resp = client.get(user1Url,params);
+        resp = client.get(user1Url, params);
         assertThat(resp.getStatus())
                 .as("Confirm not modified")
                 .isEqualTo(HttpStatus.SC_NOT_MODIFIED);
@@ -479,7 +478,7 @@ public class i2ClientTest {
         logger.info("\t3. Retrieve all users using streaming client");
         // This test will cause a ListResponse structure to be returned. This tests the multi-result parser
 
-        resp = client.get("/Users",null);
+        resp = client.get("/Users", null);
         assertThat(resp.hasError())
                 .as("Has no error")
                 .isFalse();
@@ -511,8 +510,8 @@ public class i2ClientTest {
             ResourceBuilder builder = client.getResourceBuilder(user1res);
             // This should add an additional ims value (giving 2 values)
             builder.addComplexAttribute(client.getComplexValueBuilder("ims")
-                    .withStringAttribute("value","@barbjans2")
-                    .withStringAttribute("type","twitter")
+                    .withStringAttribute("value", "@barbjans2")
+                    .withStringAttribute("type", "twitter")
                     .buildComplexValue());
 
             ScimResource res = builder.put(null);
@@ -526,13 +525,13 @@ public class i2ClientTest {
             assertThat(mval.size())
                     .isEqualTo(2);
         } catch (IOException e) {
-            fail("IO Error communicating with server: "+e.getMessage());
+            fail("IO Error communicating with server: " + e.getMessage());
         } catch (ScimException e) {
-            fail("SCIM error: "+e.getMessage());
+            fail("SCIM error: " + e.getMessage());
         } catch (URISyntaxException e) {
-            fail("URI Syntax error",e);
+            fail("URI Syntax error", e);
         } catch (ParseException e) {
-            fail("JSON Parsing exception: "+e.getMessage(),e);
+            fail("JSON Parsing exception: " + e.getMessage(), e);
         }
     }
 
@@ -547,10 +546,10 @@ public class i2ClientTest {
 
         JsonPatchRequest req = client.getPatchRequestBuilder()
                 .withRemoveOperation("ims[type eq \"twitter\"]")
-                .withReplaceOperation("ims[type eq aim]",client.getComplexValueBuilder("ims").withStringAttribute("type","abc")
-                        .withStringAttribute("value","tobedefined").buildComplexValue()).build();
+                .withReplaceOperation("ims[type eq aim]", client.getComplexValueBuilder("ims").withStringAttribute("type", "abc")
+                        .withStringAttribute("value", "tobedefined").buildComplexValue()).build();
         try {
-            i2scimResponse resp = client.patch(user1Url,req,null);
+            i2scimResponse resp = client.patch(user1Url, req, null);
 
             assertThat(resp.hasError())
                     .as("Patch has no errors")
@@ -559,7 +558,7 @@ public class i2ClientTest {
                     .as("Has returned a result")
                     .isTrue();
 
-            if(resp.getStatus() == HttpStatus.SC_OK) {
+            if (resp.getStatus() == HttpStatus.SC_OK) {
                 ScimResource res = resp.next();
                 assertThat(resp.hasNext())
                         .as("Check only one item returned.")
@@ -575,23 +574,23 @@ public class i2ClientTest {
             } else if (resp.getStatus() == HttpStatus.SC_NO_CONTENT) {
                 logger.info("Returned with on content response.  No returned representation.");
             } else
-                fail("Return with incorrect status: "+resp.getStatus());
+                fail("Return with incorrect status: " + resp.getStatus());
 
         } catch (IOException e) {
-            fail("IO Error communicating with server: "+e.getMessage());
+            fail("IO Error communicating with server: " + e.getMessage());
         } catch (ScimException e) {
-            fail("SCIM error: "+e.getMessage());
+            fail("SCIM error: " + e.getMessage());
         } catch (URISyntaxException e) {
-            fail("URI Syntax error",e);
+            fail("URI Syntax error", e);
         } catch (ParseException e) {
-            fail("JSON Parsing exception: "+e.getMessage(),e);
+            fail("JSON Parsing exception: " + e.getMessage(), e);
         }
     }
 
     @Test
     public void f_DeleteTest() {
         try {
-           i2scimResponse resp = client.delete(user2Url,null);
+            i2scimResponse resp = client.delete(user2Url, null);
             assertThat(resp.getStatus())
                     .as("No content response")
                     .isEqualTo(HttpStatus.SC_NO_CONTENT);
@@ -603,7 +602,7 @@ public class i2ClientTest {
                     .as("Has no returned result")
                     .isFalse();
 
-            resp = resp = client.delete(user2Url,null);
+            resp = resp = client.delete(user2Url, null);
             assertThat(resp.getStatus())
                     .as("No content response")
                     .isEqualTo(HttpStatus.SC_NOT_FOUND);
@@ -616,13 +615,13 @@ public class i2ClientTest {
                     .isFalse();
             resp.close();
         } catch (IOException e) {
-            fail("IO Error communicating with server: "+e.getMessage());
+            fail("IO Error communicating with server: " + e.getMessage());
         } catch (ScimException e) {
-            fail("SCIM error: "+e.getMessage());
+            fail("SCIM error: " + e.getMessage());
         } catch (URISyntaxException e) {
-            fail("URI Syntax error",e);
+            fail("URI Syntax error", e);
         } catch (ParseException e) {
-            fail("JSON Parsing exception: "+e.getMessage(),e);
+            fail("JSON Parsing exception: " + e.getMessage(), e);
         }
     }
 
@@ -632,7 +631,7 @@ public class i2ClientTest {
 
         try {
 
-            i2scimResponse resp = client.headInfo(user1Url,null);
+            i2scimResponse resp = client.headInfo(user1Url, null);
             assertThat(resp.getStatus())
                     .as("Returned status is OK")
                     .isEqualTo(HttpStatus.SC_OK);
@@ -650,13 +649,13 @@ public class i2ClientTest {
                     .isNotEqualTo(etag);
 
         } catch (IOException e) {
-            fail("IO Error communicating with server: "+e.getMessage());
+            fail("IO Error communicating with server: " + e.getMessage());
         } catch (ScimException e) {
-            fail("SCIM error: "+e.getMessage());
+            fail("SCIM error: " + e.getMessage());
         } catch (URISyntaxException e) {
-            fail("URI Syntax error",e);
+            fail("URI Syntax error", e);
         } catch (ParseException e) {
-            fail("JSON Parsing exception: "+e.getMessage(),e);
+            fail("JSON Parsing exception: " + e.getMessage(), e);
         }
     }
 }

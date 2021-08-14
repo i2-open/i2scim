@@ -76,7 +76,7 @@ public class AccessMgrTest {
     SchemaManager smgr;
 
     @Inject
-    @Resource(name="AccessMgr")
+    @Resource(name = "AccessMgr")
     AccessManager amgr;
 
     @Inject
@@ -89,7 +89,7 @@ public class AccessMgrTest {
     private static final String testUserFile2 = "/schema/TestUser-jsmith.json";
     private static final String testPass = "t1meMa$heen";
 
-    private static ScimResource user1,user2 = null;
+    private static ScimResource user1, user2 = null;
     private static SecurityIdentity idUser1;
 
     @Test
@@ -99,8 +99,8 @@ public class AccessMgrTest {
         assertThat(amgr)
                 .as("Access Manger is available")
                 .isNotNull();
-        SecurityIdentity root = authUser(cmgr.getRootUser(),cmgr.getRootPassword(),null);
-        RequestCtx ctx = new RequestCtx("/",null,null,smgr);
+        SecurityIdentity root = authUser(cmgr.getRootUser(), cmgr.getRootPassword(), null);
+        RequestCtx ctx = new RequestCtx("/", null, null, smgr);
         ctx.setRight(AccessControl.Rights.search);
         ctx.setSecSubject(root);
         AciSet set = amgr.getAcisByPath(ctx);
@@ -109,7 +109,7 @@ public class AccessMgrTest {
                 .isGreaterThan(0);
 
         // Compare getPath vs. container
-        ctx = new RequestCtx("/ServiceProviderConfig",null,null,smgr);
+        ctx = new RequestCtx("/ServiceProviderConfig", null, null, smgr);
         ctx.setRight(AccessControl.Rights.read);
         ctx.setSecSubject(root);
         set = amgr.getAcisByPath(ctx);
@@ -122,7 +122,7 @@ public class AccessMgrTest {
                 .as("At least one ACI for ServiceProviderConfig")
                 .isGreaterThan(0);
         AccessControl aci = setnode.getAcis().get(0);
-        logger.info("ServiceProviderConfig aci\n"+aci.toString());
+        logger.info("ServiceProviderConfig aci\n" + aci.toString());
         assertThat(aci.isAnyClient())
                 .as("ServiceProviderConfig aci applies to any actor")
                 .isTrue();
@@ -136,41 +136,41 @@ public class AccessMgrTest {
         logger.info("\t\tInitializing test data.");
 
         try {
-            testUtils.resetProvider();
+            testUtils.resetProvider(true);
         } catch (ScimException | BackendException | IOException e) {
-            fail("Unable to restart test database: "+e.getMessage());
+            fail("Unable to restart test database: " + e.getMessage());
         }
 
         try {
 
             InputStream userStream1 = ConfigMgr.findClassLoaderResource(testUserFile1);
             JsonNode userNode1 = JsonUtil.getJsonTree(userStream1);
-            user1 = new ScimResource(smgr,userNode1,"Users");
+            user1 = new ScimResource(smgr, userNode1, "Users");
             user1.setId(null);
 
             InputStream userStream2 = ConfigMgr.findClassLoaderResource(testUserFile2);
             JsonNode userNode2 = JsonUtil.getJsonTree(userStream2);
-            user2 = new ScimResource(smgr,userNode2,"Users");
+            user2 = new ScimResource(smgr, userNode2, "Users");
             user2.setId(null);
-            RequestCtx ctx = new RequestCtx("/Users",null,null,smgr);
-            ScimResponse resp = handler.create(ctx,user1);
+            RequestCtx ctx = new RequestCtx("/Users", null, null, smgr);
+            ScimResponse resp = handler.create(ctx, user1);
             assertThat(resp.getStatus())
                     .as("User 1 added")
                     .isEqualTo(HttpStatus.SC_CREATED);
-            idUser1 = authUser("bjensen@example.com",testPass,user1);
+            idUser1 = authUser("bjensen@example.com", testPass, user1);
 
-            resp = handler.create(ctx,user2);
+            resp = handler.create(ctx, user2);
             assertThat(resp.getStatus())
                     .as("User 2 added")
                     .isEqualTo(HttpStatus.SC_CREATED);
             authUser("jsmith@example.com", testPass, user2);
 
         } catch (IOException | ParseException | ScimException | BackendException e) {
-            fail("Failed to initialize test Mongo DB: "+e.getLocalizedMessage());
+            fail("Failed to initialize test Mongo DB: " + e.getLocalizedMessage());
         }
     }
 
-    private SecurityIdentity authUser(String user, String pwd,ScimResource res) {
+    private SecurityIdentity authUser(String user, String pwd, ScimResource res) {
         QuarkusSecurityIdentity.Builder builder = QuarkusSecurityIdentity.builder();
         builder
                 .setPrincipal(new BasicUserPrincipal(user));
@@ -201,7 +201,7 @@ public class AccessMgrTest {
             builder.addRole("root");
         if (pwd != null)
             builder
-                .addCredential(new PasswordCredential(pwd.toCharArray()));
+                    .addCredential(new PasswordCredential(pwd.toCharArray()));
 
         return builder.build();
     }
@@ -210,12 +210,12 @@ public class AccessMgrTest {
     public void b_TestReadAsRoot() {
 
         try {
-            RequestCtx ctx = new RequestCtx("/Users",null,null,smgr);
+            RequestCtx ctx = new RequestCtx("/Users", null, null, smgr);
             ctx.setRight(AccessControl.Rights.search); //usually set by the AccessFilter
             //ctx.setRight(AccessControl.Rights.read);  // this is normally set by the Operation when constructed
 
-            SecurityIdentity root = authUser(cmgr.getRootUser(),cmgr.getRootPassword(),null);
-            assertThat(amgr.filterRequestandInitAcis(ctx,root))
+            SecurityIdentity root = authUser(cmgr.getRootUser(), cmgr.getRootPassword(), null);
+            assertThat(amgr.filterRequestandInitAcis(ctx, root))
                     .as("Is root authorized to search?")
                     .isTrue();
             assertThat(ctx.getRight())
@@ -232,11 +232,11 @@ public class AccessMgrTest {
                     .as("All attributes are returnable")
                     .isTrue();
 
-            Attribute username = smgr.findAttribute("username",ctx);
+            Attribute username = smgr.findAttribute("username", ctx);
             assertThat(set.isAttributeNotAllowed(username))
                     .as("Check username returnable")
                     .isFalse();
-            Attribute ims = smgr.findAttribute("ims",ctx);
+            Attribute ims = smgr.findAttribute("ims", ctx);
             assertThat(set.isAttributeNotAllowed(ims))
                     .as("Check ims returnable")
                     .isFalse();
@@ -251,10 +251,10 @@ public class AccessMgrTest {
     public void c_TestReadAsBJensen_self() {
 
         try {
-            RequestCtx ctx = new RequestCtx("/Users/"+user1.getId(),null,null,smgr);
+            RequestCtx ctx = new RequestCtx("/Users/" + user1.getId(), null, null, smgr);
             ctx.setRight(AccessControl.Rights.search); //usually set by the AccessFilter
 
-            assertThat(amgr.filterRequestandInitAcis(ctx,idUser1))
+            assertThat(amgr.filterRequestandInitAcis(ctx, idUser1))
                     .as("Is bjensen authorized to search?")
                     .isTrue();
             assertThat(ctx.getRight())
@@ -262,11 +262,11 @@ public class AccessMgrTest {
                     .isEqualTo(AccessControl.Rights.search);
             AciSet set = ctx.getAcis();
 
-            Attribute username = smgr.findAttribute("username",ctx);
+            Attribute username = smgr.findAttribute("username", ctx);
             assertThat(set.isAttributeNotAllowed(username))
                     .as("Check username returnable")
                     .isFalse();
-            Attribute ims = smgr.findAttribute("ims",ctx);
+            Attribute ims = smgr.findAttribute("ims", ctx);
             boolean excluded = set.isAttributeNotAllowed(ims);
             assertThat(excluded)
                     .as("Check ims returnable")
@@ -282,7 +282,7 @@ public class AccessMgrTest {
                     .as("All attributes are returnable")
                     .isTrue();
             ScimResource u1copy = user1.copy(ctx);
-            ResourceResponse resp = new ResourceResponse(u1copy,ctx);
+            ResourceResponse resp = new ResourceResponse(u1copy, ctx);
             resp.applyAciSet(ctx.getAcis());
 
             StringWriter writer = new StringWriter();
@@ -293,7 +293,7 @@ public class AccessMgrTest {
             String res = writer.toString();
 
             //u1copy should now have attributes blocked.
-            logger.debug("User 1 filtered:\n"+ res);
+            logger.debug("User 1 filtered:\n" + res);
 
             assertThat(res)
                     .as("Contains username field")
@@ -312,11 +312,11 @@ public class AccessMgrTest {
     public void d_TestReadAsBJensen_Other() {
 
         try {
-            RequestCtx ctx = new RequestCtx("/Users/"+user2.getId(),null,null,smgr);
+            RequestCtx ctx = new RequestCtx("/Users/" + user2.getId(), null, null, smgr);
             ctx.setRight(AccessControl.Rights.search); //usually set by the AccessFilter
 
 
-            assertThat(amgr.filterRequestandInitAcis(ctx,idUser1))
+            assertThat(amgr.filterRequestandInitAcis(ctx, idUser1))
                     .as("Is bjensen authorized to search?")
                     .isTrue();
             assertThat(ctx.getRight())
@@ -324,11 +324,11 @@ public class AccessMgrTest {
                     .isEqualTo(AccessControl.Rights.search);
             AciSet set = ctx.getAcis();
 
-            Attribute username = smgr.findAttribute("username",ctx);
+            Attribute username = smgr.findAttribute("username", ctx);
             assertThat(set.isAttributeNotAllowed(username))
                     .as("Check username returnable")
                     .isFalse();
-            Attribute ims = smgr.findAttribute("ims",ctx);
+            Attribute ims = smgr.findAttribute("ims", ctx);
             assertThat(set.isAttributeNotAllowed(ims))
                     .as("Check ims not returnable")
                     .isTrue();
@@ -342,7 +342,7 @@ public class AccessMgrTest {
                     .as("All attributes are not returnable")
                     .isFalse();
             ScimResource u2copy = user2.copy(ctx);
-            ResourceResponse resp = new ResourceResponse(u2copy,ctx);
+            ResourceResponse resp = new ResourceResponse(u2copy, ctx);
             resp.applyAciSet(ctx.getAcis());
 
             StringWriter writer = new StringWriter();
@@ -353,7 +353,7 @@ public class AccessMgrTest {
             String res = writer.toString();
 
             //u1copy should now have attributes blocked.
-            logger.debug("User 2 filtered:\n"+ res);
+            logger.debug("User 2 filtered:\n" + res);
 
             assertThat(res)
                     .as("Contains username field")
@@ -378,11 +378,11 @@ public class AccessMgrTest {
     public void e_TestSearchAsBJensen_Other() {
 
         try {
-            RequestCtx ctx = new RequestCtx("/Users",user2.getId(),"userName eq jsmith@example.com",smgr);
+            RequestCtx ctx = new RequestCtx("/Users", user2.getId(), "userName eq jsmith@example.com", smgr);
             ctx.setRight(AccessControl.Rights.search); //usually set by the AccessFilter
 
-            GetOp op = new GetOp(ctx,0);
-            assertThat(amgr.filterRequestandInitAcis(ctx,idUser1))
+            GetOp op = new GetOp(ctx, 0);
+            assertThat(amgr.filterRequestandInitAcis(ctx, idUser1))
                     .as("Is bjensen authorized to search?")
                     .isTrue();
             assertThat(ctx.getRight())
@@ -394,14 +394,14 @@ public class AccessMgrTest {
                     .as("Check status authorized")
                     .isFalse();
 
-            Attribute username = smgr.findAttribute("username",ctx);
+            Attribute username = smgr.findAttribute("username", ctx);
             assertThat(set.isAttributeNotAllowed(username))
                     .as("Check username searchable")
                     .isFalse();
             assertThat(set.isAttrNotReturnable(username))
                     .as("Check username returnable")
                     .isFalse();
-            Attribute name = smgr.findAttribute("name",ctx);
+            Attribute name = smgr.findAttribute("name", ctx);
             assertThat(set.isAttributeNotAllowed(name))
                     .as("Check name not searchable")
                     .isTrue();
@@ -409,11 +409,11 @@ public class AccessMgrTest {
                     .as("Check name returnable")
                     .isFalse();
 
-            ctx = new RequestCtx("/Users",user2.getId(),"name.familyname eq Smith",smgr);
+            ctx = new RequestCtx("/Users", user2.getId(), "name.familyname eq Smith", smgr);
             ctx.setRight(AccessControl.Rights.search); //usually set by the AccessFilter
             //ctx.setRight(AccessControl.Rights.read);  // this is normally set by the Operation when constructed
-            op = new GetOp(ctx,0);
-            assertThat(amgr.filterRequestandInitAcis(ctx,idUser1))
+            op = new GetOp(ctx, 0);
+            assertThat(amgr.filterRequestandInitAcis(ctx, idUser1))
                     .as("Is bjensen authorized to search?")
                     .isTrue();
             assertThat(ctx.getRight())
@@ -425,11 +425,11 @@ public class AccessMgrTest {
                     .as("Check status unauthorized")
                     .isTrue();
 
-            ctx = new RequestCtx("/Users",null,"name.familyname eq Smith",smgr);
+            ctx = new RequestCtx("/Users", null, "name.familyname eq Smith", smgr);
             ctx.setRight(AccessControl.Rights.search); //usually set by the AccessFilter
             //ctx.setRight(AccessControl.Rights.read);  // this is normally set by the Operation when constructed
-            op = new GetOp(ctx,0);
-            assertThat(amgr.filterRequestandInitAcis(ctx,idUser1))
+            op = new GetOp(ctx, 0);
+            assertThat(amgr.filterRequestandInitAcis(ctx, idUser1))
                     .as("Is bjensen authorized to search?")
                     .isTrue();
             assertThat(ctx.getRight())
@@ -441,11 +441,11 @@ public class AccessMgrTest {
                     .as("Check status unauthorized")
                     .isTrue();
 
-            ctx = new RequestCtx("/Users",user1.getId(),"name.familyname eq Jensen",smgr);
+            ctx = new RequestCtx("/Users", user1.getId(), "name.familyname eq Jensen", smgr);
             ctx.setRight(AccessControl.Rights.search); //usually set by the AccessFilter
             //ctx.setRight(AccessControl.Rights.read);  // this is normally set by the Operation when constructed
-            op = new GetOp(ctx,0);
-            assertThat(amgr.filterRequestandInitAcis(ctx,idUser1))
+            op = new GetOp(ctx, 0);
+            assertThat(amgr.filterRequestandInitAcis(ctx, idUser1))
                     .as("Is bjensen authorized to search?")
                     .isTrue();
             assertThat(ctx.getRight())
