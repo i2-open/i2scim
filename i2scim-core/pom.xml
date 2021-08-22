@@ -21,7 +21,7 @@
     <parent>
         <artifactId>i2scim-parent</artifactId>
         <groupId>com.independentid</groupId>
-        <version>0.6.dev</version>
+        <version>0.6.0-Alpha</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
