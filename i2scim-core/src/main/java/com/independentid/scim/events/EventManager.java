@@ -22,7 +22,6 @@ import com.independentid.scim.op.Operation;
 import com.independentid.scim.resource.TransactionRecord;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
-import com.independentid.scim.server.ScimV2Servlet;
 import io.quarkus.runtime.Startup;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
@@ -116,7 +115,7 @@ public class EventManager {
     }
 
     /**
-     * Called by the servlet (e.g. {@link ScimV2Servlet}) after the operation is executed.
+     * Called by the servlet (e.g. {ScimV2Servlet}) after the operation is executed.
      * @param op The {@link Operation} that was performed (not complete or errored)
      */
     public void publishEvent(Operation op) {

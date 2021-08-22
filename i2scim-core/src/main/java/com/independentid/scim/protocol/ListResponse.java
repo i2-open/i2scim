@@ -35,264 +35,264 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
- * ListResponse is used to generate a SCIM response per RFC7644. Note:
- * For error responses use <ScimResponse>. For single resource responses use <ResourceResponse>.
+ * ListResponse is used to generate a SCIM response per RFC7644. Note: For error responses use {@link ScimResponse}. For
+ * single resource responses use {@link ResourceResponse}.
  * @author pjdhunt
- *
  */
 public class ListResponse extends ScimResponse {
-	private static final Logger logger = LoggerFactory.getLogger(ListResponse.class);
+    private static final Logger logger = LoggerFactory.getLogger(ListResponse.class);
+
+    public static final String ATTR_RESOURCES = "Resources";
+    public static final String ATTR_TOTRES = "totalResults";
+    public static final String ATTR_ITEMPERPAGE = "itemsPerPage";
+    public static final String ATTR_STARTINDEX = "startIndex";
+
+    public final static SimpleDateFormat headDate = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");
+
+    protected Date lastMod;
+    protected int totalRes;
+
+    protected RequestCtx ctx;
+    protected int smax;  // max server response size
+    protected String id;
+    public List<Attribute> sortAttrs;
+    public boolean isDescend = false;
+
+    protected ArrayList<ScimResource> entries = new ArrayList<>();
+
+    /**
+     * Constructor used to create an empty SCIM List Response.
+     * @param ctx        A {@link RequestCtx} object containing the original request information.
+     * @param maxResults The maximum results that can be returned to the client
+     */
+    public ListResponse(RequestCtx ctx, int maxResults) {
+        super();
+        this.ctx = ctx;
+        this.smax = maxResults;
+        if (this.ctx.count == 0 || this.ctx.count > maxResults)
+            this.ctx.count = this.smax;
+        this.totalRes = 0;
+
+        this.id = null;
+        this.lastMod = null;
+
+        ServletContext sctx = ctx.getServletContext();
+        if (sctx == null)
+            setLocation(ctx.path);
+        else
+            setLocation(sctx.getRealPath(ctx.path));
+    }
+
+    /**
+     * Creates a single resource response. Used in connection with search queries where RFC7644 requires a ListResponse
+     * format. For resource retrievals see {@link ResourceResponse}.
+     * @param val The {@link ScimResource} object to be returned.
+     * @param ctx The {@link RequestCtx} containing the original request/search.
+     */
+    public ListResponse(final ScimResource val, RequestCtx ctx) {
+        super();
+        this.ctx = ctx;
+        initSort(ctx); // just in case this class is extended, otherwise not needed.
+        setLocation(val.getMeta().getLocation());
+
+        this.etag = val.getMeta().getVersion();
+        this.lastMod = val.getMeta().getLastModifiedDate();
+        this.id = val.getId();
+        this.entries.add(val);
+        this.totalRes = 1;
 
 
-	public final static SimpleDateFormat headDate = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz");
-	
-	protected Date lastMod;
-	protected int totalRes;
+    }
 
-	protected RequestCtx ctx;
-	protected int smax;  // max server response size
-	protected String id;
-	public List<Attribute> sortAttrs;
-	public boolean isDescend = false;
+    public String getId() {
+        return this.id;
+    }
 
-	protected ArrayList<ScimResource> entries = new ArrayList<>();
-	
-	/**
-	 * Constructor used to create an empty SCIM List Response.
-	 * @param ctx A <RequestCtx> object containing the original request information.
-	 * @param maxResults The maximum results that can be returned to the client
-	 *
-	 */
-	public ListResponse(RequestCtx ctx, int maxResults) {
-		super();
-		this.ctx = ctx; 
-		this.smax = maxResults;
-		if (this.ctx.count == 0 || this.ctx.count > maxResults)
-			this.ctx.count = this.smax;
-		this.totalRes = 0;
+    public void initSort(RequestCtx ctx) {
+        if (ctx.sortBy == null) {
+            this.sortAttrs = null;
+            return;
+        }
+        if (ctx.sortOrder != null)
+            this.isDescend = ctx.sortOrder.toLowerCase(Locale.ROOT).startsWith("d");
 
-		this.id = null;
-		this.lastMod = null;
-		
-		ServletContext sctx = ctx.getServletContext();
-		if (sctx == null)
-			setLocation(ctx.path);  
-		else
-			setLocation(sctx.getRealPath(ctx.path));
-	}
-	
-	/**
-	 * Creates a single resource response. Used in connection with search queries where RFC7644 requires a ListResponse format.
-	 * For resource retrievals see <ResourceResponse>.
-	 * @param val The <ScimResource> object to be returned.
-	 * @param ctx The <RequestCtx> containing the original request/search.
-	 */
-	public ListResponse(final ScimResource val, RequestCtx ctx) {
-		super();
-		this.ctx = ctx;
-		initSort(ctx); // just in case this class is extended, otherwise not needed.
-		setLocation(val.getMeta().getLocation());
-		
-		this.etag = val.getMeta().getVersion();
-		this.lastMod = val.getMeta().getLastModifiedDate();
-		this.id = val.getId();
-		this.entries.add(val);
-		this.totalRes = 1;
+        this.sortAttrs = new ArrayList<>();
+        String[] sortAttrsReq = ctx.sortBy.split(",");
+        SchemaManager smgr = ctx.getSchemaMgr();
+        for (String attrReq : sortAttrsReq) {
+            Attribute attr = smgr.findAttribute(attrReq, ctx);
+            if (attr != null)
+                this.sortAttrs.add(attr);
+        }
+    }
 
-		
-	}
-	
-	public String getId() {
-		return this.id;
-	}
+    public ListResponse(final List<ScimResource> vals, RequestCtx ctx, int maxResults) throws ScimException {
+        super();
+        this.ctx = ctx;
+        this.smax = maxResults;
+        this.id = null;
+        initSort(ctx);
+        if (this.ctx.count == 0 || this.ctx.count > maxResults)
+            this.ctx.count = this.smax;
 
-	public void initSort(RequestCtx ctx) {
-		if (ctx.sortBy == null) {
-			this.sortAttrs = null;
-			return;
-		}
-		if (ctx.sortOrder != null)
-			this.isDescend = ctx.sortOrder.toLowerCase(Locale.ROOT).startsWith("d");
+        this.totalRes = vals.size();
+        if (this.totalRes > this.smax) {
+            setError(new TooManyException());
 
-		this.sortAttrs = new ArrayList<>();
-		String[] sortAttrsReq = ctx.sortBy.split(",");
-		SchemaManager smgr = ctx.getSchemaMgr();
-		for (String attrReq: sortAttrsReq) {
-			Attribute attr = smgr.findAttribute(attrReq,ctx);
-			if (attr != null)
-				this.sortAttrs.add(attr);
-		}
-	}
-	
-	public ListResponse(final List<ScimResource> vals, RequestCtx ctx, int maxResults) throws ScimException {
-		super();
-		this.ctx = ctx;
-		this.smax = maxResults;
-		this.id = null;
-		initSort(ctx);
-		if (this.ctx.count == 0 || this.ctx.count > maxResults)
-			this.ctx.count = this.smax;
-		
-		this.totalRes = vals.size();
-		if (this.totalRes > this.smax) {
-			setError(new TooManyException());
-			
-		} else {
+        } else {
+            List<ScimResource> sorted = doSort(vals);
 
-		
-			int start = ctx.startIndex-1;
+            int start = ctx.startIndex - 1;
 
-			int stop = start + ctx.count;
+            int stop = start + ctx.count;
 
-			if (stop > this.totalRes) {
-				stop = this.totalRes;
-			}
+            if (stop > this.totalRes) {
+                stop = this.totalRes;
+            }
 
-			for (int i = start; (i < stop && i < this.totalRes); i++) {
-				ScimResource resource = vals.get(i);
-				Meta meta = resource.getMeta();
-				if (meta != null) {
-					Date mdate = meta.getLastModifiedDate();
-					if (mdate != null && (lastMod == null || mdate.after(lastMod)))
-						lastMod = mdate;
-				}
-				this.entries.add(resource);
-			}
-			
-			
-			if (this.entries.size() == 1 && ctx.getPathId() != null) {
-				this.etag = this.entries.get(0).getMeta().getVersion();
-				setLocation(this.entries.get(0).getMeta().getLocation());
-			}
-			else setLocation(ctx.getPath());
-			//setLocation(this.ctx.sctx.getRealPath(ctx.path));
-		}
-		
-	}
-	
-	public List<ScimResource> getResults() {
-		return this.entries;
-	}
-	
-	public Iterator<ScimResource> entries() {
-		return this.entries.iterator();
-	}
-	
-	public int getSize() {
-		return this.entries.size();
-	}
+            for (int i = start; (i < stop && i < this.totalRes); i++) {
+                ScimResource resource = sorted.get(i);
+                Meta meta = resource.getMeta();
+                if (meta != null) {
+                    Date mdate = meta.getLastModifiedDate();
+                    if (mdate != null && (lastMod == null || mdate.after(lastMod)))
+                        lastMod = mdate;
+                }
+                this.entries.add(resource);
+            }
 
-	/* (non-Javadoc)
-	 * @see com.independentid.scim.protocol.ScimResponse#serialize(com.fasterxml.jackson.core.JsonGenerator, com.independentid.scim.protocol.RequestCtx)
-	 */
-	@Override
-	public void serialize(JsonGenerator gen, RequestCtx sctx) throws IOException {
-		serialize(gen, sctx, false);
-	}
+            sorted = null;
 
-	@Override
-	public void setHeaders(RequestCtx ctx) {
-		HttpServletResponse resp = ctx.getHttpServletResponse();
-		if (resp != null) {
-			resp.setStatus(getStatus());
-			if (this.lastMod != null)
-				resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
-			if (this.getLocation() != null)
-				resp.setHeader(ScimParams.HEADER_LOCATION, this.getLocation());
-			if (this.etag != null) {
-				resp.setHeader(ScimParams.HEADER_ETAG, "\"" + this.etag + "\"");
-			}
-		}
-	}
 
-	public void doSort() {
-		if (this.sortAttrs == null)
-			return; // sort not requested.
+            if (this.entries.size() == 1 && ctx.getPathId() != null) {
+                this.etag = this.entries.get(0).getMeta().getVersion();
+                setLocation(this.entries.get(0).getMeta().getLocation());
+            } else setLocation(ctx.getPath());
+            //setLocation(this.ctx.sctx.getRealPath(ctx.path));
+        }
 
-		ScimResource[] resources = entries.toArray(new ScimResource[0]);
-		Arrays.sort(resources, new Comparator<ScimResource>() {
-			@Override
-			public int compare(ScimResource o1, ScimResource o2) {
-				List<Attribute> sortAttrs = ListResponse.this.sortAttrs;
-				for (Attribute attr: sortAttrs) {
-					Value val1 = o1.getValue(attr);
-					Value val2 = o2.getValue(attr);
-					if (val1 == null && val2 == null)
-						continue;
-					int res;
-					if (val1 == null || val2 == null) {
-						if (val1 == null)
-							res = 1;  // This algorithm will sort missing values after non-null values
-						else
-							res = -1;
-					} else
-						res = val1.compareTo(val2);
-					if (res == 0)
-						continue; // try the next sort in the list
-					if (ListResponse.this.isDescend)
-						return -1 * res;
-					return res;
-				}
-				return 0;
-			}
-		});
+    }
 
-		entries = new ArrayList<>();
-		entries.addAll(Arrays.asList(resources));
+    public List<ScimResource> getResults() {
+        return this.entries;
+    }
 
-	}
+    public Iterator<ScimResource> entries() {
+        return this.entries.iterator();
+    }
 
-	/* (non-Javadoc)
-	 * @see com.independentid.scim.protocol.ScimResponse#serialize(com.fasterxml.jackson.core.JsonGenerator, com.independentid.scim.protocol.RequestCtx)
-	 */
-	@Override
-	public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException {
-		
-		//TODO: What happens if getStatus = HttpServletResponse.SC_OK
-		//TODO: What if entries.size == 0?
-		
-		/* Note: Normally this.ctx and sctx are the same. However server may modify
-		 * sctx after result set creation (or have chosen to insert an override). 
-		 */
+    public int getSize() {
+        return this.entries.size();
+    }
 
-		doSort();
+    /* (non-Javadoc)
+     * @see com.independentid.scim.protocol.ScimResponse#serialize(com.fasterxml.jackson.core.JsonGenerator, com.independentid.scim.protocol.RequestCtx)
+     */
+    @Override
+    public void serialize(JsonGenerator gen, RequestCtx sctx) throws IOException {
+        serialize(gen, sctx, false);
+    }
 
-		// For multiple or filtered results, return the result in a ListResponse
-		gen.writeStartObject();
-		gen.writeArrayFieldStart("schemas");
-		gen.writeString(ScimResponse.SCHEMA_LISTRESP);
-		gen.writeEndArray();
-		gen.writeNumberField("totalResults",this.totalRes);
-		gen.writeNumberField("itemsPerPage",this.entries.size());
-		gen.writeNumberField("startIndex", this.ctx.startIndex);
-		gen.writeArrayFieldStart("Resources");
-		
-		Iterator<ScimResource> iter = this.entries();
-		
-		
-		while(iter.hasNext()) {
-			ScimResource resource = iter.next();
-			try {
-				resource.serialize(gen, ctx, false);
-			} catch (ScimException e) {
-				//TODO This should not happen
-				logger.error("Unexpected exception serializing a response value: "+e.getMessage(),e);
-			}
-		}
-		gen.writeEndArray();
-		gen.writeEndObject();
-		// Set Last Modified based on the most recently modified result in the set.
-		setHeaders(ctx);
-	}
+    @Override
+    public void setHeaders(RequestCtx ctx) {
+        HttpServletResponse resp = ctx.getHttpServletResponse();
+        if (resp != null) {
+            resp.setStatus(getStatus());
+            if (this.lastMod != null)
+                resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
+            if (this.getLocation() != null)
+                resp.setHeader(ScimParams.HEADER_LOCATION, this.getLocation());
+            if (this.etag != null) {
+                resp.setHeader(ScimParams.HEADER_ETAG, "\"" + this.etag + "\"");
+            }
+        }
+    }
 
-	@Override
-	protected void processReadableResult(AciSet set) {
-		for (ScimResource res : this.entries) {
-			Set<Attribute> attrs = res.getAttributesPresent();
-			for (Attribute attr: attrs) {
-				if (set.isAttrNotReturnable(attr))
-					res.removeValue(attr);
-			}
-		}
-	}
+    public List<ScimResource> doSort(List<ScimResource> vals) {
+        if (this.sortAttrs == null)
+            return vals; // sort not requested.
+
+        ScimResource[] resources = vals.toArray(new ScimResource[0]);
+        Arrays.sort(resources, (o1, o2) -> {
+            List<Attribute> sortAttrs = ListResponse.this.sortAttrs;
+            for (Attribute attr : sortAttrs) {
+                Value val1 = o1.getValue(attr);
+                Value val2 = o2.getValue(attr);
+                if (val1 == null && val2 == null)
+                    continue;
+                int res;
+                if (val1 == null || val2 == null) {
+                    if (val1 == null)
+                        res = 1;  // This algorithm will sort missing values after non-null values
+                    else
+                        res = -1;
+                } else
+                    res = val1.compareTo(val2);
+                if (res == 0)
+                    continue; // try the next sort in the list
+                if (ListResponse.this.isDescend)
+                    return -1 * res;
+                return res;
+            }
+            return 0;
+        });
+
+        ArrayList<ScimResource> res = new ArrayList<>();
+        res.addAll(Arrays.asList(resources));
+        return res;
+    }
+
+    /* (non-Javadoc)
+     * @see com.independentid.scim.protocol.ScimResponse#serialize(com.fasterxml.jackson.core.JsonGenerator, com.independentid.scim.protocol.RequestCtx)
+     */
+    @Override
+    public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException {
+
+        //TODO: What happens if getStatus = HttpServletResponse.SC_OK
+        //TODO: What if entries.size == 0?
+
+        /* Note: Normally this.ctx and sctx are the same. However server may modify
+         * sctx after result set creation (or have chosen to insert an override).
+         */
+
+        //doSort();
+
+        // For multiple or filtered results, return the result in a ListResponse
+        gen.writeStartObject();
+        gen.writeArrayFieldStart(ScimParams.ATTR_SCHEMAS);
+        gen.writeString(ScimResponse.SCHEMA_LISTRESP);
+        gen.writeEndArray();
+        gen.writeNumberField(ATTR_TOTRES, this.totalRes);
+        gen.writeNumberField(ATTR_ITEMPERPAGE, this.entries.size());
+        gen.writeNumberField(ATTR_STARTINDEX, this.ctx.startIndex);
+        gen.writeArrayFieldStart(ATTR_RESOURCES);
+
+        Iterator<ScimResource> iter = this.entries();
+
+
+        while (iter.hasNext()) {
+            ScimResource resource = iter.next();
+            try {
+                resource.serialize(gen, ctx, false);
+            } catch (ScimException e) {
+                //TODO This should not happen
+                logger.error("Unexpected exception serializing a response value: " + e.getMessage(), e);
+            }
+        }
+        gen.writeEndArray();
+        gen.writeEndObject();
+        // Set Last Modified based on the most recently modified result in the set.
+        setHeaders(ctx);
+    }
+
+    @Override
+    protected void processReadableResult(AciSet set) {
+        for (ScimResource res : this.entries) {
+            Set<Attribute> attrs = res.getAttributesPresent();
+            for (Attribute attr : attrs) {
+                if (set.isAttrNotReturnable(attr))
+                    res.removeValue(attr);
+            }
+        }
+    }
 }

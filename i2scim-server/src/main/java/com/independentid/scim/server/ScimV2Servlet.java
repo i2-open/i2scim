@@ -66,7 +66,7 @@ public class ScimV2Servlet extends HttpServlet {
 
 	@Inject
 	@Resource(name="PoolMgr")
-  	PoolManager pool;
+	PoolManager pool;
 
 	//@Inject
 	//EventManager eventManager;

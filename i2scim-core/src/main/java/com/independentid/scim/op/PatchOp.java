@@ -41,7 +41,10 @@ public class PatchOp extends Operation implements IBulkOp {
     private final static Logger logger = LoggerFactory.getLogger(PatchOp.class);
 
     private final BulkOps parent;
-    private JsonPatchRequest preq;
+
+
+
+    private JsonPatchRequest patchRequest;
 
 
     /**
@@ -93,7 +96,7 @@ public class PatchOp extends Operation implements IBulkOp {
                         "Detected array, expecting JSON object for SCIM PATCH request."));
                 return;
             }
-            this.preq = new JsonPatchRequest(node);
+            this.patchRequest = new JsonPatchRequest(node, ctx);
 
         } catch (SchemaException e) {
             ScimException se;
@@ -106,7 +109,15 @@ public class PatchOp extends Operation implements IBulkOp {
             if (logger.isDebugEnabled())
                 logger.debug("Invalid PATCH request: " + e.getMessage(), e);
             setCompletionError(e);
+        } catch (BadFilterException e) {
+            if (logger.isDebugEnabled())
+                logger.debug("Error parsing PATCH filter: "+e.getMessage(),e);
+            setCompletionError(e);
         }
+    }
+
+    public JsonPatchRequest getPatchRequest() {
+        return patchRequest;
     }
 
     public BulkOps getParentBulkRequest() {
@@ -116,7 +127,7 @@ public class PatchOp extends Operation implements IBulkOp {
     @Override
     protected void doOperation() {
         try {
-            this.scimresp = backendHandler.patch(this.ctx, this.preq);
+            this.scimresp = backendHandler.patch(this.ctx, this.patchRequest);
 
         } catch (ScimException e) {
             // Catch the scim error and serialize it
@@ -144,7 +155,7 @@ public class PatchOp extends Operation implements IBulkOp {
             ObjectNode node = JsonUtil.getMapper().createObjectNode();
             node.put(BulkOps.PARAM_METHOD,Bulk_Method_PATCH);
             node.put(BulkOps.PARAM_PATH,ctx.getPath());
-            node.set(BulkOps.PARAM_DATA,preq.toJsonNode());
+            node.set(BulkOps.PARAM_DATA, patchRequest.toJsonNode());
 
             OpStat stats = getStats();
             node.put(BulkOps.PARAM_SEQNUM,stats.executionNum);

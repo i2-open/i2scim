@@ -76,7 +76,7 @@ public class ScimLoadSampleTestParallel {
     //private static String userSchemaId = "urn:ietf:params:scim:schemas:core:2.0:User";
 
     @Inject
-    @Resource(name="SchemaMgr")
+    @Resource(name = "SchemaMgr")
     SchemaManager smgr;
 
     @Inject
@@ -91,7 +91,7 @@ public class ScimLoadSampleTestParallel {
     //private final static String dataSet = "classpath:/data/user-10pretty.json";
     private final static String dataSet = "classpath:/data/user-5000.json";
 
-    private  static ArrayList<ScimResource> data;
+    private static ArrayList<ScimResource> data;
     private final static List<String> paths = Collections.synchronizedList(new ArrayList<>());
 
     static String req = null;
@@ -104,42 +104,46 @@ public class ScimLoadSampleTestParallel {
     }
 
     @Test
-    public void a_initializeMongo()  {
+    public void a_initializeMongo() {
 
         logger.info("========== Scim Concurrent Test Sample Load ==========");
         logger.info("\tA. Initializing test data set");
 
         try {
-            testUtils.resetProvider();
+            testUtils.resetProvider(true);
         } catch (ScimException | BackendException | IOException e) {
-            Assertions.fail("Failed to reset provider: "+e.getMessage());
+            Assertions.fail("Failed to reset provider: " + e.getMessage());
         }
 
         try {
-            data = ScimLoadSampleTest.readSampleData(smgr,dataSet);
+            data = ScimLoadSampleTest.readSampleData(smgr, dataSet);
         } catch (IOException | ParseException | ScimException e) {
-            fail("Unable to read in sample data: "+e.getLocalizedMessage(),e);
+            fail("Unable to read in sample data: " + e.getLocalizedMessage(), e);
         }
     }
 
     public static class ProcessedCounter {
-        private static int count= 0;
+        private static int count = 0;
+
         public static synchronized void increment() {
             int temp = count;
             count = temp + 1;
         }
 
-        public static int getCount() { return count; }
+        public static int getCount() {
+            return count;
+        }
     }
+
     /**
      * This test checks that a JSON user can be parsed into a SCIM Resource
      */
     @Test
     public void b_parallelTest() throws MalformedURLException, InterruptedException {
-        logger.info("\tB. Adding sample users: Count="+data.size()+", threads="+testThreads);
+        logger.info("\tB. Adding sample users: Count=" + data.size() + ", threads=" + testThreads);
         Instant start = Instant.now();
 
-        URL rUrl = new URL(baseUrl,"/Users");
+        URL rUrl = new URL(baseUrl, "/Users");
         req = rUrl.toString();
 
         int numberOfThreads = testThreads;
@@ -156,7 +160,7 @@ public class ScimLoadSampleTestParallel {
                 CloseableHttpClient client = HttpClients.createDefault();
                 ScimResource record = getRecord();
                 while (record != null) {
-                    sendUser(client,record);
+                    sendUser(client, record);
                     cnt++;  // increment records processed
                     record = getRecord(); // grab the next if available
                 }
@@ -167,19 +171,19 @@ public class ScimLoadSampleTestParallel {
                 }
                 Instant tend = Instant.now();
                 Duration threadTime = Duration.between(tstart, tend);
-                String elapse = threadTime.getSeconds()+"."+threadTime.getNano()+"secs";
-                logger.info("\t***Thread #"+ tcnt +" complete. Number of records processed: "+cnt+", elapsed: "+elapse);
+                String elapse = threadTime.getSeconds() + "." + threadTime.getNano() + "secs";
+                logger.info("\t***Thread #" + tcnt + " complete. Number of records processed: " + cnt + ", elapsed: " + elapse);
                 latch.countDown();
             });
         }
         latch.await();
         Instant end = Instant.now();
         Duration loadTime = Duration.between(start, end);
-        String elapse = loadTime.getSeconds()+"."+loadTime.getNano()+"secs";
+        String elapse = loadTime.getSeconds() + "." + loadTime.getNano() + "secs";
         logger.info("------Summary------");
-        logger.info("Read time:\t"+readTime);
-        logger.info("Create time:\t"+elapse);
-        logger.info("Records read: "+data.size()+", processed: "+ProcessedCounter.count+", created: "+paths.size());
+        logger.info("Read time:\t" + readTime);
+        logger.info("Create time:\t" + elapse);
+        logger.info("Records read: " + data.size() + ", processed: " + ProcessedCounter.count + ", created: " + paths.size());
 
         // There are a number of conflicts. Actual is 4978
         //assertThat(paths.size())

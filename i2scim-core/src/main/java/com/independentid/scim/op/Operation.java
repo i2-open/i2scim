@@ -134,8 +134,8 @@ public class Operation extends RecursiveAction {
 
     /**
      * Constructor for a SCIM operation.
-     * @param req              The HttpServletRequest
-     * @param resp             The HttpServiceResponse
+     * @param req  The HttpServletRequest
+     * @param resp The HttpServiceResponse
      */
     public Operation(HttpServletRequest req, HttpServletResponse resp) {
         this.stats = new OpStat(); // Collect stats as part of a normal single request operation
@@ -200,9 +200,9 @@ public class Operation extends RecursiveAction {
      * Processes the input JsonNode and translates it into the appropriate SCIM request structures in order to make a
      * call to the backend.
      * @param node The HTTP request payload that has been parsed as JsonNode
-     *
      */
-    protected void parseJson(JsonNode node) {}
+    protected void parseJson(JsonNode node) {
+    }
 
     /**
      * @return The current runnable execution state. Valid states are 'pending', 'preOp', 'executing', 'postOp', 'done',
@@ -245,7 +245,9 @@ public class Operation extends RecursiveAction {
         return this.resp;
     }
 
-    public ScimResponse getScimResponse() { return this.isError()?null:this.scimresp; }
+    public ScimResponse getScimResponse() {
+        return this.isError() ? null : this.scimresp;
+    }
 
     public boolean opDone() {
         return (isError() || opState.equals(OpState.done) || opState.equals(OpState.fatal));
@@ -281,7 +283,7 @@ public class Operation extends RecursiveAction {
      * Automatically generates the appropriate response (success or failure) and adds it to the current JsonGenerator.
      * The caller will eventually need to flush and close the generator.
      * @param gen A JsonGenerator object enabled to write the response in JSON formm
-     * @throws IOException due to error writing JSON response with <JsonGenerator>.
+     * @throws IOException due to error writing JSON response with {@link JsonGenerator}.
      */
     public void doResponse(JsonGenerator gen) throws IOException {
         if (isError()) {
@@ -293,9 +295,9 @@ public class Operation extends RecursiveAction {
 
     /**
      * This will add this operation's success response to the current JsonGenerator. The caller will eventually need to
-     * flush & close the generator.
+     * flush and close the generator.
      * @param gen JsonGenerator object
-     * @throws IOException due to error writing JSON response with <JsonGenerator>.
+     * @throws IOException due to error writing JSON response with {@link JsonGenerator}.
      */
     public void doSuccess(JsonGenerator gen) throws IOException {
 
@@ -304,9 +306,9 @@ public class Operation extends RecursiveAction {
 
     /**
      * This will add this operation's failure response to the current JsonGenerator. The caller will eventually need to
-     * flush & close the generator.
+     * flush and close the generator.
      * @param gen JsonGenerator object
-     * @throws IOException due to error writing JSON response with <JsonGenerator>.
+     * @throws IOException due to error writing JSON response with {@link JsonGenerator}.
      */
     public void doFailure(JsonGenerator gen) throws IOException {
         if (this.err instanceof ScimException) {
@@ -331,7 +333,8 @@ public class Operation extends RecursiveAction {
         }
     }
 
-    protected void doOperation() throws ScimException {}
+    protected void doOperation() throws ScimException {
+    }
 
     /**
      * doPreOperation can be called to prepare the transaction. It can be used to parse the request using injected beans
@@ -502,19 +505,19 @@ public class Operation extends RecursiveAction {
             String tranId = ctx.getTranId();
             String subj = "";
             if (identity != null)
-                subj = " "+ identity;
+                subj = " " + identity;
             String path = ctx.getPath();
-            if(newResource != null) {
+            if (newResource != null) {
                 //This is used to indicate URL for created resource
                 path = newResource.getMeta().getLocation();
             }
             if (req != null)
-                return "["+req.getRemoteAddr()+subj+"] "
-                        + " Tx:"+((tranId != null)?tranId:"NULL") + " "
+                return "[" + req.getRemoteAddr() + subj + "] "
+                        + " Tx:" + ((tranId != null) ? tranId : "NULL") + " "
                         + req.getMethod() + " "
                         + path;
-            return "[<INTERNAL>"+subj+"] Tx:"+((tranId != null)?tranId:"NULL") + " "
-                    + this.getClass().getSimpleName()+" "+path;
+            return "[<INTERNAL>" + subj + "] Tx:" + ((tranId != null) ? tranId : "NULL") + " "
+                    + this.getClass().getSimpleName() + " " + path;
         }
 
         return "<Missing context>";

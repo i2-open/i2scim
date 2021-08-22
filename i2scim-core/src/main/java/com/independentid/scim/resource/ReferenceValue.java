@@ -40,7 +40,7 @@ public class ReferenceValue extends Value implements IBulkIdTarget  {
 	URI value;
 	IBulkIdResolver resolver;
 	
-	public ReferenceValue(Attribute attr, JsonNode node) throws ConflictException, SchemaException, ParseException {
+	public ReferenceValue(Attribute attr, JsonNode node) throws SchemaException, ParseException {
 		this(attr, node, null);
 	}
 	
@@ -58,7 +58,7 @@ public class ReferenceValue extends Value implements IBulkIdTarget  {
 	}
 
 
-	public ReferenceValue(Attribute attr, JsonNode node, IBulkIdResolver bulkIdResolver) throws ConflictException, SchemaException, ParseException {
+	public ReferenceValue(Attribute attr, JsonNode node, IBulkIdResolver bulkIdResolver) throws SchemaException, ParseException {
 		super(attr, node);
 		this.resolver = bulkIdResolver;
 		
@@ -84,7 +84,7 @@ public class ReferenceValue extends Value implements IBulkIdTarget  {
 
 	@Override
 	public void parseJson(JsonNode node)
-			throws ConflictException, SchemaException, ParseException {
+			throws SchemaException, ParseException {
 		setUri(attr,node.asText());
 	}
 

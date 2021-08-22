@@ -23,6 +23,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
+import com.independentid.scim.client.ResourceBuilder;
+import com.independentid.scim.client.i2scimClient;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.core.err.NoTargetException;
@@ -90,12 +92,14 @@ public class ScimResourceTest {
 		
 		logger.info("========== ScimResource Test ==========");
 
+		i2scimClient client = new i2scimClient(this.smgr);
+
 		try {
 			InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 			assert userStream != null;
 
 			//InputStream userStream = this.resourceloader.getResource(testUserFile1).getInputStream();
-			ScimResourceBuilder builder = ScimResource.builder(smgr,userStream);
+			ResourceBuilder builder = client.getResourceBuilder(userStream);
 			user1 = builder.build();
 			String outString = user1.toJsonString();
 			logger.debug("User loaded: \n"+ outString);
@@ -106,7 +110,7 @@ public class ScimResourceTest {
 			userStream.close();
 			
 			userStream = ConfigMgr.findClassLoaderResource(testUserFile2);
-			user2 = ScimResource.builder(smgr,userStream).build();
+			user2 = client.getResourceBuilder(userStream).build();
 			logger.debug("User loaded: \n"+user2);
 			
 			assertThat(user1)
@@ -493,13 +497,15 @@ public class ScimResourceTest {
 		String jvalStr = "{\"emails\": [{\"value\":\"test@example.com\",\"type\":\"TEST\"}],\"externalId\": \"1234567890\"}";
 		String jsonOP = "{\"op\": \"add\",\"value\": "+jvalStr+"}";
 		JsonNode opJsonNode = JsonUtil.getJsonTree(jsonOP);
-		JsonPatchOp addResourceLevelOp = new JsonPatchOp(opJsonNode);
+
+		RequestCtx ctx = new RequestCtx("/Users",smgr);
+		JsonPatchOp addResourceLevelOp = new JsonPatchOp(opJsonNode, ctx);
 
 		logger.info("\t... checking JsonPatchOp serialization");
 		JsonNode pnode = addPhoneNumberOp.toJsonNode();
 		//logger.info("PatchOp:\n"+pnode.toPrettyString());
 
-		JsonPatchOp patchOp2 = new JsonPatchOp(pnode);
+		JsonPatchOp patchOp2 = new JsonPatchOp(pnode, ctx);
 		assertThat(addPhoneNumberOp.path)
 				.as("Check paths are the same")
 				.isEqualTo(patchOp2.path);
@@ -525,8 +531,8 @@ public class ScimResourceTest {
 
 
 		logger.info("\t\t raw request:\n"+reqJson.toPrettyString());
-		RequestCtx ctx = new RequestCtx(user1.getMeta().getLocation(),null,null,smgr);
-		JsonPatchRequest jpr = new JsonPatchRequest(reqJson);
+		ctx = new RequestCtx(user1.getMeta().getLocation(),null,null,smgr);
+		JsonPatchRequest jpr = new JsonPatchRequest(reqJson, ctx);
 
 		assertThat(jpr.getSize())
 				.as("Check three operations parsed")
@@ -718,7 +724,7 @@ public class ScimResourceTest {
 
 		hadCorrectError = false;
 		try {
-			new JsonPatchRequest(reqJson);
+			new JsonPatchRequest(reqJson, ctx);
 		} catch (InvalidValueException e) {
 			hadCorrectError = true;
 		}

@@ -36,53 +36,52 @@ import java.util.Base64.Encoder;
 /**
  * This Value type handles SCIM Binary Value types which are base64 encoded values.
  * @author pjdhunt
- *
  */
 public class BinaryValue extends Value {
 
-	static final Decoder decoder = Base64.getDecoder();
-	static final Encoder encoder = Base64.getEncoder();
-	
-	byte[] value;
+    static final Decoder decoder = Base64.getDecoder();
+    static final Encoder encoder = Base64.getEncoder();
+
+    byte[] value;
 
 
-	public BinaryValue(Attribute attr, JsonNode node) throws SchemaException, ParseException {
-		super(attr, node);
-		parseJson(node);
-	}
-	
-	/**
-	 * @param attr The <Attribute> type definition for the value.
-	 * @param bval The unencoded value as an array of <byte>.
-	 */
-	public BinaryValue(Attribute attr, byte[] bval) {
-		this.value = bval;
-		this.jtype = JsonNodeType.BINARY;
-		this.attr = attr;
-	}
+    public BinaryValue(Attribute attr, JsonNode node) throws SchemaException, ParseException {
+        super(attr, node);
+        parseJson(node);
+    }
 
-	public BinaryValue(Attribute attr, String b64string) {
-		this.value = decoder.decode(b64string.getBytes());  
-		this.jtype = JsonNodeType.BINARY;
-		this.attr = attr;
-	}
+    /**
+     * @param attr The {@link Attribute} type definition for the value.
+     * @param bval The unencoded value as an array of byte.
+     */
+    public BinaryValue(Attribute attr, byte[] bval) {
+        this.value = bval;
+        this.jtype = JsonNodeType.BINARY;
+        this.attr = attr;
+    }
 
-	@Override
-	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
-		gen.writeString(encoder.encodeToString(this.value));
+    public BinaryValue(Attribute attr, String b64string) {
+        this.value = decoder.decode(b64string.getBytes());
+        this.jtype = JsonNodeType.BINARY;
+        this.attr = attr;
+    }
 
-	}
+    @Override
+    public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
+        gen.writeString(encoder.encodeToString(this.value));
 
-	@Override
-	public void parseJson(JsonNode node)
-			throws SchemaException, ParseException {
-		//The value should be actually a base64 encoded string (DER)
-		if (node == null)
-			throw new SchemaException("Was expecting a JSON string (Base64 encoded) value but encountered null");
+    }
 
-		this.value = decoder.decode(node.asText().getBytes(StandardCharsets.UTF_8));
-		
-		//TODO:  SHould the DER Value encoding be validated?
+    @Override
+    public void parseJson(JsonNode node)
+            throws SchemaException, ParseException {
+        //The value should be actually a base64 encoded string (DER)
+        if (node == null)
+            throw new SchemaException("Was expecting a JSON string (Base64 encoded) value but encountered null");
+
+        this.value = decoder.decode(node.asText().getBytes(StandardCharsets.UTF_8));
+
+        //TODO:  SHould the DER Value encoding be validated?
 		
 		/*
 		if (!node.isBinary())
@@ -94,46 +93,46 @@ public class BinaryValue extends Value {
 		}
 		*/
 
-	}
+    }
 
-	@Override
-	public JsonNode toJsonNode(ObjectNode parent, String aname) {
-		if (parent == null)
-			parent = JsonUtil.getMapper().createObjectNode();
-		parent.put(aname,toString());
-		return parent;
-	}
+    @Override
+    public JsonNode toJsonNode(ObjectNode parent, String aname) {
+        if (parent == null)
+            parent = JsonUtil.getMapper().createObjectNode();
+        parent.put(aname, toString());
+        return parent;
+    }
 
-	/**
-	 * Returns the unencoded raw binary as byte[]
-	 */
-	@Override
-	public byte[] getRawValue() {
-		return this.value;
-	}
-	
-	/**
-	 * Returns the base64 encoded binary value
-	 */
-	public String toString() {
-		return encoder.encodeToString(this.value);
-	}
+    /**
+     * Returns the unencoded raw binary as byte[]
+     */
+    @Override
+    public byte[] getRawValue() {
+        return this.value;
+    }
 
-	@Override
-	public boolean equals(Object obj) {
-		if (obj instanceof BinaryValue) {
-			BinaryValue obVal = (BinaryValue) obj;
-			return Arrays.equals(value,obVal.value);
-		}
-		return false;
-	}
+    /**
+     * Returns the base64 encoded binary value
+     */
+    public String toString() {
+        return encoder.encodeToString(this.value);
+    }
 
-	@Override
-	public int compareTo(Value o) {
-		if (o instanceof BinaryValue) {
-			BinaryValue obVal = (BinaryValue) o;
-			return Arrays.compare(value,obVal.value);
-		}
-		throw new ClassCastException("Unable to compare Value types");
-	}
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof BinaryValue) {
+            BinaryValue obVal = (BinaryValue) obj;
+            return Arrays.equals(value, obVal.value);
+        }
+        return false;
+    }
+
+    @Override
+    public int compareTo(Value o) {
+        if (o instanceof BinaryValue) {
+            BinaryValue obVal = (BinaryValue) o;
+            return Arrays.compare(value, obVal.value);
+        }
+        throw new ClassCastException("Unable to compare Value types");
+    }
 }

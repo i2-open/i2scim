@@ -40,40 +40,40 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 	//private ConfigMgr cfg;
 	private final String sname;
 	private final IBulkIdResolver resolver;
-	
-	private final LinkedHashMap<Attribute,Value> attrs = new LinkedHashMap<>();
+
+	private final LinkedHashMap<Attribute, Value> attrs = new LinkedHashMap<>();
 	protected HashSet<Attribute> blockedAttrs = new HashSet<>();
-	
+
 	/**
 	 * Creates a value container for Extension Schema Attributes
 	 * @param extensionSchema A Schema object containing the definitions for the Extension Schema
-	 * @param extNode A JsonNode object holding the extension attributes
-	 * @param bulkIdResolver A resolver used to resolve temporary IDs in bulkoperations
+	 * @param extNode         A JsonNode object holding the extension attributes
+	 * @param bulkIdResolver  A resolver used to resolve temporary IDs in bulkoperations
 	 * @throws ConflictException may be thrown by ValueUtil parser
-	 * @throws SchemaException  may be thrown by ValueUtil parser
-	 * @throws ParseException may be thrown by ValueUtil parser
+	 * @throws SchemaException   may be thrown by ValueUtil parser
+	 * @throws ParseException    may be thrown by ValueUtil parser
 	 */
 	public ExtensionValues(Schema extensionSchema, JsonNode extNode, IBulkIdResolver bulkIdResolver) throws ConflictException, SchemaException, ParseException {
 		this.sname = extensionSchema.getId();
 		this.eSchema = extensionSchema;
 		this.resolver = bulkIdResolver;
 		parseJson(extNode);
-		
+
 	}
-	
-	public ExtensionValues(Schema extensionSchema, Map<Attribute,Value> valMap) {
+
+	public ExtensionValues(Schema extensionSchema, Map<Attribute, Value> valMap) {
 		this.sname = extensionSchema.getId();
 		this.eSchema = extensionSchema;
 		this.resolver = null;
 		this.attrs.putAll(valMap);
-		
+
 	}
 
-	
+
 	public void parseJson(JsonNode node) throws ConflictException, SchemaException, ParseException {
-				
+
 		//this.eSchema = this.cfg.getSchemaByName(this.sname);
-		
+
 		Attribute[] attrs = this.eSchema.getAttributes();
 		for (Attribute attr : attrs) {
 			processAttribute(attr, node);
@@ -83,25 +83,25 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 
 	@Override
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException, ScimException {
-				serialize(gen, ctx, false);
-			}
+		serialize(gen, ctx, false);
+	}
 
 
 	@Override
 	public void serialize(JsonGenerator gen, RequestCtx ctx,
-			boolean forHash) throws IOException, ScimException {
-		
+						  boolean forHash) throws IOException, ScimException {
+
 		if (getSize() == 0)
 			return;
-		
+
 		// SchemaAlias is used when persistence provider (e.g. Mongo) can't handle urns
 		if (ctx != null && ctx.useEncodedExtensions())
-			gen.writeFieldName(ScimResource.SCHEMA_EXT_PREFIX+Base64.getEncoder().encodeToString(eSchema.getId().getBytes()));
-		else 
+			gen.writeFieldName(ScimResource.SCHEMA_EXT_PREFIX + Base64.getEncoder().encodeToString(eSchema.getId().getBytes()));
+		else
 			gen.writeFieldName(eSchema.getId());
 		gen.writeStartObject();
-		
-		for (Attribute attr: attrs.keySet()) {
+
+		for (Attribute attr : attrs.keySet()) {
 			if (blockedAttrs.contains(attr))
 				continue;
 			if (ValueUtil.isReturnable(attr, ctx)) {
@@ -120,7 +120,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 
 		for (Attribute attr : attrs.keySet()) {
 			Value val = getValue(attr);
-			val.toJsonNode(parent,attr.getName());
+			val.toJsonNode(parent, attr.getName());
 		}
 		return parent;
 	}
@@ -133,11 +133,11 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 	public Value getValue(Attribute attr) {
 		return this.attrs.get(attr);
 	}
-	
-	public Map<Attribute,Value> getValueMap() {
+
+	public Map<Attribute, Value> getValueMap() {
 		return this.attrs;
 	}
-	
+
 	public void removeValue(String name) {
 		Attribute attr = eSchema.getAttribute(name);
 		removeValue(attr);
@@ -146,7 +146,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 	public void removeValue(Attribute attr) {
 		this.attrs.remove(attr);
 	}
-	
+
 	/**
 	 * @return The number of attribute values in the extension
 	 */
@@ -157,7 +157,8 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 	/**
 	 * Adds a value to the extension object. If the attribute is a multi-value, it will add the value.
 	 * @param attribute The name of the attribute or sub-attribute to add
-	 * @param val The Value to add
+	 * @param val       The Value to add
+	 * @throws SchemaException occurs when adding an incompatible value.
 	 */
 	public void addValue(@NotNull Attribute attribute, @NotNull Value val) throws SchemaException {
 		Attribute rootAttribute = attribute;
@@ -170,7 +171,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 			// If parent was undefined, add it.
 			if (rval == null) {
 				ComplexValue cval = new ComplexValue();
-				cval.addValue(attribute,val);
+				cval.addValue(attribute, val);
 				attrs.put(rootAttribute, cval);
 			}
 			if (rval instanceof ComplexValue) {
@@ -182,11 +183,11 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 		}
 
 		// Not a complex sub attribute, just add it.
-		if(rootAttribute.isMultiValued()) {
+		if (rootAttribute.isMultiValued()) {
 			MultiValue mval = (MultiValue) getValue(rootAttribute);
 			if (mval == null) {
-				mval = new MultiValue(rootAttribute,new LinkedList<>());
-				attrs.put(attribute,mval);
+				mval = new MultiValue(rootAttribute, new LinkedList<>());
+				attrs.put(attribute, mval);
 			}
 			mval.addValue(val);
 			return;
@@ -199,9 +200,10 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 	/**
 	 * Replaces the existing value object with the new one. If MultiValue, replaces the entire set of values.
 	 * @param attribute The definition of the attribute value to be added
-	 * @param val The Value to be added
+	 * @param val       The Value to be added
+	 * @throws SchemaException is thrown when attempting to replace an incompatible Value type.
 	 */
-	public void putValue(@NotNull Attribute attribute,@NotNull Value val) throws SchemaException {
+	public void putValue(@NotNull Attribute attribute, @NotNull Value val) throws SchemaException {
 		Attribute rootAttribute = attribute;
 		if (attribute.isChild()) {
 			rootAttribute = attribute.getParent();
@@ -212,7 +214,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 			// If parent was undefined, add it.
 			if (rval == null) {
 				ComplexValue cval = new ComplexValue();
-				cval.addValue(attribute,val);
+				cval.addValue(attribute, val);
 				putValue(rootAttribute, cval);
 			}
 			if (rval instanceof ComplexValue) {
@@ -224,35 +226,35 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 		}
 
 		// Not a complex sub attribute, just add it.
-		if(rootAttribute.isMultiValued()) {
-			MultiValue mval = new MultiValue(rootAttribute,new LinkedList<>());
+		if (rootAttribute.isMultiValued()) {
+			MultiValue mval = new MultiValue(rootAttribute, new LinkedList<>());
 
 			mval.addValue(val);
-			this.attrs.put(attribute,mval);
+			this.attrs.put(attribute, mval);
 			return;
 		}
 
 		// Just add the regular attribute
 		this.attrs.put(attribute, val);
 	}
-	
+
 	public Set<Attribute> getAttributeSet() {
 		return this.attrs.keySet();
 	}
-	
+
 	private void processAttribute(Attribute attr, JsonNode node) throws SchemaException, ParseException, ConflictException {
 		JsonNode attrNode = node.get(attr.getName());
 		Value val;
 		if (attrNode != null) {
-			val = ValueUtil.parseJson(null,attr, attrNode, this.resolver);
+			val = ValueUtil.parseJson(null, attr, attrNode, this.resolver);
 			this.attrs.put(attr, val);
 		}
 	}
-	
+
 	public String getSchemaName() {
 		return this.sname;
 	}
-	
+
 	public Schema getSchema() {
 		return this.eSchema;
 	}
@@ -270,7 +272,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 					return true;
 			}
 		}
-		return false; 
+		return false;
 	}
 
 
@@ -285,7 +287,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 				bAttr.getBulkIdsRequired(bulkList);
 			}
 		}
-		
+
 	}
 
 
@@ -300,7 +302,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 				bAttr.getAttributesWithBulkIdValues(bulkIdAttrs);
 			}
 		}
-		
+
 	}
 
 	public void setBlockedAttrs(HashSet<Attribute> blocked) {

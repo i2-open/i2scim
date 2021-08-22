@@ -30,7 +30,7 @@ import com.independentid.scim.serializer.JsonUtil;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
-import org.apache.http.HttpResponse;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -65,26 +65,26 @@ public class TestUtils {
     @ConfigProperty(name = "scim.prov.memory.persist.dir", defaultValue = "./scimdata")
     String storeDir;
 
-    @ConfigProperty(name="scim.prov.mongo.uri",defaultValue = "mongodb://localhost:27017")
+    @ConfigProperty(name = "scim.prov.mongo.uri", defaultValue = "mongodb://localhost:27017")
     String dbUrl;
 
-    @ConfigProperty(name="scim.prov.mongo.dbname",defaultValue = "testSCIM")
+    @ConfigProperty(name = "scim.prov.mongo.dbname", defaultValue = "testSCIM")
     String scimDbName;
 
-    @ConfigProperty(name = "scim.prov.mongo.username",defaultValue = "UNDEFINED")
+    @ConfigProperty(name = "scim.prov.mongo.username", defaultValue = "UNDEFINED")
     String dbUser;
 
-    @ConfigProperty(name = "scim.prov.mongo.password",defaultValue = "t0p-Secret")
+    @ConfigProperty(name = "scim.prov.mongo.password", defaultValue = "t0p-Secret")
     String dbPwd;
 
     private MongoClient mclient = null;
 
     public static String mapPathToReqUrl(URL baseUrl, String path) throws MalformedURLException {
-        URL rUrl = new URL(baseUrl,path);
+        URL rUrl = new URL(baseUrl, path);
         return rUrl.toString();
     }
 
-    public static HttpResponse executeGet(URL baseUrl, String req) throws MalformedURLException {
+    public static CloseableHttpResponse executeGet(URL baseUrl, String req) throws MalformedURLException {
         //if (req.startsWith("/"))
         req = mapPathToReqUrl(baseUrl, req);
         try {
@@ -96,38 +96,38 @@ public class TestUtils {
         return null;
     }
 
-    public static HttpResponse executeRequest(HttpUriRequest req) throws IOException {
+    public static CloseableHttpResponse executeRequest(HttpUriRequest req) throws IOException {
         //if (req.startsWith("/"))
 
         return HttpClientBuilder.create().build().execute(req);
 
     }
 
-    public void resetProvider() throws ScimException, BackendException, IOException {
+    public void resetProvider(boolean eraseData) throws ScimException, BackendException, IOException {
         IScimProvider provider = handler.getProvider();
         if (provider instanceof MongoProvider)
             resetMongoDb((MongoProvider) provider);
         if (provider instanceof MemoryProvider)
-            resetMemoryDb((MemoryProvider) provider);
+            resetMemoryDb((MemoryProvider) provider, eraseData);
     }
 
     void resetMongoDb(MongoProvider mongoProvider) throws ScimException, BackendException, IOException {
         if (!dbUrl.contains("@") && dbUser != null) {
-            logger.info("Connecting to Mongo using admin user: "+dbUser);
+            logger.info("Connecting to Mongo using admin user: " + dbUser);
             try {
-                String userInfo = dbUser+":"+dbPwd;
+                String userInfo = dbUser + ":" + dbPwd;
                 URI mUrl = new URI(dbUrl);
-                URI newUrl = new URI(mUrl.getScheme()+"://"+userInfo+"@"+mUrl.getAuthority()+ mUrl.getRawPath());
+                URI newUrl = new URI(mUrl.getScheme() + "://" + userInfo + "@" + mUrl.getAuthority() + mUrl.getRawPath());
                 dbUrl = newUrl.toString();
             } catch (URISyntaxException e) {
-                logger.error("Received exception: "+e.getMessage(),e);
+                logger.error("Received exception: " + e.getMessage(), e);
             }
         } else {
             if (!dbUrl.contains("@"))
                 logger.warn("Attempting to connect to Mongo with unauthenticated connection.");
         }
 
-        logger.warn("\t*** Resetting Mongo database ["+scimDbName+"] ***");
+        logger.warn("\t*** Resetting Mongo database [" + scimDbName + "] ***");
         if (mclient == null)
             mclient = MongoClients.create(dbUrl);
         MongoDatabase scimDb = mclient.getDatabase(scimDbName);
@@ -150,14 +150,15 @@ public class TestUtils {
 
     }
 
-    void resetMemoryDb(MemoryProvider provider) throws ScimException, BackendException, IOException {
-        logger.warn("\t*** Resetting Memory Provider Data ["+storeDir+"] ***");
+    void resetMemoryDb(MemoryProvider provider, boolean eraseData) throws ScimException, BackendException, IOException {
+        logger.warn("\t*** Resetting Memory Provider Data [" + storeDir + "] ***");
         // Shut the provider down
         if (provider.ready())
             provider.shutdown();
         smgr.resetConfig();
 
-        resetMemDirectory();
+        if (eraseData)
+            resetMemDirectory();
 
         // restart and reload
         smgr.init();
@@ -167,16 +168,16 @@ public class TestUtils {
 
     private void resetMemDirectory() {
         // Reset the memory provider
-        logger.warn("\t*** Resetting Memory database files in "+storeDir+" ***");
-        File memdir = new File (storeDir);
+        logger.warn("\t*** Resetting Memory database files in " + storeDir + " ***");
+        File memdir = new File(storeDir);
         File[] files = memdir.listFiles();
         if (files != null)
-            for (File afile: files)
+            for (File afile : files)
                 afile.delete();
 
     }
 
-    public ScimResource loadResource(String jsonfilepath,String container) {
+    public ScimResource loadResource(String jsonfilepath, String container) {
         InputStream userStream;
         if (container == null)
             container = "Users";
@@ -185,7 +186,7 @@ public class TestUtils {
             JsonNode node = JsonUtil.getJsonTree(userStream);
             return new ScimResource(smgr, node, container);
         } catch (ParseException | ScimException | IOException e) {
-            fail("Error preparing operation for "+jsonfilepath+": "+e.getMessage(),e);
+            fail("Error preparing operation for " + jsonfilepath + ": " + e.getMessage(), e);
         }
         return null;
     }

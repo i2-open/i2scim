@@ -25,85 +25,86 @@ import com.independentid.scim.serializer.ScimSerializer;
 
 import java.io.IOException;
 import java.util.*;
+
 /*
  * Attributes defines the set of attributes for a SCIM <code>Schema</code> object
- * 
+ *
  */
-public class Attribute implements ScimSerializer,Comparable<Attribute> {
-	
-	public final static String TYPE_String = "string";
-	public final static String TYPE_Date = "datetime";
-	public final static String TYPE_Boolean = "boolean";
-	public final static String TYPE_Decimal = "decimal";
-	public final static String TYPE_Integer = "integer";
-	public final static String TYPE_Complex = "complex";
-	public final static String TYPE_Reference = "reference";
-	public final static String TYPE_Binary = "binary";
-	
-	public final static String MUTABILITY_readWrite = "readWrite";
-	public final static String MUTABILITY_writeOnly = "writeOnly";
-	public final static String MUTABILITY_readOnly = "readOnly";
-	public final static String MUTABILITY_immutable = "immutable";
-	
-	public final static String RETURNED_default = "default";
-	public final static String RETURNED_always = "always";
-	public final static String RETURNED_request = "request";
-	public final static String RETURNED_never = "never";
-	
-	public final static String UNIQUE_none = "none";
-	public final static String UNIQUE_server = "server";
-	public final static String UNIQUE_global = "global";
+public class Attribute implements ScimSerializer, Comparable<Attribute> {
 
-	private String schema;
-	
-	private String path;
-	
+    public final static String TYPE_String = "string";
+    public final static String TYPE_Date = "datetime";
+    public final static String TYPE_Boolean = "boolean";
+    public final static String TYPE_Decimal = "decimal";
+    public final static String TYPE_Integer = "integer";
+    public final static String TYPE_Complex = "complex";
+    public final static String TYPE_Reference = "reference";
+    public final static String TYPE_Binary = "binary";
+
+    public final static String MUTABILITY_readWrite = "readWrite";
+    public final static String MUTABILITY_writeOnly = "writeOnly";
+    public final static String MUTABILITY_readOnly = "readOnly";
+    public final static String MUTABILITY_immutable = "immutable";
+
+    public final static String RETURNED_default = "default";
+    public final static String RETURNED_always = "always";
+    public final static String RETURNED_request = "request";
+    public final static String RETURNED_never = "never";
+
+    public final static String UNIQUE_none = "none";
+    public final static String UNIQUE_server = "server";
+    public final static String UNIQUE_global = "global";
+
+    private String schema;
+
+    private String path;
+
     private String name;
-	
-    private String description;
-	
-    private boolean caseExact;
-	
-    private String mutability;
-	
-    private String uniqueness;
-	
-    private ArrayList<String> canonicalValues;
-	
-	private ArrayList<String> referenceTypes;
 
-	private final TreeMap<String,Attribute> subAttributes;
+    private String description;
+
+    private boolean caseExact;
+
+    private String mutability;
+
+    private String uniqueness;
+
+    private ArrayList<String> canonicalValues;
+
+    private ArrayList<String> referenceTypes;
+
+    private final TreeMap<String, Attribute> subAttributes;
 
     private String returned;
-	
-    private boolean required;
-	
-    private boolean multiValued;
-	
-    private String type;
-	
-	private Attribute parent;   
-    
-	public Attribute () {
-		this.subAttributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-	}	
-	
-	public Attribute(String name) {
-		this.subAttributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-		this.name = name;
-		setPath(null,name);
-	}
-	
-	public Attribute(JsonNode node) throws SchemaException {
-		this(node, null);
-	}
 
-	public Attribute(JsonNode node, Attribute parent) throws SchemaException {
-		this.subAttributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-		this.parent = parent;
-		this.parseJson(node);
-	}
-            
+    private boolean required;
+
+    private boolean multiValued;
+
+    private String type;
+
+    private Attribute parent;
+
+    public Attribute() {
+        this.subAttributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    }
+
+    public Attribute(String name) {
+        this.subAttributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        this.name = name;
+        setPath(null, name);
+    }
+
+    public Attribute(JsonNode node) throws SchemaException {
+        this(node, null);
+    }
+
+    public Attribute(JsonNode node, Attribute parent) throws SchemaException {
+        this.subAttributes = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+        this.parent = parent;
+        this.parseJson(node);
+    }
+
     public String getName() {
         return this.name;
     }
@@ -137,13 +138,13 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
     }
 
     public Attribute getParent() {
-    	return this.parent;
+        return this.parent;
     }
-    
+
     public boolean isChild() {
-    	return (this.parent != null);
+        return (this.parent != null);
     }
-    
+
     public String getUniqueness() {
         return this.uniqueness;
     }
@@ -152,12 +153,12 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
         this.uniqueness = uniqueness;
     }
 
-    public Map<String,Attribute> getSubAttributesMap() {
+    public Map<String, Attribute> getSubAttributesMap() {
         return this.subAttributes;
     }
-    
+
     public Attribute getSubAttribute(String name) {
-    	return this.subAttributes.get(name);
+        return this.subAttributes.get(name);
     }
 
     public void setSubAttribute(Attribute subattribute) {
@@ -167,14 +168,15 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
     public String getReturned() {
         return this.returned;
     }
-    
+
     /**
-     * Based on the request context <RequestCtx> and {@link #getReturned()}, checks if an Attribute <Value> should be returned.
-     * @param ctx A <RequestCtx> object containing values for requested and excluded attributes per SCIM request line
+     * Based on the request context {@link RequestCtx} and {@link #getReturned()}, checks if an Attribute value should
+     * be returned.
+     * @param ctx A RequestCtx object containing values for requested and excluded attributes per SCIM request line
      * @return true if the attribute should be returned to the SCIM client.
      */
     public boolean isReturnable(RequestCtx ctx) {
-    	if (ctx == null) {
+        if (ctx == null) {
     		/*
     		switch (this.getReturned()) {
     			case Attribute.RETURNED_default:
@@ -186,34 +188,34 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
         			return false;
     		}
     		 */
-			// If no RequestCtx, this is an internal call. Always return all values!
-			return true;
-    	}
+            // If no RequestCtx, this is an internal call. Always return all values!
+            return true;
+        }
 
-    	// added logic to account for parent requested (which would then enable default returns of sub attrs)
-		boolean parentRequested = (this.getParent() != null && ctx.isAttrRequested(getParent()));
+        // added logic to account for parent requested (which would then enable default returns of sub attrs)
+        boolean parentRequested = (this.getParent() != null && ctx.isAttrRequested(getParent()));
 
-		boolean isReturnable =  ctx.isAttrRequested(this) ||
-				(parentRequested &&
-						(getReturned().equals(RETURNED_default) || getReturned().equals(RETURNED_always)));
-    	if (this.getSubAttributesMap().isEmpty())
-    		return isReturnable;
-    
-    	if (ctx.isAttrExcluded(this))
-    		return false;
-    	if (isReturnable)
-    		return true;
-    	
-    	// Check if a sub-attribute is returnable
-    	boolean subreturn = false;
-    	Iterator<Attribute> sattrIter = this.getSubAttributesMap().values().iterator();
-    	while (!subreturn && sattrIter.hasNext()) {
-    		Attribute next = sattrIter.next();
-    		if (ctx.isAttrRequested(next))
-    			subreturn = true;
-    	}
-    	
-    	return subreturn;
+        boolean isReturnable = ctx.isAttrRequested(this) ||
+                (parentRequested &&
+                        (getReturned().equals(RETURNED_default) || getReturned().equals(RETURNED_always)));
+        if (this.getSubAttributesMap().isEmpty())
+            return isReturnable;
+
+        if (ctx.isAttrExcluded(this))
+            return false;
+        if (isReturnable)
+            return true;
+
+        // Check if a sub-attribute is returnable
+        boolean subreturn = false;
+        Iterator<Attribute> sattrIter = this.getSubAttributesMap().values().iterator();
+        while (!subreturn && sattrIter.hasNext()) {
+            Attribute next = sattrIter.next();
+            if (ctx.isAttrRequested(next))
+                subreturn = true;
+        }
+
+        return subreturn;
     }
 
     /*
@@ -257,266 +259,279 @@ public class Attribute implements ScimSerializer,Comparable<Attribute> {
     public void setCanonicalValues(List<String> canonicalValues) {
         this.canonicalValues = new ArrayList<>(canonicalValues);
     }
-    
+
     public ArrayList<String> getReferenceTypes() {
-    	return this.referenceTypes;
+        return this.referenceTypes;
     }
-    
+
     public void setReferenceTypes(List<String> types) {
-    	this.referenceTypes = new ArrayList<>(types);
+        this.referenceTypes = new ArrayList<>(types);
     }
-    
+
     public void setPath(String schema, String relPath) {
-    	this.schema  = schema;
-    	
-    	if (relPath == null)
-    		this.path = this.name;
-    	else if (relPath.endsWith(this.name))
-    		this.path = relPath;
-    	else
-    		this.path = relPath + "." + this.name;
+        this.schema = schema;
 
-    	if (this.subAttributes == null) return;
+        if (relPath == null)
+            this.path = this.name;
+        else if (relPath.endsWith(this.name))
+            this.path = relPath;
+        else
+            this.path = relPath + "." + this.name;
 
-		for (String sname : this.subAttributes.keySet()) {
-			Attribute attr = this.subAttributes.get(sname);
-			attr.setPath(schema, this.path + "." + sname);
-		}
+        if (this.subAttributes == null) return;
+
+        for (String sname : this.subAttributes.keySet()) {
+            Attribute attr = this.subAttributes.get(sname);
+            attr.setPath(schema, this.path + "." + sname);
+        }
     }
-    
+
     /**
      * @return The schema URI part of the attribute path or null if undefined
      */
     public String getSchema() {
-    	return this.schema;
+        return this.schema;
     }
-    
+
     /**
      * @return The relative path (without schema) of the attribute
      */
 
     public String getRelativePath() {
-    	return this.path;
+        return this.path;
     }
+
     /**
      * @return Returns the full path of the attribute
      */
     public String getPath() {
-    	if (schema == null)
-    		return this.path;
-    	else 
-    		return schema + ":" + this.path;
+        if (schema == null)
+            return this.path;
+        else
+            return schema + ":" + this.path;
     }
 
-	@Override
-	public boolean equals(Object obj) {
-    	if (obj instanceof Attribute)
-			return getPath().equals(((Attribute)obj).getPath());
-    	return false;
-	}
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof Attribute)
+            return getPath().equals(((Attribute) obj).getPath());
+        return false;
+    }
 
-	@Override
-	public int compareTo(Attribute attr) {
+    @Override
+    public int compareTo(Attribute attr) {
 
-		return getPath().compareTo(attr.getPath());
-	}
+        return getPath().compareTo(attr.getPath());
+    }
 
-	@Override
-	public int hashCode() {
-		return getPath().hashCode();
-	}
+    @Override
+    public int hashCode() {
+        return getPath().hashCode();
+    }
 
-	@Override
-	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
-		serialize(gen, ctx, false);
-	}
+    @Override
+    public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
+        serialize(gen, ctx, false);
+    }
 
-	@Override
-	public JsonNode toJsonNode() {
-		ObjectNode node = JsonUtil.getMapper().createObjectNode();
-		node.put("name",name);
-		node.put("type",type);
-		if (description != null)
-			node.put("description",description);
-		if (returned != null)
-			node.put("returned",returned);
-		if (mutability != null)
-			node.put("mutability",mutability);
-		if (type.equals(TYPE_String)) {
-			node.put("caseExact",caseExact);
-			if (uniqueness != null)
-				node.put("uniqueness",uniqueness);
-			if (canonicalValues != null && canonicalValues.size() > 0) {
-				ArrayNode anode = node.putArray("canonicalValues");
-				for (String val: canonicalValues)
-					anode.add(val);
-			}
+    @Override
+    public JsonNode toJsonNode() {
+        ObjectNode node = JsonUtil.getMapper().createObjectNode();
+        node.put("name", name);
+        node.put("type", type);
+        if (description != null)
+            node.put("description", description);
+        if (returned != null)
+            node.put("returned", returned);
+        if (mutability != null)
+            node.put("mutability", mutability);
+        if (type.equals(TYPE_String)) {
+            node.put("caseExact", caseExact);
+            if (uniqueness != null)
+                node.put("uniqueness", uniqueness);
+            if (canonicalValues != null && canonicalValues.size() > 0) {
+                ArrayNode anode = node.putArray("canonicalValues");
+                for (String val : canonicalValues)
+                    anode.add(val);
+            }
+        }
+
+        if (this.type.equals(TYPE_Reference) &&
+                this.referenceTypes != null && this.referenceTypes.size() > 0) {
+            ArrayNode array = node.putArray("referenceTypes");
+            for (String val : this.referenceTypes)
+                array.add(val);
+        }
+
+        node.put("multiValued", this.multiValued);
+        node.put("required", this.required);
+
+        if (this.subAttributes.size() > 0) {
+            ArrayNode array = node.putArray("subAttributes");
+            for (Attribute attr : this.subAttributes.values())
+                array.add(attr.toJsonNode());
+        }
+
+        return node;
+    }
+
+    @Override
+    public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException {
+        gen.writeStartObject();
+
+        gen.writeStringField("name", this.name);
+
+        gen.writeStringField("type", this.type);
+
+        if (this.description != null) {
+            gen.writeStringField("description", this.description);
+        }
+
+        if (this.returned != null)
+            gen.writeStringField("returned", this.returned);
+
+        if (this.mutability != null)
+            gen.writeStringField("mutability", this.mutability);
 
 
-		}
-		return node;
+        if (this.type.equals(TYPE_String)) {
+            gen.writeBooleanField("caseExact", caseExact);
 
+            if (this.uniqueness != null)
+                gen.writeStringField("uniqueness", this.uniqueness);
 
-	}
+            if (this.canonicalValues != null &&
+                    this.canonicalValues.size() > 0) {
+                gen.writeArrayFieldStart("canonicalValues");
+                for (String value : this.canonicalValues) {
+                    gen.writeString(value);
+                }
+                gen.writeEndArray();
+            }
+        }
 
-	@Override
-	public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException {
-		gen.writeStartObject();
-		
-		gen.writeStringField("name", this.name);
-		
-		gen.writeStringField("type", this.type);
-		
-		if (this.description != null) {
-			gen.writeStringField("description", this.description);
-		}
-		
-		if (this.returned != null)
-			gen.writeStringField("returned", this.returned);
-		
-		if (this.mutability != null)
-			gen.writeStringField("mutability", this.mutability);
-		
-		
-		
-		if (this.type.equals(TYPE_String)) {
-			gen.writeBooleanField("caseExact", caseExact);
-			
-			if (this.uniqueness != null)
-				gen.writeStringField("uniqueness", this.uniqueness);
-			
-			if (this.canonicalValues != null &&
-					this.canonicalValues.size() > 0) {
-				gen.writeArrayFieldStart("canonicalValues");
-				for (String value : this.canonicalValues) {
-					gen.writeString(value);
-				}
-				gen.writeEndArray();
-			}
-		}
-		
-		if (this.type.equals(TYPE_Reference)) {
-			if (this.referenceTypes != null && this.referenceTypes.size()>0) {
-				gen.writeArrayFieldStart("referenceTypes");
-				for (String value : this.referenceTypes) {
-					gen.writeString(value);
-				}
-				gen.writeEndArray();
-			}
-		}
-		
-		gen.writeBooleanField("multiValued", multiValued);
-		
-		gen.writeBooleanField("required", required);
-		
-		if (this.subAttributes.size() > 0) {
-			gen.writeArrayFieldStart("subAttributes");
-			for (Attribute attr : this.subAttributes.values()) {
-				attr.serialize(gen, ctx, forHash);
-			}
-			gen.writeEndArray();
-			
-		}
-		
-		gen.writeEndObject();
-		
-	}
+        if (this.type.equals(TYPE_Reference)) {
+            if (this.referenceTypes != null && this.referenceTypes.size() > 0) {
+                gen.writeArrayFieldStart("referenceTypes");
+                for (String value : this.referenceTypes) {
+                    gen.writeString(value);
+                }
+                gen.writeEndArray();
+            }
+        }
 
-	@Override
-	public void parseJson(JsonNode node) throws SchemaException {
-		JsonNode item = node.get("name");
-		if (item != null)
-			this.name = item.asText();
-		else
-			throw new SchemaException("Attribute has no name\n"
-					+ node);
+        gen.writeBooleanField("multiValued", multiValued);
 
-		item = node.get("type");
-		if (item == null)
-			throw new SchemaException("Attribute " + this.name
-					+ " has no type defined.");
-		this.type = item.asText().toLowerCase();
+        gen.writeBooleanField("required", required);
 
-		item = node.get("description");
-		if (item != null)
-			this.description = item.asText();
+        if (this.subAttributes.size() > 0) {
+            gen.writeArrayFieldStart("subAttributes");
+            for (Attribute attr : this.subAttributes.values()) {
+                attr.serialize(gen, ctx, forHash);
+            }
+            gen.writeEndArray();
 
-		item = node.get("mutability");
-		if (item != null)
-			this.mutability = item.asText();
+        }
 
-		if (this.type.equals(TYPE_String)) {
-			item = node.get("caseExact");
-			if (item != null)
-				this.caseExact = item.asBoolean(false);
+        gen.writeEndObject();
 
-			item = node.get("uniqueness");
-			if (item != null)
-				this.uniqueness = item.asText();
+    }
 
-			item = node.get("canonicalValues");
-			if (item != null) {
-				this.canonicalValues = new ArrayList<>();
-				Iterator<JsonNode> iter = item.elements();
-				while (iter.hasNext()) {
-					JsonNode term = iter.next();
-					this.canonicalValues.add(term.asText());
-				}
-			}
-		}
+    @Override
+    public void parseJson(JsonNode node) throws SchemaException {
+        JsonNode item = node.get("name");
+        if (item != null)
+            this.name = item.asText();
+        else
+            throw new SchemaException("Attribute has no name\n"
+                    + node);
 
-		if (this.type.equals(Attribute.TYPE_Reference)) {
-			item = node.get("referenceTypes");
-			this.referenceTypes = new ArrayList<>();
-			if (item != null) {
-				Iterator<JsonNode> iter = item.elements();
-				while (iter.hasNext()) {
-					JsonNode term = iter.next();
-					this.referenceTypes.add(term.asText());
-				}
-			}
+        item = node.get("type");
+        if (item == null)
+            throw new SchemaException("Attribute " + this.name
+                    + " has no type defined.");
+        this.type = item.asText().toLowerCase();
 
-		}
+        item = node.get("description");
+        if (item != null)
+            this.description = item.asText();
 
-		item = node.get("returned");
-		if (item != null)
-			this.returned = item.asText().toLowerCase();
+        item = node.get("mutability");
+        if (item != null)
+            this.mutability = item.asText();
 
-		item = node.get("required");
-		if (item != null)
-			this.required = item.asBoolean();
+        if (this.type.equals(TYPE_String)) {
+            item = node.get("caseExact");
+            if (item != null)
+                this.caseExact = item.asBoolean(false);
 
-		item = node.get("multiValued");
-		if (item != null)
-			this.multiValued = item.asBoolean();
+            item = node.get("uniqueness");
+            if (item != null)
+                this.uniqueness = item.asText();
 
-		if (this.type.equals(TYPE_Complex)) {
-			item = node.get("subAttributes");
-			if (item != null) {
-				// this should already be initialized!
-				//this.subAttributes = new TreeMap<String, Attribute>(String.CASE_INSENSITIVE_ORDER);
-				Iterator<JsonNode> iter = item.elements();
-				while (iter.hasNext()) {
-					JsonNode snode = iter.next();
-					Attribute attr = new Attribute(snode, this);
-					String path = this.name + "." + attr.getName();
+            item = node.get("canonicalValues");
+            if (item != null) {
+                this.canonicalValues = new ArrayList<>();
+                Iterator<JsonNode> iter = item.elements();
+                while (iter.hasNext()) {
+                    JsonNode term = iter.next();
+                    this.canonicalValues.add(term.asText());
+                }
+            }
+        }
 
-					// The path for a sub attribute doesn't have URI.
-					attr.setPath(null, path);
-					this.subAttributes.put(attr.getName(), attr);
-				}
-			}
-		}
+        if (this.type.equals(Attribute.TYPE_Reference)) {
+            item = node.get("referenceTypes");
+            this.referenceTypes = new ArrayList<>();
+            if (item != null) {
+                Iterator<JsonNode> iter = item.elements();
+                while (iter.hasNext()) {
+                    JsonNode term = iter.next();
+                    this.referenceTypes.add(term.asText());
+                }
+            }
 
-	}
+        }
 
-	public boolean isModifiable() {
-		return (this.mutability.equalsIgnoreCase(MUTABILITY_readWrite)
-				|| this.mutability.equalsIgnoreCase(MUTABILITY_writeOnly));
-	}
-	
-	public String toString() {
-		return "Attribute: "+this.getRelativePath();
-	}
+        item = node.get("returned");
+        if (item != null)
+            this.returned = item.asText().toLowerCase();
+
+        item = node.get("required");
+        if (item != null)
+            this.required = item.asBoolean();
+
+        item = node.get("multiValued");
+        if (item != null)
+            this.multiValued = item.asBoolean();
+
+        if (this.type.equals(TYPE_Complex)) {
+            item = node.get("subAttributes");
+            if (item != null) {
+                // this should already be initialized!
+                //this.subAttributes = new TreeMap<String, Attribute>(String.CASE_INSENSITIVE_ORDER);
+                Iterator<JsonNode> iter = item.elements();
+                while (iter.hasNext()) {
+                    JsonNode snode = iter.next();
+                    Attribute attr = new Attribute(snode, this);
+                    String path = this.name + "." + attr.getName();
+
+                    // The path for a sub attribute doesn't have URI.
+                    attr.setPath(null, path);
+                    this.subAttributes.put(attr.getName(), attr);
+                }
+            }
+        }
+
+    }
+
+    public boolean isModifiable() {
+        return (this.mutability.equalsIgnoreCase(MUTABILITY_readWrite)
+                || this.mutability.equalsIgnoreCase(MUTABILITY_writeOnly));
+    }
+
+    public String toString() {
+        return "Attribute: " + this.getRelativePath();
+    }
 
 }

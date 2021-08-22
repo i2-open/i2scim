@@ -19,7 +19,6 @@ package com.independentid.scim.resource;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.independentid.scim.core.ConfigMgr;
-import com.independentid.scim.core.err.ConflictException;
 import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.Attribute;
@@ -54,20 +53,19 @@ public class ValueUtil {
     }
 
     /**
-     * Static method used to parse a <JsonNode> object for its appropriate SCIM Value type based on the declared
+     * Static method used to parse a {@link JsonNode} object for its appropriate SCIM Value type based on the declared
      * Attribute.
-     * @param res             The id of the scim resource being mapped (if available or null)
-     * @param attr           The SCIM <Attribute> type for the value being parsed
-     * @param fnode          A <JsonNode> representing the attribute/value node.
+     * @param res            The id of the scim resource being mapped (if available or null)
+     * @param attr           The SCIM {@link Attribute} type for the value being parsed
+     * @param fnode          A {@link JsonNode} representing the attribute/value node.
      * @param bulkIdResolver This resolver is used for bulk operations where an Identifier may be temporary.
-     * @return The parsed <Value> instance. See com.independentid.scim.resource package for sub-classes (Complex,
+     * @return The parsed {@link Value} instance. See com.independentid.scim.resource package for sub-classes (Complex,
      * String, Boolean, DateTime, Binary, Reference).
-     * @throws ConflictException May be thrown by ValueUtil parser.
-     * @throws SchemaException   May be thrown by ValueUtil parser.
-     * @throws ParseException    May be thrown by ValueUtil parser.
+     * @throws SchemaException May be thrown by ValueUtil parser.
+     * @throws ParseException  May be thrown by ValueUtil parser.
      */
     public static Value parseJson(@NotNull ScimResource res, Attribute attr, JsonNode fnode, IBulkIdResolver bulkIdResolver)
-            throws ConflictException, SchemaException, ParseException {
+            throws SchemaException, ParseException {
         // TODO Should we treat as string by default when parsing unknown
         // schema?
         if (attr == null)
@@ -79,25 +77,25 @@ public class ValueUtil {
         //logger.debug("Attr: "+attr.getName()+", aType: "+attr.getType()+", nType: "+fnode.getNodeType()+", aMulti: "+attr.isMultiValued());
 
         if (attr.isMultiValued() && fnode.getNodeType().equals(JsonNodeType.ARRAY)) {
-            if(smgr.isVirtualAttr(attr)) {
+            if (smgr.isVirtualAttr(attr)) {
                 // This enables multi-valued virtual attributes. These attributes should extend MultiValue.
                 try {
-                    val = smgr.constructValue(res,attr,fnode);
+                    val = smgr.constructValue(res, attr, fnode);
                     if (val == null)
-                        val = smgr.constructValue(res,attr);
+                        val = smgr.constructValue(res, attr);
                 } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                    logger.error("Error mapping virtual attribute "+attr.getName()+": "+e.getMessage(),e);
+                    logger.error("Error mapping virtual attribute " + attr.getName() + ": " + e.getMessage(), e);
                 }
             } else
                 val = new MultiValue(attr, fnode, bulkIdResolver);
         } else {
             if (smgr.isVirtualAttr(attr)) {
                 try {
-                    val = smgr.constructValue(res,attr,fnode);
+                    val = smgr.constructValue(res, attr, fnode);
                     if (val == null)
-                        val = smgr.constructValue(res,attr);
+                        val = smgr.constructValue(res, attr);
                 } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
-                    logger.error("Error mapping virtual attribute "+attr.getName()+": "+e.getMessage(),e);
+                    logger.error("Error mapping virtual attribute " + attr.getName() + ": " + e.getMessage(), e);
                 }
             } else {
                 switch (attr.getType().toLowerCase()) {
@@ -139,8 +137,8 @@ public class ValueUtil {
      * a SCIM filter is specified with attribute name not defined in the configured schema. While not declared in the
      * SCIM schema, the attribute may still be valid within the backend provider. Will not detect BINARY (base64
      * encoded) data.
-     * @param name  A <String> containing the name of the attribute (e.g. "id")
-     * @param value A <String> (e.g. from a URL filter) containing a data value
+     * @param name  A String containing the name of the attribute (e.g. "id")
+     * @param value A String (e.g. from a URL filter) containing a data value
      * @return Returns the SCIM Value type constant (e.g. {@link Attribute#TYPE_String}) detected.
      */
     public static String parseValueType(String name, String value) {
@@ -166,7 +164,7 @@ public class ValueUtil {
 
         try {
             BigDecimal bval = new BigDecimal(value);
-                return Attribute.TYPE_Decimal;
+            return Attribute.TYPE_Decimal;
         } catch (NumberFormatException e) {
             // was not decimal
         }
@@ -192,7 +190,7 @@ public class ValueUtil {
 
     /**
      * This checks to see if an attribute name is returnable. This is a *last resort* method as it searches the
-     * configuration to locate a match. Where possible use the variant of this method that includews <Schema>.
+     * configuration to locate a match. Where possible use the variant of this method that includews {@link Schema}.
      * @param name A String containing the name of the attribute to be checked. Can be a short id, partial path (e.g.
      *             User) or full path with schema id.
      * @param ctx  The request context that specifies included/excluded attributes
@@ -234,10 +232,10 @@ public class ValueUtil {
     }
 
     /**
-     * This method checks to see if any of an extensions valules are returnable in the current request context.
-     * @param ext An <ExtensionValules> object containing the set of <Value>s for a particular extension.
-     * @param ctx The <RequestCtx> containing the returned and excluded attributes params.
-     * @return true if the provided <ExtensionValues> object has at least 1 returnable value.
+     * This method checks to see if any of an extensions values are returnable in the current request context.
+     * @param ext An {@link ExtensionValues} object containing the set of {@link Value}s for a particular extension.
+     * @param ctx The {@link RequestCtx} containing the returned and excluded attributes params.
+     * @return true if the provided ExtensionValues object has at least 1 returnable value.
      */
     public static boolean isReturnable(ExtensionValues ext, RequestCtx ctx) {
         Schema sch = ext.getSchema();
@@ -251,12 +249,12 @@ public class ValueUtil {
         return false;
     }
 
-    public static void mapVirtualVals(ScimResource resource, Schema schema, Map<Attribute,Value> vals) {
+    public static void mapVirtualVals(ScimResource resource, Schema schema, Map<Attribute, Value> vals) {
         for (Attribute attr : schema.getAttributes()) {
             Value val = vals.get(attr);
-            Value res = mapVirtualValue(resource,attr,val);
+            Value res = mapVirtualValue(resource, attr, val);
             if (res != null)
-                vals.put(attr,val);
+                vals.put(attr, val);
         }
     }
 
@@ -265,10 +263,10 @@ public class ValueUtil {
             return null;
         try {
             if (val == null)
-                return smgr.constructValue(resource,attr);
+                return smgr.constructValue(resource, attr);
             return smgr.constructValue(resource, attr, val);
         } catch (InvocationTargetException | IllegalAccessException | InstantiationException e) {
-            logger.error("Error mapping virtual attribute for "+attr.getName()+":"+e.getMessage(),e);
+            logger.error("Error mapping virtual attribute for " + attr.getName() + ":" + e.getMessage(), e);
         }
         return null;
     }

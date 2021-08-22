@@ -92,7 +92,7 @@
          Value val = user1.getValue(addr);
 
          // Create a dummy RequestCtx to pass schemaMgr.
-         RequestCtx ctx = new RequestCtx("/",null,null,smgr);
+         RequestCtx ctx = new RequestCtx("/",smgr);
 
          Filter filter = Filter.parseFilter("addresses[type eq work and postalCode eq 91608]", null, ctx);
 
@@ -113,6 +113,32 @@
          assertThat(filter.isMatch(val))
                  .as("Check the value match for addresses attribute is not true")
                  .isFalse();
+     }
+
+     @Test
+     public void c_FaultyValPathFilterTest() {
+         // Create a dummy RequestCtx to pass schemaMgr.
+         RequestCtx ctx = new RequestCtx("/",smgr);
+         boolean isBadDetected = false;
+         try {
+             Filter filter = Filter.parseFilter("addresses[type eq work and postalCode eq 91608",null,ctx);
+         } catch (BadFilterException e) {
+             isBadDetected = true;
+         }
+         assertThat(isBadDetected)
+                 .as("Did parser detect faulting value path filter?")
+                 .isTrue();
+
+         isBadDetected = false;
+         try {
+             Filter filter = Filter.parseFilter("addresses type eq work and postalCode eq 91608]",null,ctx);
+         } catch (BadFilterException e) {
+             isBadDetected = true;
+         }
+         assertThat(isBadDetected)
+                 .as("Did parser detect faulting value path filter?")
+                 .isTrue();
+
      }
 
  }

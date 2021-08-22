@@ -39,7 +39,8 @@ public abstract class Value implements Comparable<Value> {
 	}
 	
 	public Value(Attribute attr, JsonNode node) {
-		this.jtype = node.getNodeType();
+		if (node != null)
+			this.jtype = node.getNodeType();
 		this.attr = attr;
 	}
 	

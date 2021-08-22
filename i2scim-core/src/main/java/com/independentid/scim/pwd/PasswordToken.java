@@ -62,8 +62,8 @@ public class PasswordToken {
     SecretKeyFactory factory;
 
     public PasswordToken(String sub, String pwdVal) throws NoSuchAlgorithmException, java.text.ParseException, ParseException {
-      this((ScimResource) null,pwdVal);
-      this.sub = sub;
+        this((ScimResource) null, pwdVal);
+        this.sub = sub;
     }
 
     public PasswordToken(ScimResource parent, String pwdVal) throws NoSuchAlgorithmException, java.text.ParseException, ParseException {
@@ -88,7 +88,7 @@ public class PasswordToken {
 
     private void parseJwt(String jwtVal) throws java.text.ParseException, ParseException {
 
-        JsonWebToken token = parser.decrypt(jwtVal,tknKey);
+        JsonWebToken token = parser.decrypt(jwtVal, tknKey);
         iss = token.getIssuer();
         sub = token.getSubject();
         String val = token.getClaim("salt");
@@ -107,20 +107,22 @@ public class PasswordToken {
         try {
             factory = SecretKeyFactory.getInstance(alg);
         } catch (NoSuchAlgorithmException e) {
-            logger.error("No such algorithm error for existing password value: "+e.getMessage(),e);
+            logger.error("No such algorithm error for existing password value: " + e.getMessage(), e);
         }
     }
 
 
     /**
-     * This method is provided to allow default alg and iterations to be changed over time. Changing the values will
-     * not break exisitng password values that have already been processed. It simply changes what new hashes will have.
+     * This method is provided to allow default alg and iterations to be changed over time. Changing the values will not
+     * break exisitng password values that have already been processed. It simply changes what new hashes will have.
+     * @param jwtParser   A handle to a JSON Web Token Parser {@link JWTParser} instance.
      * @param tokenSecret The secret used to encrypt password tokens (must be same on all nodes)
-     * @param iter The number of hashing iterations to use (e.g. 10000)
-     * @param alg The hashing algorithm to use. See {@link SecretKeyFactory#generateSecret(KeySpec)}.
+     * @param issuer      The node that encoded the password token (e.g. current node).
+     * @param iter        The number of hashing iterations to use (e.g. 10000)
+     * @param alg         The hashing algorithm to use. See {@link SecretKeyFactory#generateSecret(KeySpec)}.
      */
-    public static void init(JWTParser jwtParser, String tokenSecret, String issuer, int iter,String alg) {
-        logger.info("PasswordToken init called: "+issuer);
+    public static void init(JWTParser jwtParser, String tokenSecret, String issuer, int iter, String alg) {
+        logger.info("PasswordToken init called: " + issuer);
         parser = jwtParser;
         defaultIterations = iter;
         defaultAlg = alg;
@@ -135,33 +137,33 @@ public class PasswordToken {
     }
 
     public String getRawValue() {
-        return PREFIX_TOKEN+getJwt();
+        return PREFIX_TOKEN + getJwt();
     }
 
-    public String getJwt()  {
+    public String getJwt() {
 
         JwtClaimsBuilder builder = Jwt.claims();
 
         if (sub == null)
             if (resource == null)
-                sub="anonymous";
+                sub = "anonymous";
             else
                 sub = resource.getId();  // this is done so that Id can be picked up late binding since the current resource may not yet have been saved.
 
         builder.issuer(iss).subject(sub);
         builder
-                .claim("salt",encoder.encodeToString(salt))
-                .claim("alg",alg)
-                .claim("fails",""+failCnt)
+                .claim("salt", encoder.encodeToString(salt))
+                .claim("alg", alg)
+                .claim("fails", "" + failCnt)
                 .claim("lastMatch", Meta.ScimDateFormat.format(lastSuccess))
-                .claim("iter",""+iter)
+                .claim("iter", "" + iter)
 
-                .claim("hash",encoder.encodeToString(hash));
+                .claim("hash", encoder.encodeToString(hash));
         try {
             JwtEncryptionBuilder ebuilder = builder.jwe();
             return ebuilder.encryptWithSecret(tknKey);
         } catch (Exception e) {
-            System.err.println("Error encrypting password token: "+e.getMessage());
+            System.err.println("Error encrypting password token: " + e.getMessage());
         }
         return null;
     }
@@ -170,7 +172,7 @@ public class PasswordToken {
 
         //PasswordUtil.length = length;
 
-        KeySpec spec = new PBEKeySpec(pwd,salt, iter,128);
+        KeySpec spec = new PBEKeySpec(pwd, salt, iter, 128);
         byte[] hash = new byte[0];
         try {
             hash = factory.generateSecret(spec).getEncoded();
@@ -180,13 +182,15 @@ public class PasswordToken {
         return hash;
     }
 
-    public byte[] getMatchHash() { return hash; }
+    public byte[] getMatchHash() {
+        return hash;
+    }
 
     public boolean validatePassword(char[] pwd) throws NoSuchAlgorithmException {
         byte[] matchHash = performHash(pwd);
         if (matchHash.length != hash.length)
             return false;
-        for(int i=0; i < hash.length; i++)
+        for (int i = 0; i < hash.length; i++)
             if (hash[i] != matchHash[i])
                 return false;
 

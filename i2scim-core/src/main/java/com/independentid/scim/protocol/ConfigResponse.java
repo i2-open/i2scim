@@ -21,6 +21,7 @@ import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ForbiddenException;
 import com.independentid.scim.core.err.NotFoundException;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.resource.ComplexValue;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
@@ -64,7 +65,7 @@ public class ConfigResponse extends ListResponse {
         switch (ctx.endpoint) {
             case ScimParams.PATH_SERV_PROV_CFG:
                 if (ctx.getPathId() != null) {
-                    setError(new NotFoundException("Not Found: " + ctx.path));
+                    setError(new NotFoundException(ctx.getPath() + " not Found"));
                     break;
                 }
                 try {
@@ -246,8 +247,6 @@ public class ConfigResponse extends ListResponse {
         */
 
         // Documentation
-        // TODO set up web documentation URL
-
         gen.writeStringField("documentationUri", "http://i2scim.io");
 
 
@@ -282,7 +281,7 @@ public class ConfigResponse extends ListResponse {
         // Sorting
         gen.writeFieldName("sort");
         gen.writeStartObject();
-        gen.writeBooleanField("supported", false);
+        gen.writeBooleanField("supported", true);
         gen.writeEndObject();
 
 
@@ -311,6 +310,7 @@ public class ConfigResponse extends ListResponse {
         }
         gen.writeEndArray();
 
+        gen.writeEndObject();
     }
 
 

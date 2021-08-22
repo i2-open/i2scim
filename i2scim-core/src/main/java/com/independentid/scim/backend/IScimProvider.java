@@ -44,7 +44,7 @@ public interface IScimProvider {
     /**
      * Get performs a search and can return 1 or more results.
      * @param ctx The SCIM processed HTTP context
-     * @return A <ScimResponse> containing the results of the get request
+     * @return A {@link ScimResponse} containing the results of the get request
      * @throws ScimException    when SCIM protocol level error is detected
      * @throws BackendException when the storage handler returns an error not related to SCIM
      */
@@ -63,7 +63,7 @@ public interface IScimProvider {
     /**
      * Performs a SCIM PUT request as per RFC7644, Section 3.5.1
      * @param ctx             The RequestCtx containing the path, filter, attributes and other request modifiers
-     * @param replaceResource A <ScimResource> object containing the claims to replace the existing resource.
+     * @param replaceResource A {@link ScimResource} object containing the claims to replace the existing resource.
      * @return ScimResponse containing the final representation of the replaced resource.
      * @throws ScimException    when SCIM protocol level error is detected
      * @throws BackendException when the storage handler returns an error not related to SCIM
@@ -73,8 +73,8 @@ public interface IScimProvider {
     /**
      * Performs a SCIM PATCH request as per RFC7644, Section 3.5.2 based on RFC6902 JSON Patch Specification
      * @param ctx The RequestCtx containing the path, filter, attributes and other request modifiers
-     * @param req A <JsonPatchRequest> object containing the claims to replace the existing resource.
-     * @return A <ScimResponse> containing the final representation of the replaced resource.
+     * @param req A {@link JsonPatchRequest} object containing the claims to replace the existing resource.
+     * @return A {@link ScimResponse} containing the final representation of the replaced resource.
      * @throws ScimException    when SCIM protocol level error is detected
      * @throws BackendException when the storage handler returns an error not related to SCIM
      */
@@ -83,8 +83,8 @@ public interface IScimProvider {
     /**
      * Performs a SCIM Bulk Operation request as per RFC7644, Section 3.7
      * @param ctx  The RequestCtx containing the path, filter, attributes and other request modifiers
-     * @param node A <JsonNode> object containing SCIM formated bulk request
-     * @return A <ScimResponse> containing the results of the bulk request per Sec 3.7.3
+     * @param node A {@link JsonNode} object containing SCIM formated bulk request
+     * @return A {@link ScimResponse} containing the results of the bulk request per Sec 3.7.3
      * @throws ScimException    when SCIM protocol level error is detected. May throw circular reference and other
      *                          identifier errors.
      * @throws BackendException when the storage handler returns an error not related to SCIM
@@ -94,7 +94,7 @@ public interface IScimProvider {
     /**
      * Performs a SCIM DELETE resource request as per RFC7644, Section 3.6
      * @param ctx The RequestCtx containing the path of the resource to be removed.
-     * @return A <ScimResponse> containing confirmation of success per Sec 3.6
+     * @return A {@link ScimResponse} containing confirmation of success per Sec 3.6
      * @throws ScimException    when SCIM protocol level error is detected
      * @throws BackendException when the storage handler returns an error not related to SCIM
      */
@@ -126,6 +126,9 @@ public interface IScimProvider {
      * co-ordinating persisted schema and resource types and co-ordinating synchronization. May also be used to test
      * database live-ness.
      * @return The PersistStateResoruce that holds the current schema sync state of the server.
+     * @throws ScimException  occurs when a general scim server occurs
+     * @throws IOException    occurs when attempting to read/write data
+     * @throws ParseException occurs when invalid JSON data is encountered
      */
     PersistStateResource getConfigState() throws ScimException, IOException, ParseException;
 
@@ -134,6 +137,7 @@ public interface IScimProvider {
      * existing database for schema definitions, and if not defined, loads the schema from the default file path
      * provided.
      * @return A LinkedHashMap containing the Schema definitions loaded. If none are available, the map is empty.
+     * @throws ScimException Occurs when an invalid state or configuration occurs
      */
     Collection<Schema> loadSchemas() throws ScimException;
 
@@ -142,14 +146,16 @@ public interface IScimProvider {
      * the existing database for ResourceType end points, and if not defined, loads the ResourceTypes from the default
      * file path provided.
      * @return A LinkedHashMap containing the ResourceType definitions loaded. If none are available, the map is empty.
+     * @throws ScimException Occurs when an invalid state or configuration occurs
      */
     Collection<ResourceType> loadResourceTypes() throws ScimException;
 
     /**
      * This method allows the provider to persist/update current configuration (schema defs and resource types). This
      * method may be called on-the-fly due to a configuration modification or prior to shutdown.
-     * @param schemaCol  TODO
-     * @param resTypeCol TODO
+     * @param schemaCol  A collection of {@link Schema}s to be synchronized in the provider
+     * @param resTypeCol A collection of {@link ResourceType}s to be synchronized in the provider
+     * @throws IOException May occur when attempting to read/write data from the underlying provider
      */
     void syncConfig(Collection<Schema> schemaCol, Collection<ResourceType> resTypeCol) throws IOException;
 
@@ -159,6 +165,8 @@ public interface IScimProvider {
      * @param transid The transaction id (e.g. from Meta.revisions.value or RequestCtx.getTranID().
      * @return The TransactionRecord in the form of {@link ScimResource} containing information about the transaction (a
      * ScimResource).
+     * @throws BackendException when an error occurs in the underlying provider such as a mapping error due to
+     *                          corruption
      */
     ScimResource getTransactionRecord(String transid) throws BackendException;
 
@@ -167,6 +175,8 @@ public interface IScimProvider {
      * the case of 1 or more cluster members receiving the same event.
      * @param transid The transaction UUID string value to be checked (from {@link RequestCtx#getTranId()}).
      * @return true if present in the transaction store of the provider.
+     * @throws BackendException when an error occurs in the underlying provider such as a mapping error due to
+     *                          corruption
      */
     boolean isTransactionPresent(String transid) throws BackendException;
 

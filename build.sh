@@ -23,6 +23,7 @@ function show_usage (){
     printf "Options:\n"
     printf " -t|--test, run maven tests\n"
     printf " --tag [tag-version], Specify tag number\n"
+    printf " -p|--push, push to docker"
     printf " -b|--build, maven build only"
     printf " -h|--help, Print help\n"
 
@@ -37,14 +38,20 @@ function show_complete () {
 }
 
 skip=true
-rtag="0.5.0-Alpha"
+rtag="0.6.0-Alpha"
 buildOnly=0
+push=0
 
 echo "*************************************************"
 echo "  Starting i2scim Build "
 
 while [ ! -z "$1" ]; do
   case "$1" in
+     --push|-p)
+         shift
+         echo "\tPush requested"
+         push=1
+         ;;
      --test|-t)
          shift
          echo "\tTests requested"
@@ -91,7 +98,12 @@ echo "\tStarting Docker build i2scim-mem..."
 echo ""
 
 cd ./pkg-i2scim-prov-memory
-docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mem:$rtag .
+if [ $push -eq 1 ]
+then
+  docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mem:$rtag .
+else
+  docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm -t independentid/i2scim-mem:$rtag .
+fi
 retVal=$?
 if [ $retVal -ne 0 ]
 then
@@ -105,7 +117,12 @@ echo "\tStarting Docker build i2scim-mongo..."
 echo ""
 
 cd ../pkg-i2scim-prov-mongodb
-docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mongo:$rtag .
+if [ $push -eq 1 ]
+then
+  docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mongo:$rtag .
+else
+  docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm -t independentid/i2scim-mongo:$rtag .
+fi
 retVal=$?
 if [ $retVal -ne 0 ]
 then

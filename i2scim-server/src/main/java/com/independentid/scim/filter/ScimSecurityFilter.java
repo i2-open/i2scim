@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-package com.independentid.scim.security;
+package com.independentid.scim.filter;
 
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.SchemaManager;
+import com.independentid.scim.security.AccessControl;
+import com.independentid.scim.security.AccessManager;
 import io.quarkus.security.identity.SecurityIdentity;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
@@ -47,10 +49,10 @@ public class ScimSecurityFilter implements Filter {
     @Inject
     SchemaManager schemaManager;
 
-    @ConfigProperty(name = "scim.security.enable", defaultValue="true")
+    @ConfigProperty(name = "scim.security.enable", defaultValue = "true")
     boolean isSecurityEnabled;
 
-    public void init(FilterConfig filterConfig) throws ServletException {
+    public void init(FilterConfig filterConfig) {
         logger.info("SCIM Security Filter started.");
         if (!isSecurityEnabled)
             logger.warn("\t** SCIM Security filter *disabled*.");
@@ -103,16 +105,19 @@ public class ScimSecurityFilter implements Filter {
 
             HttpServletRequest hrequest;
             if (request instanceof HttpServletRequest) {
-                 hrequest = (HttpServletRequest) request;
+                hrequest = (HttpServletRequest) request;
             } else {
-                logger.error("Unexpected servlet request type received: "+request.getClass().toString());
+                logger.error("Unexpected servlet request type received: " + request.getClass().toString());
                 return;
             }
 
+            String path = hrequest.getPathInfo();
+            if (path == null)
+                path = hrequest.getRequestURI();
             // Liveness/health check do not require authorization
-            if (hrequest.getPathInfo().startsWith("/q")) {
+            if (path.startsWith("/q")) {
                 // allow healthcheck to proceed
-                chain.doFilter(request,response);
+                chain.doFilter(request, response);
                 return;
             }
 

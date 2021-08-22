@@ -206,8 +206,8 @@ public class ResourceType implements ScimSerializer {
 	}
 	
 	public boolean equals(Object obj) {
-    	if (obj instanceof Schema) {
-    		Schema sobj = (Schema) obj;
+    	if (obj instanceof ResourceType) {
+    		ResourceType sobj = (ResourceType) obj;
 
     		//Do a JSON compare rather than a string compare
     		JsonNode jobj, jnode;

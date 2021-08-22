@@ -76,7 +76,7 @@ public class AccessPlugin implements IScimPlugin {
         }
 
         if (op instanceof PatchOp) {
-            op.setCompletionError(new NotImplementedException("SCIM Patch currently not supported"));
+            AccessManager.checkPatchOp((PatchOp) op);
             return;
         }
 
