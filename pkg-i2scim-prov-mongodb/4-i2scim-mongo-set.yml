@@ -12,7 +12,7 @@ metadata:
     prometheus.io/path: /metrics
   labels:
     app.kubernetes.io/name: i2scim-mongo
-    app.kubernetes.io/version: 0.5.0-Alpha
+    app.kubernetes.io/version: 0.6.0-Alpha
   name: i2scim-mongo
   namespace: scim-mongo
 ---
@@ -29,17 +29,17 @@ metadata:
     prometheus.io/path: /metrics
   labels:
     app.kubernetes.io/name: i2scim-mongo
-    app.kubernetes.io/version: 0.5.0-Alpha
+    app.kubernetes.io/version: 0.6.0-Alpha
   name: i2scim-mongo
   namespace: scim-mongo
 spec:
   ports:
-  - name: http
-    port: 8080
-    targetPort: 8080
+    - name: http
+      port: 8080
+      targetPort: 8080
   selector:
     app.kubernetes.io/name: i2scim-mongo
-    app.kubernetes.io/version: 0.5.0-Alpha
+    app.kubernetes.io/version: 0.6.0-Alpha
   type: LoadBalancer
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -52,8 +52,8 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   name: view
 subjects:
-- kind: ServiceAccount
-  name: i2scim-mongo
+  - kind: ServiceAccount
+    name: i2scim-mongo
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -65,7 +65,7 @@ metadata:
     prometheus.io/path: /metrics
   labels:
     app.kubernetes.io/name: i2scim-mongo
-    app.kubernetes.io/version: 0.5.0-Alpha
+    app.kubernetes.io/version: 0.6.0-Alpha
   name: i2scim-mongo
   namespace: scim-mongo
 spec:
@@ -74,7 +74,7 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: i2scim-mongo
-      app.kubernetes.io/version: 0.5.0-Alpha
+      app.kubernetes.io/version: 0.6.0-Alpha
   template:
     metadata:
       annotations:
@@ -84,67 +84,67 @@ spec:
         prometheus.io/path: /metrics
       labels:
         app.kubernetes.io/name: i2scim-mongo
-        app.kubernetes.io/version: 0.5.0-Alpha
+        app.kubernetes.io/version: 0.6.0-Alpha
       namespace: scim-mongo
     spec:
       containers:
-      - env:
-        - name: KUBERNETES_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
-        envFrom:
-        - secretRef:
-            name: mongo-db-cred
-        - configMapRef:
-            name: i2scim-mongo-config
-        - secretRef:
-            name: i2scim-root
-        image: independentid/i2scim-mongo:0.5.0-Alpha
-        imagePullPolicy: Always
-        livenessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /q/health/live
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 0
-          periodSeconds: 30
-          successThreshold: 1
-          timeoutSeconds: 10
-        name: i2scim-mongo
-        ports:
-        - containerPort: 8080
-          name: http
-          protocol: TCP
-        readinessProbe:
-          failureThreshold: 3
-          httpGet:
-            path: /q/health/ready
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 5
-          periodSeconds: 30
-          successThreshold: 1
-          timeoutSeconds: 10
-        volumeMounts:
-        - mountPath: /config
-          name: configschema
-          readOnly: true
-          subPath: ""
-        - mountPath: /scim
-          name: scimroot
-          readOnly: false
-          subPath: ""
+        - env:
+            - name: KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          envFrom:
+            - secretRef:
+                name: mongo-db-cred
+            - configMapRef:
+                name: i2scim-mongo-config
+            - secretRef:
+                name: i2scim-root
+          image: independentid/i2scim-mongo:0.6.0-Alpha
+          imagePullPolicy: Always
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /q/health/live
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 10
+          name: i2scim-mongo
+          ports:
+            - containerPort: 8080
+              name: http
+              protocol: TCP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /q/health/ready
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 10
+          volumeMounts:
+            - mountPath: /config
+              name: configschema
+              readOnly: true
+              subPath: ""
+            - mountPath: /scim
+              name: scimroot
+              readOnly: false
+              subPath: ""
       imagePullSecrets:
-      - name: regcred
+        - name: regcred
       serviceAccount: i2scim-mongo
       volumes:
-      - configMap:
-          defaultMode: 292
-          name: i2scim-config-schema
-          optional: false
-        name: configschema
+        - configMap:
+            defaultMode: 292
+            name: i2scim-config-schema
+            optional: false
+          name: configschema
   volumeClaimTemplates:
     - metadata:
         name: scimroot
