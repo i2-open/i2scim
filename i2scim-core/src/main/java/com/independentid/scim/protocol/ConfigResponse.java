@@ -21,7 +21,6 @@ import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ForbiddenException;
 import com.independentid.scim.core.err.NotFoundException;
 import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.resource.ComplexValue;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
@@ -52,8 +51,8 @@ public class ConfigResponse extends ListResponse {
 
     /**
      * Builds a SCIM response based on the internal SCIM operational configuration (rather than pulled from backend)
-     * @param ctx   The {@link RequestCtx} object containing the GET request (either by URL or by POST .search)
-     * @param configMgr The system {@link ConfigMgr} object containing the operational configuration and schema
+     * @param ctx        The {@link RequestCtx} object containing the GET request (either by URL or by POST .search)
+     * @param configMgr  The system {@link ConfigMgr} object containing the operational configuration and schema
      * @param maxResults The maximum number of results that may be returned.
      */
     public ConfigResponse(RequestCtx ctx, ConfigMgr configMgr, int maxResults) {
@@ -117,7 +116,7 @@ public class ConfigResponse extends ListResponse {
 
                     for (Schema sch : smgr.getSchemas()) {
                         try {
-                            if(sch.getId().equals(ScimParams.SCHEMA_SCHEMA_Common))
+                            if (sch.getId().equals(ScimParams.SCHEMA_SCHEMA_Common))
                                 continue;
                             this.entries.add(new ScimResource(smgr, sch.toJsonNode(), ScimParams.PATH_TYPE_SCHEMAS));
                         } catch (ParseException | ScimException e) {
@@ -237,7 +236,7 @@ public class ConfigResponse extends ListResponse {
         // Identify the server
         gen.writeStringField("ProductName", "Independent Identity i2scim Directory");
         //gen.writeStringField("ProductId", "BigDirectory");
-        gen.writeStringField("ProductVersion", "V0.5.0-Alpha");
+        gen.writeStringField("ProductVersion", "V0.6.0-Alpha");
 
 
         /* Not defined in standard schema.
