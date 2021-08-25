@@ -939,6 +939,8 @@ public class SchemaManager {
      * @return A unique identifier String for a transaction or resource identifier
      */
     public String generateTransactionId() {
+        if (backendHandler == null)
+            return null;
         if (generator == null)
             generator = backendHandler.getGenerator();
         return generator.getNewIdentifier();
