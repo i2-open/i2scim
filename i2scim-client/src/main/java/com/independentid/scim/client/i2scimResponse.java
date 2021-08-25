@@ -146,7 +146,6 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
 
         parser = jfactory.createParser(getRawStream());
         hasMore = true;
-        boolean isList = false;
 
         ObjectNode root = JsonUtil.getMapper().createObjectNode();  // this is used to convert in the case of a simple response (single resource)
 
@@ -163,7 +162,6 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
                     while (!parser.nextToken().equals(JsonToken.END_ARRAY)) {
                         String schemaVal = parser.getValueAsString();
                         if (schemaVal.equalsIgnoreCase(ScimParams.SCHEMA_API_ListResponse)) {
-                            isList = true;
                             isSingle = false;
                         }
                         array.add(schemaVal);
@@ -183,11 +181,14 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
                     continue;
                 case ListResponse.ATTR_RESOURCES:
                     parser.nextToken(); // start array
-                    parser.nextToken(); // advance to first object
-                    //parser.nextToken(); // first object
-                    loadNextResource();  // load the first resource and return;
-
-                    return;
+                    if (parser.nextToken() != JsonToken.END_ARRAY) {
+                        // should be at first object
+                        loadNextResource();  // load the first resource and return;
+                        return;
+                    } else { // if END_ARRAY occurs immediately there are no results.
+                        hasMore = false;
+                    }
+                    continue;
                 default:
                     parser.nextToken();
                     JsonNode node = JsonUtil.getMapper().readTree(parser);
@@ -198,8 +199,8 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
         if (isSingle) {
             hasMore = false; // no more stream to process
             nextRes = new ScimResource(client.getSchemaManager(), root, null);
-            parser.close();
         }
+        parser.close();
     }
 
     /**

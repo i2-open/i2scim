@@ -447,9 +447,7 @@ public class i2scimClient {
         ScimReqParams params = new ScimReqParams();
         params.setAttributesRequested("id,username");
         i2scimResponse sresp = searchPost("/Users", filter, params);
-        if (sresp.hasError() || !sresp.hasNext())
-            return false;
-        return true;
+        return !sresp.hasError() && sresp.hasNext();
     }
 
     /**
@@ -458,7 +456,8 @@ public class i2scimClient {
      * @param path   The path to a SCIM resource that returns a single object
      * @param params Scim request params {@link ScimReqParams}  (attributes requested, etc)
      * @return A {@link i2scimResponse} containing the object or objects or appropriate SCIM error
-     * @throws ScimException      when an SCIM protocol error occurs
+     * @throws ScimException      when a parsing error occurs parsing the results of a response. SCIM protocol errors
+     *                            will be contained in i2scimResponse
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues
@@ -504,7 +503,8 @@ public class i2scimClient {
      *               Sec 3.4.2.2</a>
      * @param params Scim request params {@link ScimReqParams}  (attributes requested, etc)
      * @return A {@link i2scimResponse} containing the object or objects or appropriate SCIM error
-     * @throws ScimException      when an SCIM protocol error occurs
+     * @throws ScimException      when a parsing error occurs parsing the results of a response. SCIM protocol errors
+     *                            will be contained in i2scimResponse
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues
@@ -533,7 +533,8 @@ public class i2scimClient {
      *               3.4.2.2</a>
      * @param params Scim request params {@link ScimReqParams}  (attributes requested, etc)
      * @return A {@link i2scimResponse} containing the object or objects or appropriate SCIM error
-     * @throws ScimException      when an SCIM protocol error occurs
+     * @throws ScimException      when a parsing error occurs parsing the results of a response. SCIM protocol errors
+     *                            will be contained in i2scimResponse
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues
@@ -563,33 +564,34 @@ public class i2scimClient {
 
         gen.writeStringField("filter", filter);
 
-        if (params.attrs != null) {
-            StringTokenizer tkn = new StringTokenizer(params.attrs, ", ");
-            gen.writeArrayFieldStart("attributes");
-            while (tkn.hasMoreTokens())
-                gen.writeString(tkn.nextToken());
-            gen.writeEndArray();
+        if (params != null) {
+            if (params.attrs != null) {
+                StringTokenizer tkn = new StringTokenizer(params.attrs, ", ");
+                gen.writeArrayFieldStart("attributes");
+                while (tkn.hasMoreTokens())
+                    gen.writeString(tkn.nextToken());
+                gen.writeEndArray();
+            }
+            if (params.exclAttrs != null) {
+                StringTokenizer tkn = new StringTokenizer(params.exclAttrs, ", ");
+                gen.writeArrayFieldStart("excludedAttributes");
+                while (tkn.hasMoreTokens())
+                    gen.writeString(tkn.nextToken());
+                gen.writeEndArray();
+            }
+
+            if (params.sortBy != null)
+                gen.writeStringField("sortBy", params.sortBy);
+
+            if (params.sortOrder != null)
+                gen.writeStringField("sortOrder", params.sortOrder ? "ascending" : "descending");
+
+            if (params.startIndex > -1)
+                gen.writeNumberField("startIndex", params.startIndex);
+
+            if (params.count > -1)
+                gen.writeNumberField("count", params.count);
         }
-        if (params.exclAttrs != null) {
-            StringTokenizer tkn = new StringTokenizer(params.exclAttrs, ", ");
-            gen.writeArrayFieldStart("excludedAttributes");
-            while (tkn.hasMoreTokens())
-                gen.writeString(tkn.nextToken());
-            gen.writeEndArray();
-        }
-
-        if (params.sortBy != null)
-            gen.writeStringField("sortBy", params.sortBy);
-
-        if (params.sortOrder != null)
-            gen.writeStringField("sortOrder", params.sortOrder ? "ascending" : "descending");
-
-        if (params.startIndex > -1)
-            gen.writeNumberField("startIndex", params.startIndex);
-
-        if (params.count > -1)
-            gen.writeNumberField("count", params.count);
-
         gen.writeEndObject();
         gen.close();
         writer.close();
@@ -612,7 +614,8 @@ public class i2scimClient {
      *               the service provider will usually ignore it.
      * @param params Optional SCIM request modifiers (e.g. attributes)
      * @return A {@link i2scimResponse} containing the object response or appropriate SCIM error
-     * @throws ScimException      when an SCIM protocol error occurs
+     * @throws ScimException      when a parsing error occurs parsing the results of a response. SCIM protocol errors
+     *                            will be contained in i2scimResponse
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues
@@ -643,7 +646,8 @@ public class i2scimClient {
      * @param res    The {@link ScimResource} to be replaced on the service provider
      * @param params Optional SCIM request modifiers (e.g. attributes)
      * @return A {@link i2scimResponse} containing the object response or appropriate SCIM error
-     * @throws ScimException      when an SCIM protocol error occurs
+     * @throws ScimException      when a parsing error occurs parsing the results of a response. SCIM protocol errors
+     *                            will be contained in i2scimResponse
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues
@@ -675,19 +679,23 @@ public class i2scimClient {
 
         if (ignoreSPC)
             return;
+        if (params != null) {
+            if (hasNoEtagSupport() && (params.head_ifNoMatch != null || params.head_ifModSince != null))
+                throw new NotImplementedException("Remote server indicates Etags (preconditions) not supported.");
 
-        if (hasNoEtagSupport() && (params.head_ifNoMatch != null || params.head_ifModSince != null))
-            throw new NotImplementedException("Remote server indicates Etags (preconditions) not supported.");
+            if (!hasSearchSupport() && filter != null)
+                throw new NotImplementedException("Remote server indicates search filters not supported.");
 
-        if (!hasSearchSupport() && filter != null)
-            throw new NotImplementedException("Remote server indicates search filters not supported.");
-
-        if (!hasSortSupport() && params.sortOrder != null)
-            throw new NotImplementedException("Remote server indicates sort not supported.");
+            if (!hasSortSupport() && params.sortOrder != null)
+                throw new NotImplementedException("Remote server indicates sort not supported.");
+        }
     }
 
     protected void validateModifyParams(ScimReqParams params) throws InvalidSyntaxException, NotImplementedException {
-        if (params != null && (params.head_ifNoMatch != null || params.head_ifModSince != null))
+        if (params == null)
+            return;
+
+        if (params.head_ifNoMatch != null || params.head_ifModSince != null)
             throw new InvalidSyntaxException("Preconditions If-None-Match & If-Modified-Since not appropriate on modify requests.");
 
         if (ignoreSPC)
@@ -704,7 +712,8 @@ public class i2scimClient {
      * @param req    A {@link JsonPatchRequest} containing one or more {@link JsonPatchOp} operations.
      * @param params Optional SCIM request parameters or NULL
      * @return A {@link i2scimResponse} containing the object response or appropriate SCIM error
-     * @throws ScimException      when an SCIM protocol error occurs
+     * @throws ScimException      when a parsing error occurs parsing the results of a response. SCIM protocol errors
+     *                            will be contained in i2scimResponse
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues
@@ -731,7 +740,8 @@ public class i2scimClient {
      * @param path   The relative path of the object to be deleted.
      * @param params Scim Request containing optional pre-conditions for the request
      * @return A {@link i2scimResponse} containing the object response or appropriate SCIM error
-     * @throws ScimException      when an SCIM protocol error occurs
+     * @throws ScimException      when a parsing error occurs parsing the results of a response. SCIM protocol errors
+     *                            will be contained in i2scimResponse
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws IOException        due to connection issues
      * @throws ParseException     when a response is not formatted correctly
@@ -753,7 +763,8 @@ public class i2scimClient {
      * @param path   The relative path of the object to be checked.
      * @param params Scim Request containing optional pre-conditions for the request
      * @return A {@link i2scimResponse} containing the object response or appropriate SCIM error
-     * @throws ScimException      when an SCIM protocol error occurs
+     * @throws ScimException      when a parsing error occurs parsing the results of a response. SCIM protocol errors
+     *                            will be contained in i2scimResponse
      * @throws URISyntaxException when an invalid request URL is provided
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues

@@ -1339,4 +1339,23 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
         }
     }
 
+    /**
+     * Checks that two separate ScimResource objects contain the same information.
+     * @param obj The object to be compared (usually a ScimResource).
+     * @return true if the md5 hash value for each resource is a match
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (obj instanceof ScimResource) {
+            ScimResource obRes = (ScimResource) obj;
+
+            try {
+                return this.calcVersionHash().equals(obRes.calcVersionHash());
+            } catch (ScimException e) {
+                logger.error("Error calculating MD5 hash during compare: " + e.getMessage(), e);
+                return false;
+            }
+        }
+        return false;
+    }
 }

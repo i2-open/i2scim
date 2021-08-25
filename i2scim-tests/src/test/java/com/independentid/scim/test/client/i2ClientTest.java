@@ -297,6 +297,7 @@ public class i2ClientTest {
 
         try {
             logger.info("\t2. Builder create Test");
+            assert builder != null;
             result = builder.create(null);
         } catch (IOException e) {
             fail("IO Error communicating with server: " + e.getMessage());
@@ -327,7 +328,7 @@ public class i2ClientTest {
         boolean wasDup = false;
         try {
             // this should cause a Bad Request - duplicate
-            result = builder.create(null);
+            builder.create(null);
         } catch (IOException e) {
             fail("IO Error communicating with server: " + e.getMessage());
         } catch (ScimException e) {
@@ -466,7 +467,7 @@ public class i2ClientTest {
         params.setHead_ifUnModSince(modificationDate);
         boolean badDetected = false;
         try {
-            resp = client.get(user1Url, params);
+            client.get(user1Url, params);
         } catch (InvalidSyntaxException e) {
             badDetected = true;
         }
@@ -502,8 +503,95 @@ public class i2ClientTest {
     }
 
     @Test
-    public void d_PutTests() throws SchemaException {
-        logger.info("D. Modify with PUT Test");
+    public void d_SearchTests() throws ScimException, URISyntaxException, IOException, ParseException {
+        logger.info("D. Search Tests");
+        logger.info("\t1. Search specific resource using searchGet (username eq bjensen@example.com)");
+
+        i2scimResponse resp = client.searchGet(user1Url, "username eq bjensen@example.com", null);
+
+        assertThat(resp.hasError())
+                .as("Has no error")
+                .isFalse();
+        assertThat(resp.isSingle())
+                .as("Is a List result")
+                .isFalse();
+        assertThat(resp.hasNext())
+                .as("Has a result")
+                .isTrue();
+        ScimResource test1 = resp.next();
+
+        assertThat(resp.hasNext())
+                .as("Has no more entries")
+                .isFalse();
+        resp.close();
+
+        logger.info("\t2. Search specific resource using searchPost (username eq bjensen@example.com)");
+        resp = client.searchPost(user1Url, "username eq bjensen@example.com", null);
+
+        assertThat(resp.hasError())
+                .as("Has no error")
+                .isFalse();
+        assertThat(resp.isSingle())
+                .as("Is a List result")
+                .isFalse();
+        assertThat(resp.hasNext())
+                .as("Has a result")
+                .isTrue();
+        ScimResource test2 = resp.next();
+
+        assertThat(resp.hasNext())
+                .as("Has no more entries")
+                .isFalse();
+        resp.close();
+
+        assertThat(test1.equals(test2))
+                .as("Check that the same resource is returned")
+                .isTrue();
+
+        logger.info("\t3. Search that returns no results.");
+        resp = client.searchPost(user1Url, "username eq dummy", null);
+
+        assertThat(resp.hasError())
+                .as("Has no error")
+                .isFalse();
+        assertThat(resp.isSingle())
+                .as("Is a List result")
+                .isFalse();
+        assertThat(resp.hasNext())
+                .as("Has no result")
+                .isFalse();
+        assertThat(resp.getTotalResults())
+                .as("Total results is 0")
+                .isEqualTo(0);
+        resp.close();
+
+        logger.info("\t4. Search to match all User entries");
+        resp = client.searchGet("/Users", "meta.resourceType eq User", null);
+        assertThat(resp.hasError())
+                .as("Has no error")
+                .isFalse();
+        assertThat(resp.isSingle())
+                .as("Is NOT a single result")
+                .isFalse();
+        assertThat(resp.hasNext())
+                .as("Has a result")
+                .isTrue();
+        int count = resp.getTotalResults();
+        assertThat(count)
+                .as("total results equal to 3")
+                .isEqualTo(3);
+
+        ArrayList<ScimResource> items = new ArrayList<>();
+        resp.forEachRemaining(items::add);
+        assertThat(items.size())
+                .as("3 items returned.")
+                .isEqualTo(3);
+
+    }
+
+    @Test
+    public void e_PutTests() {
+        logger.info("E. Modify with PUT Test");
 
 
         try {
@@ -536,8 +624,8 @@ public class i2ClientTest {
     }
 
     @Test
-    public void e_PatchTest() throws SchemaException {
-        logger.info("E. Modify with PATCH Test");
+    public void f_PatchTest() throws SchemaException {
+        logger.info("F. Modify with PATCH Test");
 
         try {
             Thread.sleep(1500);  // wait to avoid timing issue
@@ -588,7 +676,8 @@ public class i2ClientTest {
     }
 
     @Test
-    public void f_DeleteTest() {
+    public void g_DeleteTest() {
+        logger.info("G. DELETE Test");
         try {
             i2scimResponse resp = client.delete(user2Url, null);
             assertThat(resp.getStatus())
@@ -602,7 +691,7 @@ public class i2ClientTest {
                     .as("Has no returned result")
                     .isFalse();
 
-            resp = resp = client.delete(user2Url, null);
+            resp = client.delete(user2Url, null);
             assertThat(resp.getStatus())
                     .as("No content response")
                     .isEqualTo(HttpStatus.SC_NOT_FOUND);
@@ -626,8 +715,8 @@ public class i2ClientTest {
     }
 
     @Test
-    public void g_HeadTest() {
-
+    public void h_HeadTest() {
+        logger.info("H. HTTP HEAD Test");
 
         try {
 
