@@ -714,6 +714,15 @@ public class RequestCtx {
     }
 
     /**
+     * This method used by providers to query without using terms with virtualized attributes. This allows for comparison
+     * to be checked later after virtual attributes are populated.
+     * @return A non-virtual Filter or null
+     */
+    public Filter getBackendFilter() {
+        return (this.filter == null)? null : Filter.removeVirtualClauses(this.filter);
+    }
+
+    /**
      * Because ACIs can modify a request filter (tartgetFilter param), it is important to track whether client
      * originally requested a filter as the presence of a client filter is used to determine output format per RFC7644
      * Sec 3.4.2.

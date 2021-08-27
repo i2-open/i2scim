@@ -341,11 +341,16 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
     }
 
     /**
-     * Closes the response and any associated streams
+     * Closes the underlying HTTP response and parser streams. Usually this is done automatically by the stream parser.
+     * Once the last result is loaded from the parser, the parser is automatically closed.
      * @throws IOException errors related to processing the HTTP Response
      */
     public void close() throws IOException {
-        this.resp.close();
+        if (this.parser != null)
+            this.parser.close();
+        if (this.resp != null)
+            this.resp.close();
+
     }
 
     /**

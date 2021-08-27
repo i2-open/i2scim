@@ -728,7 +728,6 @@ public class i2ClientTest {
                     .as("Has last modification")
                     .isNotNull();
 
-
             assertThat(resp.getLastModification().equals(modificationDate))
                     .as("User1Url has been modified")
                     .isFalse();
@@ -746,5 +745,46 @@ public class i2ClientTest {
         } catch (ParseException e) {
             fail("JSON Parsing exception: " + e.getMessage(), e);
         }
+    }
+
+    @Test
+    public void i_authenticateTest() {
+        UsernamePasswordCredentials cred = new UsernamePasswordCredentials("bjensen@example.com","t1meMa$heen");
+        try {
+            boolean res = client.authenticateUser(cred);
+            assertThat(res)
+                    .isNotNull();
+            assertThat(res)
+                    .as("was authenticated")
+                    .isTrue();
+        } catch (ScimException | URISyntaxException | IOException | ParseException e) {
+            fail("Received exception during authentication: "+e.getMessage(),e);
+        }
+
+        cred = new UsernamePasswordCredentials("bjensen@example.com","wrong");
+        try {
+            boolean res = client.authenticateUser(cred);
+            assertThat(res)
+                    .isNotNull();
+            assertThat(res)
+                    .as("was NOT authenticated")
+                    .isFalse();
+        } catch (ScimException | URISyntaxException | IOException | ParseException e) {
+            fail("Received exception during authentication: "+e.getMessage(),e);
+        }
+
+        cred = new UsernamePasswordCredentials("dummy","wrong");
+        try {
+            boolean res = client.authenticateUser(cred);
+            assertThat(res)
+                    .isNotNull();
+            assertThat(res)
+                    .as("was NOT authenticated")
+                    .isFalse();
+        } catch (ScimException | URISyntaxException | IOException | ParseException e) {
+            fail("Received exception during authentication: "+e.getMessage(),e);
+        }
+
+
     }
 }
