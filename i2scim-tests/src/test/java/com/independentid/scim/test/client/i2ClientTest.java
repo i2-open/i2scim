@@ -298,7 +298,7 @@ public class i2ClientTest {
         try {
             logger.info("\t2. Builder create Test");
             assert builder != null;
-            result = builder.create(null);
+            result = builder.buildAndCreate(null);
         } catch (IOException e) {
             fail("IO Error communicating with server: " + e.getMessage());
         } catch (ScimException e) {
@@ -328,7 +328,7 @@ public class i2ClientTest {
         boolean wasDup = false;
         try {
             // this should cause a Bad Request - duplicate
-            builder.create(null);
+            builder.buildAndCreate(null);
         } catch (IOException e) {
             fail("IO Error communicating with server: " + e.getMessage());
         } catch (ScimException e) {
@@ -602,7 +602,7 @@ public class i2ClientTest {
                     .withStringAttribute("type", "twitter")
                     .buildComplexValue());
 
-            ScimResource res = builder.put(null);
+            ScimResource res = builder.buildAndPut(null);
 
             Value val = res.getValue("ims");
             assertThat(val)

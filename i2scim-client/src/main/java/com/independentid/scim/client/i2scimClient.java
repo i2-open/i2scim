@@ -43,10 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
+import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -841,7 +838,7 @@ public class i2scimClient {
         if (filter != null) {
             if (!filterSupported)
                 throw new NotImplementedException("SCIM Service provider does not support filter searches.");
-            build.addParameter(ScimParams.QUERY_filter, filter);
+            build.addParameter(ScimParams.QUERY_filter, URLEncoder.encode(filter, StandardCharsets.UTF_8));
         }
         if (params != null) {
             if (params.attrs != null)

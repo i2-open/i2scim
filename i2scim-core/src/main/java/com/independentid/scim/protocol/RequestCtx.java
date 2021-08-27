@@ -37,6 +37,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.constraints.NotNull;
 import java.io.InputStream;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -337,7 +339,7 @@ public class RequestCtx {
         String filt = req.getParameter(ScimParams.QUERY_filter);
         if (filt == null) filter = null;
         else {
-            filter = Filter.parseFilter(filt, this);
+            filter = Filter.parseFilter(URLDecoder.decode(filt,StandardCharsets.UTF_8), this);
             clientNoFilterSpecd = false;
         }
 
