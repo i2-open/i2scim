@@ -33,3 +33,5 @@ build/
 .vscode/
 /.DS_Store
 /.gitignore
+/i2scim-tests/scimdata/
+/i2scim-tests/scimdata/
