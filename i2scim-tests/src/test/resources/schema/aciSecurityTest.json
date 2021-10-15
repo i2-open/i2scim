@@ -61,14 +61,14 @@
     },
     {
       "path" : "/Schemas",
-      "name" : "Allow unauthenticated access to ServiceProviderConfig",
+      "name" : "Allow authenticated access to Schemas",
       "targetAttrs" :"*",
       "rights" : "read, search",
       "actors" : ["role=user bearer root"]
     },
     {
       "path" : "/ResourceTypes",
-      "name" : "Allow unauthenticated access to ServiceProviderConfig",
+      "name" : "Allow authenticated access to ResourceTypes",
       "targetAttrs" :"*",
       "rights" : "read, search",
       "actors" : ["role=user bearer root"]

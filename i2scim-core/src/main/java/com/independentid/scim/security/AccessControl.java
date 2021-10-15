@@ -107,6 +107,7 @@ public class AccessControl implements ScimSerializer {
      * @return true if this ACI applies to the requested path value.
      */
     public boolean isAciApplicable(String requestPath) {
+
         return requestPath.startsWith(path);
     }
 

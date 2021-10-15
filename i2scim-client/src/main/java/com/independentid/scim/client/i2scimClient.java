@@ -235,7 +235,7 @@ public class i2scimClient {
 
             InputStream schemaStream = new ByteArrayInputStream(EntityUtils.toString(resp.getEntity()).getBytes(StandardCharsets.UTF_8));
             JsonNode node = JsonUtil.getJsonTree(schemaStream);
-            System.out.println(node.toPrettyString());
+            //System.out.println(node.toPrettyString());
             schemaStream = new ByteArrayInputStream(node.toString().getBytes(StandardCharsets.UTF_8));
             this.schemaManager = new SchemaManager(schemaStream, typeStream);
 

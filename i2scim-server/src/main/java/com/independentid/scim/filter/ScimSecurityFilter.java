@@ -40,6 +40,7 @@ import java.util.Set;
 public class ScimSecurityFilter implements Filter {
     private final static Logger logger = LoggerFactory.getLogger(ScimSecurityFilter.class);
 
+    public final static String ACCESS_TYPE_I2SCIM = "i2scim";
     @Inject
     AccessManager amgr;
 
@@ -52,10 +53,21 @@ public class ScimSecurityFilter implements Filter {
     @ConfigProperty(name = "scim.security.enable", defaultValue = "true")
     boolean isSecurityEnabled;
 
+    @ConfigProperty(name = "scim.security.mode", defaultValue = "i2scim")
+    String aciMode;
+
+    boolean enabled = true;
+
     public void init(FilterConfig filterConfig) {
-        logger.info("SCIM Security Filter started.");
-        if (!isSecurityEnabled)
+        if (!isSecurityEnabled) {
             logger.warn("\t** SCIM Security filter *disabled*.");
+            enabled = false;
+            return;
+        }
+        if (aciMode.equals(ACCESS_TYPE_I2SCIM))
+            logger.info("SCIM Security Filter started.");
+        else
+            enabled = false;
     }
 
     public void destroy() {
@@ -67,7 +79,7 @@ public class ScimSecurityFilter implements Filter {
      * @param req The HttpServletRequest for the operation
      * @param ctx The SCIM RequestCtx which holds the requested rights (to be assigned by this method).
      */
-    public void assignOperationRights(HttpServletRequest req, RequestCtx ctx) {
+    public static void assignOperationRights(HttpServletRequest req, RequestCtx ctx) {
         String method = req.getMethod();
         switch (method) {
             case HttpMethod
@@ -99,7 +111,7 @@ public class ScimSecurityFilter implements Filter {
     }
 
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
-        if (isSecurityEnabled) {
+        if (enabled) {
             if (logger.isDebugEnabled())
                 logger.debug("\tEvaluating request for: User=" + identity.getPrincipal().getName() + ", Type=" + identity.getPrincipal().getClass().toString());
 

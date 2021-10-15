@@ -24,6 +24,7 @@ import io.quarkus.security.identity.SecurityIdentityAugmentor;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.jwt.auth.principal.JWTCallerPrincipal;
 import io.smallrye.mutiny.Uni;
+import org.apache.http.auth.BasicUserPrincipal;
 import org.eclipse.microprofile.metrics.annotation.Counted;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.slf4j.Logger;
@@ -66,12 +67,14 @@ public class ScimRoleAugmentor implements SecurityIdentityAugmentor {
             Principal pal = identity.getPrincipal();
             if (pal instanceof JWTCallerPrincipal) {
                buildJwt(builder,identity);
-            }
+               builder.addRole("bearer");
+            } else if (pal instanceof BasicUserPrincipal)
+                builder.addRole("basic");
             if (pal.getName().equalsIgnoreCase(cmgr.getRootUser()))
                 builder.addRole("root");
 
             // add role indicating bearer assertion
-            builder.addRole("bearer");
+
             return builder::build;
         }
     }
