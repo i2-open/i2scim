@@ -45,10 +45,8 @@ import javax.annotation.Priority;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
@@ -422,7 +420,7 @@ public class MongoProvider implements IScimProvider {
 		ArrayList<ScimResource> vals = new ArrayList<>();
 
 		Bson query;
-		Filter filt = ctx.getFilter();
+		Filter filt = ctx.getBackendFilter();
 		if (filt == null)
 			query = new Document();
 		else
@@ -447,8 +445,8 @@ public class MongoProvider implements IScimProvider {
 				try {
 					ScimResource sres = mapUtil.mapScimResource(res, type);
 
-					// if (Filter.checkMatch(sres, ctx))
-					vals.add(sres);
+					if (Filter.checkMatch(sres, ctx))  // we need to re-check to process virtual matches
+						vals.add(sres);
 				} catch (SchemaException e) {
 					logger.warn("Unhandled exception: "+e.getLocalizedMessage(),e);
 					return new ScimResponse(ScimResponse.ST_INTERNAL,e.getLocalizedMessage(),null);

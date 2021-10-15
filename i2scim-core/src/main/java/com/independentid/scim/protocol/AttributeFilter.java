@@ -24,7 +24,6 @@ import com.independentid.scim.schema.SchemaException;
 
 import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
-import java.net.URI;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.Date;
@@ -535,6 +534,7 @@ public class AttributeFilter extends Filter {
 
             case Attribute.TYPE_Integer: {
                 assert value != null;
+                assert value instanceof IntegerValue;
                 Integer ival = ((IntegerValue) value).getRawValue();
                 switch (getOperator()) {
 
@@ -568,6 +568,7 @@ public class AttributeFilter extends Filter {
 
             case Attribute.TYPE_Decimal: {
                 assert value != null;
+                assert value instanceof DecimalValue;
                 BigDecimal bval = ((DecimalValue) value).getRawValue();
                 switch (getOperator()) {
 
@@ -610,6 +611,8 @@ public class AttributeFilter extends Filter {
         return this.isMatch(value);
     }
 
-
+    public boolean isVirtualAttribute() {
+        return smgr.isVirtualAttr(this.attr);
+    }
 
 }

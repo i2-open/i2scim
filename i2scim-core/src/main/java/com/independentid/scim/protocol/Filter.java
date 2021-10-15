@@ -17,7 +17,6 @@
 package com.independentid.scim.protocol;
 
 import com.independentid.scim.core.err.BadFilterException;
-import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.Attribute;
@@ -354,6 +353,62 @@ public abstract class Filter {
 		return cfilter.isMatch(res);
 		
 	}
-	
+
+	/**
+	 * This method checks for a virtual attribute filter and if found removes it. This method will
+	 * recurse through nested Filters (e.g. LogicFilters) and remove virtual terms. If none are left, a null is returned.
+	 * @param filter The Filter to be checked.
+	 * @return The filter representation with virtual attribute filters removed or null if no clauses remain.
+	 */
+	public static Filter removeVirtualClauses(Filter filter) {
+
+		if (filter instanceof LogicFilter) {
+			LogicFilter lfilter = (LogicFilter) filter;
+			Filter v1 = lfilter.getValue1();
+			Filter v2 = lfilter.getValue2();
+			boolean modified = false;
+
+			if (v1 instanceof LogicFilter) {
+				v1 = removeVirtualClauses(v1);
+				modified = true;
+			}
+			if (v2 instanceof LogicFilter) {
+				v2 = removeVirtualClauses(v2);
+				modified = true;
+			}
+
+			if (v1 instanceof AttributeFilter) {
+				AttributeFilter attrFilter = (AttributeFilter) v1;
+				if (attrFilter.isVirtualAttribute())
+					return v2;
+			}
+			if (v2 instanceof AttributeFilter) {
+				AttributeFilter attrFilter = (AttributeFilter) v2;
+				if (attrFilter.isVirtualAttribute())
+					return v1;
+			}
+
+			if (modified)
+				return new LogicFilter(lfilter.isAnd(), v1, v2);
+			else
+				return filter;
+		}
+
+		if (filter instanceof AttributeFilter)
+			return (((AttributeFilter)filter).isVirtualAttribute()) ? null:filter;
+
+		if (filter instanceof PrecedenceFilter) {
+			PrecedenceFilter pfilter = (PrecedenceFilter) filter;
+
+			Filter sfilter = removeVirtualClauses(pfilter.getChildFilter());
+			if (sfilter == null)
+				return null;
+			return filter;
+		}
+
+		// ignore valpath filters
+		return filter;
+	}
+
 	abstract public String toValuePathString();
 }

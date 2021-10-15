@@ -1,0 +1,13 @@
+com.independentid.scim.backend
+com.independentid.scim.client
+com.independentid.scim.core
+com.independentid.scim.core.err
+com.independentid.scim.events
+com.independentid.scim.op
+com.independentid.scim.plugin
+com.independentid.scim.protocol
+com.independentid.scim.pwd
+com.independentid.scim.resource
+com.independentid.scim.schema
+com.independentid.scim.security
+com.independentid.scim.serializer

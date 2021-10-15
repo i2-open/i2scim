@@ -118,7 +118,7 @@ default location is `schema/acis.json`.
       "targetAttrs": "*",
       "rights": "read, search, compare",
       "actors": [
-        "group=/Groups/e9e30dba-f08f-4109-8486-d5c6a331660a",
+        "filter=groups eq TeamLeaderGroup",
         "role=admin"
       ]
     },
@@ -134,3 +134,10 @@ default location is `schema/acis.json`.
   ]
 }
 ```
+
+###### Notes performence (using filters and groups):
+To use a group defined in the local SCIM server, use a filter with the `groups` attribute associated with the 
+subjects local User resource. In general, for improved performance populate 
+externally authorized entities (e.g. OpenID Connect, OAuth) with roles calculated by an Identity Provider. In 
+general having an Identity Provider calculate group memberships once at authorization time is an order of magnitude 
+faster than calculating group membership on a per API access basis.
