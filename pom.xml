@@ -21,10 +21,30 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.independentid</groupId>
     <artifactId>i2scim-parent</artifactId>
-    <version>0.6.0-Alpha</version>
+    <version>0.6.1-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>i2scim</name>
-    <description>SCIM v2 Server on Quarkus</description>
+    <description>i2scim.io SCIM v2 Server on Quarkus, Release 0.6</description>
+    <url>https://i2scim.io</url>
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>Phil Hunt</name>
+            <email>info@independentid.com</email>
+            <organization>Independent Identity Incorporated</organization>
+            <organizationUrl>https://www.independentid.com</organizationUrl>
+        </developer>
+    </developers>
+    <scm>
+        <connection>scm:git:git://github.com/i2-open/i2scim.git</connection>
+        <developerConnection>scm:git:git://github.com/i2-open/i2scim.git</developerConnection>
+        <url>https://github.com/i2-open/i2scim/tree/master</url>
+    </scm>
     <modules>
         <module>i2scim-core</module>
         <module>i2scim-prov-memory</module>
@@ -48,6 +68,16 @@
         <quarkus.platform.version>2.1.3.Final</quarkus.platform.version>
         <surefire-plugin.version>3.0.0-M5</surefire-plugin.version>
     </properties>
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -114,6 +144,7 @@
                     </execution>
                 </executions>
             </plugin>
+
         </plugins>
     </build>
     <profiles>
