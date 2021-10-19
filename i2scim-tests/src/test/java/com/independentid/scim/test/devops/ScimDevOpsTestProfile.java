@@ -16,6 +16,7 @@
 
 package com.independentid.scim.test.devops;
 
+import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 import java.util.HashMap;
@@ -24,24 +25,26 @@ import java.util.Map;
 public class ScimDevOpsTestProfile implements QuarkusTestProfile {
     @Override
     public Map<String, String> getConfigOverrides() {
+
+
         Map<String, String> cmap = new HashMap<>(Map.of(
-                "scim.prov.mongo.dbname", "healthTestSCIM",
-                "scim.prov.mongo.uri", "mongodb://admin:t0p-Secret@localhost:27017",
+                "scim.prov.mongo.dbname", "opsTestSCIM",
 
                 "quarkus.http.test-port", "0",
                 "quarkus.log.min-level","DEBUG",
                 "quarkus.log.category.\"com.independentid.scim.test\".level", "INFO",
+
+                "scim.event.enable","false",
+                "scim.root.dir",".",  //enables local debug testing
 
                 "scim.security.enable", "true",
                 "scim.security.authen.basic", "true",
                 "scim.security.authen.jwt", "true",
                 "scim.security.acis","classpath:/schema/aciSecurityTest.json"
         ));
-        cmap.putAll(Map.of(
-                "scim.event.enable","false",
-                "scim.root.dir","."  //enables local debug testing
 
-        ));
+        TestUtils.configTestEndpointsMap(cmap);
+
         return cmap;
 
 

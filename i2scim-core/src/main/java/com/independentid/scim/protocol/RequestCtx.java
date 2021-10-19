@@ -17,6 +17,8 @@
 package com.independentid.scim.protocol;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.core.err.InvalidSyntaxException;
 import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.core.err.ScimException;
@@ -25,23 +27,28 @@ import com.independentid.scim.op.Operation;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
-import com.independentid.scim.security.AccessControl;
 import com.independentid.scim.security.AciSet;
 import com.independentid.scim.security.ScimBasicIdentityProvider;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.security.identity.SecurityIdentity;
+import io.smallrye.jwt.auth.principal.JWTCallerPrincipal;
 import org.apache.http.HttpHeaders;
+import org.apache.http.auth.BasicUserPrincipal;
 
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.constraints.NotNull;
 import java.io.InputStream;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.*;
+
+import static com.independentid.scim.security.AccessControl.Rights;
 
 /**
  * @author pjdhunt POJO RequestCtx is use to pass the SCIM request parameters between components
@@ -102,7 +109,7 @@ public class RequestCtx {
     protected String modsince = null;
     protected String unmodsince = null;
 
-    protected AccessControl.Rights right;
+    protected Rights right;
 
     // This can be used by a provider to request URL encoded extension names be used
     // Used to address field name and length restrictions in some dbs
@@ -337,7 +344,7 @@ public class RequestCtx {
         String filt = req.getParameter(ScimParams.QUERY_filter);
         if (filt == null) filter = null;
         else {
-            filter = Filter.parseFilter(filt, this);
+            filter = Filter.parseFilter(URLDecoder.decode(filt,StandardCharsets.UTF_8), this);
             clientNoFilterSpecd = false;
         }
 
@@ -473,6 +480,18 @@ public class RequestCtx {
             setCount(vnode.asText());  // use the setter for consistency with url processing
 
         this.postSearch = true;
+    }
+
+    public String getSortBy() {
+        return sortBy;
+    }
+
+    public String getSortOrder() {
+        return sortOrder;
+    }
+
+    public int getStartIndex() {
+        return startIndex;
     }
 
     public void setAttributes(String attrList) {
@@ -714,6 +733,15 @@ public class RequestCtx {
     }
 
     /**
+     * This method used by providers to query without using terms with virtualized attributes. This allows for comparison
+     * to be checked later after virtual attributes are populated.
+     * @return A non-virtual Filter or null
+     */
+    public Filter getBackendFilter() {
+        return (this.filter == null)? null : Filter.removeVirtualClauses(this.filter);
+    }
+
+    /**
      * Because ACIs can modify a request filter (tartgetFilter param), it is important to track whether client
      * originally requested a filter as the presence of a client filter is used to determine output format per RFC7644
      * Sec 3.4.2.
@@ -853,11 +881,11 @@ public class RequestCtx {
         appendFilter(orClause);
     }
 
-    public AccessControl.Rights getRight() {
+    public Rights getRight() {
         return this.right;
     }
 
-    public void setRight(AccessControl.Rights right) {
+    public void setRight(Rights right) {
         this.right = right;
     }
 
@@ -887,6 +915,134 @@ public class RequestCtx {
         }
 
         return null;  // If we can't parse, just ignore
+    }
+
+    public JsonNode toJsonNode() {
+        ObjectNode node = JsonUtil.getMapper().createObjectNode();
+
+        ObjectNode http = JsonUtil.getMapper().createObjectNode();
+        node.set("http",http);
+        http.put("method",getHttpServletRequest().getMethod());
+        http.put("uri",req.getRequestURI());
+
+        http.put("remoteHost",req.getRemoteHost());
+        http.put("remotePort",req.getRemotePort());
+        http.put("isSecure",req.isSecure());
+
+        ObjectNode headers = JsonUtil.getMapper().createObjectNode();
+        http.set("headers",headers);
+        Enumeration<String> headerNames = req.getHeaderNames();
+        while (headerNames.hasMoreElements()) {
+            String name = headerNames.nextElement();
+            headers.put(name,req.getHeader(name));
+        }
+        Principal principal = getPrincipal();
+        String authType = "NONE";
+        ObjectNode authNode = JsonUtil.getMapper().createObjectNode();
+        node.set("auth",authNode);
+
+        if (principal == null) {
+            authNode.put("type","NONE");
+        } else {
+            SecurityIdentity identity = getSecSubject();
+
+            if (principal instanceof BasicUserPrincipal) {
+                BasicUserPrincipal basic = (BasicUserPrincipal) principal;
+                authNode.put("type","BASIC");
+                if (basic.getName() != null)
+                    authNode.put("user",basic.getName());
+                Set<String> roles = identity.getRoles();
+                if (roles != null && !roles.isEmpty()) {
+                    ArrayNode roleArray = authNode.putArray("roles");
+                    for (String role: roles)
+                        roleArray.add(role);
+                }
+            } else
+            if (principal instanceof JWTCallerPrincipal) {
+                authNode.put("type","JWT");
+                JWTCallerPrincipal jwtPrincicpal = (JWTCallerPrincipal) principal;
+                if (jwtPrincicpal.getSubject() != null)
+                    authNode.put("sub",jwtPrincicpal.getSubject());
+                if (jwtPrincicpal.getIssuer() != null)
+                    authNode.put("iss",jwtPrincicpal.getIssuer());
+                if (jwtPrincicpal.getAudience() != null) {
+                    ArrayNode audArray = authNode.putArray("aud");
+                    for (String aud : jwtPrincicpal.getAudience())
+                        audArray.add(aud);
+                }
+
+                Set<String> roles = identity.getRoles();
+                if (roles != null && !roles.isEmpty()) {
+                    ArrayNode roleArray = authNode.putArray("roles");
+                    for (String role: roles)
+                        roleArray.add(role);
+                }
+
+                 /*
+                ObjectNode claimsNode = JsonUtil.getMapper().createObjectNode();
+                authNode.set("claims",claimsNode);
+
+                Set<String> claims = jwtPrincicpal.getClaimNames();
+                for (String claim : claims) {
+                    if (!claim.equals("iss") && !claim.equals("sub"))
+                        claimsNode.put(claim, jwtPrincicpal.getClaim(claim).toString());
+                }
+                 */
+
+                authNode.put("token",jwtPrincicpal.getRawToken());
+            } else {
+                // unknown type... handle it generically
+                authNode.put("type",principal.getClass().getSimpleName());
+                String user = principal.getName();
+                if (user != null)
+                    authNode.put("user",user);
+                Set<String> roles = identity.getRoles();
+                if (roles != null && !roles.isEmpty()) {
+                    ArrayNode roleArray = authNode.putArray("roles");
+                    for (String role: roles)
+                        roleArray.add(role);
+                }
+            }
+        }
+
+
+        if (getPath() != null)
+            node.put("path",getPath());
+        if (getResourceContainer() != null)
+            node.put("container",getResourceContainer());
+        if (getPathId() != null)
+            node.put("id",getPathId());
+
+        Rights right = getRight();
+        node.put("operation",right.toString());
+
+        Set<String> attrs = getAttrNamesReq();
+        ArrayNode attrArray = node.putArray("attrs");
+        if (attrs == null || attrs.isEmpty())
+            attrArray.add("*");
+        else {
+            for(String attr : attrs)
+                attrArray.add(attr);
+        }
+
+        attrs = getExcludedAttrNames();
+        if (attrs != null && !attrs.isEmpty()) {
+            ArrayNode exclArray = node.putArray("attrsExcluded");
+            for(String attr : attrs)
+                exclArray.add(attr);
+        }
+
+        if (getFilter() != null)
+            node.put("filter",getFilter().getFilterStr());
+
+        return node;
+    }
+    public String toOpaInput() {
+        ObjectNode node = JsonUtil.getMapper().createObjectNode();
+
+        JsonNode inputVal = toJsonNode();
+        node.set("input",inputVal);
+        return node.toPrettyString();
     }
 
     public boolean isAnonymous() {

@@ -398,7 +398,8 @@ public class MemoryProvider implements IScimProvider {
 
         if (ctx.getPathId() == null) {
 
-            Filter filter = ctx.getFilter();
+            Filter filter = ctx.getBackendFilter();
+            Filter reqFilter = ctx.getFilter();
 
             ArrayList<ScimResource> results = new ArrayList<>();
             if (filter == null) {
@@ -410,6 +411,9 @@ public class MemoryProvider implements IScimProvider {
                             continue; // ConfigState canoot be returned externally.
                         if (results.size() < maxResults) {
                             res.refreshVirtualAttrs();
+                            if (reqFilter != null && !Filter.checkMatch(res,ctx))
+                                continue;
+
                             results.add(res); // return raw copy to trigger virtual values
                         } else
                             break;
@@ -420,6 +424,8 @@ public class MemoryProvider implements IScimProvider {
                         for (ScimResource res : map.values()) {
                             if (results.size() < maxResults) {
                                 res.refreshVirtualAttrs();
+                                if (reqFilter != null && !Filter.checkMatch(res,ctx))
+                                    continue;
                                 results.add(res); // return raw copy to trigger virtual values
                             }
                         }
@@ -430,11 +436,9 @@ public class MemoryProvider implements IScimProvider {
 
                 for (String id : candidates) {
                     ScimResource candidate = this.mainMap.get(id);
-                    if (filter.isMatch(candidate)) {
-                        try {
-                            results.add(candidate.copy(null));// return raw copy to trigger virtual values and protected stored values
-                        } catch (ParseException ignore) {
-                        }
+                    candidate.refreshVirtualAttrs();
+                    if (reqFilter.isMatch(candidate)) {
+                        results.add(candidate);// return raw copy to trigger virtual values and protected stored values
                     }
                     if (results.size() > maxResults)
                         break;

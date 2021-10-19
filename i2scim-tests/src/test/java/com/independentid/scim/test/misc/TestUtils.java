@@ -48,6 +48,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.text.ParseException;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.fail;
 
@@ -55,6 +56,20 @@ import static org.assertj.core.api.Assertions.fail;
 public class TestUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(TestUtils.class);
+
+    public static final String ENV_TEST_OPA_URL = "TEST_OPA_URL";
+    public static final String DEF_TEST_OPA_URL = "http://localhost:8181/v1/data/i2scim";
+
+    public static final String ENV_TEST_MONGO_URI = "TEST_MONGO_URI";
+    public static final String DEF_TEST_MONGO_URI = "mongodb://localhost:27017";
+
+    // Not supported because each profile sets its own DB name
+    //public static final String ENV_TEST_MONGO_DBNAME = "TEST_MONGO_DBNAME";
+    public static final String DEF_TEST_MONGO_DBNAME = "testSCIM";
+    public static final String ENV_TEST_MONGO_USER = "TEST_MONGO_USER";
+    public static final String DEF_TEST_MONGO_USER = "admin";
+    public static final String ENV_TEST_MONGO_SECRET = "TEST_MONGO_SECRET";
+    public static final String DEF_TEST_MONGO_SECRET = "t0p-Secret";
 
     @Inject
     BackendHandler handler;
@@ -82,6 +97,40 @@ public class TestUtils {
     public static String mapPathToReqUrl(URL baseUrl, String path) throws MalformedURLException {
         URL rUrl = new URL(baseUrl, path);
         return rUrl.toString();
+    }
+
+    /**
+     * Updates a configuration hashmap with configured testing endpoints for MongoDB, OPA, etc. These
+     * can be overridden using environment variables prefixed with "TEST_..." -- see static ENV values above.
+     * If a value is already defined, the value is not updated.
+     */
+    public static void configTestEndpointsMap(Map<String,String> map) {
+        String opa_uri = System.getenv(ENV_TEST_OPA_URL);
+        if (opa_uri == null)
+            opa_uri = DEF_TEST_OPA_URL;
+        if (!map.containsKey("scim.opa.authz.url"))
+            map.put("scim.opa.authz.url",opa_uri);
+
+        String mongo_uri = System.getenv(ENV_TEST_MONGO_URI);
+        if (mongo_uri == null)
+            mongo_uri = DEF_TEST_MONGO_URI;
+        if (!map.containsKey("scim.prov.mongo.uri"))
+            map.put("scim.prov.mongo.uri",mongo_uri);
+
+        if (!map.containsKey("scim.prov.mongo.dbname"))
+            map.put("scim.prov.mongo.dbname",DEF_TEST_MONGO_DBNAME);
+
+        String mongo_user = System.getenv(ENV_TEST_MONGO_USER);
+        if (mongo_user == null)
+            mongo_user = DEF_TEST_MONGO_USER;
+        if (!map.containsKey("scim.prov.mongo.username"))
+            map.put("scim.prov.mongo.username",mongo_user);
+
+        String mongo_pass = System.getenv(ENV_TEST_MONGO_SECRET);
+        if (mongo_pass == null)
+            mongo_pass = DEF_TEST_MONGO_SECRET;
+        if (!map.containsKey("scim.prov.mongo.password"))
+            map.put("scim.prov.mongo.password",mongo_pass);
     }
 
     public static CloseableHttpResponse executeGet(URL baseUrl, String req) throws MalformedURLException {

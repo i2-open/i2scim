@@ -373,9 +373,16 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
             this.schemas = new ArrayList<>();
             while (iter.hasNext()) {
                 JsonNode anode = iter.next();
-                this.schemas.add(anode.asText());
+                String id = anode.asText();
+                if (this.type == null) {
+                    this.type = smgr.getResourceTypeById(id);
+                    if (this.type != null) {
+                        this.mainSchema = smgr.getSchemaById(this.type.getSchema());
+                        this.container = this.type.getTypePath();
+                    }
+                }
+                this.schemas.add(id);
             }
-
         }
 
         JsonNode item = node.get(ScimParams.ATTR_ID);
@@ -392,13 +399,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
             if (this.type == null) {
                 if (this.meta.getResourceType() != null)
                     this.type = smgr.getResourceTypeByName(this.meta.getResourceType());
-                else { // infer type by schema
-                    for (String aschema : this.schemas) {
-                        this.type = smgr.getResourceTypeById(aschema);
-                        if (this.type != null)
-                            break;
-                    }
-                }
+
                 if (this.type == null)
                     throw new SchemaException("Unable to determine resource type: " + this.id);
                 this.mainSchema = smgr.getSchemaById(this.type.getSchema());
@@ -1342,7 +1343,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
     /**
      * Checks that two separate ScimResource objects contain the same information.
      * @param obj The object to be compared (usually a ScimResource).
-     * @return true if the md5 hash value for each resource is a match
+     * @return true if the hashCode value for each resource is a match
      */
     @Override
     public boolean equals(Object obj) {

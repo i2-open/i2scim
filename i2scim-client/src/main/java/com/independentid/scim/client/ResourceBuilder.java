@@ -225,7 +225,7 @@ public class ResourceBuilder {
     }
 
     /**
-     * Removes all values of a particular attribute type
+     * Removes values of a particular attribute type
      * @param attr The {@link Attribute} whose values are to be deleted
      * @return The current builder context.
      */
@@ -267,7 +267,7 @@ public class ResourceBuilder {
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues
      */
-    public ScimResource create(ScimReqParams params) throws IOException, ScimException, URISyntaxException, ParseException {
+    public ScimResource buildAndCreate(ScimReqParams params) throws IOException, ScimException, URISyntaxException, ParseException {
         if (this.client == null)
             throw new IOException("SCIM client not defined.");
         i2scimResponse resp = client.create(this.resource, params);
@@ -294,7 +294,7 @@ public class ResourceBuilder {
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues
      */
-    public ScimResource put(ScimReqParams params) throws IOException, ScimException, URISyntaxException, ParseException {
+    public ScimResource buildAndPut(ScimReqParams params) throws IOException, ScimException, URISyntaxException, ParseException {
         if (this.client == null)
             throw new IOException("SCIM client not defined.");
 

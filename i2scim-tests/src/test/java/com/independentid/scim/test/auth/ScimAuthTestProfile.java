@@ -17,19 +17,20 @@
 package com.independentid.scim.test.auth;
 
 import com.independentid.scim.backend.mongo.MongoProvider;
+import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class ScimAuthTestProfile implements QuarkusTestProfile {
+
     @Override
     public Map<String, String> getConfigOverrides() {
         Map<String, String> cmap = new HashMap<>(Map.of(
                 "scim.prov.providerClass", MongoProvider.class.getName(),
                 "scim.prov.mongo.test", "true",
                 "scim.prov.mongo.dbname", "secTestSCIM",
-                "scim.prov.mongo.uri", "mongodb://admin:t0p-Secret@localhost:27017",
 
                 "scim.security.enable", "true",
 
@@ -47,6 +48,8 @@ public class ScimAuthTestProfile implements QuarkusTestProfile {
                 "scim.event.enable","false",
                 "scim.root.dir","."  //enables local debug testing
         ));
+
+        TestUtils.configTestEndpointsMap(cmap);
         return cmap;
 
 

@@ -16,7 +16,6 @@
 package com.independentid.scim.op;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.core.err.InternalException;
 import com.independentid.scim.core.err.InvalidSyntaxException;
 import com.independentid.scim.core.err.ScimException;
@@ -35,7 +34,7 @@ import java.io.IOException;
  * @author pjdhunt
  *
  */
-public class SearchOp extends Operation {
+public class SearchOp extends GetOp {
 
 	private static final long serialVersionUID = -3586153424932556487L;
 	private final static Logger logger = LoggerFactory.getLogger(SearchOp.class);
@@ -73,26 +72,6 @@ public class SearchOp extends Operation {
 			this.opState = OpState.invalid;
 		}
 
-	}
-
-	/* (non-Javadoc)
-	 * @see com.independentid.scim.op.Operation#doOperation()
-	 */
-	@Override
-	protected void doOperation() {
-		try {
-			this.scimresp = backendHandler.get(ctx);
-
-		} catch (ScimException e) {
-			setCompletionError(e);
-
-		} catch (BackendException e) {
-			ScimException se = new InternalException("Unknown backend exception during SCIM Search: "+e.getLocalizedMessage(),e);
-			setCompletionError(se);
-			logger.error(
-					"Received backend error while processing SCIM Search for: ["
-							+ this.ctx.getPath() + "] " + e.getMessage(), e);
-		}
 	}
 
 	/* (non-Javadoc)

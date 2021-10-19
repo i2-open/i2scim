@@ -484,7 +484,6 @@ public class MongoFilterMapper {
                 obj = Filters.or(MongoFilterMapper.mapFilter(filter.getValue1(), false, isValPath),MongoFilterMapper.mapFilter(filter.getValue2(), false, isValPath));
 
         return obj;
-
     }
 
     public static Bson mapFilter(ValuePathFilter filter)

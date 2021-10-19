@@ -16,6 +16,7 @@
 
 package com.independentid.scim.security;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ForbiddenException;
@@ -27,7 +28,6 @@ import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
-
 import io.quarkus.security.identity.SecurityIdentity;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
@@ -247,6 +247,35 @@ public class AccessManager {
             return false; // path is not permitted
         ctx.setAciSet(set);
 
+        return true;
+    }
+
+    public boolean filterRequestOpaAcis(RequestCtx ctx, String opaResponse) throws JsonProcessingException {
+        JsonNode opaRes = JsonUtil.getJsonTree(opaResponse);
+        opaRes = opaRes.get("result");
+        JsonNode allowNode = opaRes.findValue("allow");
+        if (allowNode == null || !allowNode.asBoolean())
+            return false;
+
+        JsonNode rules = opaRes.findValue("rules");
+        if (rules == null)
+            return false;
+
+        AciSet set = new AciSet(ctx.getPath(),ctx.getRight());
+        try {
+            if (rules.isArray()) {
+                for (JsonNode rule : rules) {
+                    AccessControl aci = new AccessControl(smgr, rule);
+                    set.addAci(aci);
+                }
+            } else {
+                AccessControl aci = new AccessControl(smgr, rules);
+                set.addAci(aci);
+            }
+        } catch (ScimException e) {
+            logger.error("Invalid ACI returned from OPA: \n"+rules.toPrettyString()+"\nError: "+e.getMessage());
+        }
+        ctx.setAciSet(set);
         return true;
     }
 

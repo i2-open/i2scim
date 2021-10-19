@@ -298,7 +298,7 @@ public class i2ClientTest {
         try {
             logger.info("\t2. Builder create Test");
             assert builder != null;
-            result = builder.create(null);
+            result = builder.buildAndCreate(null);
         } catch (IOException e) {
             fail("IO Error communicating with server: " + e.getMessage());
         } catch (ScimException e) {
@@ -328,7 +328,7 @@ public class i2ClientTest {
         boolean wasDup = false;
         try {
             // this should cause a Bad Request - duplicate
-            builder.create(null);
+            builder.buildAndCreate(null);
         } catch (IOException e) {
             fail("IO Error communicating with server: " + e.getMessage());
         } catch (ScimException e) {
@@ -602,7 +602,7 @@ public class i2ClientTest {
                     .withStringAttribute("type", "twitter")
                     .buildComplexValue());
 
-            ScimResource res = builder.put(null);
+            ScimResource res = builder.buildAndPut(null);
 
             Value val = res.getValue("ims");
             assertThat(val)
@@ -728,7 +728,6 @@ public class i2ClientTest {
                     .as("Has last modification")
                     .isNotNull();
 
-
             assertThat(resp.getLastModification().equals(modificationDate))
                     .as("User1Url has been modified")
                     .isFalse();
@@ -746,5 +745,46 @@ public class i2ClientTest {
         } catch (ParseException e) {
             fail("JSON Parsing exception: " + e.getMessage(), e);
         }
+    }
+
+    @Test
+    public void i_authenticateTest() {
+        UsernamePasswordCredentials cred = new UsernamePasswordCredentials("bjensen@example.com","t1meMa$heen");
+        try {
+            boolean res = client.authenticateUser(cred);
+            assertThat(res)
+                    .isNotNull();
+            assertThat(res)
+                    .as("was authenticated")
+                    .isTrue();
+        } catch (ScimException | URISyntaxException | IOException | ParseException e) {
+            fail("Received exception during authentication: "+e.getMessage(),e);
+        }
+
+        cred = new UsernamePasswordCredentials("bjensen@example.com","wrong");
+        try {
+            boolean res = client.authenticateUser(cred);
+            assertThat(res)
+                    .isNotNull();
+            assertThat(res)
+                    .as("was NOT authenticated")
+                    .isFalse();
+        } catch (ScimException | URISyntaxException | IOException | ParseException e) {
+            fail("Received exception during authentication: "+e.getMessage(),e);
+        }
+
+        cred = new UsernamePasswordCredentials("dummy","wrong");
+        try {
+            boolean res = client.authenticateUser(cred);
+            assertThat(res)
+                    .isNotNull();
+            assertThat(res)
+                    .as("was NOT authenticated")
+                    .isFalse();
+        } catch (ScimException | URISyntaxException | IOException | ParseException e) {
+            fail("Received exception during authentication: "+e.getMessage(),e);
+        }
+
+
     }
 }
