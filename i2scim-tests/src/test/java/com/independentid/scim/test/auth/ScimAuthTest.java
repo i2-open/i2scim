@@ -56,12 +56,15 @@ public class ScimAuthTest {
 	private final static Logger logger = LoggerFactory.getLogger(ScimUserCRUDTest.class);
 	
 	//private static String userSchemaId = "urn:ietf:params:scim:schemas:core:2.0:User";
-	// note: test token expires Sun Oct 17, 2021.
-	public static String bearer = "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJSLURla2xmOU5XSXpRMVVmRTVRNnY5UXRnVnNDQ1ROdE5iRUxnNXZjZ1J3In0.eyJleHAiOjE2MzQ0OTIzMDcsImlhdCI6MTYwMjk1NjMwNywianRpIjoiNWYyNDQ0ZGUtMDVlNi00MDFjLWIzMjYtZjc5YjJiMmZhNmZiIiwiaXNzIjoiaHR0cDovLzEwLjEuMTAuMTA5OjgxODAvYXV0aC9yZWFsbXMvZGV2Iiwic3ViIjoiNDA2MDQ0OWYtNDkxMy00MWM1LTkxYjAtYTRlZjY5MjYxZTY0IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoic2NpbS1zZXJ2ZXItY2xpZW50Iiwic2Vzc2lvbl9zdGF0ZSI6ImE2NGZkNjA3LWU1MzItNGQ0Ni04MGQ2LWE0NTUzYzRjZWQ1OCIsImFjciI6IjEiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsibWFuYWdlciIsIm9mZmxpbmVfYWNjZXNzIl19LCJzY29wZSI6ImZ1bGwgbWFuYWdlciIsImNsaWVudElkIjoic2NpbS1zZXJ2ZXItY2xpZW50IiwiY2xpZW50SG9zdCI6IjEwLjEuMTAuMTE4IiwidXNlcl9uYW1lIjoic2VydmljZS1hY2NvdW50LXNjaW0tc2VydmVyLWNsaWVudCIsImNsaWVudEFkZHJlc3MiOiIxMC4xLjEwLjExOCJ9.Wouztkr7APb2_juPBhMtPbAqmFwQqsDQXYIQBeDpMuWnKGXZZMs17Rpzq8YnVSGfbfyrAduMAK2PAWnw8hxC4cGc0xEVS3lf-KcA5bUr4EnLcPVeQdEPsQ5eLrt_-BSPCQ8ere2fw6-Obv7FJ6aofAlT8LttWvEvkPzo2R0T0aZX8Oh7b15-icAVZ8ER0j7aFQ2k34dAq0Uwn58wakT6MA4qEFxze6GLeBuC4cAqNPYoOkUWTJxu1J_zLFDkpomt_zzx9u0Ig4asaErRyPj-ettElaGXMELZrNsaVbikCHgK7ujwMJDlEhUf8jxM8qwhCuf50-9ZydPAFA8Phj6FkQ";
+
+	public static String bearer;
 
 	@Inject
 	@Resource(name="ConfigMgr")
 	ConfigMgr cmgr ;
+
+	@Inject
+	TestUtils testUtils;
 
 	@ConfigProperty(name="smallrye.jwt.verify.key.location",defaultValue = "classpath:/certs/jwks-certs.json")
 	String jwks;
@@ -71,6 +74,7 @@ public class ScimAuthTest {
 	
 	@Test
 	public void a_certTest() throws IOException {
+
 		assertThat(jwks)
 				.as("JWKS file is not null")
 				.isNotNull();
@@ -155,6 +159,8 @@ public class ScimAuthTest {
 	 */
 	@Test
 	public void d_ScimGetUserJwtTest() throws MalformedURLException {
+		bearer = testUtils.getAuthToken("admin",true);
+
 		String req = TestUtils.mapPathToReqUrl(baseUrl,
 				"/Schemas");
 		

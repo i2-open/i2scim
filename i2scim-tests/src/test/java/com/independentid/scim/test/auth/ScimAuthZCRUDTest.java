@@ -35,7 +35,6 @@ import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import io.smallrye.jwt.auth.principal.JWTParser;
 import org.apache.http.*;
 import org.apache.http.client.methods.*;
 import org.apache.http.entity.ContentType;
@@ -74,7 +73,7 @@ public class ScimAuthZCRUDTest {
 
     private final static Logger logger = LoggerFactory.getLogger(ScimAuthZCRUDTest.class);
 
-    public static String bearer = "Bearer eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJSLURla2xmOU5XSXpRMVVmRTVRNnY5UXRnVnNDQ1ROdE5iRUxnNXZjZ1J3In0.eyJleHAiOjE2MzQ0OTIzMDcsImlhdCI6MTYwMjk1NjMwNywianRpIjoiNWYyNDQ0ZGUtMDVlNi00MDFjLWIzMjYtZjc5YjJiMmZhNmZiIiwiaXNzIjoiaHR0cDovLzEwLjEuMTAuMTA5OjgxODAvYXV0aC9yZWFsbXMvZGV2Iiwic3ViIjoiNDA2MDQ0OWYtNDkxMy00MWM1LTkxYjAtYTRlZjY5MjYxZTY0IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoic2NpbS1zZXJ2ZXItY2xpZW50Iiwic2Vzc2lvbl9zdGF0ZSI6ImE2NGZkNjA3LWU1MzItNGQ0Ni04MGQ2LWE0NTUzYzRjZWQ1OCIsImFjciI6IjEiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsibWFuYWdlciIsIm9mZmxpbmVfYWNjZXNzIl19LCJzY29wZSI6ImZ1bGwgbWFuYWdlciIsImNsaWVudElkIjoic2NpbS1zZXJ2ZXItY2xpZW50IiwiY2xpZW50SG9zdCI6IjEwLjEuMTAuMTE4IiwidXNlcl9uYW1lIjoic2VydmljZS1hY2NvdW50LXNjaW0tc2VydmVyLWNsaWVudCIsImNsaWVudEFkZHJlc3MiOiIxMC4xLjEwLjExOCJ9.Wouztkr7APb2_juPBhMtPbAqmFwQqsDQXYIQBeDpMuWnKGXZZMs17Rpzq8YnVSGfbfyrAduMAK2PAWnw8hxC4cGc0xEVS3lf-KcA5bUr4EnLcPVeQdEPsQ5eLrt_-BSPCQ8ere2fw6-Obv7FJ6aofAlT8LttWvEvkPzo2R0T0aZX8Oh7b15-icAVZ8ER0j7aFQ2k34dAq0Uwn58wakT6MA4qEFxze6GLeBuC4cAqNPYoOkUWTJxu1J_zLFDkpomt_zzx9u0Ig4asaErRyPj-ettElaGXMELZrNsaVbikCHgK7ujwMJDlEhUf8jxM8qwhCuf50-9ZydPAFA8Phj6FkQ";
+    public static String bearer;
 
     @Inject
     @Resource(name = "SchemaMgr")
@@ -95,9 +94,6 @@ public class ScimAuthZCRUDTest {
     @ConfigProperty(name = "scim.security.root.password", defaultValue = "admin")
     String rootPassword;
 
-    @Inject
-    JWTParser parser;
-
     //private static String user1url = "";
 
     private static final String testUserFile1 = "classpath:/schema/TestUser-bjensen.json";
@@ -117,6 +113,8 @@ public class ScimAuthZCRUDTest {
      */
     @Test
     public void a_initializeAuthTests() {
+        bearer = testUtils.getAuthToken("admin",true);
+
         //PasswordToken.init(parser,"AyM1SysPpbyDfgZld3umj1qzKObwVMko","TESTER",10000,PasswordToken.ALG_PBKDF2);
         logger.info("========== Scim Authorize CRUD Test ==========");
         logger.info("\tA. Initializing test database.");
@@ -150,6 +148,7 @@ public class ScimAuthZCRUDTest {
 
             // This section should fail, anonymous request
 
+            assert userStream != null;
             InputStreamEntity reqEntity = new InputStreamEntity(
                     userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
             reqEntity.setChunked(false);
@@ -186,6 +185,7 @@ public class ScimAuthZCRUDTest {
 
         HttpPost post = new HttpPost(req);
         userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
+        assert userStream != null;
         InputStreamEntity reqEntity = new InputStreamEntity(
                 userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
         reqEntity.setChunked(false);
@@ -256,6 +256,7 @@ public class ScimAuthZCRUDTest {
 
         HttpPost post = new HttpPost(req);
         userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
+        assert userStream != null;
         InputStreamEntity reqEntity = new InputStreamEntity(
                 userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
         reqEntity.setChunked(false);
@@ -268,6 +269,7 @@ public class ScimAuthZCRUDTest {
         post = new HttpPost(req);
         post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
         userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
+        assert userStream != null;
         reqEntity = new InputStreamEntity(
                 userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
         reqEntity.setChunked(false);
@@ -300,6 +302,7 @@ public class ScimAuthZCRUDTest {
         userStream = ConfigMgr.findClassLoaderResource(testUserFile2);
         HttpPost post = new HttpPost(req);
         post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+        assert userStream != null;
         InputStreamEntity reqEntity = new InputStreamEntity(
                 userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
         reqEntity.setChunked(false);

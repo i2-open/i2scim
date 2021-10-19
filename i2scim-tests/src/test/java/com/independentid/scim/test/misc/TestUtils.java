@@ -30,14 +30,22 @@ import com.independentid.scim.serializer.JsonUtil;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import io.smallrye.jwt.auth.principal.JWTParser;
+import io.smallrye.jwt.build.Jwt;
+import io.smallrye.jwt.build.JwtClaimsBuilder;
+import io.smallrye.jwt.build.JwtSignatureBuilder;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jose4j.jwk.PublicJsonWebKey;
+import org.jose4j.jwk.RsaJsonWebKey;
+import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import java.io.File;
@@ -47,7 +55,10 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.security.PrivateKey;
 import java.text.ParseException;
+import java.time.Instant;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.fail;
@@ -56,6 +67,12 @@ import static org.assertj.core.api.Assertions.fail;
 public class TestUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(TestUtils.class);
+
+    public static final String VALIDATE_KEY = "classpath:/certs/jwks-certs.json";
+    public static final String PRIVATE_JWK_FILE = "classpath:/data/jwk-sign.json";
+
+    public static final String TEST_ISSUER = "test.i2scim.io";
+    public static final String TEST_AUDIENCE = "aud.test.i2scim.io";
 
     public static final String ENV_TEST_OPA_URL = "TEST_OPA_URL";
     public static final String DEF_TEST_OPA_URL = "http://localhost:8181/v1/data/i2scim";
@@ -77,6 +94,9 @@ public class TestUtils {
     @Inject
     SchemaManager smgr;
 
+    @Inject
+    JWTParser jwtParser;
+
     @ConfigProperty(name = "scim.prov.memory.persist.dir", defaultValue = "./scimdata")
     String storeDir;
 
@@ -92,11 +112,76 @@ public class TestUtils {
     @ConfigProperty(name = "scim.prov.mongo.password", defaultValue = "t0p-Secret")
     String dbPwd;
 
+    static Map<String,String> keyMap = new HashMap<>();
+
+    static boolean init = false;
+
+    static PrivateKey signKey = null;
+
     private MongoClient mclient = null;
 
     public static String mapPathToReqUrl(URL baseUrl, String path) throws MalformedURLException {
         URL rUrl = new URL(baseUrl, path);
         return rUrl.toString();
+    }
+
+    private void initKeyPair() throws InstantiationException {
+        try {
+            InputStream inputStream = ConfigMgr.findClassLoaderResource(PRIVATE_JWK_FILE);
+            if (inputStream == null) {
+                throw new InstantiationException("Could not locate i2scim JWT signing key. Run CycleTestKeys utility.");
+            } else {
+                byte[] data = inputStream.readAllBytes();
+                String jsonString = new String (data);
+                RsaJsonWebKey rsaJwk = (RsaJsonWebKey) PublicJsonWebKey.Factory.newPublicJwk(jsonString);
+                signKey = rsaJwk.getRsaPrivateKey();
+            }
+            init = true;
+        } catch (JoseException | IOException  e) {
+            e.printStackTrace();
+        }
+    }
+
+    @PostConstruct
+    public void init() throws InstantiationException {
+        if (init) return;
+
+        initKeyPair();
+    }
+
+    /**
+     * Generates an access token for testing that is good for 60 minutes. If previously generated, the cached value is
+     * used.
+     * @param user A username value to include in the token.
+     * @param admin If true, the token will be given scope "full manager", else "user"
+     * @return A String containing the JWT authorization header value beginning with "Bearer "
+     */
+    public String getAuthToken(String user, boolean admin) {
+        String key = user+(admin?"AT":"AF");
+        if (keyMap.containsKey(key))
+            return keyMap.get(key);
+        JwtClaimsBuilder builder = Jwt.claims();
+        builder.issuer(TEST_ISSUER).audience(TEST_AUDIENCE)
+                .subject(user)
+                .claim("username",user)
+                .claim("clientid","test.client.i2scim.io");
+        if (admin)
+            builder.claim("scope","full manager");
+        else
+            builder.claim("scope","user");
+
+        Instant rightnow = Instant.now();
+        builder.issuedAt(rightnow);
+        builder.expiresAt(rightnow.getEpochSecond() + 3600);
+
+        JwtSignatureBuilder sbuilder = builder.jws();
+        //sbuilder.algorithm(SignatureAlgorithm.RS512);
+        String signed = sbuilder.sign(signKey);
+
+        String keyStr = "Bearer " + signed;
+        keyMap.put(key,keyStr);
+
+        return keyStr;
     }
 
     /**
