@@ -4,6 +4,8 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+**.versionsBackup
+
 ### STS ###
 .apt_generated
 .classpath
@@ -34,4 +36,7 @@ build/
 /.DS_Store
 /.gitignore
 /i2scim-tests/scimdata/
-/i2scim-tests/scimdata/
+/opa/.run/
+
+
+/i2scim-tests/logs/

@@ -38,7 +38,7 @@ function show_complete () {
 }
 
 skip=true
-rtag="0.6.0-Alpha"
+rtag="0.6.1"
 buildOnly=0
 push=0
 

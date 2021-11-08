@@ -50,7 +50,16 @@ data:
     # See: Quarkus Using JWT RBAC for configuration details
     # https://quarkus.io/guides/security-jwt
   quarkus.smallrye-jwt.enabled: "true"
-  smallrye.jwt.verify.key.location: "/certs/jwks-certs.json"
   smallrye.jwt.always-check-authorization: "true"
-  mp.jwt.verify.issuer: "http://10.1.10.109:8180/auth/realms/dev"
+  mp.jwt.verify.issuer: "test.i2scim.io"
+  mp.jwt.verify.audiences: "aud.test.i2scim.io"
+  #mp.jwt.verify.location: "https://example.com/jwkset.json"
+  mp.jwt.verify.publickey: "eyJrZXlzIjpbeyJrdHkiOiJSU0EiLCJraWQiOiJpMnNjaW0iLCJ1c2UiOiJLZXkgdXNlZCBmb3Ig
+aTJzY2ltIHRlc3RpbmcgcHVycG9zZXMgT05MWSEiLCJuIjoidGFDUDM1bEZzODVZTm5qcEtxYkNB
+U2Fvc0Q3UWRaakduRHFXb1pzOTN3YllIYnFHUk1FVlE0WUluTmQ1TXNaS2NGM2dHdEhxbzBEVk1f
+Q0RpUklaeGNaWnV3WjNCQnRSbUJ1UWFmeXRPQ2tOWktqZm9PRTZwdG5ITzlvVGt5aEtpTkpJcy1s
+S1JsZFAtU0RVSFpfT3V4OGRBbkQta0poamlqSW5SSkprcXNhTy1nSDI2c3Y5NU83azVTMEptLUVS
+cjBUcWZvc3RmMGtfWU05ZWxZWFh6aDdDUWkzckdaOWgtY2Nja2tjczhpLUo0QlZWc0JEcnVPNVJ4
+dnR0NUtWRVVwMFB1Q3JMTHVxbUN1aGpMLUpkRTRFaXVvbWRKRGJBcW1tUVo2RWY2Z19uVUhfNFdj
+Q3REdE5fTGVyVGdFekl6OUQ3aThOVl8wSG8zMTFSOUx0NEdRIiwiZSI6IkFRQUIifV19"
 ---

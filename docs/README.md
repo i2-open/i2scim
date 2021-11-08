@@ -41,7 +41,8 @@ But wait, what is IETF SCIM?
     * [Deploying i2scim using MongoDb on K8S](i2scim-mongo-k8s.md).
 * General Documentation
     * [Configuration](Configuration.md) - i2scim Configuration Properties
-    * [Access Control](AccessControl.md) - Access Control Configuration
+    * [i2scim Access Control](AccessControl.md) - Standalone access control using i2scim
+    * Open Policy Agent [Integrated Access Control](OPA_AccessControl.md) - Access control using an external [OPA Agent](https://www.openpolicyagent.org).
 
 ## i2scim Feature Details
 

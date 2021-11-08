@@ -34,14 +34,12 @@ import javax.ejb.Startup;
 import javax.inject.Inject;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
-import javax.servlet.ServletOutputStream;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.HttpMethod;
 import java.io.IOException;
-import java.io.InputStream;
 
 /**
  * @author pjdhunt
@@ -165,7 +163,8 @@ public class ScimV2Servlet extends HttpServlet {
 		String path = reqPath(req);
 		//Used when jwks-certs needs to be served locally (usually for testing)
 		if (path.startsWith("/certs")) {
-
+			System.err.println("Cert path called: "+path);
+			/*
 			ServletOutputStream out = resp.getOutputStream();
 			InputStream instream = ConfigMgr.findClassLoaderResource(path);
 			if (instream == null) {
@@ -174,6 +173,10 @@ public class ScimV2Servlet extends HttpServlet {
 			}
 			instream.transferTo(out);
 			instream.close();
+			return;
+
+			 */
+			resp.setStatus(HttpStatus.SC_NOT_FOUND);
 			return;
 		}
 
