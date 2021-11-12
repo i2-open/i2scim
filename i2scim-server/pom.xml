@@ -38,6 +38,10 @@
             <artifactId>i2scim-core</artifactId>
             <version>0.6.1</version>
         </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-vertx-http</artifactId>
+        </dependency>
 
     </dependencies>
     <profiles>

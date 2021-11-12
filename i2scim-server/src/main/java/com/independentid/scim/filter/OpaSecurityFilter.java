@@ -89,7 +89,6 @@ public class OpaSecurityFilter implements Filter {
      * @param filterConfig a <code>FilterConfig</code> object containing the filter's configuration and initialization
      *                     parameters
      * @throws ServletException if an exception has occurred that interferes with the filter's normal operation
-     * @implSpec The default implementation takes no action.
      */
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
@@ -208,7 +207,6 @@ public class OpaSecurityFilter implements Filter {
      * file handles, threads) and make sure that any persistent state is synchronized with the filter's current state in
      * memory.
      * </p>
-     * @implSpec The default implementation takes no action.
      */
     @Override
     public void destroy() {
