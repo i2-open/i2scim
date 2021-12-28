@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/i2-open/i2scim/master/spec/schema/scim-searchrequest.schema.json",
+  "title": "SCIM Search Request",
+  "description": "Schema for a SCIM Search Request per RFC7644",
+  "type": "object",
+  "required": ["schemas","filter"],
+  "properties": {
+    "schemas" : {
+      "type": "array",
+      "items": {
+        "enum": ["urn:ietf:params:scim:api:messages:2.0:SearchRequest"]
+      }
+    },
+    "attributes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "filter": {
+      "type": "string"
+    },
+    "startIndex": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "count": {
+      "type": "integer",
+      "minimum": 1
+    }
+  }
+}

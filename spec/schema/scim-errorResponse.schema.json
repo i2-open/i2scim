@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/i2-open/i2scim/raw/master/spec/schema/scim-errorResponse.schema.json",
+  "title": "SCIM Error Response Schema",
+  "description": "Json-Schema for a SCIM Error REsponse per RFC7644",
+  "type": "object",
+  "required": ["schemas","status"],
+  "properties": {
+    "schemas" : {
+      "type": "array",
+      "description": "This SCIM Schema describes a SCIM Protocol error response",
+      "items": {
+        "enum": ["urn:ietf:params:scim:api:messages:2.0:Error"]
+      }
+    },
+    "detail": {
+      "type": "string",
+      "description": "Human readable description of the error."
+    },
+    "status": {
+      "type": "string",
+      "description": "The HTTP status code (See Section 6 of RFC7231) expressed as a JSON String."
+    },
+    "scimType": {
+      "enum": ["invalidFilter","tooMany","uniqueness","mutability","invalidSyntax","invalidPath","noTarget","invalidValue","invalidVers","sensitive"],
+      "description": "Indicates the SCIM protocol error type when HTTP Status 400 (Bad Request) is returned."
+    }
+  }
+}
