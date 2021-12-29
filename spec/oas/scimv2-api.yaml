@@ -1,0 +1,908 @@
+openapi: "3.0.3"
+info:
+  title: "SCIMv2 OpenAPI Specification"
+  version: "1.0.0"
+  description: "This OpenAPI 3 specification describes a SCIMv2 REST service based on RFC7644/7643"
+  contact:
+    email: "info@independentid.com"
+    url: "https://www.independentid.com"
+    name: "Phil Hunt"
+  license:
+    "name": "Apache 2.0"
+    "url": "https://www.apache.org/licenses/LICENSE-2.0.html"
+servers:
+  - url: https://example.com/
+    description: Default
+  - url: https://example.com/v2/
+    description: SCIM with v2 prefix
+externalDocs:
+  description: See i2scim project
+  url: https://i2scim.io
+components:
+  parameters:
+    idParam:
+      name: id
+      in: path
+      description: ID of resource
+      required: true
+      schema:
+        type: string
+      style: simple
+    typeParam:
+      name: type
+      in: path
+      required: true
+      description: SCIM Resource Type
+      schema:
+        type: string
+      style: simple
+    attributesParam:
+      name: attributes
+      in: query
+      description: Comma separated list of attributes to be returned
+      required: false
+      schema:
+        type: string
+      example:
+        attributes=username,displayname
+    excludedAttributesParam:
+      name: excludedAttributes
+      in: query
+      description: Comma separated list of attributes not to be returned
+      required: false
+      schema:
+        type: string
+      example: excludedAttributes=members
+    startIndexParam:
+      name: startIndex
+      in: query
+      description: The index of the first item to be returned (starting from 1).
+      schema:
+        type: integer
+    countParam:
+      name: count
+      in: query
+      description: The number of items per page to be returned
+      schema:
+        type: integer
+    filterParam:
+      name: filter
+      in: query
+      description: A SCIM filter used for identifying objects to be returned
+      schema:
+        type: string
+      example:
+        filter=username eq jsmith
+    sortByParam:
+      name: sortBy
+      in: query
+      description: Specifies the attribute(s) used to order responses
+      schema:
+        type: string
+    sortOrderParam:
+      name: sortOrder
+      in: query
+      description: The order in which sortBy parameter is appied. Allowed values are 'ascending' and 'descending'
+      schema:
+        type: string
+        enum:
+          - ascending
+          - descending
+  schemas:
+    listResponse:
+      title: SCIM List Response
+      description: Json-Schema for a SCIM ListResponse (in response to a search) per RFC7644
+      type: object
+      required:
+        - schemas
+        - totalResults
+        - Resources
+      properties:
+        schemas:
+          type: array
+          description: This SCIM Schema describes a SCIM Protocol ListResponse for returning
+            query results
+          items:
+            enum:
+              - urn:ietf:params:scim:api:messages:2.0:ListResponse
+        totalResults:
+          type: integer
+          description: The total number of results available in the query
+        startIndex:
+          type: integer
+          description: |-
+            The 1-based index of the first result in the current set
+            of list results.  REQUIRED when partial results are returned due
+            to pagination.
+          minimum: 0
+        itemsPerPage:
+          type: integer
+          minimum: 1
+          description: |-
+            The number of resources returned in a list response
+            page.  REQUIRED when partial results are returned due to
+            pagination.
+        Resources:
+          type: array
+          description: Resources consists of a set of SCIM Resource JSON objects
+          items:
+            type: object
+    patchRequest:
+      title: SCIM Patch Request
+      description: Json-Schema for a SCIM Patch Request per RFC7644 Sec 3.5.2
+      type: object
+      required:
+        - schemas
+        - Operations
+      properties:
+        schemas:
+          type: array
+          items:
+            enum:
+              - urn:ietf:params:scim:api:messages:2.0:PatchOp
+        Operations:
+          type: array
+          minItems: 1
+          items:
+            required:
+              - op
+            properties:
+              op:
+                description: The type of operation to be performed
+                enum:
+                  - add
+                  - remove
+                  - replace
+              path:
+                description: A SCIM path describing the attribute and/or value instance
+                  to be modified (See Fig 7 RFC7644)
+                type: string
+              value:
+                description: A SCIM Patch value which MAY be any JSON value, object, or
+                  array
+                anyOf:
+                  - type: array
+                  - type: string
+                  - type: object
+                  - type: integer
+                  - type: boolean
+    errorResponse:
+      title: SCIM Error Response Schema
+      description: Json-Schema for a SCIM Error REsponse per RFC7644
+      type: object
+      required:
+        - schemas
+        - status
+      properties:
+        schemas:
+          type: array
+          description: This SCIM Schema describes a SCIM Protocol error response
+          items:
+            enum:
+              - urn:ietf:params:scim:api:messages:2.0:Error
+        detail:
+          type: string
+          description: Human readable description of the error.
+        status:
+          type: string
+          description: The HTTP status code (See Section 6 of RFC7231) expressed as a JSON
+            String.
+        scimType:
+          enum:
+            - invalidFilter
+            - tooMany
+            - uniqueness
+            - mutability
+            - invalidSyntax
+            - invalidPath
+            - noTarget
+            - invalidValue
+            - invalidVers
+            - sensitive
+          description: Indicates the SCIM protocol error type when HTTP Status 400 (Bad
+            Request) is returned.
+    serviceProviderConfig:
+      title: ServiceProviderConfig Schema
+      description: Json-Schema for Service Provider Config discovery repsonse per Sec 4 RFC7644
+      type: object
+      required:
+        - schemas
+        - id
+        - patch
+        - bulk
+        - filter
+        - changePassword
+        - sort
+        - etag
+      properties:
+        schemas:
+          type: array
+          description: "SCIM Schemas attribute which indicates ServiceProviderConfig"
+          items:
+            enum:
+              - "urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"
+        documentationUri:
+          type: string
+          description: "An HTTP-addressable URL pointing to the service provider's human-consumable help documentation."
+        patch:
+          type: object
+          description: "A Boolean value specifying whether or not the operation is supported."
+          properties:
+            supported:
+              type: boolean
+        bulk:
+          type: object
+          description: "A Boolean value specifying whether or not the bulk operation is supported."
+          properties:
+            supported:
+              type: boolean
+        filter:
+          type: object
+          description: "A Boolean value specifying whether or not filter searches are supported."
+          properties:
+            supported:
+              type: boolean
+        changePassword:
+          type: object
+          description: "A Boolean value specifying whether or not change password is supported."
+          properties:
+            supported:
+              type: boolean
+        sort:
+          type: object
+          description: "A Boolean value specifying whether or not sort is supported."
+          properties:
+            supported:
+              type: boolean
+        etag:
+          type: object
+          description: "A Boolean value specifying whether or not etag and pre-conditions are supported."
+          properties:
+            supported:
+              type: boolean
+    scimResource:
+      title: SCIM Resource Schema
+      description: Json-Schema for a basic SCIM Resource per RFC7644. Note this base schema
+        only validates required attributes.
+      type: object
+      required:
+        - schemas
+        - id
+      properties:
+        schemas:
+          type: array
+          description: One SCIM SCIM Schema URI (describing the object) plus optional schema
+            extension URIs
+          items:
+            type: string
+        id:
+          type: string
+          description: An unique identifier for the object
+    createResource:
+      title: SCIM Create Resource Schema
+      description: Json-Schema for creating a SCIM Resource per RFC7644. Note this base
+        schema only validates required attributes.
+      type: object
+      required:
+        - schemas
+      properties:
+        schemas:
+          type: array
+          description: One SCIM SCIM Schema URI (describing the object) plus optional schema
+            extension URIs
+          items:
+            type: string
+        id:
+          type: string
+          description: An unique identifier for the object (ignored on SCIM create).
+    searchRequest:
+      title: SCIM Search Request
+      description: Schema for a SCIM Search Request per RFC7644
+      type: object
+      required:
+        - schemas
+        - filter
+      properties:
+        schemas:
+          type: array
+          items:
+            enum:
+              - urn:ietf:params:scim:api:messages:2.0:SearchRequest
+        attributes:
+          type: array
+          items:
+            type: string
+        filter:
+          type: string
+        startIndex:
+          type: integer
+          minimum: 0
+        count:
+          type: integer
+          minimum: 1
+  responses:
+    BadRequest:
+      description: SCIM Bad Request Error
+      content:
+        application/scim+json:
+          example:
+            schemas:
+              - "urn:ietf:params:scim:api:messages:2.0:Error"
+            detail: "Attribute 'id' is readOnly"
+            scimType: "mutability"
+            status: "400"
+          schema:
+            $ref: "#/components/schemas/errorResponse"
+    ResourceResponse:
+      description: SCIM Resource Response
+      content:
+        application/scim+json:
+          example:
+            schemas:
+              - urn:ietf:params:scim:schemas:core:2.0:User
+            id: 2819c223-7f76-453a-919d-413861904646
+            externalId: bjensen
+            meta:
+              resourceType: User
+              created: '2011-08-01T21:32:44.882Z'
+              lastModified: '2011-08-01T21:32:44.882Z'
+              location: https://example.com/v2/Users/2819c223-7f76-453a-919d-413861904646
+              version: W/"e180ee84f0671b1"
+            name:
+              formatted: Ms. Barbara J Jensen III
+              familyName: Jensen
+              givenName: Barbara
+            userName: bjensen
+          schema:
+            $ref: "#/components/schemas/scimResource"
+    ListResponse:
+      description: SCIM List Response
+      content:
+        application/scim+json:
+          example:
+            schemas:
+              - urn:ietf:params:scim:api:messages:2.0:ListResponse
+            totalResults: 2
+            itemsPerPage: 10
+            startIndex: 1
+            Resources:
+              - id: 2819c223-7f76-413861904646
+                userName: jsmith
+                displayName: Smith, James
+              - id: c8596b90-7539-4f20968d1908
+                displayName: Smith Family
+          schema:
+            $ref: "#/components/schemas/listResponse"
+    UnauthorizedResponse:
+      description: SCIM Unauthorized Response
+      content:
+        application/scim+json:
+          example:
+            schemas:
+              - "urn:ietf:params:scim:api:messages:2.0:Error"
+            detail: "Authorization invalid or missing"
+            status: "401"
+          schema:
+            $ref: "#/components/schemas/errorResponse"
+    ForbiddenResponse:
+      description: SCIM Forbidden Response
+      content:
+        application/scim+json:
+          example:
+            schemas:
+              - "urn:ietf:params:scim:api:messages:2.0:Error"
+            detail: "Operation not permitted due to access control"
+            status: "403"
+          schema:
+            $ref: "#/components/schemas/errorResponse"
+    NotFoundResponse:
+      description: SCIM Not Found Response
+      content:
+        application/scim+json:
+          example:
+            schemas:
+              - "urn:ietf:params:scim:api:messages:2.0:Error"
+            detail: "Requested resource not found"
+            status: "404"
+          schema:
+            $ref: "#/components/schemas/errorResponse"
+    ConflictResponse:
+      description: Operation refused due to version mis-match/duplicate resource
+      content:
+        application/scim+json:
+          example:
+            schemas:
+              - "urn:ietf:params:scim:api:messages:2.0:Error"
+            detail: "Attribute username not unique"
+            scimType: "uniqueness"
+            status: "409"
+          schema:
+            $ref: "#/components/schemas/errorResponse"
+    PreconditionResponse:
+      description: Operation failed due to precondition failure
+      content:
+        application/scim+json:
+          example:
+            schemas:
+              - "urn:ietf:params:scim:api:messages:2.0:Error"
+            detail: "Operation failed, resource has changed"
+            status: "412"
+          schema:
+            $ref: "#/components/schemas/errorResponse"
+    TooLarge:
+      description: Operation refused due to number of operations or payload size
+      content:
+        application/scim+json:
+          example:
+            schemas:
+              - "urn:ietf:params:scim:api:messages:2.0:Error"
+            detail: "The size of the operation exceeds the maxPayloadSize (1048576)"
+            status: "413"
+          schema:
+            $ref: "#/components/schemas/errorResponse"
+    NotImplemented:
+      description: Operation not implemented
+
+paths:
+  /ServiceProviderConfig:
+    parameters:
+      - $ref: "#/components/parameters/attributesParam"
+      - $ref: "#/components/parameters/excludedAttributesParam"
+    get:
+      operationId: getServiceProviderConfig
+      description: Per Sec 4 RDFC7644, retrieves the current SCIM Service Provider Config discovery information
+      responses:
+        '200':
+          $ref: "#/components/schemas/serviceProviderConfig"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+  /Schemas:
+    parameters:
+      - $ref: "#/components/parameters/attributesParam"
+      - $ref: "#/components/parameters/excludedAttributesParam"
+      - $ref: "#/components/parameters/countParam"
+      - $ref: "#/components/parameters/startIndexParam"
+      - $ref: "#/components/parameters/sortByParam"
+      - $ref: "#/components/parameters/sortOrderParam"
+    get:
+      description: Per Sec 4 RDFC7644, returns the list of SCIM Schemas supported by the server
+      operationId: getSchemas
+      responses:
+        '200':
+          $ref: "#/components/responses/ListResponse"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+  /Schemas/{id}:
+    parameters:
+      - $ref: "#/components/parameters/idParam"
+      - $ref: "#/components/parameters/attributesParam"
+      - $ref: "#/components/parameters/excludedAttributesParam"
+    get:
+      description: "Per Sec 4 RFC7644, returns SCIM Schema definition by urn value (e.g. urn:ietf:params:scim:schemas:core:2.0:User)"
+      operationId: getSchemasById
+      responses:
+        '200':
+          $ref: "#/components/responses/ResourceResponse"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+  /ResourceTypes:
+    parameters:
+      - $ref: "#/components/parameters/attributesParam"
+      - $ref: "#/components/parameters/excludedAttributesParam"
+      - $ref: "#/components/parameters/countParam"
+      - $ref: "#/components/parameters/startIndexParam"
+      - $ref: "#/components/parameters/sortByParam"
+      - $ref: "#/components/parameters/sortOrderParam"
+    get:
+      description: Per Sec 4 RDFC7644, returns the list of Resource 'type's configured in the server
+      operationId: getResourceTypes
+      responses:
+        '200':
+          $ref: "#/components/responses/ListResponse"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+  /ResourceTypes/{id}:
+    parameters:
+      - $ref: "#/components/parameters/idParam"
+      - $ref: "#/components/parameters/attributesParam"
+      - $ref: "#/components/parameters/excludedAttributesParam"
+    get:
+      description: Per Sec 4 RDFC7644, return the Resource Type configuration for the specified type (e.g. Users)
+      operationId: getResourceTypesById
+      responses:
+        '200':
+          $ref: "#/components/responses/ResourceResponse"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+  /**/.search:
+    parameters:
+      - $ref: "#/components/parameters/attributesParam"
+      - $ref: "#/components/parameters/excludedAttributesParam"
+      - $ref: "#/components/parameters/countParam"
+      - $ref: "#/components/parameters/startIndexParam"
+      - $ref: "#/components/parameters/sortByParam"
+      - $ref: "#/components/parameters/sortOrderParam"
+    post:
+      operationId: postSearch
+      description: SCIM Secure Search Using POST per Sec 3.4.3 RFC7644
+      requestBody:
+        content:
+          "application/scim+json":
+            example:
+              schemas:
+                - urn:ietf:params:scim:api:messages:2.0:SearchRequest
+              attributes:
+                - displayname
+                - userName
+              filter:
+                displayName sw smith
+              startIndex: 1
+              count: 10
+            schema:
+               $ref: "#/components/schemas/searchRequest"
+      responses:
+        '200':
+          $ref: "#/components/responses/ListResponse"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+        '413':
+          $ref: "#/components/responses/TooLarge"
+        '501':
+          description: Etag, Filter and/or Sort Not Implemented
+  /{type}:
+    parameters:
+      - $ref: "#/components/parameters/typeParam"
+      - $ref: "#/components/parameters/attributesParam"
+      - $ref: "#/components/parameters/excludedAttributesParam"
+      - $ref: "#/components/parameters/countParam"
+      - $ref: "#/components/parameters/startIndexParam"
+      - $ref: "#/components/parameters/filterParam"
+      - $ref: "#/components/parameters/sortByParam"
+      - $ref: "#/components/parameters/sortOrderParam"
+    get:
+      operationId: getByType
+      description: SCIM Get per Sec 3.4 RFC7644
+      responses:
+        '200':
+          $ref: "#/components/responses/ListResponse"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+        '501':
+          description: Etag, Filter and/or Sort Not Implemented
+    post:
+      description: SCIM Create resource per Sec 3.3 RFC7644
+      operationId: createResource
+      requestBody:
+        content:
+          "application/scim+json":
+            example:
+              schemas:
+                - urn:ietf:params:scim:schemas:core:2.0:User
+              externalId: bjensen
+              name:
+                formatted: Ms. Barbara J Jensen III
+                familyName: Jensen
+                givenName: Barbara
+              userName: bjensen
+            schema:
+              $ref: "#/components/schemas/createResource"
+      responses:
+        '201':
+          $ref: "#/components/responses/ResourceResponse"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '409':
+          $ref: "#/components/responses/ConflictResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+
+  /{type}/{id}:
+    parameters:
+      - $ref: "#/components/parameters/typeParam"
+      - $ref: "#/components/parameters/idParam"
+      - $ref: "#/components/parameters/attributesParam"
+      - $ref: "#/components/parameters/excludedAttributesParam"
+      - $ref: "#/components/parameters/countParam"
+      - $ref: "#/components/parameters/startIndexParam"
+      - $ref: "#/components/parameters/filterParam"
+    get:
+      description: SCIM Get used to retrieve a specific resource by id
+      operationId: getById
+      responses:
+        '200':
+          description: "Success response. Note: List response must be used when query present per Sec 3.4.2 RFC7644"
+          content:
+            application/scim+json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/responses/ListResponse"
+                  - $ref: "#/components/responses/ResourceResponse"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+        '501':
+          description: Filter Support Not Implemented
+    put:
+      operationId: modifyResource
+      description: Modify request using PUT per Sec 3.5.1 of RFC7644
+      requestBody:
+        content:
+          "application/scim+json":
+            example:
+              schemas:
+                - urn:ietf:params:scim:schemas:core:2.0:User
+              id: 2819c223-7f76-453a-919d-413861904646
+              externalId: bjensen
+              name:
+                formatted: Ms. Barbara J Jensen III
+                familyName: Jensen
+                givenName: Barbara
+              userName: bjensenIII
+            schema:
+              $ref: "#/components/schemas/scimResource"
+      responses:
+        '200':
+          $ref: "#/components/responses/ResourceResponse"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '409':
+          $ref: "#/components/responses/ConflictResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+        '501':
+          description: ETag and/or Change Password Support Not Implemented
+    patch:
+      operationId: patchResource
+      description: SCIM Patch Reqeust Per RFC7644 Sec 3.5.2
+      requestBody:
+        content:
+          "application/scim+json":
+            example:
+              schemas:
+              - urn:ietf:params:scim:api:messages:2.0:PatchOp
+              Operations:
+              - op: replace
+                value:
+                  emails:
+                  - value: bjenson@example.com
+                    type: work
+                    primary: true
+            schema:
+              $ref: "#/components/schemas/patchRequest"
+      responses:
+        '200':
+          $ref: "#/components/responses/ResourceResponse"
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '409':
+          $ref: "#/components/responses/ConflictResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+        '501':
+          description: Patch, Change Password, or Etag Support Not Implemented
+    delete:
+      operationId: deleteResource
+      description: Deletes the specified resource per Sec 3.6 RFC7644
+      responses:
+        '204':
+          description: NOCONTENT - Success
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '409':
+          $ref: "#/components/responses/ConflictResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+
+  /Me:
+    description: Per Sec 3.11 RFC7644, the /Me alias
+    parameters:
+      - $ref: "#/components/parameters/attributesParam"
+      - $ref: "#/components/parameters/excludedAttributesParam"
+      - $ref: "#/components/parameters/filterParam"
+    get:
+      description: SCIM Get used to retrieve a specific resource by id
+      operationId: getByMe
+      responses:
+        '200':
+          description: "Success response. Note: List response must be used when query present per Sec 3.4.2 RFC7644"
+          content:
+            application/scim+json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/responses/ListResponse"
+                  - $ref: "#/components/responses/ResourceResponse"
+        '308':
+          description: Service provider MAY redirect client using HTTP status 308
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+        '501':
+          description: /Me Not Implemented
+    put:
+      operationId: modifyResourceByMe
+      description: Modify request using PUT per Sec 3.5.1 of RFC7644
+      requestBody:
+        content:
+          "application/scim+json":
+            example:
+              schemas:
+                - urn:ietf:params:scim:schemas:core:2.0:User
+              id: 2819c223-7f76-453a-919d-413861904646
+              externalId: bjensen
+              name:
+                formatted: Ms. Barbara J Jensen III
+                familyName: Jensen
+                givenName: Barbara
+              userName: bjensenIII
+            schema:
+              $ref: "#/components/schemas/scimResource"
+      responses:
+        '200':
+          $ref: "#/components/responses/ResourceResponse"
+        '308':
+          description: Service provider MAY redirect client using HTTP status 308
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '409':
+          $ref: "#/components/responses/ConflictResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+        '501':
+          description: /Me Not Implemented
+    patch:
+      operationId: patchResourceByMe
+      description: SCIM Patch Reqeust Per RFC7644 Sec 3.5.2
+      requestBody:
+        content:
+          "application/scim+json":
+            example:
+              schemas:
+                - urn:ietf:params:scim:api:messages:2.0:PatchOp
+              Operations:
+                - op: replace
+                  value:
+                    emails:
+                      - value: bjenson@example.com
+                        type: work
+                        primary: true
+            schema:
+              $ref: "#/components/schemas/patchRequest"
+      responses:
+        '200':
+          $ref: "#/components/responses/ResourceResponse"
+        '308':
+          description: Service provider MAY redirect client using HTTP status 308
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '409':
+          $ref: "#/components/responses/ConflictResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+        '501':
+          description: /Me Not Implemented
+    delete:
+      operationId: deleteResourceByMe
+      description: Deletes the specified resource per Sec 3.6 RFC7644
+      responses:
+        '204':
+          description: NOCONTENT - Success
+        '308':
+          description: Service provider MAY redirect client using HTTP status 308
+        '400':
+          $ref: "#/components/responses/BadRequest"
+        '401':
+          $ref: "#/components/responses/UnauthorizedResponse"
+        '403':
+          $ref: "#/components/responses/ForbiddenResponse"
+        '404':
+          $ref: "#/components/responses/NotFoundResponse"
+        '409':
+          $ref: "#/components/responses/ConflictResponse"
+        '412':
+          $ref: "#/components/responses/PreconditionResponse"
+        '501':
+          description: /Me Not Implemented

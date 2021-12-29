@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/i2-open/i2scim/master/spec/schema/scim-patch.schema.json",
+  "title": "SCIM Patch Request",
+  "description": "Json-Schema for a SCIM Patch Request per RFC7644 Sec 3.5.2",
+  "type": "object",
+  "required": ["schemas","Operations"],
+  "properties": {
+    "schemas": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "urn:ietf:params:scim:api:messages:2.0:PatchOp"
+        ]
+      }
+    },
+    "Operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "required": ["op"],
+        "properties": {
+          "op": {
+            "description": "The type of operation to be performed",
+            "enum": [
+              "add", "remove", "replace"
+            ]
+          },
+          "path" : {
+            "description": "A SCIM path describing the attribute and/or value instance to be modified (See Fig 7 RFC7644)",
+            "type": "string"
+          },
+          "value": {
+            "description": "A SCIM Patch value which MAY be any JSON value, object, or array",
+            "anyOf": [
+              {"type": "array"},
+              {"type": "string"},
+              {"type": "object"},
+              {"type": "integer"},
+              {"type": "boolean"}
+            ]
+          }
+        }
+      }
+    }
+  }
+}

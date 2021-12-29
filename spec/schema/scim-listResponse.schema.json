@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/i2-open/i2scim/raw/master/spec/schema/scim-listResponse.schema.json",
+  "title": "SCIM List Response",
+  "description": "Json-Schema for a SCIM ListResponse (in response to a search) per RFC7644",
+  "type": "object",
+  "required": ["schemas","totalResults","Resources"],
+  "properties": {
+    "schemas" : {
+      "type": "array",
+      "description": "This SCIM Schema describes a SCIM Protocol ListResponse for returning query results",
+      "items": {
+        "enum": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"]
+      }
+    },
+    "totalResults": {
+      "type": "integer",
+      "description": "The total number of results available in the query"
+    },
+    "startIndex": {
+      "type": "integer",
+      "description": "The 1-based index of the first result in the current set\nof list results.  REQUIRED when partial results are returned due\nto pagination.",
+      "minimum": 0
+    },
+    "itemsPerPage": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The number of resources returned in a list response\npage.  REQUIRED when partial results are returned due to\npagination."
+    },
+    "Resources": {
+      "type": "array",
+      "description": "Resources consists of a set of SCIM Resource JSON objects",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}
