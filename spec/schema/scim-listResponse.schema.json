@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/i2-open/i2scim/raw/master/spec/schema/scim-listResponse.schema.json",
+  "$id": "https://raw.githubusercontent.com/i2-open/i2scim/master/spec/schema/scim-listResponse.schema.json",
   "title": "SCIM List Response",
-  "description": "Json-Schema for a SCIM ListResponse (in response to a search) per RFC7644",
+  "description": "JSON-Schema for a SCIM ListResponse (in response to a search) per RFC7644",
   "type": "object",
   "required": ["schemas","totalResults","Resources"],
   "properties": {
@@ -10,6 +10,7 @@
       "type": "array",
       "description": "This SCIM Schema describes a SCIM Protocol ListResponse for returning query results",
       "items": {
+        "type": "string",
         "enum": ["urn:ietf:params:scim:api:messages:2.0:ListResponse"]
       }
     },
@@ -29,7 +30,7 @@
     },
     "Resources": {
       "type": "array",
-      "description": "Resources consists of a set of SCIM Resource JSON objects",
+      "description": "Resources consists of a set of SCIM Resource JSON objects returned.",
       "items": {
         "type": "object"
       }

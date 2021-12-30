@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/i2-open/i2scim/master/spec/schema/scim-patch.schema.json",
+  "$id": "https://raw.githubusercontent.com/i2-open/i2scim/master/spec/schema/scim-patchRequest.schema.json",
   "title": "SCIM Patch Request",
   "description": "Json-Schema for a SCIM Patch Request per RFC7644 Sec 3.5.2",
   "type": "object",

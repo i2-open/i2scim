@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/i2-open/i2scim/raw/master/spec/schema/scim-resource.schema.json",
+  "$id": "      $ref: https://raw.githubusercontent.com/i2-open/i2scim/master/spec/schema/scim-resource.schema.json\n",
   "title": "SCIM Resource Schema",
-  "description": "Json-Schema for a basic SCIM Resource per RFC7644. Note this base schema only validates required attributes.",
+  "description": "Json-Schema for a basic SCIM Resource per RFC7644. Note this base schema only validates required attributes (id and schema).",
   "type": "object",
   "required": ["schemas","id"],
   "properties": {

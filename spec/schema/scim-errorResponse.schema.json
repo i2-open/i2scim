@@ -1,14 +1,14 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/i2-open/i2scim/raw/master/spec/schema/scim-errorResponse.schema.json",
+  "$id": "https://raw.githubusercontent.com/i2-open/i2scim/master/spec/schema/scim-errorResponse.schema.json",
   "title": "SCIM Error Response Schema",
-  "description": "Json-Schema for a SCIM Error REsponse per RFC7644",
+  "description": "JSON-Schema for a SCIM Error Response per RFC7644",
   "type": "object",
   "required": ["schemas","status"],
   "properties": {
     "schemas" : {
       "type": "array",
-      "description": "This SCIM Schema describes a SCIM Protocol error response",
+      "description": "This SCIM JSON Schema describes a SCIMv2 Protocol error response",
       "items": {
         "enum": ["urn:ietf:params:scim:api:messages:2.0:Error"]
       }

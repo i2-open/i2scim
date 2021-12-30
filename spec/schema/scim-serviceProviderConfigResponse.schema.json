@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/i2-open/i2scim/master/spec/schema/scim-serviceProviderConfigResponse.schema.json",
+
+  "title": "ServiceProviderConfig Response Schema",
+  "description": "JSON-Schema for Service Provider Config discovery repsonse per Sec 4 RFC7644",
+  "type": "object",
+  "required": [
+    "schemas",
+    "id",
+    "patch",
+    "bulk",
+    "filter",
+    "changePassword",
+    "sort",
+    "etag"
+  ],
+  "properties": {
+    "schemas": {
+      "type": "array",
+      "description": "SCIM Schemas attribute which indicates ServiceProviderConfig",
+      "items": {
+        "enum": [
+          "urn:ietf:params:scim:schemas:core:2.0:ServiceProviderConfig"
+        ]
+      }
+    },
+    "documentationUri": {
+      "type": "string",
+      "description": "An HTTP-addressable URL pointing to the service provider's human-consumable help documentation."
+    },
+    "patch": {
+      "type": "object",
+      "description": "A Boolean value specifying whether or not the operation is supported.",
+      "properties": {
+        "supported": {
+          "type": "boolean"
+        }
+      }
+    },
+    "bulk": {
+      "type": "object",
+      "description": "A Boolean value specifying whether or not the bulk operation is supported.",
+      "properties": {
+        "supported": {
+          "type": "boolean"
+        }
+      }
+    },
+    "filter": {
+      "type": "object",
+      "description": "A Boolean value specifying whether or not filter searches are supported.",
+      "properties": {
+        "supported": {
+          "type": "boolean"
+        }
+      }
+    },
+    "changePassword": {
+      "type": "object",
+      "description": "A Boolean value specifying whether or not change password is supported.",
+      "properties": {
+        "supported": {
+          "type": "boolean"
+        }
+      }
+    },
+    "sort": {
+      "type": "object",
+      "description": "A Boolean value specifying whether or not sort is supported.",
+      "properties": {
+        "supported": {
+          "type": "boolean"
+        }
+      }
+    },
+    "etag": {
+      "type": "object",
+      "description": "A Boolean value specifying whether or not etag and pre-conditions are supported.",
+      "properties": {
+        "supported": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}
