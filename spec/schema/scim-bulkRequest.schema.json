@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/i2-open/i2scim/master/spec/schema/scim-bulkRequest.schema.json",
+  "title": "SCIM Bulk Operations Request",
+  "description": "JSON Schema for a SCIM Bulk Operations Request per Sec 3.7 RFC7644",
+  "type": "object",
+  "required": ["schemas","Operations"],
+  "properties": {
+    "schemas": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "urn:ietf:params:scim:api:messages:2.0:BulkRequest"
+        ]
+      }
+    },
+    "failOnErrors": {
+      "type": "integer"
+    },
+    "Operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["method","path"],
+        "properties": {
+          "method": {
+            "description": "The type of SCIM operation to perform",
+            "enum": ["POST", "PUT", "PATCH", "DELETE"]
+          },
+          "bulkId": {
+            "description": "The transient identifier of a newly created resource, unique within a bulk request and created by the client. ",
+            "type": "string"
+          },
+          "version": {
+            "description": "The current ETag resource version to apply an ETag pre-condition",
+            "type": "string"
+          },
+          "path": {
+            "description": "The resources relative path to the SCIM service provider root. e.g. `/Users/<id>`",
+            "type": "string"
+          },
+          "data": {
+            "description": "The resource data as it would appear in the payload of a SCIM POST, PUT, or PATCH operation",
+            "type": "object",
+            "oneOf": [
+              {"$ref": "https://raw.githubusercontent.com/i2-open/i2scim/master/spec/schema/scim-createResourceRequest.schema.json"},
+              {"$ref": "https://raw.githubusercontent.com/i2-open/i2scim/master/spec/schema/scim-resource.schema.json"},
+              {"$ref": "https://raw.githubusercontent.com/i2-open/i2scim/master/spec/schema/scim-patchRequest.schema.json"}
+            ]
+          }
+        }
+      }
+    }
+  }
+}
