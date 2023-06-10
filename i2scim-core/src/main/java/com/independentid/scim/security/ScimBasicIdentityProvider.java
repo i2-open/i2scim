@@ -38,15 +38,14 @@ import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.identity.request.UsernamePasswordAuthenticationRequest;
 import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import org.apache.http.auth.BasicUserPrincipal;
 import org.eclipse.microprofile.metrics.annotation.Counted;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.ws.rs.InternalServerErrorException;
 import java.util.Collection;
 import java.util.Iterator;
 
@@ -68,8 +67,7 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
     @Inject
     SchemaManager smgr;
 
-    @Inject
-    BackendHandler handler;
+    BackendHandler handler = BackendHandler.getInstance();
 
     @Override
     public Class<UsernamePasswordAuthenticationRequest> getRequestType() {
@@ -132,11 +130,7 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
             return Uni.createFrom().failure(new AuthenticationFailedException());
         }
         if (!handler.isReady()) {
-            try {
-                handler.init();
-            } catch (ClassNotFoundException | InstantiationException | BackendException e) {
-                return Uni.createFrom().failure(new InternalServerErrorException());
-            }
+            logger.warn("Basic Identity Provider: **BackendHandler is not ready**");
         }
 
         // Note: this does not go through the SCIM server threading system. This goes direct to the backend!

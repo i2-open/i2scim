@@ -22,10 +22,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.client.ResourceBuilder;
 import com.independentid.scim.client.i2scimClient;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.core.err.NoTargetException;
 import com.independentid.scim.core.err.ScimException;
@@ -37,6 +37,8 @@ import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Resource;
+import jakarta.inject.Inject;
 import org.bitbucket.cowwoc.diffmatchpatch.DiffMatchPatch;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
@@ -45,8 +47,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Resource;
-import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -71,9 +71,6 @@ public class ScimResourceTest {
 	@Resource(name="SchemaMgr")
 	SchemaManager smgr ;
 
-	@Inject
-	BackendHandler handler;
-	
 	final static String testUserFile1 = "classpath:/schema/TestUser-bjensen.json";
 	final static String testUserFile2 = "classpath:/schema/TestUser-jsmith.json";
 
@@ -432,7 +429,7 @@ public class ScimResourceTest {
 
 		try {
 			Date curDate = Date.from(Instant.now());
-			user1.getMeta().addRevision(ctx,handler.getProvider(),curDate);
+			user1.getMeta().addRevision(ctx, InjectionManager.getInstance().getProvider(), curDate);
 
 			MultiValue revision = user1.getMeta().getRevisions();
 
@@ -440,7 +437,7 @@ public class ScimResourceTest {
 
 			// simulate new revision
 			ctx = new RequestCtx("/Uses",user1.getId(),null,smgr);
-			user1.getMeta().addRevision(ctx,handler.getProvider(), Date.from(Instant.now()));
+			user1.getMeta().addRevision(ctx,InjectionManager.getInstance().getProvider(), Date.from(Instant.now()));
 			int cnt = 0;
 			revision = user1.getMeta().getRevisions();
 			for(Value val : revision.getRawValue()) {

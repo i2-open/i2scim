@@ -18,11 +18,11 @@ package com.independentid.scim.test.misc;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.backend.memory.MemoryProvider;
 import com.independentid.scim.backend.mongo.MongoProvider;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.SchemaManager;
@@ -34,6 +34,9 @@ import io.smallrye.jwt.auth.principal.JWTParser;
 import io.smallrye.jwt.build.Jwt;
 import io.smallrye.jwt.build.JwtClaimsBuilder;
 import io.smallrye.jwt.build.JwtSignatureBuilder;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpUriRequest;
@@ -45,9 +48,6 @@ import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import javax.inject.Singleton;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -87,9 +87,6 @@ public class TestUtils {
     public static final String DEF_TEST_MONGO_USER = "admin";
     public static final String ENV_TEST_MONGO_SECRET = "TEST_MONGO_SECRET";
     public static final String DEF_TEST_MONGO_SECRET = "t0p-Secret";
-
-    @Inject
-    BackendHandler handler;
 
     @Inject
     SchemaManager smgr;
@@ -143,10 +140,14 @@ public class TestUtils {
     }
 
     @PostConstruct
-    public void init() throws InstantiationException {
+    public void init()  {
         if (init) return;
 
-        initKeyPair();
+        try {
+            initKeyPair();
+        } catch (InstantiationException e) {
+            logger.error("Error initializing keypair: "+e.getMessage(),e);
+        }
     }
 
     /**
@@ -238,7 +239,7 @@ public class TestUtils {
     }
 
     public void resetProvider(boolean eraseData) throws ScimException, BackendException, IOException {
-        IScimProvider provider = handler.getProvider();
+        IScimProvider provider = InjectionManager.getInstance().getProvider();
         if (provider instanceof MongoProvider)
             resetMongoDb((MongoProvider) provider);
         if (provider instanceof MemoryProvider)

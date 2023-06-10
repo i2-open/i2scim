@@ -19,10 +19,9 @@ package com.independentid.scim.schema;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
-import com.independentid.scim.backend.IIdentifierGenerator;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.ListResponse;
 import com.independentid.scim.protocol.RequestCtx;
@@ -35,18 +34,17 @@ import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
 import com.independentid.scim.serializer.JsonUtil;
 import io.smallrye.jwt.auth.principal.JWTParser;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import jakarta.ejb.Startup;
+import jakarta.enterprise.inject.Default;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.annotation.Resource;
-import javax.ejb.Startup;
-import javax.enterprise.inject.Default;
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Singleton;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -68,9 +66,7 @@ import java.util.*;
 public class SchemaManager {
     private final static Logger logger = LoggerFactory.getLogger(SchemaManager.class);
 
-    @Inject
-    @Resource(name = "BackendHandler")
-    BackendHandler backendHandler;
+    BackendHandler backendHandler = BackendHandler.getInstance();
 
     @Inject
     SystemSchemas systemSchemas;
@@ -113,6 +109,8 @@ public class SchemaManager {
     @Inject
     JWTParser parser;
 
+    InjectionManager   injectionManager = InjectionManager.getInstance();
+
     private final static LinkedHashMap<Attribute, Constructor<?>> virtualAttrMapJsonConstructors = new LinkedHashMap<>();
     private final static LinkedHashMap<Attribute, Constructor<?>> virtualAttrMapValueConstructors = new LinkedHashMap<>();
     private final static LinkedHashMap<Attribute, Constructor<?>> virtualAttrCalculatedConstructors = new LinkedHashMap<>();
@@ -125,12 +123,9 @@ public class SchemaManager {
     private final LinkedHashMap<String, ResourceType> rTypesById = new LinkedHashMap<>();
     private final HashMap<String, ResourceType> rTypePaths = new HashMap<>();
 
-    //private ServletConfig scfg = null;
-    IIdentifierGenerator generator;
-
     private boolean initialized = false;
 
-    private boolean loadedFromProvider = false;
+    private static boolean loadedFromProvider = false;
 
     SchemaManager() {
 
@@ -148,6 +143,10 @@ public class SchemaManager {
     public SchemaManager(InputStream schemaStream, InputStream typeStream) throws IOException, ScimException {
         this.schemaPath = null;
         this.resourceTypePath = null;
+
+        if (injectionManager == null) {
+            injectionManager = InjectionManager.getInstance();
+        }
 
         //because this constructor isn't part of injection, these values need to be set
         this.coreSchemaPath = "/schema/scimCommonSchema.json";
@@ -191,6 +190,10 @@ public class SchemaManager {
         this.systemSchemas = new SystemSchemas();
         this.systemSchemas.defineConfigStateSchema();
 
+        if (injectionManager == null) {
+            injectionManager = InjectionManager.getInstance();
+        }
+
         loadCommonAttrSchema();  // laod common attribute definitions and fixed schema
 
         InputStream schStream = ConfigMgr.findClassLoaderResource(schemaPath);
@@ -215,26 +218,26 @@ public class SchemaManager {
     /**
      * During initial startup, the default Schema and ResourceTypes are loaded into the server. Once the rest of the
      * server is started, ConfigMgr may check the backend provider to see if there is persisted schema available.
-     * @throws ScimException    due to invalid data in schema config
-     * @throws IOException      due to problems accessing files
-     * @throws BackendException when configured to load schema from provider and provider error occurs
      */
     @PostConstruct
-    public void init() throws ScimException, IOException, BackendException {
+    public void init() {
 
         if (initialized)
             return;
         logger.info("SchemaManager initializing");
-        if (backendHandler != null)
-            generator = backendHandler.getGenerator();
 
         loadedFromProvider = false;
         // Load the default schemas first. This allows new instances of provider ability to boot.
         // In case this is a reload, reset the current Schemas
         schIdMap.clear();
-        loadDefaultSchema();
-        loadDefaultResourceTypes();
-        loadCommonAttrSchema();
+        try {
+            loadDefaultSchema();
+            loadDefaultResourceTypes();
+            loadCommonAttrSchema();
+        } catch (ScimException | IOException e) {
+            logger.error("Error initializing Schema manager: "+e.getMessage(),e);
+        }
+
 
         initVirtualValueConstructors();
 
@@ -934,16 +937,8 @@ public class SchemaManager {
         this.backendHandler.syncConfig(this);
     }
 
-    /**
-     * Obtains an identifier that acceptable to the backend provider.
-     * @return A unique identifier String for a transaction or resource identifier
-     */
     public String generateTransactionId() {
-        if (backendHandler == null)
-            return null;
-        if (generator == null)
-            generator = backendHandler.getGenerator();
-        return generator.getNewIdentifier();
+        return injectionManager.generateTransactionId();
     }
 
     public List<Attribute> getUniqueAttributes(ResourceType type) {

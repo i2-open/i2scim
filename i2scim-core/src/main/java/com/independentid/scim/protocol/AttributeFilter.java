@@ -21,8 +21,8 @@ import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.SchemaException;
+import jakarta.validation.constraints.NotNull;
 
-import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.text.ParseException;
 import java.util.Arrays;

@@ -16,9 +16,7 @@
 
 package com.independentid.scim.core.err;
 
-import com.independentid.scim.protocol.ScimResponse;
-
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * MethodNotAllowed when HTTP Method used against a resource where it is not appropriate.  E.g. patch on a container (top level).

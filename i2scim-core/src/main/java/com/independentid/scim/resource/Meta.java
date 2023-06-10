@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.core.err.DuplicateTxnException;
 import com.independentid.scim.core.err.ScimException;
@@ -34,10 +35,10 @@ import com.independentid.scim.security.AccessControl;
 import com.independentid.scim.security.AccessManager;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
+import jakarta.servlet.ServletContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.ServletContext;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.ParseException;
@@ -177,10 +178,10 @@ public class Meta extends ComplexValue implements ScimSerializer {
 				&& ValueUtil.isReturnable(attr.getSubAttribute(META_LOCATION),ctx))
 			node.put(META_LOCATION,location);
 
-		ConfigMgr cmgr = ConfigMgr.getConfig();
+		ConfigMgr cmgr = InjectionManager.getInstance().getConfigMgr();
 		AccessManager amgr = null;
 		if (cmgr != null)
-			amgr = ConfigMgr.getConfig().getAccessManager();
+			amgr = cmgr.getAccessManager();
 		if (amgr != null && this.location != null) {
 			List<AccessControl> set = amgr.getResourceAcis(this.location);
 			if (set.size()>0
@@ -277,10 +278,10 @@ public class Meta extends ComplexValue implements ScimSerializer {
 				url = this.location;
 			gen.writeStringField(Meta.META_LOCATION, url);
 
-			ConfigMgr cmgr = ConfigMgr.getConfig();
+			ConfigMgr cmgr = InjectionManager.getInstance().getConfigMgr();
 			AccessManager amgr = null;
 			if (cmgr != null)
-				amgr = ConfigMgr.getConfig().getAccessManager();
+				amgr = cmgr.getAccessManager();
 			if (amgr != null && !forHash) {
 				List<AccessControl> set = amgr.getResourceAcis(this.location);
 				if (set.size()>0) {

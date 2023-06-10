@@ -17,11 +17,10 @@
 package com.independentid.scim.backend;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Supplier;
 
 /**
- * Cache provider is used to solve a @PostConstruct init conflict problem. see: https://levelup.gitconnected.com/stop-using-postconstruct-in-your-java-applications-2a66fb202cb8
+ * Cache provider is used to solve a @PostConstruct init conflict problem. see: <a href="https://levelup.gitconnected.com/stop-using-postconstruct-in-your-java-applications-2a66fb202cb8">...</a>
  */
 public class CachedProviderSupplier<IScimProvider> implements Supplier<IScimProvider> {
     private final Supplier<IScimProvider> supplier;
@@ -33,8 +32,10 @@ public class CachedProviderSupplier<IScimProvider> implements Supplier<IScimProv
     }
 
     public IScimProvider get() {
-        if (cache.isEmpty())
-            cache.add(supplier.get());
+        if (cache.isEmpty()) {
+            IScimProvider prov = supplier.get();
+            cache.add(prov);
+        }
         return cache.get(0);
     }
 }

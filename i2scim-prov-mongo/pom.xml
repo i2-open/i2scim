@@ -21,12 +21,12 @@
     <parent>
         <artifactId>i2scim-parent</artifactId>
         <groupId>com.independentid</groupId>
-        <version>0.6.1</version>
+        <version>0.7.0-Alpha</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>i2scim-prov-mongo</artifactId>
-    <version>0.6.1</version>
+    <version>0.7.0-Alpha</version>
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
@@ -35,7 +35,7 @@
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-core</artifactId>
-            <version>0.6.1</version>
+            <version>${i2scim.version}</version>
         </dependency>
         <dependency>
             <groupId>io.quarkus</groupId>
@@ -48,7 +48,7 @@
             <plugin>
                 <groupId>org.jboss.jandex</groupId>
                 <artifactId>jandex-maven-plugin</artifactId>
-                <version>1.0.8</version>
+                <version>1.2.3</version>
                 <executions>
                     <execution>
                         <id>make-index</id>
@@ -68,7 +68,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-javadoc-plugin</artifactId>
-                        <version>3.3.1</version>
+                        <version>3.4.1</version>
                         <executions>
                             <execution>
                                 <id>attach-javadocs</id>
@@ -78,6 +78,19 @@
                                 <configuration>
                                     <bottom><![CDATA[<center><H3>i2scim Project: <a href="{@DOCROOT}/../LICENSE.txt">License</a>, Copyright 2021 Independent Identity Inc.</H3></center>]]></bottom>
                                 </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>io.smallrye</groupId>
+                        <artifactId>jandex-maven-plugin</artifactId>
+                        <version>3.1.1</version>
+                        <executions>
+                            <execution>
+                                <id>make-index</id>
+                                <goals>
+                                    <goal>jandex</goal>
+                                </goals>
                             </execution>
                         </executions>
                     </plugin>
@@ -115,7 +128,7 @@
                     <plugin>
                         <groupId>org.sonatype.plugins</groupId>
                         <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.6.7</version>
+                        <version>1.6.13</version>
                         <extensions>true</extensions>
                         <configuration>
                             <serverId>ossrh</serverId>

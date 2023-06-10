@@ -21,7 +21,7 @@
     <parent>
         <artifactId>i2scim-parent</artifactId>
         <groupId>com.independentid</groupId>
-        <version>0.6.1</version>
+        <version>0.7.0-Alpha</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -30,43 +30,52 @@
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
+        <i2scim.version>0.7.0-Alpha</i2scim.version>
     </properties>
     <dependencies>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-rest-client-jackson</artifactId>
-        </dependency>
+
         <dependency>
             <groupId>io.quarkus</groupId>
             <artifactId>quarkus-resteasy-jackson</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.independentid</groupId>
-            <artifactId>i2scim-server</artifactId>
-            <version>0.6.1</version>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-core</artifactId>
-            <version>0.6.1</version>
+            <version>${i2scim.version}</version>
+
+        </dependency>
+
+        <dependency>
+            <groupId>com.independentid</groupId>
+            <artifactId>i2scim-server</artifactId>
+            <version>${i2scim.version}</version>
+
         </dependency>
 
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-prov-memory</artifactId>
-            <version>0.6.1</version>
+            <version>${i2scim.version}</version>
+
         </dependency>
 
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-prov-mongo</artifactId>
-            <version>0.6.1</version>
+            <version>${i2scim.version}</version>
+
         </dependency>
         <dependency>
             <groupId>org.bitbucket.cowwoc</groupId>
             <artifactId>diff-match-patch</artifactId>
             <version>1.2</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-arc</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -77,18 +86,32 @@
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
+            <version>3.24.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-client</artifactId>
-            <version>0.6.1</version>
+            <version>${i2scim.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>io.smallrye</groupId>
+                <artifactId>jandex-maven-plugin</artifactId>
+                <version>3.1.1</version>
+                <executions>
+                    <execution>
+                        <id>make-index</id>
+                        <goals>
+                            <goal>jandex</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
@@ -99,19 +122,7 @@
                     </rules>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.jboss.jandex</groupId>
-                <artifactId>jandex-maven-plugin</artifactId>
-                <version>1.0.7</version>
-                <executions>
-                    <execution>
-                        <id>make-index</id>
-                        <goals>
-                            <goal>jandex</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+
         </plugins>
     </build>
 

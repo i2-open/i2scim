@@ -17,11 +17,9 @@
 package com.independentid.scim.events;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.core.FifoCache;
 import com.independentid.scim.op.Operation;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 
 public interface IEventHandler {
     @PostConstruct

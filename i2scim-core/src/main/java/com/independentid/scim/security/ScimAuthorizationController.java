@@ -18,12 +18,11 @@ package com.independentid.scim.security;
 
 import com.independentid.scim.core.ConfigMgr;
 import io.quarkus.security.spi.runtime.AuthorizationController;
-
-import javax.annotation.Priority;
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.inject.Alternative;
-import javax.inject.Inject;
-import javax.interceptor.Interceptor;
+import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
+import jakarta.inject.Inject;
+import jakarta.interceptor.Interceptor;
 
 @Alternative
 @Priority(Interceptor.Priority.LIBRARY_AFTER)

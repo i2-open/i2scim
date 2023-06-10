@@ -17,9 +17,9 @@
 package com.independentid.scim.backend.memory;
 
 import com.independentid.scim.backend.IIdentifierGenerator;
+import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
 
-import javax.annotation.Priority;
-import javax.enterprise.context.ApplicationScoped;
 import java.util.UUID;
 
 @ApplicationScoped

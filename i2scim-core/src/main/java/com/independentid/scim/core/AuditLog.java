@@ -17,8 +17,7 @@ package com.independentid.scim.core;
 
 import com.independentid.scim.op.Operation;
 import com.independentid.scim.protocol.ScimResponse;
-
-import javax.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.ApplicationScoped;
 
 /**
  * @author pjdhunt

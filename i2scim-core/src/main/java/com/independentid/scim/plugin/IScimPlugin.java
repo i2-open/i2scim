@@ -16,11 +16,9 @@
 
 package com.independentid.scim.plugin;
 
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.Operation;
-
-import javax.servlet.ServletException;
+import jakarta.servlet.ServletException;
 
 public interface IScimPlugin {
 

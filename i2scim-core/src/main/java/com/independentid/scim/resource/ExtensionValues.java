@@ -28,8 +28,8 @@ import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
+import jakarta.validation.constraints.NotNull;
 
-import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.*;

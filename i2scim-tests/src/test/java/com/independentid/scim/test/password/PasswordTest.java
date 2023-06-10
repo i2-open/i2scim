@@ -34,11 +34,11 @@ import com.independentid.scim.test.sub.ScimSubComponentTestProfile;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import io.smallrye.jwt.auth.principal.ParseException;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
-import javax.inject.Inject;
 import java.lang.reflect.Constructor;
 import java.security.NoSuchAlgorithmException;
 
@@ -78,7 +78,7 @@ public class PasswordTest {
                     .isFalse();
         } catch (ParseException | java.text.ParseException e) {
             e.printStackTrace();
-            fail("Parse exception occurr3ed when decrypting");
+            fail("Parse exception occurred when decrypting: "+e.getMessage());
         }
 
     }

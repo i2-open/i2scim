@@ -38,7 +38,7 @@ function show_complete () {
 }
 
 skip=true
-rtag="0.6.1"
+rtag="0.7.0-Alpha"
 buildOnly=0
 push=0
 
@@ -102,7 +102,7 @@ if [ $push -eq 1 ]
 then
   docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mem:$rtag .
 else
-  docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm -t independentid/i2scim-mem:$rtag .
+  docker buildx build --load -f src/main/docker/Dockerfile.jvm -t independentid/i2scim-mem:$rtag .
 fi
 retVal=$?
 if [ $retVal -ne 0 ]
@@ -121,7 +121,7 @@ if [ $push -eq 1 ]
 then
   docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mongo:$rtag .
 else
-  docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm -t independentid/i2scim-mongo:$rtag .
+  docker buildx build --load -f src/main/docker/Dockerfile.jvm -t independentid/i2scim-mongo:$rtag .
 fi
 retVal=$?
 if [ $retVal -ne 0 ]

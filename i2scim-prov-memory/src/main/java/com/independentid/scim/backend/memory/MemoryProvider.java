@@ -31,14 +31,15 @@ import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.*;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.runtime.Startup;
+import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Default;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Priority;
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Singleton;
 import java.io.*;
 import java.text.Format;
 import java.text.ParseException;
@@ -52,9 +53,11 @@ import java.util.concurrent.TimeUnit;
  * @author pjdhunt
  */
 
-@Singleton
+
+@ApplicationScoped
 @Startup // this is required or configproperty injection won't pick up application.properties ??!!
-@Priority(50)
+@Priority(10)
+@Default
 @Named("MemoryProvider")
 public class MemoryProvider implements IScimProvider {
 
@@ -318,6 +321,11 @@ public class MemoryProvider implements IScimProvider {
             } else
                 logger.debug("Skipping Memory Provider backup due to unmodified state.");
         }
+    }
+
+    @Override
+    public String getGeneratorClass() {
+        return MemoryIdGenerator.class.getName();
     }
 
     /* (non-Javadoc)

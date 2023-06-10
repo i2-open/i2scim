@@ -18,9 +18,9 @@ package com.independentid.scim.test.mongo;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.mongo.MongoProvider;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.ListResponse;
 import com.independentid.scim.protocol.RequestCtx;
@@ -35,14 +35,14 @@ import com.independentid.scim.test.misc.TestUtils;
 import com.mongodb.client.MongoClient;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Resource;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Resource;
-import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
@@ -64,10 +64,6 @@ public class MongoFilterMapTest {
 
     @Inject
     TestUtils testUtils;
-
-    @Inject
-    BackendHandler handler;
-
 
     /**
      * Test filters from RFC7644, figure 2
@@ -202,7 +198,7 @@ public class MongoFilterMapTest {
         } catch (ScimException | BackendException | IOException e) {
             fail("Unable to restart test database: " + e.getMessage());
         }
-        mp = (MongoProvider) handler.getProvider();
+        mp = (MongoProvider) InjectionManager.getInstance().getProvider();
         logger.debug("\tLoading sample data.");
 
         Attribute loginCnt = smgr.findAttribute("loginCnt", null);

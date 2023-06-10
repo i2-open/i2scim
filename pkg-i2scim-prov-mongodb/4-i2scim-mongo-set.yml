@@ -12,7 +12,7 @@ metadata:
     prometheus.io/path: /metrics
   labels:
     app.kubernetes.io/name: i2scim-mongo
-    app.kubernetes.io/version: 0.6.1
+    app.kubernetes.io/version: 0.7.0-Alpha
   name: i2scim-mongo
   namespace: scim-mongo
 ---
@@ -29,7 +29,7 @@ metadata:
     prometheus.io/path: /metrics
   labels:
     app.kubernetes.io/name: i2scim-mongo
-    app.kubernetes.io/version: 0.6.1
+    app.kubernetes.io/version: 0.7.0-Alpha
   name: i2scim-mongo
   namespace: scim-mongo
 spec:
@@ -39,7 +39,7 @@ spec:
       targetPort: 8080
   selector:
     app.kubernetes.io/name: i2scim-mongo
-    app.kubernetes.io/version: 0.6.1
+    app.kubernetes.io/version: 0.7.0-Alpha
   type: LoadBalancer
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -65,7 +65,7 @@ metadata:
     prometheus.io/path: /metrics
   labels:
     app.kubernetes.io/name: i2scim-mongo
-    app.kubernetes.io/version: 0.6.1
+    app.kubernetes.io/version: 0.7.0-Alpha
   name: i2scim-mongo
   namespace: scim-mongo
 spec:
@@ -74,7 +74,7 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: i2scim-mongo
-      app.kubernetes.io/version: 0.6.1
+      app.kubernetes.io/version: 0.7.0-Alpha
   template:
     metadata:
       annotations:
@@ -84,7 +84,7 @@ spec:
         prometheus.io/path: /metrics
       labels:
         app.kubernetes.io/name: i2scim-mongo
-        app.kubernetes.io/version: 0.6.1
+        app.kubernetes.io/version: 0.7.0-Alpha
       namespace: scim-mongo
     spec:
       containers:
@@ -100,7 +100,7 @@ spec:
                 name: i2scim-mongo-config
             - secretRef:
                 name: i2scim-root
-          image: independentid/i2scim-mongo:0.6.1
+          image: independentid/i2scim-mongo:0.7.0-Alpha
           imagePullPolicy: Always
           livenessProbe:
             failureThreshold: 3

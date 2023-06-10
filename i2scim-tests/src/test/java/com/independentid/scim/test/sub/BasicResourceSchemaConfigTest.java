@@ -17,21 +17,20 @@
 package com.independentid.scim.test.sub;
 
 
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaManager;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Resource;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Resource;
-import javax.inject.Inject;
 import java.net.URI;
 import java.util.Map;
 

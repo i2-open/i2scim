@@ -19,11 +19,11 @@ package com.independentid.scim.test.memory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.memory.IndexResourceType;
 import com.independentid.scim.backend.memory.MemoryProvider;
 import com.independentid.scim.backend.memory.ValResMap;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.Filter;
 import com.independentid.scim.protocol.ListResponse;
@@ -38,6 +38,8 @@ import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Resource;
+import jakarta.inject.Inject;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -45,8 +47,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Resource;
-import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -74,9 +74,6 @@ public class MemoryIndexTest {
     SchemaManager smgr;
 
     @Inject
-    BackendHandler handler;
-
-    @Inject
     MemoryProvider provider;
 
     @Inject
@@ -90,7 +87,7 @@ public class MemoryIndexTest {
         } catch (ScimException | BackendException | IOException e) {
             org.junit.jupiter.api.Assertions.fail("Failed to reset provider: " + e.getMessage());
         }
-        handler.getProvider();  // this should start initialization.
+        InjectionManager.getInstance().getProvider();  // this should start initialization.
 
         assertThat(provider).isNotNull();
 

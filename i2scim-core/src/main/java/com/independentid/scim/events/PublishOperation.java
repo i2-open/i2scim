@@ -17,7 +17,6 @@
 package com.independentid.scim.events;
 
 import com.independentid.scim.backend.BackendHandler;
-import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.err.DuplicateTxnException;
 import com.independentid.scim.resource.TransactionRecord;
 import org.slf4j.Logger;
@@ -34,7 +33,7 @@ public class PublishOperation extends RecursiveAction {
     private final static Logger logger = LoggerFactory.getLogger(PublishOperation.class);
 
     TransactionRecord rec;
-    BackendHandler backendHandler;
+    BackendHandler backendHandler = BackendHandler.getInstance();
     Iterator<IEventHandler> handlers;
 
     protected PublishOperation(TransactionRecord rec, Iterator<IEventHandler> handlerIterator, BackendHandler handler) {

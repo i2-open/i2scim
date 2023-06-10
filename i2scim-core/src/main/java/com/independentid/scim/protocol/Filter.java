@@ -21,9 +21,9 @@ import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
+import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotNull;
 
-import javax.transaction.Transactional;
-import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -256,7 +256,7 @@ public abstract class Filter {
 								value = phrase;
 								wordIndex = -1;
 								Filter attrExp = new AttributeFilter(attr,cond,value,parentAttr, ctx);
-								attr = null; isAttr = false;
+								attr = null; isAttr = 	false;
 								cond = null; isExpr = false;
 								isValue = false;
 								clauses.add(attrExp);

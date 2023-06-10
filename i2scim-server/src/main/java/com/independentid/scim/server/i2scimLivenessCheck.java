@@ -21,16 +21,18 @@ import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.PoolManager;
 import com.independentid.scim.schema.SchemaManager;
+import jakarta.annotation.Resource;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.eclipse.microprofile.health.*;
+import org.eclipse.microprofile.health.HealthCheck;
+import org.eclipse.microprofile.health.HealthCheckResponse;
+import org.eclipse.microprofile.health.HealthCheckResponseBuilder;
+import org.eclipse.microprofile.health.Liveness;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Resource;
-import javax.enterprise.inject.Instance;
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Singleton;
 
 /**
  * Liveness allows devops to interrogate if the server is instantiated. It does not test readiness.
@@ -50,8 +52,7 @@ public class i2scimLivenessCheck implements HealthCheck {
     @Inject
     SchemaManager schemaManager;
 
-    @Inject
-    BackendHandler handler;
+    BackendHandler handler = BackendHandler.getInstance();
 
     @ConfigProperty(name = "scim.prov.providerClass", defaultValue="com.independentid.scim.backend.mongo.MongoProvider")
     String providerName;

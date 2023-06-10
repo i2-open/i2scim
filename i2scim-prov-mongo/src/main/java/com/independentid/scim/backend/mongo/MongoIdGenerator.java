@@ -17,11 +17,9 @@
 package com.independentid.scim.backend.mongo;
 
 import com.independentid.scim.backend.IIdentifierGenerator;
+import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
 import org.bson.types.ObjectId;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.Priority;
-import javax.enterprise.context.ApplicationScoped;
 
 @ApplicationScoped
 @Priority(10)

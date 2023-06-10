@@ -28,6 +28,8 @@
  import com.independentid.scim.serializer.JsonUtil;
  import io.quarkus.test.junit.QuarkusTest;
  import io.quarkus.test.junit.TestProfile;
+ import jakarta.annotation.Resource;
+ import jakarta.inject.Inject;
  import org.junit.jupiter.api.Assertions;
  import org.junit.jupiter.api.MethodOrderer;
  import org.junit.jupiter.api.Test;
@@ -35,8 +37,6 @@
  import org.slf4j.Logger;
  import org.slf4j.LoggerFactory;
 
- import javax.annotation.Resource;
- import javax.inject.Inject;
  import java.io.IOException;
  import java.io.InputStream;
  import java.text.ParseException;

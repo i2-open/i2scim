@@ -16,6 +16,7 @@
 
 package com.independentid.scim.filter;
 
+import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
@@ -23,16 +24,15 @@ import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.security.AccessControl;
 import com.independentid.scim.security.AccessManager;
 import io.quarkus.security.identity.SecurityIdentity;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import jakarta.inject.Inject;
+import jakarta.servlet.*;
+import jakarta.servlet.annotation.WebFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.HttpMethod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
-import javax.servlet.*;
-import javax.servlet.annotation.WebFilter;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 import java.util.Set;
 
@@ -42,7 +42,7 @@ public class ScimSecurityFilter implements Filter {
 
     public final static String ACCESS_TYPE_I2SCIM = "i2scim";
     @Inject
-    AccessManager amgr;
+    AccessManager accessManager;
 
     @Inject
     SecurityIdentity identity;
@@ -50,21 +50,20 @@ public class ScimSecurityFilter implements Filter {
     @Inject
     SchemaManager schemaManager;
 
-    @ConfigProperty(name = "scim.security.enable", defaultValue = "true")
-    boolean isSecurityEnabled;
-
-    @ConfigProperty(name = "scim.security.mode", defaultValue = "i2scim")
-    String aciMode;
+    @Inject
+    ConfigMgr configMgr;
 
     boolean enabled = true;
 
     public void init(FilterConfig filterConfig) {
-        if (!isSecurityEnabled) {
+
+
+        if (!configMgr.isSecurityEnabled()) {
             logger.warn("\t** SCIM Security filter *disabled*.");
             enabled = false;
             return;
         }
-        if (aciMode.equals(ACCESS_TYPE_I2SCIM))
+        if (configMgr.getAciMode().equals(ACCESS_TYPE_I2SCIM))
             logger.info("SCIM Security Filter started.");
         else
             enabled = false;
@@ -115,17 +114,17 @@ public class ScimSecurityFilter implements Filter {
             if (logger.isDebugEnabled())
                 logger.debug("\tEvaluating request for: User=" + identity.getPrincipal().getName() + ", Type=" + identity.getPrincipal().getClass().toString());
 
-            HttpServletRequest hrequest;
+            HttpServletRequest httpServletRequest;
             if (request instanceof HttpServletRequest) {
-                hrequest = (HttpServletRequest) request;
+                httpServletRequest = (HttpServletRequest) request;
             } else {
                 logger.error("Unexpected servlet request type received: " + request.getClass().toString());
                 return;
             }
 
-            String path = hrequest.getPathInfo();
+            String path = httpServletRequest.getPathInfo();
             if (path == null)
-                path = hrequest.getRequestURI();
+                path = httpServletRequest.getRequestURI();
             // Liveness/health check do not require authorization
             if (path.startsWith("/q")) {
                 // allow healthcheck to proceed
@@ -136,15 +135,15 @@ public class ScimSecurityFilter implements Filter {
             RequestCtx ctx = (RequestCtx) request.getAttribute(RequestCtx.REQUEST_ATTRIBUTE);
             if (ctx == null) {
                 try {
-                    ctx = new RequestCtx(hrequest, (HttpServletResponse) response, schemaManager);
+                    ctx = new RequestCtx(httpServletRequest, (HttpServletResponse) response, schemaManager);
                     request.setAttribute(RequestCtx.REQUEST_ATTRIBUTE, ctx);
                 } catch (ScimException e) {
                     e.printStackTrace();
                 }
             }
             assert ctx != null;
-            assignOperationRights(hrequest, ctx);
-            if (amgr.filterRequestandInitAcis(ctx, identity)) {
+            assignOperationRights(httpServletRequest, ctx);
+            if (accessManager.filterRequestandInitAcis(ctx, identity)) {
                 chain.doFilter(request, response);
                 return;
             }

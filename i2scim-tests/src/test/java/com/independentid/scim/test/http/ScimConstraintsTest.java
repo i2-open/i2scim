@@ -36,6 +36,8 @@ import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Resource;
+import jakarta.inject.Inject;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHeaders;
@@ -52,8 +54,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Resource;
-import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -107,7 +107,7 @@ public class ScimConstraintsTest {
 
         logger.info("========== Scim Constraints Test ==========");
         logger.info("\tA. Testing Add Request Headers Etags and Last-Modified");
-
+        logger.info("Start date:\t"+start);
         try {
             testUtils.resetProvider(true);
         } catch (ScimException | BackendException | IOException e) {
@@ -115,6 +115,11 @@ public class ScimConstraintsTest {
         }
 
         try {
+            // The following is to ensure that timing of start vs. moddate is not an issue (ie equal)
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException ignored) {
+            }
 
             InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 
@@ -147,6 +152,7 @@ public class ScimConstraintsTest {
                     .as("Confirm last modified returned")
                     .isEqualTo(1);
             moddate = lastmods[0].getValue();
+            logger.info("Mod date:\t"+moddate);
 
             Header[] etags = resp.getHeaders(ScimParams.HEADER_ETAG);
             assertThat(etags.length)

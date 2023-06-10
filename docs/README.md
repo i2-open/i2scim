@@ -76,7 +76,7 @@ But wait, what is IETF SCIM?
     * `IEventHandler` interface enables deployment of asynchronous event handlers (e.g. for replication or security
       events)
       `IVirtualValue` enables support for derived or calculated values.
-    * Built on the [Quarkus](https://quarkus.io) platform version 1.13.6.Final for smaller deployments with faster 
+    * Built on the [Quarkus](https://quarkus.io) platform version 2.16.3.Final for smaller deployments with faster 
       startup
       running in Docker containers.
 

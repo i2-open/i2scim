@@ -23,14 +23,16 @@ import com.independentid.scim.core.PoolManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.schema.SchemaManager;
-import org.eclipse.microprofile.health.*;
+import jakarta.annotation.Resource;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import jakarta.inject.Singleton;
+import org.eclipse.microprofile.health.HealthCheckResponse;
+import org.eclipse.microprofile.health.HealthCheckResponseBuilder;
+import org.eclipse.microprofile.health.Readiness;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Resource;
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Singleton;
 import java.io.IOException;
 import java.text.ParseException;
 
@@ -54,8 +56,7 @@ public class i2scimHealthCheck implements org.eclipse.microprofile.health.Health
     @Inject
     SchemaManager schemaManager;
 
-    @Inject
-    BackendHandler handler;
+    BackendHandler handler = BackendHandler.getInstance();
 
     @Override
     public HealthCheckResponse call() {

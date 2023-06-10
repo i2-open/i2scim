@@ -36,12 +36,12 @@ Add the following dependencies to your `pom.xml`:
     <dependency>
         <groupId>com.independentid</groupId>
         <artifactId>i2scim-core</artifactId>
-        <version>0.6.1</version>
+        <version>0.7.0-Alpha</version>
     </dependency>
     <dependency>
         <groupId>com.independentid</groupId>
         <artifactId>i2scim-client</artifactId>
-        <version>0.6.1</version>
+        <version>0.7.0-Alpha</version>
     </dependency>
 </dependencies>
 ```
