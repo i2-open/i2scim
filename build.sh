@@ -49,6 +49,18 @@ function compile_module() {
   fi
 }
 
+function build_package() {
+  echo "\n\nBuilding Packaging ${1} at ${2} ..."
+  cd $2
+  mvn clean package -DskipTests=$skip
+  retVal=$?
+  if [ $retVal -ne 0 ]
+  then
+    echo "Error performing build packaging for [${1}]: "+$retVal
+    exit $retVal
+  fi
+}
+
 function package_module() {
   echo "\n\nPackaging ${1} at ${2} ..."
   cd $2
@@ -115,14 +127,7 @@ compile_module "SCIM Mongo Provider" "${I2SCIM_ROOT}/i2scim-prov-mongo"
 
 compile_module "SCIM Client" "${I2SCIM_ROOT}/i2scim-client"
 
-compile_module "SCIM Memory Provider" "${I2SCIM_ROOT}/i2scim-prov-memory"
-
 compile_module "SCIM Signals" "${I2SCIM_ROOT}/i2scim-signals"
-
-if [ $skip -eq false]
-then
-  compile_module "SCIM Tests" "${I2SCIM_ROOT}/i2scim-tests"
-fi
 
 package_module "SCIM CORE" "${I2SCIM_ROOT}/i2scim-core"
 
@@ -134,22 +139,11 @@ package_module "SCIM Mongo Provider" "${I2SCIM_ROOT}/i2scim-prov-mongo"
 
 package_module "SCIM Client" "${I2SCIM_ROOT}/i2scim-client"
 
-package_module "SCIM Memory Provider" "${I2SCIM_ROOT}/i2scim-prov-memory"
-
 package_module "SCIM Signals" "${I2SCIM_ROOT}/i2scim-signals"
 
-retVal=$?
-if [ $retVal -ne 0 ]
-then
-  echo "Error performing maven packaging i2scim: "+$retVal
-  exit $retVal
-fi
+build_package "Packaging SCIM with MemoryProvider" "${I2SCIM_ROOT}/pkg-i2scim-prov-memory"
 
-compile_module "Packaging SCIM with MemoryProvider" "${I2SCIM_ROOT}/pkg-i2scim-prov-memory"
-package_module "Packaging SCIM with MemoryProvider" "${I2SCIM_ROOT}/pkg-i2scim-prov-memory"
-
-compile_module "Packaging SCIM with MongoProvider" "${I2SCIM_ROOT}/pkg-i2scim-prov-mongodb"
-package_module "Packaging SCIM with MongoProvider" "${I2SCIM_ROOT}/pkg-i2scim-prov-mongodb"
+build_package "Packaging SCIM with MongoProvider" "${I2SCIM_ROOT}/pkg-i2scim-prov-mongodb"
 
 exit
 
