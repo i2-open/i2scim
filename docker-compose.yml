@@ -33,7 +33,7 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
   scim-mem:
     container_name: i2scim-mem
-    image: independentid/i2scim-mem:0.7.0-Alpha
+    image: independentid/i2scim-mem:0.7.0-SNAPSHOT
     environment:
       - scim.security.root.username=root
       - scim.security.root.password=dockTest

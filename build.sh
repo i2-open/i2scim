@@ -37,8 +37,36 @@ function show_complete () {
     return 0
 }
 
+function compile_module() {
+  echo "\n\nCompiling ${1} at ${2} ..."
+  cd $2
+  mvn clean compile -DskipTests=$skip
+  retVal=$?
+  if [ $retVal -ne 0 ]
+  then
+    echo "Error performing maven packaging [${1}]: "+$retVal
+    exit $retVal
+  fi
+}
+
+function package_module() {
+  echo "\n\nPackaging ${1} at ${2} ..."
+  cd $2
+  mvn package -DskipTests=$skip
+  retVal=$?
+  if [ $retVal -ne 0 ]
+  then
+    echo "Error performing maven packaging [${1}]: "+$retVal
+    exit $retVal
+  fi
+}
+
+I2SCIM_ROOT=$(pwd)
+
+echo "cleaCurrent dir: ${I2SCIM_ROOT}"
+
 skip=true
-rtag="0.7.0-Alpha"
+rtag="0.7.0-SNAPSHOT"
 buildOnly=0
 push=0
 
@@ -77,15 +105,54 @@ echo "\tTag: $rtag"
 echo "\tStarting: "$(date +"%Y-%m-%d %H:%M:%S")
 echo "*************************************************"
 
-echo "\n\tStarting maven packaging..."
+compile_module "SCIM CORE" "${I2SCIM_ROOT}/i2scim-core"
 
-mvn clean package -DskipTests=$skip
+compile_module "SCIM Server" "${I2SCIM_ROOT}/i2scim-server"
+
+compile_module "SCIM Memory Provider" "${I2SCIM_ROOT}/i2scim-prov-memory"
+
+compile_module "SCIM Mongo Provider" "${I2SCIM_ROOT}/i2scim-prov-mongo"
+
+compile_module "SCIM Client" "${I2SCIM_ROOT}/i2scim-client"
+
+compile_module "SCIM Memory Provider" "${I2SCIM_ROOT}/i2scim-prov-memory"
+
+compile_module "SCIM Signals" "${I2SCIM_ROOT}/i2scim-signals"
+
+if [ $skip -eq false]
+then
+  compile_module "SCIM Tests" "${I2SCIM_ROOT}/i2scim-tests"
+fi
+
+package_module "SCIM CORE" "${I2SCIM_ROOT}/i2scim-core"
+
+package_module "SCIM Server" "${I2SCIM_ROOT}/i2scim-server"
+
+package_module "SCIM Memory Provider" "${I2SCIM_ROOT}/i2scim-prov-memory"
+
+package_module "SCIM Mongo Provider" "${I2SCIM_ROOT}/i2scim-prov-mongo"
+
+package_module "SCIM Client" "${I2SCIM_ROOT}/i2scim-client"
+
+package_module "SCIM Memory Provider" "${I2SCIM_ROOT}/i2scim-prov-memory"
+
+package_module "SCIM Signals" "${I2SCIM_ROOT}/i2scim-signals"
+
 retVal=$?
 if [ $retVal -ne 0 ]
 then
   echo "Error performing maven packaging i2scim: "+$retVal
   exit $retVal
 fi
+
+compile_module "Packaging SCIM with MemoryProvider" "${I2SCIM_ROOT}/pkg-i2scim-prov-memory"
+package_module "Packaging SCIM with MemoryProvider" "${I2SCIM_ROOT}/pkg-i2scim-prov-memory"
+
+compile_module "Packaging SCIM with MongoProvider" "${I2SCIM_ROOT}/pkg-i2scim-prov-mongodb"
+package_module "Packaging SCIM with MongoProvider" "${I2SCIM_ROOT}/pkg-i2scim-prov-mongodb"
+
+exit
+
 
 if [ $buildOnly -eq 1 ]
 then
@@ -97,7 +164,7 @@ echo ""
 echo "\tStarting Docker build i2scim-mem..."
 echo ""
 
-cd ./pkg-i2scim-prov-memory
+cd ${I2SCIM_ROOT}/pkg-i2scim-prov-memory
 if [ $push -eq 1 ]
 then
   docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mem:$rtag .
@@ -116,7 +183,7 @@ echo ""
 echo "\tStarting Docker build i2scim-mongo..."
 echo ""
 
-cd ../pkg-i2scim-prov-mongodb
+cd ${I2SCIM_ROOT}/pkg-i2scim-prov-mongodb
 if [ $push -eq 1 ]
 then
   docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mongo:$rtag .

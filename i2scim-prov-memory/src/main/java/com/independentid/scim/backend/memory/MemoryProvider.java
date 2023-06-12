@@ -58,7 +58,6 @@ import java.util.concurrent.TimeUnit;
 @Startup // this is required or configproperty injection won't pick up application.properties ??!!
 @Priority(10)
 @Default
-@Named("MemoryProvider")
 public class MemoryProvider implements IScimProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(MemoryProvider.class);

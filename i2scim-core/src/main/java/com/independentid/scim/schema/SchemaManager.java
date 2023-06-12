@@ -36,6 +36,7 @@ import com.independentid.scim.serializer.JsonUtil;
 import io.smallrye.jwt.auth.principal.JWTParser;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import jakarta.annotation.Priority;
 import jakarta.ejb.Startup;
 import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
@@ -61,7 +62,7 @@ import java.util.*;
 @Startup
 @Singleton
 @Default
-//@Singleton
+@Priority(5)
 @Named("SchemaMgr")
 public class SchemaManager {
     private final static Logger logger = LoggerFactory.getLogger(SchemaManager.class);

@@ -19,11 +19,13 @@ package com.independentid.scim.backend.memory;
 import com.independentid.scim.backend.IIdentifierGenerator;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Default;
+import jakarta.inject.Named;
 
 import java.util.UUID;
 
 @ApplicationScoped
-@Priority(10)
+@Named("MemoryIdGen")
 public class MemoryIdGenerator implements IIdentifierGenerator {
 
     /**

@@ -26,6 +26,7 @@ import jakarta.annotation.ManagedBean;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Priority;
 import jakarta.annotation.Resource;
+import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
@@ -51,8 +52,8 @@ import java.util.*;
 //@ApplicationScoped
 @Singleton
 @Startup
-@ManagedBean
 @Priority(5)
+@Default
 @Named("ConfigMgr")
 public class ConfigMgr {
 
