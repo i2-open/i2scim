@@ -4,14 +4,23 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.memory.MemoryIdGenerator;
 import com.independentid.scim.backend.memory.MemoryProvider;
+import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.PoolManager;
 import com.independentid.scim.core.err.ScimException;
-import com.independentid.scim.op.CreateOp;
+import com.independentid.scim.op.*;
+import com.independentid.scim.protocol.JsonPatchOp;
+import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
-import com.independentid.scim.resource.Meta;
+import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.resource.StringValue;
+import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
-import com.independentid.ssef.EventMapper;
+import com.independentid.scim.serializer.JsonUtil;
+import com.independentid.set.SecurityEventToken;
+import com.independentid.signals.EventMapper;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Resource;
 import jakarta.inject.Inject;
 import org.junit.jupiter.api.MethodOrderer;
@@ -21,14 +30,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.Instant;
-import java.util.Date;
+import java.io.InputStream;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
-
-@QuarkusTest
-@TestMethodOrder(MethodOrderer.MethodName.class)
 public class EventMapperTest {
     private final static Logger logger = LoggerFactory.getLogger(EventMapperTest.class);
 
@@ -39,78 +48,243 @@ public class EventMapperTest {
     @Inject
     TestUtils testUtils;
 
+    @Inject
+    MemoryProvider provider;
 
     @Inject
     @Resource(name = "MemoryIdGen")
     MemoryIdGenerator generator;
 
+    @Inject
+    PoolManager poolManager;
+
+    @Inject
+    ConfigMgr cmgr;
+
     private static final String testUserFile1 = "classpath:/data/TestUser-bjensen.json";
     private static final String testUserFile2 = "classpath:/data/TestUser-jsmith.json";
 
-    private static String id1=null,id2=null;
-    private static ScimResource res1=null;
+    private static String id1 = null;
+    private static ScimResource res1 = null;
+    private static JsonNode node1;
+    private static final List<SecurityEventToken> testEvents = new ArrayList<SecurityEventToken>();
 
-    static CreateOp op1=null, op2 = null;
+    static CreateOp op1 = null, op2 = null;
+
     @Test
     public void a_initTests() {
-        logger.info("=============== SCIM Events Handler tests ===============");
-/*
+        logger.info("=============== SCIM Events Mapper tests ===============");
+        logger.info("A. Initializing tests");
+
         try {
             testUtils.resetMemoryDb(provider);
-        } catch (ScimException | BackendException | IOException e) {
-            logger.error("Error resetting memory provider: "+e.getMessage());
+            Operation.initialize(cmgr);
+            InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
+            assertThat(userStream).isNotNull();
+
+            node1 = JsonUtil.getJsonTree(userStream);
+            res1 = new ScimResource(schemaManager, node1, "Users");
+
+        } catch (ParseException | IOException | ScimException | BackendException e) {
+            fail("Failure occurred parsing transactions: " + e.getMessage());
         }
 
- */
+
     }
 
     @Test
-    public void b_MapperTest() {
-        id1 = generator.getNewIdentifier();
-        id2 = generator.getNewIdentifier();
-        res1 = testUtils.loadResource(testUserFile1,"Users");
-        ScimResource res2 = testUtils.loadResource(testUserFile2, "Users");
-        op1 = prepareCreateUser(res1,id1);
-        op2 = prepareCreateUser(res2,id2);
+    public void b_CreateOpTest() {
+        logger.info("B. Map CreateOp to Set...");
 
-        JsonNode node = EventMapper.MapOperation(op1);
+        // Operation to Event...
+        try {
+            RequestCtx ctx = new RequestCtx("Users", null, null, schemaManager);
+            CreateOp op = new CreateOp(node1, ctx, null, 0);
+            poolManager.addJobAndWait(op);
+            SecurityEventToken event = EventMapper.MapOperationToSet(op);
 
+            // Save for later
+            testEvents.add(event);
 
+            assert event != null;
+            String jsonString = event.toPrettyString();
+            logger.info("Result:\n" + ((jsonString != null) ? jsonString : "NULL"));
+
+            id1 = op.getResourceId();  // Because on a create a new ID is generated.
+            res1 = op.getTransactionResource();  // Update with newly modified value
+            node1 = res1.toJsonNode(op.getRequestCtx());
+            assertThat(jsonString).contains(id1);
+            assertThat(jsonString).contains("urn:ietf:params:event:SCIM:prov:create");
+        } catch (ScimException e) {
+            fail("Error processing test operation: " + e.getMessage());
+        }
     }
 
-    private CreateOp prepareCreateUser(ScimResource res, String newId) {
+    @Test
+    public void c_PutOpTest() {
+        logger.info("C. Map PutOp to Set...");
         try {
-            /*
-              Prepare the resource as if it had been created locally to simulate a processed entry
-             */
+            RequestCtx ctx = new RequestCtx("Users", id1, null, schemaManager);
+            res1.setExternalId("tester123");
+            PutOp op = new PutOp(res1.toJsonNode(ctx), ctx, null, 0);
+            poolManager.addJobAndWait(op);
+            res1 = op.getTransactionResource();  // Update with newly modified value
+            node1 = res1.toJsonNode(op.getRequestCtx());
+            SecurityEventToken event = EventMapper.MapOperationToSet(op);
 
-            // assign a Mongo compatible ID to simulate a local server
-            res.setId(newId);
+            // Save for later
+            testEvents.add(event);
 
-            Meta meta = res.getMeta();
-            if (meta == null) {
-                meta = new Meta();
-                res.setMeta(meta);
-            }
-            // Not needed for TransactionRecord type
-            Date created = Date.from(Instant.now());
-            if (meta.getCreatedDate() == null) // only set the created date if it does not already exist.
-                meta.setCreatedDate(created);
-            meta.setLastModifiedDate(created); // always set the modify date upon create.
-
-            meta.setLocation("/Users/" + res.getId());
-            String etag = res.calcVersionHash();
-            meta.setVersion(etag);
-
-            // Generate a requestctx to simulate a transaction id
-            RequestCtx ctx = new RequestCtx("/Users",null,null,schemaManager);
-
-            // Generate the creation operation that will be used to generate a replication message.
-            return new CreateOp(res.toJsonNode(null),ctx,null,0);
-
+            assert event != null;
+            String jsonString = event.toPrettyString();
+            assertThat(jsonString).contains(res1.getId());
+            assertThat(jsonString)
+                    .as("Has the updated test123")
+                    .contains("tester123");
+            logger.info("Result:\n" + ((jsonString != null) ? jsonString : "NULL"));
         } catch (ScimException e) {
-            fail("Error preparing operation: "+e.getMessage(),e);
+            fail("Error processing test operation: " + e.getMessage());
         }
-        return null;
+    }
+
+    @Test
+    public void d_PatchTest() {
+        logger.info("D. Map PatchOp to Set...");
+        try {
+            RequestCtx ctx = new RequestCtx("Users", id1, null, schemaManager);
+            JsonPatchRequest jpr = new JsonPatchRequest();
+            Attribute titleAttr = schemaManager.findAttribute("User:title", null);
+            StringValue titleVal = new StringValue(titleAttr, "TEST TITLE");
+            JsonPatchOp replaceTitleOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE, "User:title", titleVal);
+
+            jpr.addOperation(replaceTitleOp);
+            PatchOp op = new PatchOp(jpr.toJsonNode(), ctx, null, 0);
+            poolManager.addJobAndWait(op);
+
+
+            SecurityEventToken event = EventMapper.MapOperationToSet(op);
+
+            // Save for later
+            testEvents.add(event);
+
+            assert event != null;
+            String jsonString = event.toPrettyString();
+            assertThat(jsonString).contains(id1);
+            assertThat(jsonString)
+                    .as("Has the updated TEST TITLE")
+                    .contains("TEST TITLE");
+            logger.info("Result:\n" + ((jsonString != null) ? jsonString : "NULL"));
+        } catch (ScimException e) {
+            fail("Error processing test operation: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void e_DeleteTest() {
+        logger.info("E. Map DeleteOp to Set...");
+        try {
+            RequestCtx ctx = new RequestCtx("Users", id1, null, schemaManager);
+
+            DeleteOp op = new DeleteOp(ctx, null, 0);
+            poolManager.addJobAndWait(op);
+            SecurityEventToken event = EventMapper.MapOperationToSet(op);
+
+            // Save for later
+            testEvents.add(event);
+
+            assert event != null;
+            String jsonString = event.toPrettyString();
+            assertThat(jsonString).contains("urn:ietf:params:event:SCIM:prov:delete");
+            assertThat(jsonString).contains(id1);
+            logger.info("Result:\n" + ((jsonString != null) ? jsonString : "NULL"));
+        } catch (ScimException e) {
+            fail("Error processing test operation: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void f_EventInit() {
+        // Events are converted to Operations and performed.
+        logger.info("F. Resetting memory database to mock receiver server.");
+
+        assertThat(testEvents.size()).as("There should be 4 events from previous tests").isEqualTo(4);
+
+        logger.info("Resetting server database to pretend to be a new server");
+        try {
+            testUtils.resetMemoryDb(provider);
+            Operation.initialize(cmgr);
+            InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
+            assertThat(userStream).isNotNull();
+
+        } catch (IOException | ScimException | BackendException e) {
+            fail("Failure occurred parsing transactions: " + e.getMessage());
+        }
+    }
+
+    @Test
+    public void g_MapEventsToOpsTest() {
+        logger.info("G. Mapping Events to Operations...");
+
+        logger.info("G a. Map Set Create to CreateOp...");
+        SecurityEventToken createEvent = testEvents.remove(0);
+        Operation op = EventMapper.MapSetToOperation(createEvent, schemaManager);
+        poolManager.addJobAndWait(op);
+
+        assertThat(op).isNotNull();
+        assertThat(op.isError()).isFalse();
+        ScimResponse resp = op.getScimResponse();
+
+        assertThat(resp).isNotNull();
+        assertThat(resp.getStatus()).isEqualTo(ScimResponse.ST_CREATED);
+
+        logger.info("G b. Map Set Put to PutOp...");
+        SecurityEventToken putEvent = testEvents.remove(0);
+        Operation putOp = EventMapper.MapSetToOperation(putEvent, schemaManager);
+        poolManager.addJobAndWait(putOp);
+
+        assertThat(putOp).isNotNull();
+        assertThat(putOp.isError()).isFalse();
+        resp = putOp.getScimResponse();
+
+        assertThat(resp).isNotNull();
+        assertThat(resp.getStatus()).isEqualTo(ScimResponse.ST_OK);
+
+        logger.info("G c. Test Duplicate Txn rejected...");
+        Operation putOp2 = EventMapper.MapSetToOperation(putEvent, schemaManager);
+        poolManager.addJobAndWait(putOp2);
+
+        assertThat(putOp2).isNotNull();
+        assertThat(putOp2.isError()).isFalse();
+        resp = putOp2.getScimResponse();
+
+        assertThat(resp).isNotNull();
+        assertThat(resp.getStatus()).isEqualTo(ScimResponse.ST_CONFLICT);
+
+        logger.info("G d. Map Set Patch to PatchOp...");
+        SecurityEventToken patchEvent = testEvents.remove(0);
+        Operation patchOp = EventMapper.MapSetToOperation(patchEvent, schemaManager);
+        poolManager.addJobAndWait(patchOp);
+
+        assertThat(patchOp).isNotNull();
+        assertThat(patchOp.isError()).isFalse();
+        resp = patchOp.getScimResponse();
+
+        assertThat(resp).isNotNull();
+        assertThat(resp.getStatus()).isEqualTo(ScimResponse.ST_OK);
+
+        logger.info("G e. Map Set Delete to DeleteOp...");
+        SecurityEventToken delEvent = testEvents.remove(0);
+        Operation delOp = EventMapper.MapSetToOperation(delEvent, schemaManager);
+        poolManager.addJobAndWait(delOp);
+
+        assertThat(delOp).isNotNull();
+        assertThat(delOp.isError()).isFalse();
+        resp = delOp.getScimResponse();
+
+        assertThat(resp).isNotNull();
+        assertThat(resp.getStatus()).isEqualTo(ScimResponse.ST_NOCONTENT);
+
+        assertThat(testEvents.size()).as("Confirm all events processed").isEqualTo(0);
+
     }
 }

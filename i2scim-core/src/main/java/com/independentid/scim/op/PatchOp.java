@@ -127,7 +127,6 @@ public class PatchOp extends Operation implements IBulkOp {
     protected void doOperation() {
         try {
             this.scimresp = backendHandler.patch(this.ctx, this.patchRequest);
-
         } catch (ScimException e) {
             // Catch the scim error and serialize it
             if (logger.isDebugEnabled())

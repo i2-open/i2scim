@@ -117,29 +117,17 @@ echo "\tTag: $rtag"
 echo "\tStarting: "$(date +"%Y-%m-%d %H:%M:%S")
 echo "*************************************************"
 
-compile_module "SCIM CORE" "${I2SCIM_ROOT}/i2scim-core"
+build_package "SCIM CORE" "${I2SCIM_ROOT}/i2scim-core"
 
-compile_module "SCIM Server" "${I2SCIM_ROOT}/i2scim-server"
+build_package "SCIM Server" "${I2SCIM_ROOT}/i2scim-server"
 
-compile_module "SCIM Memory Provider" "${I2SCIM_ROOT}/i2scim-prov-memory"
+build_package "SCIM Memory Provider" "${I2SCIM_ROOT}/i2scim-prov-memory"
 
-compile_module "SCIM Mongo Provider" "${I2SCIM_ROOT}/i2scim-prov-mongo"
+build_package "SCIM Mongo Provider" "${I2SCIM_ROOT}/i2scim-prov-mongo"
 
-compile_module "SCIM Client" "${I2SCIM_ROOT}/i2scim-client"
+build_package "SCIM Client" "${I2SCIM_ROOT}/i2scim-client"
 
-compile_module "SCIM Signals" "${I2SCIM_ROOT}/i2scim-signals"
-
-package_module "SCIM CORE" "${I2SCIM_ROOT}/i2scim-core"
-
-package_module "SCIM Server" "${I2SCIM_ROOT}/i2scim-server"
-
-package_module "SCIM Memory Provider" "${I2SCIM_ROOT}/i2scim-prov-memory"
-
-package_module "SCIM Mongo Provider" "${I2SCIM_ROOT}/i2scim-prov-mongo"
-
-package_module "SCIM Client" "${I2SCIM_ROOT}/i2scim-client"
-
-package_module "SCIM Signals" "${I2SCIM_ROOT}/i2scim-signals"
+build_package "SCIM Signals" "${I2SCIM_ROOT}/i2scim-signals"
 
 build_package "Packaging SCIM with MemoryProvider" "${I2SCIM_ROOT}/pkg-i2scim-prov-memory"
 

@@ -1,0 +1,11 @@
+{
+  "keys": [
+    {
+      "kty": "RSA",
+      "kid": "i2scim",
+      "use": "Key used for i2scim testing purposes ONLY!",
+      "n": "taCP35lFs85YNnjpKqbCASaosD7QdZjGnDqWoZs93wbYHbqGRMEVQ4YInNd5MsZKcF3gGtHqo0DVM_CDiRIZxcZZuwZ3BBtRmBuQafytOCkNZKjfoOE6ptnHO9oTkyhKiNJIs-lKRldP-SDUHZ_Oux8dAnD-kJhjijInRJJkqsaO-gH26sv95O7k5S0Jm-ERr0Tqfostf0k_YM9elYXXzh7CQi3rGZ9h-ccckkcs8i-J4BVVsBDruO5Rxvtt5KVEUp0PuCrLLuqmCuhjL-JdE4EiuomdJDbAqmmQZ6Ef6g_nUH_4WcCtDtN_LerTgEzIz9D7i8NV_0Ho311R9Lt4GQ",
+      "e": "AQAB"
+    }
+  ]
+}

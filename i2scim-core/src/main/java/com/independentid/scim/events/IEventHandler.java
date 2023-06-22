@@ -28,9 +28,10 @@ public interface IEventHandler {
     /**
      * Takes a JsonNode input and interprets it and then may generate a SCIM {@link Operation} if action
      * is to be taken.
+     *
      * @param node A JsonNode parsed event
      */
-    void consume(JsonNode node);
+    void consume(Object node);
 
     /**
      * Takes a processed SCIM Operation and publishes it

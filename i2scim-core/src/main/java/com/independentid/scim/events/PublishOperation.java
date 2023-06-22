@@ -47,7 +47,7 @@ public class PublishOperation extends RecursiveAction {
         try {
             backendHandler.storeTransactionRecord(rec);
         } catch (DuplicateTxnException e) {
-            logger.error("Error publishing transaction record("+rec.getId()+"). Event will not be published.");
+            logger.error("Duplicate transaction (" + rec.getId() + ") will not be published.");
             return;
         }
 

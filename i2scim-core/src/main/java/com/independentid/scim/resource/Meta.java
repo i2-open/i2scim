@@ -396,13 +396,17 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		//First, check for duplicate
 		if (this.revisions != null) {
 			try {
-				AttributeFilter filter = new AttributeFilter(revAttr.getSubAttribute("value"),"eq",ctx.getTranId(),ctx);
-				Value val = this.revisions.getMatchValue(filter);
-				if (val != null
-					|| provider.isTransactionPresent(ctx.getTranId()))
-					throw new DuplicateTxnException("Duplicate txn id("+ctx.getTranId()+") detected.");
-
-			} catch (BadFilterException e) {
+                AttributeFilter filter = new AttributeFilter(revAttr.getSubAttribute("value"), "eq", ctx.getTranId(), ctx);
+                Value val = this.revisions.getMatchValue(filter);
+                if (val != null) {
+                    if (ctx.isReplicaOp()) {
+                        if (provider.isTransactionPresent(ctx.getTranId()))
+                            throw new DuplicateTxnException("Duplicate txn id(" + ctx.getTranId() + ") detected.");
+                        return;
+                    }
+                    throw new DuplicateTxnException("Duplicate txn id(" + ctx.getTranId() + ") detected.");
+                }
+            } catch (BadFilterException e) {
 				e.printStackTrace();
 			}
 		}
