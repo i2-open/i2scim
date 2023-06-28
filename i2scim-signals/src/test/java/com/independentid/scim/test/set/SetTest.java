@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.serializer.JsonUtil;
-import com.independentid.scim.test.events.SignalsEventMinTestProfile;
 import com.independentid.set.SecurityEventToken;
 import com.independentid.set.SubjectIdentifier;
 import io.quarkus.test.junit.QuarkusTest;
@@ -27,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 @QuarkusTest
-@TestProfile(SignalsEventMinTestProfile.class)
+@TestProfile(SignalsSetTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
 public class SetTest {
     private final static Logger logger = LoggerFactory.getLogger(SetTest.class);

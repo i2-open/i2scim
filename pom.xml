@@ -20,9 +20,10 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>pkg-i2scim-prov-memory</artifactId>
     <groupId>com.independentid</groupId>
     <version>0.7.0-SNAPSHOT</version>
+    <artifactId>i2scim-root</artifactId>
+    <packaging>pom</packaging>
 
     <properties>
         <compiler-plugin.version>3.11.0</compiler-plugin.version>
@@ -36,49 +37,13 @@
         <surefire-plugin.version>3.0.0</surefire-plugin.version>
         <i2scim.version>0.7.0-SNAPSHOT</i2scim.version>
     </properties>
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>${quarkus.platform.group-id}</groupId>
-                <artifactId>${quarkus.platform.artifact-id}</artifactId>
-                <version>${quarkus.platform.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-    <dependencies>
-        <dependency>
-            <groupId>com.independentid</groupId>
-            <artifactId>i2scim-core</artifactId>
-            <version>${i2scim.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.independentid</groupId>
-            <artifactId>i2scim-server</artifactId>
-            <version>${i2scim.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.independentid</groupId>
-            <artifactId>i2scim-prov-memory</artifactId>
-            <version>${i2scim.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-kubernetes</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-kubernetes-config</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-smallrye-health</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-container-image-docker</artifactId>
-        </dependency>
-    </dependencies>
-
+    <modules>
+        <module>i2scim-core</module>
+        <module>i2scim-client</module>
+        <module>i2scim-server</module>
+        <module>i2scim-prov-memory</module>
+        <module>i2scim-prov-mongo</module>
+        <module>i2scim-signals</module>
+        <module>i2scim-tests</module>
+    </modules>
 </project>

@@ -22,8 +22,6 @@ import org.jose4j.jwt.NumericDate;
 import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.jwt.consumer.InvalidJwtSignatureException;
 import org.jose4j.lang.JoseException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 import java.security.Key;
@@ -32,14 +30,11 @@ import java.util.Iterator;
 import java.util.List;
 
 public class SecurityEventToken {
-    private final static Logger logger = LoggerFactory.getLogger(SecurityEventToken.class);
-
     private final ObjectNode claims;
-
-    private static ObjectMapper mapper = JsonUtil.getMapper();
+    private final static ObjectMapper mapper = JsonUtil.getMapper();
 
     public SecurityEventToken() {
-        this.claims = JsonUtil.getMapper().createObjectNode();
+        this.claims = mapper.createObjectNode();
     }
 
     public SecurityEventToken(String jsonClaims) throws InvalidJwtException, JsonProcessingException {
@@ -98,7 +93,7 @@ public class SecurityEventToken {
 
     public SubjectIdentifier getSubjectIdentifier() {
         JsonNode subNode = this.claims.get("sub_id");
-        return JsonUtil.getMapper().convertValue(subNode, SubjectIdentifier.class);
+        return mapper.convertValue(subNode, SubjectIdentifier.class);
     }
 
     public void SetScimSubjectId(RequestCtx ctx) {
@@ -110,7 +105,7 @@ public class SecurityEventToken {
         this.claims.put("sub", subject);
     }
 
-    public String GetSub() throws MalformedClaimException {
+    public String GetSub() {
         return this.claims.get("sub").asText();
     }
 
@@ -120,8 +115,8 @@ public class SecurityEventToken {
     }
 
     @JsonSetter("jti")
-    public String getJti() throws MalformedClaimException {
-        return this.claims.get("jwt").asText();
+    public String getJti() {
+        return this.claims.get("jti").asText();
     }
 
     @JsonSetter("txn")
@@ -176,14 +171,14 @@ public class SecurityEventToken {
     }
 
     public void setAud(String aud) {
-        ArrayNode anode = JsonUtil.getMapper().createArrayNode();
+        ArrayNode anode = mapper.createArrayNode();
         anode.add(aud);
         this.claims.set("aud", anode);
     }
 
     @JsonSetter("aud")
     public void setAud(List<String> aud) {
-        ArrayNode anode = JsonUtil.getMapper().createArrayNode();
+        ArrayNode anode = mapper.createArrayNode();
         aud.forEach(anode::add);
         this.claims.set("aud", anode);
     }
@@ -203,7 +198,7 @@ public class SecurityEventToken {
         if (events != null) {
             newEvents = events.deepCopy();
         } else {
-            newEvents = JsonUtil.getMapper().createObjectNode();
+            newEvents = mapper.createObjectNode();
         }
 
         newEvents.set(eventId, eventPayload);
@@ -253,6 +248,7 @@ public class SecurityEventToken {
      * @throws JoseException if the token cannot be signed or encrypted.
      */
     public String JWE(String issuer, Key issuerSignKey, Key audPubKey) throws JoseException, MalformedClaimException {
+        this.setIssuer(issuer);
         String payload = this.JWS(issuerSignKey);
         JsonWebEncryption jwe = new JsonWebEncryption();
         jwe.setHeader("typ", "secevent+jwt");

@@ -23,16 +23,19 @@ import org.slf4j.LoggerFactory;
 import java.util.Iterator;
 import java.util.Objects;
 
-public class EventMapper {
+public class SignalsEventMapper {
 
-    private final static Logger logger = LoggerFactory.getLogger(EventMapper.class);
+    private final static Logger logger = LoggerFactory.getLogger(SignalsEventMapper.class);
 
     public static SecurityEventToken MapOperationToSet(final Operation op) {
 
         ObjectMapper mapper = JsonUtil.getMapper();
 
         SecurityEventToken event = new SecurityEventToken();
-        event.setTxn(op.getRequestCtx().getTranId());
+        String id = op.getRequestCtx().getTranId();
+        // TODO: For now we will set txn and jti to be the same.
+        event.setTxn(id);
+        event.setJti(id);
         NumericDate numDate = NumericDate.fromMilliseconds(op.getStats().getFinishDate().getTime());
 
         event.setToe(numDate);

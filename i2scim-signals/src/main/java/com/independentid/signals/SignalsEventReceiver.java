@@ -15,64 +15,36 @@
 
 package com.independentid.signals;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.op.Operation;
 import com.independentid.set.SecurityEventToken;
-import io.quarkus.runtime.Startup;
-import jakarta.annotation.Priority;
-import jakarta.enterprise.inject.Default;
-import jakarta.inject.Singleton;
-import org.apache.http.HttpHeaders;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.jose4j.jwt.consumer.InvalidJwtException;
-import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.security.Key;
-import java.util.Properties;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 
 /**
  * This class processes incoming events for application against the local server. It is started by EventHandler.
  */
-@Singleton
-@Priority(20)
-@Default
-@Startup // required to esnure independent startup
+// required to ensure independent startup
 public class SignalsEventReceiver implements Runnable {
     private final static Logger logger = LoggerFactory.getLogger(SignalsEventReceiver.class);
     private final AtomicBoolean closed = new AtomicBoolean(false);
-
-    public final static String MODE_REPLICATE = "replicas";
-    public final static String MODE_SHARD = "sharded";
+    private final AtomicBoolean closeRequest = new AtomicBoolean(false);
 
     ConfigMgr cmgr;
 
     SignalsEventHandler eventHandler;
 
-    Properties clIdProps = null;
-    long lastTime = 0, offset = 0;
-    Key issuerKey, receiverKey;
+    StreamHandler streamHandler;
 
-    CloseableHttpClient client = HttpClients.createDefault();
-
-    public SignalsEventReceiver() {
-
-    }
-
-    public SignalsEventReceiver(ConfigMgr config, SignalsEventHandler handler, Key issuerKey, Key receiverKey) {
+    public SignalsEventReceiver(ConfigMgr config, SignalsEventHandler handler, StreamHandler streamHandler) {
         this.cmgr = config;
         this.eventHandler = handler;
-        this.issuerKey = issuerKey;
-        this.receiverKey = receiverKey;
+        this.streamHandler = streamHandler;
         init();
     }
 
@@ -89,49 +61,26 @@ public class SignalsEventReceiver implements Runnable {
 
     @Override
     public void run() {
-        logger.debug("SSEF replication receiver running.");
+        logger.info("Signals polling receiver running.");
+        try {
+            // When in test mode, give the web server a chance to start.
+            Thread.sleep(2000);
+        } catch (InterruptedException ignore) {
+        }
 
-        while (!closed.get()) {
+        while (!closeRequest.get()) {
             if (eventHandler.ready) {
                 if (logger.isDebugEnabled())
                     logger.debug("...polling Kafka for events");
-                HttpPost eventPost = new HttpPost(eventHandler.postPollEventsUri);
-                eventPost.setHeader(HttpHeaders.AUTHORIZATION, eventHandler.setStreamToken);
 
-                EventPoll.PollRequest req = new EventPoll.PollRequest();
-                req.ReturnImmediately = false;  // Set up for long polling.
+                Map<String, SecurityEventToken> events = this.streamHandler.pollStream.pollEvents(SignalsEventHandler.acksPending, false);
 
-
-                req.PrepareAcknowledgments(eventHandler.acksPending);
-
-                try {
-                    eventPost.setEntity(req.toEntity());
-                } catch (JsonProcessingException | UnsupportedEncodingException e) {
-                    logger.error("Error serializing request: " + e.getMessage());
-                    req.RestoreAcks(eventHandler.acksPending);
-                }
-                try {
-                    CloseableHttpResponse resp = this.client.execute(eventPost);
-
-                    EventPoll.PollResponse pr = EventPoll.Parse(resp.getEntity());
-                    if (pr.Sets.size() > 0) {
-                        for (String setStr : pr.Sets) {
-                            SecurityEventToken event = null;
-                            try {
-                                event = new SecurityEventToken(setStr, issuerKey, receiverKey);
-                                eventHandler.consume(event);
-                            } catch (InvalidJwtException | JoseException e) {
-                                logger.error("SET was not validated: " + e.getMessage());
-                            }
-                        }
-                    }
-                } catch (IOException e) {
-                    logger.error("Error executing poll request: " + e.getMessage());
-                    //Put the acks back so they can be acknowledged later.
-                    req.RestoreAcks(eventHandler.acksPending);
+                for (SecurityEventToken event : events.values()) {
+                    eventHandler.consume(event);
                 }
             }
         }
+        closed.set(true);
 
     }
 
@@ -139,10 +88,27 @@ public class SignalsEventReceiver implements Runnable {
     // Shutdown hook which can be called from a separate thread
 
     public void shutdown() {
+        closeRequest.set(true);
+        int i = 0;
+        while (!closed.get()) {
+            i++;
+            if (i > 10) {
+                logger.info("Waiting for polling thread to close...");
+                i = 0;
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException ignore) {
+            }
+        }
 
-        closed.set(true);
+        // Now ack any processed events....
+        if (SignalsEventHandler.acksPending.size() > 0) {
+            this.streamHandler.pollStream.pollEvents(SignalsEventHandler.acksPending, true);
+        }
+
         try {
-            this.client.close();
+            this.streamHandler.pollStream.Close();
         } catch (IOException ignore) {
 
         }

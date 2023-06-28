@@ -77,11 +77,17 @@ public class EventManager {
 
     @PostConstruct
     public void init() {
-        if (isEnabled()) {
-            logger.info("Event Manager Started.");
-            return;
+        if (!isEnabled()) {
+            logger.warn("Event Manager *DISABLED*.");
         }
-       logger.warn("Event Manager *DISABLED*.");
+        logger.info("Event Manager starting.");
+        for (IEventHandler handler : handlers) {
+            // Do this to ensure the handlers are instantiated.
+            if (handler.isProducing()) {
+                logger.info("  loaded Event Handler: " + handler.getClass().getName());
+            }
+        }
+
     }
 
     public boolean isEnabled() {
