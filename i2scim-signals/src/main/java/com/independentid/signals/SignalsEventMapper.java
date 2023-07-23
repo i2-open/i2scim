@@ -64,13 +64,13 @@ public class SignalsEventMapper {
                 resNode = res.toJsonNode(op.getRequestCtx());
                 if (resNode != null)
                     payload.set("data", resNode);
-                event.AddEventPayload("urn:ietf:params:event:SCIM:prov:create", payload);
+                event.AddEventPayload("urn:ietf:params:SCIM:event:prov:create:full", payload);
 
                 break;
 
             case "DEL":
                 ObjectNode empty = mapper.createObjectNode();
-                event.AddEventPayload("urn:ietf:params:event:SCIM:prov:delete", empty);
+                event.AddEventPayload("urn:ietf:params:SCIM:event:prov:delete", empty);
                 break;
 
             case "PUT":
@@ -80,14 +80,14 @@ public class SignalsEventMapper {
                 }
                 resNode = res.toJsonNode(op.getRequestCtx());
                 payload.set("data", resNode);
-                event.AddEventPayload("urn:ietf:params:event:SCIM:prov:put", payload);
+                event.AddEventPayload("urn:ietf:params:SCIM:event:prov:put:full", payload);
                 break;
 
             case "PAT":
                 PatchOp pop = (PatchOp) op;
                 JsonNode patchData = pop.getPatchRequest().toJsonNode();
                 payload.set("data", patchData);
-                event.AddEventPayload("urn:ietf:params:event:SCIM:prov:patch", payload);
+                event.AddEventPayload("urn:ietf:params:SCIM:event:prov:patch:full", payload);
                 break;
             default:
                 return null;
@@ -127,16 +127,16 @@ public class SignalsEventMapper {
                 ObjectNode bulkOpNode;
                 SubjectIdentifier subId = event.getSubjectIdentifier();
                 switch (eventUri) {
-                    case "urn:ietf:params:event:SCIM:prov:create":
+                    case "urn:ietf:params:SCIM:event:prov:create:full":
                         bulkOpNode = convertToScimInternal(smgr, subId, Operation.Bulk_Method_POST, event.getTxn(), payload);
                         return BulkOps.parseOperation(bulkOpNode, null, 0, true);
-                    case "urn:ietf:params:event:SCIM:prov:delete":
+                    case "urn:ietf:params:SCIM:event:prov:delete":
                         bulkOpNode = convertToScimInternal(smgr, subId, Operation.Bulk_Method_DELETE, event.getTxn(), payload);
                         return BulkOps.parseOperation(bulkOpNode, null, 0, true);
-                    case "urn:ietf:params:event:SCIM:prov:put":
+                    case "urn:ietf:params:SCIM:event:prov:put:full":
                         bulkOpNode = convertToScimInternal(smgr, subId, Operation.Bulk_Method_PUT, event.getTxn(), payload);
                         return BulkOps.parseOperation(bulkOpNode, null, 0, true);
-                    case "urn:ietf:params:event:SCIM:prov:patch":
+                    case "urn:ietf:params:SCIM:event:prov:patch:full":
                         bulkOpNode = convertToScimInternal(smgr, subId, Operation.Bulk_Method_PATCH, event.getTxn(), payload);
                         return BulkOps.parseOperation(bulkOpNode, null, 0, true);
                 }

@@ -52,7 +52,7 @@ function compile_module() {
 function build_package() {
   echo "\n\nBuilding Packaging ${1} at ${2} ..."
   cd $2
-  mvn clean package -DskipTests=$skip
+  mvn clean install -DskipTests=$skip
   retVal=$?
   if [ $retVal -ne 0 ]
   then

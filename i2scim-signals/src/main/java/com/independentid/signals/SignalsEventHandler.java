@@ -76,7 +76,7 @@ public class SignalsEventHandler implements IEventHandler {
     PoolManager pool;
 
     @Inject
-    StreamHandler streams;
+    StreamHandler streamHandler;
 
     @Inject
     BackendHandler backendHandler;
@@ -103,7 +103,7 @@ public class SignalsEventHandler implements IEventHandler {
         Operation.initialize(configMgr);
 
         logger.debug("Starting SET Polling Receiver...");
-        this.receiverThread = new SignalsEventReceiver(configMgr, this, streams);
+        this.receiverThread = new SignalsEventReceiver(configMgr, this, streamHandler);
 
         ready = true;
     }
@@ -169,7 +169,7 @@ public class SignalsEventHandler implements IEventHandler {
 
         SecurityEventToken token = SignalsEventMapper.MapOperationToSet(op);
         if (token != null) {
-            if (streams.pushStream.pushEvent(token)) return;
+            if (streamHandler.pushStream.pushEvent(token)) return;
         }
         sendErrorOps.add(op);
     }
@@ -207,7 +207,7 @@ public class SignalsEventHandler implements IEventHandler {
         processBuffer(); //Ensure all trans sent!
 
         try {
-            this.streams.pushStream.Close();
+            this.streamHandler.pushStream.Close();
         } catch (IOException ignore) {
 
         }

@@ -27,11 +27,13 @@
     <properties>
         <compiler-plugin.version>3.11.0</compiler-plugin.version>
         <maven.compiler.release>11</maven.compiler.release>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.1.2.Final</quarkus.platform.version>
+        <quarkus.platform.version>3.2.1.Final</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.0.0</surefire-plugin.version>
         <i2scim.version>0.7.0-SNAPSHOT</i2scim.version>
@@ -76,6 +78,19 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>org.jboss.jandex</groupId>
+                <artifactId>jandex-maven-plugin</artifactId>
+                <version>1.2.3</version>
+                <executions>
+                    <execution>
+                        <id>make-index</id>
+                        <goals>
+                            <goal>jandex</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>quarkus-maven-plugin</artifactId>
                 <version>${quarkus.platform.version}</version>
@@ -91,24 +106,18 @@
                 </executions>
             </plugin>
             <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>${compiler-plugin.version}</version>
-                <configuration>
-                    <compilerArgs>
-                        <arg>-parameters</arg>
-                    </compilerArgs>
-                </configuration>
-            </plugin>
-            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
                 <configuration>
                     <systemPropertyVariables>
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                        <maven.home>${maven.home}</maven.home>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <version>${surefire-plugin.version}</version>
                 <executions>
@@ -121,21 +130,9 @@
                             <systemPropertyVariables>
                                 <native.image.path>${project.build.directory}/${project.build.finalName}-runner</native.image.path>
                                 <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
+                                <maven.home>${maven.home}</maven.home>
                             </systemPropertyVariables>
                         </configuration>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.jboss.jandex</groupId>
-                <artifactId>jandex-maven-plugin</artifactId>
-                <version>1.2.3</version>
-                <executions>
-                    <execution>
-                        <id>make-index</id>
-                        <goals>
-                            <goal>jandex</goal>
-                        </goals>
                     </execution>
                 </executions>
             </plugin>

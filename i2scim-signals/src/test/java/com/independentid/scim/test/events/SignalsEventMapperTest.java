@@ -117,7 +117,7 @@ public class SignalsEventMapperTest {
             res1 = op.getTransactionResource();  // Update with newly modified value
             node1 = res1.toJsonNode(op.getRequestCtx());
             assertThat(jsonString).contains(id1);
-            assertThat(jsonString).contains("urn:ietf:params:event:SCIM:prov:create");
+            assertThat(jsonString).contains("urn:ietf:params:SCIM:event:prov:create:full");
         } catch (ScimException e) {
             fail("Error processing test operation: " + e.getMessage());
         }
@@ -197,7 +197,7 @@ public class SignalsEventMapperTest {
 
             assert event != null;
             String jsonString = event.toPrettyString();
-            assertThat(jsonString).contains("urn:ietf:params:event:SCIM:prov:delete");
+            assertThat(jsonString).contains("urn:ietf:params:SCIM:event:prov:delete");
             assertThat(jsonString).contains(id1);
             logger.info("Result:\n" + ((jsonString != null) ? jsonString : "NULL"));
         } catch (ScimException e) {

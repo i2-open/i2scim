@@ -42,7 +42,12 @@ import static com.independentid.scim.core.ConfigMgr.findClassLoaderResource;
 
 @Singleton
 public class StreamHandler {
+
     private final static Logger logger = LoggerFactory.getLogger(StreamHandler.class);
+
+    // When provided, the config file will be used to configure event publication instead of endpoint and auth parameters
+    @ConfigProperty(name = "scim.signals.pub.config.file", defaultValue = "NONE")
+    String pubConfigFile;
 
     // The SET Push Endpoint (RFC8935)
     @ConfigProperty(name = "scim.signals.pub.push.endpoint", defaultValue = "NONE")
@@ -74,6 +79,10 @@ public class StreamHandler {
 
     @ConfigProperty(name = "scim.signals.pub.aud.jwksJson", defaultValue = "NONE")
     String pubAudJwksJson;
+
+    // When provided, the config file will be used to configure event reception instead of endpoint and auth parameters
+    @ConfigProperty(name = "scim.signals.rcv.config.file", defaultValue = "NONE")
+    String rcvConfigFile;
 
     @ConfigProperty(name = "scim.signals.rcv.poll.endpoint", defaultValue = "NONE")
     String rcvPollUrl;
@@ -120,8 +129,26 @@ public class StreamHandler {
             pubPushStreamEndpoint = "http://localhost:8081/signals/events";
             rcvPollUrl = "http://localhost:8081/signals/poll";
         }
-        this.pushStream.endpointUrl = pubPushStreamEndpoint;
-        this.pushStream.authorization = pubPushStreamToken;
+
+        if (!this.pubConfigFile.equals("NONE")) {
+            try {
+                InputStream configInput = findClassLoaderResource(this.pubConfigFile);
+                JsonNode configNode = JsonUtil.getJsonTree(configInput);
+                JsonNode endNode = configNode.get("endpoint");
+                if (endNode == null)
+                    throw new RuntimeException("scim.signals.pub.config.file contains no endpoint value.");
+                this.pushStream.endpointUrl = endNode.asText();
+                JsonNode tokenNode = configNode.get("token");
+                if (tokenNode != null)
+                    this.pushStream.authorization = tokenNode.asText();
+            } catch (IOException e) {
+                throw new RuntimeException("Error reading scim.signals.pub.config.file at: " + this.pubConfigFile, e);
+            }
+
+        } else {
+            this.pushStream.endpointUrl = pubPushStreamEndpoint;
+            this.pushStream.authorization = pubPushStreamToken;
+        }
         this.pushStream.iss = pubIssuer;
         this.pushStream.aud = pubAud;  //TODO switch this to multi-value
 
@@ -133,6 +160,25 @@ public class StreamHandler {
             this.pushStream.receiverKey = loadJwksPublicKey(pubAudJwksUrl, pubAudJwksJson, pubAud);
         }
 
+        if (!this.rcvConfigFile.equals("NONE")) {
+            try {
+                InputStream configInput = findClassLoaderResource(this.rcvConfigFile);
+                JsonNode configNode = JsonUtil.getJsonTree(configInput);
+                JsonNode endNode = configNode.get("endpoint");
+                if (endNode == null)
+                    throw new RuntimeException("scim.signals.pub.config.file contains no endpoint value.");
+                this.pollStream.endpointUrl = endNode.asText();
+                JsonNode tokenNode = configNode.get("token");
+                if (tokenNode != null)
+                    this.pollStream.authorization = tokenNode.asText();
+            } catch (IOException e) {
+                throw new RuntimeException("Error reading scim.signals.pub.config.file at: " + this.pubConfigFile, e);
+            }
+
+        } else {
+            this.pollStream.endpointUrl = rcvPollUrl;
+            this.pollStream.authorization = rcvPollAuth;
+        }
         this.pollStream.endpointUrl = rcvPollUrl;
         this.pollStream.authorization = rcvPollAuth;
         this.pollStream.iss = rcvIss;

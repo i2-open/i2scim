@@ -282,7 +282,7 @@ public class SignalsHandlerTest {
 
         ObjectNode payload = JsonUtil.getMapper().createObjectNode();
         payload.set("data", resourceNode);
-        event.AddEventPayload("urn:ietf:params:event:SCIM:prov:create", payload);
+        event.AddEventPayload("urn:ietf:params:SCIM:event:prov:create:full", payload);
         event.setAud("example.com");
         event.setIssuer("myissuer.io");
         return event;
