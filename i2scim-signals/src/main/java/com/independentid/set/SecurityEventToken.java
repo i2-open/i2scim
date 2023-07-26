@@ -26,6 +26,7 @@ import org.jose4j.lang.JoseException;
 import java.math.BigInteger;
 import java.security.Key;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -171,6 +172,12 @@ public class SecurityEventToken {
     }
 
     public void setAud(String aud) {
+        if (aud.contains(",")) {
+            String[] audienceArray = aud.split(",");
+            List<String> audList = new ArrayList<>(Arrays.asList(audienceArray));
+            this.setAud(audList);
+            return;
+        }
         ArrayNode anode = mapper.createArrayNode();
         anode.add(aud);
         this.claims.set("aud", anode);
