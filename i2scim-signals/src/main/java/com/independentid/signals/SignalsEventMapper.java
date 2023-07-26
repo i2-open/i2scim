@@ -41,14 +41,18 @@ public class SignalsEventMapper {
         event.setToe(numDate);
 
         ScimResource res = op.getTransactionResource();
-        if (res != null)
-            event.SetScimSubjectId(res);
-        else {
-            RequestCtx ctx = op.getRequestCtx();
-            if (ctx != null)
-                event.SetScimSubjectId(ctx);
+        if (op.getScimType().equals("PUT")) {
+            event.SetScimSubjectId(op.getRequestCtx());
+        } else {
+            if (res != null)
+                event.SetScimSubjectId(res);
+            else {
+                RequestCtx ctx = op.getRequestCtx();
+                if (ctx != null)
+                    event.SetScimSubjectId(ctx);
 
-            // TODO:  Not able to easily add additional items like externalid for PATCH and DELETE
+                // TODO:  Not able to easily add additional items like externalid for PATCH and DELETE
+            }
         }
 
         event.setTxn(op.getRequestCtx().getTranId());
@@ -75,7 +79,7 @@ public class SignalsEventMapper {
 
             case "PUT":
                 if (res == null) {
-                    logger.error("Unexpected null resource for Create op:" + op.toString());
+                    logger.error("Unexpected null resource for Put op:" + op.toString());
                     return null;
                 }
                 resNode = res.toJsonNode(op.getRequestCtx());
@@ -96,11 +100,11 @@ public class SignalsEventMapper {
 
     }
 
-    protected static ObjectNode convertToScimInternal(SchemaManager smgr, SubjectIdentifier id, String method, String tranId, JsonNode eventNode) {
+    protected static ObjectNode convertToScimInternal(SchemaManager schemaManager, SubjectIdentifier id, String method, String tranId, JsonNode eventNode) {
         ObjectNode bulkOpNode = JsonUtil.getMapper().createObjectNode();
         String path = id.uri;
         if (path == null || Objects.equals(path, "")) {
-            ResourceType type = smgr.getResourceTypeByName(id.rtype);
+            ResourceType type = schemaManager.getResourceTypeByName(id.rtype);
             if (type != null) {
                 path = "/" + type.getTypePath() + "/" + id.id;
             }
@@ -108,13 +112,14 @@ public class SignalsEventMapper {
         bulkOpNode.put(BulkOps.PARAM_PATH, path);
         bulkOpNode.set(BulkOps.PARAM_DATA, eventNode.get("data"));
         bulkOpNode.put(BulkOps.PARAM_METHOD, method);
-        // TODO add BulkOps.PARAMS_PATH
 
         if (tranId != null) bulkOpNode.put(BulkOps.PARAM_TRANID, tranId);
         return bulkOpNode;
     }
 
-    public static Operation MapSetToOperation(SecurityEventToken event, SchemaManager smgr) {
+    public static Operation MapSetToOperation(SecurityEventToken event, SchemaManager schemaManager) {
+        if (schemaManager == null)
+            logger.error("Mapping to Operation: SCHEMA Manager is NULL!!");
 
         try {
             JsonNode node = event.GetEvents();
@@ -128,16 +133,16 @@ public class SignalsEventMapper {
                 SubjectIdentifier subId = event.getSubjectIdentifier();
                 switch (eventUri) {
                     case "urn:ietf:params:SCIM:event:prov:create:full":
-                        bulkOpNode = convertToScimInternal(smgr, subId, Operation.Bulk_Method_POST, event.getTxn(), payload);
+                        bulkOpNode = convertToScimInternal(schemaManager, subId, Operation.Bulk_Method_POST, event.getTxn(), payload);
                         return BulkOps.parseOperation(bulkOpNode, null, 0, true);
                     case "urn:ietf:params:SCIM:event:prov:delete":
-                        bulkOpNode = convertToScimInternal(smgr, subId, Operation.Bulk_Method_DELETE, event.getTxn(), payload);
+                        bulkOpNode = convertToScimInternal(schemaManager, subId, Operation.Bulk_Method_DELETE, event.getTxn(), payload);
                         return BulkOps.parseOperation(bulkOpNode, null, 0, true);
                     case "urn:ietf:params:SCIM:event:prov:put:full":
-                        bulkOpNode = convertToScimInternal(smgr, subId, Operation.Bulk_Method_PUT, event.getTxn(), payload);
+                        bulkOpNode = convertToScimInternal(schemaManager, subId, Operation.Bulk_Method_PUT, event.getTxn(), payload);
                         return BulkOps.parseOperation(bulkOpNode, null, 0, true);
                     case "urn:ietf:params:SCIM:event:prov:patch:full":
-                        bulkOpNode = convertToScimInternal(smgr, subId, Operation.Bulk_Method_PATCH, event.getTxn(), payload);
+                        bulkOpNode = convertToScimInternal(schemaManager, subId, Operation.Bulk_Method_PATCH, event.getTxn(), payload);
                         return BulkOps.parseOperation(bulkOpNode, null, 0, true);
                 }
                 logger.info("Ignored event: " + eventUri);

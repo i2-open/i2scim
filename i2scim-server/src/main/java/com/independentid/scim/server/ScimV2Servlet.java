@@ -51,6 +51,7 @@ import java.io.IOException;
 //@RequestScoped
 //@Named("ScimServlet")
 //@WebServlet("/")
+
 @WebServlet(name = "ScimServlet", urlPatterns = "/*")
 public class ScimV2Servlet extends HttpServlet {
 
@@ -235,7 +236,8 @@ public class ScimV2Servlet extends HttpServlet {
 
 	@Override
 	public void init() {
-		logger.info("====== SCIM V2 Servlet Initialized =====");
+        Operation.initialize(cfgMgr);
+        logger.info("====== SCIM V2 Servlet Initialized =====");
 		/*  This is already PostConstruct and should self start.
 			try {
 				cfgMgr.initializeConfiguration();

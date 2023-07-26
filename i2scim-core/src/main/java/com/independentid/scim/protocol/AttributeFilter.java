@@ -69,16 +69,16 @@ public class AttributeFilter extends Filter {
 
     public AttributeFilter(String aname, @NotNull String cond, String value, String parentAttr, @NotNull RequestCtx ctx) throws BadFilterException {
         super();
-        smgr = ctx.getSchemaMgr();
+        schemaManager = ctx.getSchemaMgr();
         if (parentAttr == null)
             this.parentAttr = null;
         else
-            this.parentAttr = smgr.findAttribute(parentAttr, ctx);
+            this.parentAttr = schemaManager.findAttribute(parentAttr, ctx);
 
         if (this.parentAttr != null) {
             this.attr = this.parentAttr.getSubAttribute(aname);
         } else
-            this.attr = smgr.findAttribute(aname, ctx);
+            this.attr = schemaManager.findAttribute(aname, ctx);
 
         if (this.attr == null) {
             // If no attribute check if it is common schema or just create a placeholder attribute definition
@@ -120,11 +120,16 @@ public class AttributeFilter extends Filter {
         if (this.attr == null)
             throw new BadFilterException("Unable to parse a valid attribute or attribute was null.");
         String container = ctx.getResourceContainer();
+        if (schemaManager == null) {
+            schemaManager = ctx.getSchemaMgr();
+            if (schemaManager == null)
+                System.out.println("RequestCtx did not have SchemaManager set!!!");
+        }
         if (container != null) {
             if (container.equals("/"))
                 isExtension = false;
             else {
-                ResourceType type = smgr.getResourceTypeByPath(container);
+                ResourceType type = schemaManager.getResourceTypeByPath(container);
                 if (type != null)
                     isExtension = type.getSchemaExtensions().containsKey(attr.getSchema());
                 else
@@ -612,7 +617,7 @@ public class AttributeFilter extends Filter {
     }
 
     public boolean isVirtualAttribute() {
-        return smgr.isVirtualAttr(this.attr);
+        return schemaManager.isVirtualAttr(this.attr);
     }
 
 }

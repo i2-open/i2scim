@@ -70,9 +70,6 @@ public class SignalsEventHandler implements IEventHandler {
     ConfigMgr configMgr;
 
     @Inject
-    SchemaManager schemaManager;
-
-    @Inject
     PoolManager pool;
 
     @Inject
@@ -95,6 +92,14 @@ public class SignalsEventHandler implements IEventHandler {
         if (!this.enabled) {
             logger.info("Signals Event Handler *disabled*");
             return;
+        }
+        try {
+            Thread.sleep(5000); // wait for server to settle
+        } catch (InterruptedException ignore) {
+        }
+        SchemaManager mgr = configMgr.getSchemaManager();
+        if (mgr == null) {
+            logger.error("Signals event handler detected NULL schemamanager");
         }
 
         logger.info("Signals Event Handler STARTING....");
@@ -124,7 +129,7 @@ public class SignalsEventHandler implements IEventHandler {
 
         if (txn instanceof SecurityEventToken) {
             SecurityEventToken event = (SecurityEventToken) txn;
-            Operation op = SignalsEventMapper.MapSetToOperation(event, schemaManager);
+            Operation op = SignalsEventMapper.MapSetToOperation(event, configMgr.getSchemaManager());
             if (logger.isDebugEnabled())
                 logger.debug("\tReceived SCIM Event:\n" + event.toPrettyString());
             try {

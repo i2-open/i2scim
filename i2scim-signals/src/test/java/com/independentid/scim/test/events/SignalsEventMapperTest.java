@@ -249,6 +249,13 @@ public class SignalsEventMapperTest {
         assertThat(putOp.isError()).isFalse();
         resp = putOp.getScimResponse();
 
+        try {
+            RequestCtx ctx = new RequestCtx("/Users", res1.getId(), null, schemaManager);
+            ScimResource testRes = provider.getResource(ctx);
+            assertThat(testRes.getExternalId()).isEqualTo("tester123");
+        } catch (ScimException e) {
+            throw new RuntimeException(e);
+        }
         assertThat(resp).isNotNull();
         assertThat(resp.getStatus()).isEqualTo(ScimResponse.ST_OK);
 

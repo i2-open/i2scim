@@ -251,6 +251,12 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 
 	public static Operation parseOperation(
 			JsonNode bulkOpNode, BulkOps parent, int requestNum, boolean isReplicOp) throws ScimException {
+		if (schemaManager == null) {
+			logger.info("Schema manager was NULL attempting to fix...");
+			schemaManager = configMgr.getSchemaManager();
+			if (schemaManager == null)
+				logger.error("SchemaManager is still NULL");
+		}
 		RequestCtx octx = new RequestCtx(bulkOpNode, schemaManager, isReplicOp);
 
 		JsonNode item = bulkOpNode.get(BulkOps.PARAM_TRANID);

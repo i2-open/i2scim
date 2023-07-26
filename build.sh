@@ -133,9 +133,6 @@ build_package "Packaging SCIM with MemoryProvider" "${I2SCIM_ROOT}/pkg-i2scim-pr
 
 build_package "Packaging SCIM with MongoProvider" "${I2SCIM_ROOT}/pkg-i2scim-prov-mongodb"
 
-exit
-
-
 if [ $buildOnly -eq 1 ]
 then
   show_complete

@@ -19,6 +19,7 @@ import com.independentid.scim.events.PublishOperation;
 import com.independentid.scim.op.Operation;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import jakarta.annotation.Priority;
 import jakarta.annotation.Resource;
 import jakarta.ejb.Startup;
 import jakarta.inject.Inject;
@@ -49,6 +50,7 @@ import static java.lang.Thread.sleep;
 @Startup //This to ensure @PostConstruct is fired at startup to avoid NPE when servlet tries to invoke Operations
 // This is the equivalent of @ApplicationScoped according to Quarkus.io
 //@Startup
+@Priority(3)
 @Named("PoolMgr")
 public class PoolManager {
 

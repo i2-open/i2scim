@@ -33,9 +33,9 @@ public class ValuePathFilter extends Filter {
 	
 	public ValuePathFilter(String attr, String filterStr, @NotNull RequestCtx ctx) throws BadFilterException {
 		super(filterStr);
-		smgr = ctx.getSchemaMgr();
-		this.filter = Filter.parseFilter(filterStr, attr,ctx);
-		this.attr = smgr.findAttribute(attr, ctx);
+        schemaManager = ctx.getSchemaMgr();
+        this.filter = Filter.parseFilter(filterStr, attr, ctx);
+        this.attr = schemaManager.findAttribute(attr, ctx);
 	}
 
 	public String getAttributeName() {

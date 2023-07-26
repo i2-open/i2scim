@@ -38,7 +38,6 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Priority;
 import jakarta.ejb.Startup;
-import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
@@ -61,15 +60,13 @@ import java.util.*;
  */
 @Startup
 @Singleton
-@Default
-@Priority(5)
+@Priority(1)
 @Named("SchemaMgr")
 public class SchemaManager {
     private final static Logger logger = LoggerFactory.getLogger(SchemaManager.class);
 
     BackendHandler backendHandler = BackendHandler.getInstance();
 
-    @Inject
     SystemSchemas systemSchemas;
 
     public final static String SCIM_CORE_SCHEMAID = "urn:ietf:params:scim:schemas:core:2.0:Common";
@@ -129,7 +126,9 @@ public class SchemaManager {
     private static boolean loadedFromProvider = false;
 
     SchemaManager() {
-
+        this.systemSchemas = new SystemSchemas();
+        this.systemSchemas.schemaManager = this;
+        this.systemSchemas.defineConfigStateSchema();
     }
 
     /**
@@ -154,7 +153,9 @@ public class SchemaManager {
         this.serverSchemaPath = "/schema/scimFixedSchema.json";
 
         this.systemSchemas = new SystemSchemas();
+        this.systemSchemas.schemaManager = this;
         this.systemSchemas.defineConfigStateSchema();
+
 
         loadCommonAttrSchema();  // laod common attribute definitions and fixed schema
 
@@ -189,6 +190,7 @@ public class SchemaManager {
         this.serverSchemaPath = "/schema/scimFixedSchema.json";
 
         this.systemSchemas = new SystemSchemas();
+        this.systemSchemas.schemaManager = this;
         this.systemSchemas.defineConfigStateSchema();
 
         if (injectionManager == null) {

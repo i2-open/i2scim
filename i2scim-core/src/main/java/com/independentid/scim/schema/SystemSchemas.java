@@ -18,8 +18,6 @@ package com.independentid.scim.schema;
 
 import com.independentid.scim.protocol.ScimParams;
 import jakarta.annotation.PostConstruct;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -31,11 +29,10 @@ import java.util.List;
  * within providers and to define the schema for the transaction log. The transaction log is used to determine if a
  * transaction id is already held in the current database provider instance (for de-duping and diagnosis purposes).
  */
-@ApplicationScoped
+
 public class SystemSchemas {
 
-    @Inject
-    SchemaManager smgr;
+    SchemaManager schemaManager;
 
     public final static List<String> SCIM_COMMON_ATTRS = Arrays.asList(
             "id","externalid","schemas","meta");
@@ -80,7 +77,7 @@ public class SystemSchemas {
     @PostConstruct
     void defineConfigStateSchema() {
         // Define the schema synchronization state schema (persist4ed state)
-        persistSchema = new Schema(smgr);
+        persistSchema = new Schema(schemaManager);
         persistSchema.setName("Persisted Configuration State");
         persistSchema.setId(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 
@@ -94,7 +91,7 @@ public class SystemSchemas {
         persistSchema.putAttribute(sCntAttr);
         persistSchema.putAttribute(saltAttr);
 
-        persistType = new ResourceType(smgr);
+        persistType = new ResourceType(schemaManager);
         persistType.setName(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
         persistType.setSchema(ScimParams.SCHEMA_SCHEMA_PERSISTEDSTATE);
 
@@ -121,7 +118,7 @@ public class SystemSchemas {
         tranSchema.putAttribute(actorAttr);
         tranSchema.putAttribute(refsAttr);
 
-        tranType = new ResourceType(smgr);
+        tranType = new ResourceType(schemaManager);
         tranType.setName(ScimParams.SCHEMA_SCHEMA_SYNCREC);
         tranType.setSchema(ScimParams.SCHEMA_SCHEMA_SYNCREC);
         try {

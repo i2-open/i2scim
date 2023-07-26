@@ -45,6 +45,7 @@ public class SignalsEventReceiver implements Runnable {
         this.cmgr = config;
         this.eventHandler = handler;
         this.streamHandler = streamHandler;
+        Operation.initialize(config);
         init();
     }
 

@@ -102,13 +102,20 @@ public class Operation extends RecursiveAction {
 
     public static void initialize(ConfigMgr configMgr) {
         Operation.configMgr = configMgr;
-        schemaManager = configMgr.getSchemaManager();
-        backendHandler = configMgr.getBackendHandler();
-        pluginHandler = configMgr.getPluginHandler();
+        Operation.schemaManager = configMgr.getSchemaManager();
+        if (Operation.schemaManager == null)
+            logger.error("SchemaManager was NULL during operation initialize!");
+        else {
+            logger.info("SchemaManager located.");
+        }
+        Operation.backendHandler = configMgr.getBackendHandler();
+        Operation.pluginHandler = configMgr.getPluginHandler();
     }
+
 
     /**
      * Constructor for a SCIM operation. Typically used in bulk requests.
+     *
      * @param ctx        The RequestCtx
      * @param requestNum To be used for tracking bulkId request numbers in a series (TBI)
      */

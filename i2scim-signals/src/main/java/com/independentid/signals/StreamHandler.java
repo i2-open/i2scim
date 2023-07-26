@@ -9,6 +9,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.inject.Singleton;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
@@ -21,7 +22,6 @@ import org.jose4j.jwk.JsonWebKey;
 import org.jose4j.jwk.JsonWebKeySet;
 import org.jose4j.jwt.MalformedClaimException;
 import org.jose4j.jwt.consumer.InvalidJwtException;
-import org.jose4j.keys.X509Util;
 import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +34,7 @@ import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,12 +59,15 @@ public class StreamHandler {
     String pubPushStreamToken;
 
     // The issuer id value to use in SET tokens
-    @ConfigProperty(name = "scim.signals.pub.issr", defaultValue = "DEFAULT")
+    @ConfigProperty(name = "scim.signals.pub.iss", defaultValue = "DEFAULT")
     String pubIssuer;
 
     // The private key associated with the issuer id.
-    @ConfigProperty(name = "scim.signals.pub.pem.path", defaultValue = "./issuer.pem")
+    @ConfigProperty(name = "scim.signals.pub.pem.path", defaultValue = "NONE")
     String pubPemPath;
+
+    @ConfigProperty(name = "scim.signals.pub.pem.value", defaultValue = "NONE")
+    String pubPemValue;
 
     // When true, unsigned tokens will be generated
     @ConfigProperty(name = "scim.signals.pub.algNone.override", defaultValue = "false")
@@ -87,10 +91,10 @@ public class StreamHandler {
     @ConfigProperty(name = "scim.signals.rcv.poll.endpoint", defaultValue = "NONE")
     String rcvPollUrl;
 
-    @ConfigProperty(name = "scim.signals.rcv.iss", defaultValue = "")
+    @ConfigProperty(name = "scim.signals.rcv.iss", defaultValue = "DEFAULT")
     String rcvIss;
 
-    @ConfigProperty(name = "scim.signals.rcv.aud", defaultValue = "")
+    @ConfigProperty(name = "scim.signals.rcv.aud", defaultValue = "DEFAULT")
     String rcvAud;
 
 
@@ -104,9 +108,13 @@ public class StreamHandler {
     @ConfigProperty(name = "scim.signals.rcv.iss.jwksJson", defaultValue = "NONE")
     String rcvIssJwksJson;
 
-    // The private PEM key path for the audience when receiving encrypted tokens
+    // The private PEM key path for the audienc
+    // e when receiving encrypted tokens
     @ConfigProperty(name = "scim.signals.rcv.poll.pem.path", defaultValue = "NONE")
     String rcvPemPath;
+
+    @ConfigProperty(name = "scim.signals.rcv.poll.pem.value", defaultValue = "NONE")
+    String rcvPemValue;
 
     // When true, unsigned tokens will be generated
     @ConfigProperty(name = "scim.signals.rcv.algNone.override", defaultValue = "false")
@@ -132,7 +140,11 @@ public class StreamHandler {
 
         if (!this.pubConfigFile.equals("NONE")) {
             try {
+                logger.info("Reading config file: " + this.pubConfigFile);
                 InputStream configInput = findClassLoaderResource(this.pubConfigFile);
+                if (configInput == null) {
+                    throw new RuntimeException("Error loading pub config file: " + this.pubConfigFile);
+                }
                 JsonNode configNode = JsonUtil.getJsonTree(configInput);
                 JsonNode endNode = configNode.get("endpoint");
                 if (endNode == null)
@@ -156,10 +168,11 @@ public class StreamHandler {
             this.pushStream.isUnencrypted = true;
         } else {
             this.pushStream.isUnencrypted = false;
-            this.pushStream.issuerKey = loadPem(pubPemPath);
+            this.pushStream.issuerKey = loadPem(pubPemPath, pubPemValue);
             this.pushStream.receiverKey = loadJwksPublicKey(pubAudJwksUrl, pubAudJwksJson, pubAud);
         }
-
+        logger.info("Push Events Config: ");
+        logger.info("\n" + this.pushStream.toString());
         if (!this.rcvConfigFile.equals("NONE")) {
             try {
                 InputStream configInput = findClassLoaderResource(this.rcvConfigFile);
@@ -186,10 +199,14 @@ public class StreamHandler {
         this.pollStream.isUnencrypted = rcvIsUnsigned;
 
         if (!rcvIsUnsigned) {
-            this.pollStream.receiverKey = loadPem(rcvPemPath);
+            this.pollStream.receiverKey = loadPem(rcvPemPath, rcvPemValue);
             this.pollStream.issuerKey = loadJwksPublicKey(rcvIssJwksUrl, rcvIssJwksJson, rcvIss);
         }
+        logger.info("Poll Events Config: ");
+        logger.info("\n" + this.pollStream.toString());
+
     }
+
 
     public PushStream getPushStream() {
         return this.pushStream;
@@ -207,6 +224,16 @@ public class StreamHandler {
         public String iss;
         public String aud;
         CloseableHttpClient client = HttpClients.createDefault();
+
+        public String toString() {
+            return "EndpointUrl:\t" + endpointUrl + "\n" +
+                    "Authorization:\t" + authorization + "\n" +
+                    "IssuerKey:\t" + (issuerKey != null) + "\n" +
+                    "ReceiverKey:\t" + (receiverKey != null) + "\n" +
+                    "Unencrypted:\t" + isUnencrypted + "\n" +
+                    "Issuer:\t" + iss + "\n" +
+                    "Audience:\t" + aud + "\n";
+        }
 
         public boolean pushEvent(SecurityEventToken event) {
             event.setAud(this.aud);
@@ -279,6 +306,19 @@ public class StreamHandler {
         boolean returnImmediately = false; // long polling
         CloseableHttpClient client = HttpClients.createDefault();
 
+        public String toString() {
+            return "EndpointUrl:\t" + endpointUrl + "\n" +
+                    "Authorization:\t" + authorization + "\n" +
+                    "IssuerKey:\t" + (issuerKey != null) + "\n" +
+                    "ReceiverKey:\t" + (receiverKey != null) + "\n" +
+                    "Unencrypted:\t" + isUnencrypted + "\n" +
+                    "Issuer:\t" + iss + "\n" +
+                    "Audience:\t" + aud + "\n" +
+                    "TimeoutSecs:\t" + timeOutSecs + "\n" +
+                    "MaxEvents:\t" + maxEvents + "\n" +
+                    "ReturnImmed:\t" + returnImmediately + "\n";
+        }
+
         public Map<String, SecurityEventToken> pollEvents(List<String> acks, boolean ackOnly) {
             Map<String, SecurityEventToken> eventMap = new HashMap<>();
             ObjectNode reqNode = JsonUtil.getMapper().createObjectNode();
@@ -312,10 +352,12 @@ public class StreamHandler {
                 if (!this.authorization.equals("NONE")) {
                     pollRequest.setHeader("Authorization", this.authorization);
                 }
-
+                List<String> requestedAck = new ArrayList<>();
                 ArrayNode ackNode = reqNode.putArray("ack");
                 for (String item : acks) {
+                    logger.info("POLLING: Acknowledging: " + item);
                     ackNode.add(item);
+                    requestedAck.add(item);
                 }
 
                 StringEntity bodyEntity = new StringEntity(reqNode.toPrettyString(), ContentType.APPLICATION_JSON);
@@ -323,6 +365,13 @@ public class StreamHandler {
                 pollRequest.setEntity(bodyEntity);
                 CloseableHttpResponse resp = client.execute(pollRequest);
 
+                // Update the acks pending list
+                if (resp.getStatusLine().getStatusCode() == HttpStatus.SC_OK && requestedAck.size() > 0) {
+                    logger.info("Updating acknowledgments");
+                    for (String item : requestedAck) {
+                        SignalsEventHandler.acksPending.remove(item);
+                    }
+                }
                 HttpEntity respEntity = resp.getEntity();
                 byte[] respBytes = respEntity.getContent().readAllBytes();
                 JsonNode respNode = JsonUtil.getJsonTree(respBytes);
@@ -353,21 +402,26 @@ public class StreamHandler {
     }
 
 
-    public static Key loadPem(String path) {
+    public static Key loadPem(String path, String value) {
         try {
-            if (path.equals("NONE"))
+            if (path.equals("NONE") && value.equals("NONE"))
                 return null;
-            InputStream keyInput = findClassLoaderResource(path);
-            // load the issuer key
-
-            X509Util util = new X509Util();
+            String pemString;
             KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-            String keyString = new String(keyInput.readAllBytes());
+            if (!path.equals("NONE")) {
+                InputStream keyInput = findClassLoaderResource(path);
+                // load the issuer key
+                if (keyInput == null) {
+                    throw new RuntimeException("Could not load issuer PEM at: " + path);
+                }
 
-            String pemString = keyString
-                    .replace("-----BEGIN PRIVATE KEY-----", "")
-                    .replaceAll(System.lineSeparator(), "")
-                    .replace("-----END PRIVATE KEY-----", "");
+
+                String keyString = new String(keyInput.readAllBytes());
+                pemString = keyString
+                        .replace("-----BEGIN PRIVATE KEY-----", "")
+                        .replaceAll(System.lineSeparator(), "")
+                        .replace("-----END PRIVATE KEY-----", "");
+            } else pemString = value;
             byte[] keyBytes = Base64.decodeBase64(pemString);
             return keyFactory.generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
 

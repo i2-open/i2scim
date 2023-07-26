@@ -17,12 +17,12 @@ package com.independentid.scim.core;
 
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.op.Operation;
 import com.independentid.scim.plugin.PluginHandler;
 import com.independentid.scim.resource.ValueUtil;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.security.AccessManager;
 import io.quarkus.runtime.Startup;
-import jakarta.annotation.ManagedBean;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Priority;
 import jakarta.annotation.Resource;
@@ -52,7 +52,7 @@ import java.util.*;
 //@ApplicationScoped
 @Singleton
 @Startup
-@Priority(5)
+@Priority(2)
 @Default
 @Named("ConfigMgr")
 public class ConfigMgr {
@@ -236,7 +236,7 @@ public class ConfigMgr {
     @PostConstruct
     public synchronized void init() throws ScimException, IOException {
 
-        logger.info("======Initializing SCIM Config Mangaer=====");
+        logger.info("======Initializing SCIM Config Manager=====");
 
         self = this;
         logger.info("Scim file system root: " + rootDir);
@@ -296,6 +296,9 @@ public class ConfigMgr {
             logger.info(" Creating log directory: " + logDir);
             dir.mkdir();
         }
+        if (this.smgr == null)
+            logger.error("Schema manager is NULL!!!");
+        Operation.initialize(this);
     }
 
     public int getPort() {
@@ -383,8 +386,8 @@ public class ConfigMgr {
             try {
                 input = new FileInputStream(mapFile);
             } catch (FileNotFoundException e) {
-                System.err.println("\tERROR: Unable to open file.");
-                logger.error("Unable to open: " + file);
+                System.err.println("\tERROR: Unable to open file:\n" + e.getMessage());
+                logger.error("Unable to open: " + file, e);
                 return null;
             }
         }
