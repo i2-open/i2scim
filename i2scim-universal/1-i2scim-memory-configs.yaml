@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: scim-mem
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: i2scim-root
+  namespace: scim-mem
+type: Opaque
+data:
+  #Base64 encoded values
+  scim.security.root.username: YWRtaW4=
+  scim.security.root.password: YWRtaW4=
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: scim-mem
+  name: i2scim-mem-config
+data:
+  scim.event.enable: "false"
+  scim.prov.providerClass: com.independentid.scim.backend.memory.MemoryProvider
+  scim.prov.memory.dir: "/scim/data"
+  scim.prov.memory.file: "scimdb.json"
+  scim.prov.memory.maxbackups: "10"
+  scim.prov.memory.backup.mins: "60"
+  # Indicates the attributes to be indexed
+  scim.prov.memory.indexes: User:userName,User:emails.value,Group:displayName
+
+  scim.resourcetype.path: "/config/resourceTypes.json"
+  scim.schema.path: "/config/scimSchema.json"
+
+  # Security Configuration
+  scim.security.enable: "true"
+  # Locations of the acis.json file to use
+  scim.security.acis: "/config/acis.json"
+  scim.security.root.enable: "true"
+    # When basic is enabled, i2scim will attempt to process HTTP Basic Auth against User resources
+  # located in the Memory provider database.
+  scim.security.authen.basic: "true"
+
+  # Configuration for JWT authentication
+  scim.security.authen.jwt: "false"
+
+  # The JWT claim used to match RBAC scopes used in acis processing
+  scim.security.authen.jwt.claim.scope: "scope"
+
+    # See: Quarkus Using JWT RBAC for configuration details
+  # https://quarkus.io/guides/security-jwt
+  quarkus.smallrye-jwt.enabled: "true"
+  smallrye.jwt.always-check-authorization: "true"
+  mp.jwt.verify.issuer: "test.i2scim.io"
+  mp.jwt.verify.audiences: "aud.test.i2scim.io"
+  #mp.jwt.verify.location: "https://example.com/jwkset.json"
+  mp.jwt.verify.publickey: "eyJrZXlzIjpbeyJrdHkiOiJSU0EiLCJraWQiOiJpMnNjaW0iLCJ1c2UiOiJLZXkgdXNlZCBmb3Ig
+aTJzY2ltIHRlc3RpbmcgcHVycG9zZXMgT05MWSEiLCJuIjoidGFDUDM1bEZzODVZTm5qcEtxYkNB
+U2Fvc0Q3UWRaakduRHFXb1pzOTN3YllIYnFHUk1FVlE0WUluTmQ1TXNaS2NGM2dHdEhxbzBEVk1f
+Q0RpUklaeGNaWnV3WjNCQnRSbUJ1UWFmeXRPQ2tOWktqZm9PRTZwdG5ITzlvVGt5aEtpTkpJcy1s
+S1JsZFAtU0RVSFpfT3V4OGRBbkQta0poamlqSW5SSkprcXNhTy1nSDI2c3Y5NU83azVTMEptLUVS
+cjBUcWZvc3RmMGtfWU05ZWxZWFh6aDdDUWkzckdaOWgtY2Nja2tjczhpLUo0QlZWc0JEcnVPNVJ4
+dnR0NUtWRVVwMFB1Q3JMTHVxbUN1aGpMLUpkRTRFaXVvbWRKRGJBcW1tUVo2RWY2Z19uVUhfNFdj
+Q3REdE5fTGVyVGdFekl6OUQ3aThOVl8wSG8zMTFSOUx0NEdRIiwiZSI6IkFRQUIifV19"
+---

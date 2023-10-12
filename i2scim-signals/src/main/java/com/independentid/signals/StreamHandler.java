@@ -46,6 +46,15 @@ public class StreamHandler {
 
     private final static Logger logger = LoggerFactory.getLogger(StreamHandler.class);
 
+    @ConfigProperty(name = "scim.signals.enable", defaultValue = "false")
+    boolean enabled;
+
+    @ConfigProperty(name = "scim.signals.pub.enable", defaultValue = "true")
+    boolean pubEnabled;
+
+    @ConfigProperty(name = "scim.signals.rcv.enable", defaultValue = "true")
+    boolean rcvEnabled;
+
     // When provided, the config file will be used to configure event publication instead of endpoint and auth parameters
     @ConfigProperty(name = "scim.signals.pub.config.file", defaultValue = "NONE")
     String pubConfigFile;
@@ -108,7 +117,7 @@ public class StreamHandler {
     @ConfigProperty(name = "scim.signals.rcv.iss.jwksJson", defaultValue = "NONE")
     String rcvIssJwksJson;
 
-    // The private PEM key path for the audienc
+    // The private PEM key path for the audience
     // e when receiving encrypted tokens
     @ConfigProperty(name = "scim.signals.rcv.poll.pem.path", defaultValue = "NONE")
     String rcvPemPath;
@@ -118,7 +127,7 @@ public class StreamHandler {
 
     // When true, unsigned tokens will be generated
     @ConfigProperty(name = "scim.signals.rcv.algNone.override", defaultValue = "false")
-    boolean rcvIsUnsigned;
+    boolean unSignedMode;
 
     @ConfigProperty(name = "scim.signals.test", defaultValue = "false")
     boolean isTest;
@@ -132,79 +141,112 @@ public class StreamHandler {
 
     @PostConstruct
     public void init() {
+        if (!enabled) return;
+
         if (this.isTest) {
             // When in test mode, quarkus serves requests on port 8081.
             pubPushStreamEndpoint = "http://localhost:8081/signals/events";
             rcvPollUrl = "http://localhost:8081/signals/poll";
         }
-
-        if (!this.pubConfigFile.equals("NONE")) {
-            try {
-                logger.info("Reading config file: " + this.pubConfigFile);
-                InputStream configInput = findClassLoaderResource(this.pubConfigFile);
-                if (configInput == null) {
-                    throw new RuntimeException("Error loading pub config file: " + this.pubConfigFile);
+        if (pubEnabled) {
+            if (!this.pubConfigFile.equals("NONE")) {
+                try {
+                    logger.info("Loading Push stream config from: " + this.pubConfigFile);
+                    InputStream configInput = findClassLoaderResource(this.pubConfigFile);
+                    if (configInput == null) {
+                        throw new RuntimeException("Error loading pub config file: " + this.pubConfigFile);
+                    }
+                    JsonNode configNode = JsonUtil.getJsonTree(configInput);
+                    JsonNode endNode = configNode.get("endpoint");
+                    if (endNode == null)
+                        throw new RuntimeException("scim.signals.pub.config.file contains no endpoint value.");
+                    this.pushStream.endpointUrl = endNode.asText();
+                    JsonNode tokenNode = configNode.get("token");
+                    if (tokenNode != null)
+                        this.pushStream.authorization = tokenNode.asText();
+                    tokenNode = configNode.get("iss");
+                    if (tokenNode != null)
+                        this.pushStream.iss = tokenNode.asText();
+                    else
+                        this.pushStream.iss = pubIssuer;
+                    tokenNode = configNode.get("aud");
+                    if (tokenNode != null)
+                        this.pushStream.aud = tokenNode.asText();
+                    else
+                        this.pushStream.aud = pubAud;
+                } catch (IOException e) {
+                    throw new RuntimeException("Error reading scim.signals.pub.config.file at: " + this.pubConfigFile, e);
                 }
-                JsonNode configNode = JsonUtil.getJsonTree(configInput);
-                JsonNode endNode = configNode.get("endpoint");
-                if (endNode == null)
-                    throw new RuntimeException("scim.signals.pub.config.file contains no endpoint value.");
-                this.pushStream.endpointUrl = endNode.asText();
-                JsonNode tokenNode = configNode.get("token");
-                if (tokenNode != null)
-                    this.pushStream.authorization = tokenNode.asText();
-            } catch (IOException e) {
-                throw new RuntimeException("Error reading scim.signals.pub.config.file at: " + this.pubConfigFile, e);
+
+            } else {
+                // Values taken from application properties...
+                this.pushStream.endpointUrl = pubPushStreamEndpoint;
+                this.pushStream.authorization = pubPushStreamToken;
+                this.pushStream.iss = pubIssuer;
+                this.pushStream.aud = pubAud;
             }
 
-        } else {
-            this.pushStream.endpointUrl = pubPushStreamEndpoint;
-            this.pushStream.authorization = pubPushStreamToken;
+            if (pubIsUnsigned) {
+                this.pushStream.isUnencrypted = true;
+            } else {
+                this.pushStream.isUnencrypted = false;
+                this.pushStream.issuerKey = loadPem(pubPemPath, pubPemValue);
+                this.pushStream.receiverKey = loadJwksPublicKey(pubAudJwksUrl, pubAudJwksJson, pubAud);
+            }
+            logger.info("Push Events Config: ");
+            logger.info("\n" + this.pushStream.toString());
         }
-        this.pushStream.iss = pubIssuer;
-        this.pushStream.aud = pubAud;  //TODO switch this to multi-value
 
-        if (pubIsUnsigned) {
-            this.pushStream.isUnencrypted = true;
-        } else {
-            this.pushStream.isUnencrypted = false;
-            this.pushStream.issuerKey = loadPem(pubPemPath, pubPemValue);
-            this.pushStream.receiverKey = loadJwksPublicKey(pubAudJwksUrl, pubAudJwksJson, pubAud);
-        }
-        logger.info("Push Events Config: ");
-        logger.info("\n" + this.pushStream.toString());
-        if (!this.rcvConfigFile.equals("NONE")) {
-            try {
-                InputStream configInput = findClassLoaderResource(this.rcvConfigFile);
-                JsonNode configNode = JsonUtil.getJsonTree(configInput);
-                JsonNode endNode = configNode.get("endpoint");
-                if (endNode == null)
-                    throw new RuntimeException("scim.signals.pub.config.file contains no endpoint value.");
-                this.pollStream.endpointUrl = endNode.asText();
-                JsonNode tokenNode = configNode.get("token");
-                if (tokenNode != null)
-                    this.pollStream.authorization = tokenNode.asText();
-            } catch (IOException e) {
-                throw new RuntimeException("Error reading scim.signals.pub.config.file at: " + this.pubConfigFile, e);
+        if (rcvEnabled) {
+            if (!this.rcvConfigFile.equals("NONE")) {
+                try {
+                    logger.info("Loading Poll stream config from: " + this.rcvConfigFile);
+                    InputStream configInput = findClassLoaderResource(this.rcvConfigFile);
+                    JsonNode configNode = JsonUtil.getJsonTree(configInput);
+                    JsonNode endNode = configNode.get("endpoint");
+                    if (endNode == null)
+                        throw new RuntimeException("scim.signals.pub.config.file contains no endpoint value.");
+                    this.pollStream.endpointUrl = endNode.asText();
+                    JsonNode tokenNode = configNode.get("token");
+                    if (tokenNode != null)
+                        this.pollStream.authorization = tokenNode.asText();
+
+                    tokenNode = configNode.get("iss");
+                    if (tokenNode != null)
+                        this.pollStream.iss = tokenNode.asText();
+                    else
+                        this.pollStream.iss = rcvIss;
+
+                    tokenNode = configNode.get("aud");
+                    if (tokenNode != null)
+                        this.pollStream.aud = tokenNode.asText();
+                    else
+                        this.pollStream.aud = rcvAud;
+
+                    tokenNode = configNode.get("issJwksUrl");
+                    if (tokenNode != null)
+                        rcvIssJwksUrl = tokenNode.asText();
+                } catch (IOException e) {
+                    throw new RuntimeException("Error reading scim.signals.pub.config.file at: " + this.pubConfigFile, e);
+                }
+
+            } else {
+                // Poll configuration comes from application properties
+                this.pollStream.endpointUrl = rcvPollUrl;
+                this.pollStream.authorization = rcvPollAuth;
+                this.pollStream.iss = rcvIss;
+                this.pollStream.aud = rcvAud;
             }
 
-        } else {
-            this.pollStream.endpointUrl = rcvPollUrl;
-            this.pollStream.authorization = rcvPollAuth;
-        }
-        this.pollStream.endpointUrl = rcvPollUrl;
-        this.pollStream.authorization = rcvPollAuth;
-        this.pollStream.iss = rcvIss;
-        this.pollStream.aud = rcvAud;
-        this.pollStream.isUnencrypted = rcvIsUnsigned;
+            this.pollStream.isUnencrypted = unSignedMode;
 
-        if (!rcvIsUnsigned) {
-            this.pollStream.receiverKey = loadPem(rcvPemPath, rcvPemValue);
-            this.pollStream.issuerKey = loadJwksPublicKey(rcvIssJwksUrl, rcvIssJwksJson, rcvIss);
+            if (!unSignedMode) {
+                this.pollStream.receiverKey = loadPem(rcvPemPath, rcvPemValue);
+                this.pollStream.issuerKey = loadJwksPublicKey(rcvIssJwksUrl, rcvIssJwksJson, this.pollStream.iss);
+            }
+            logger.info("Poll Events Config: ");
+            logger.info("\n" + this.pollStream.toString());
         }
-        logger.info("Poll Events Config: ");
-        logger.info("\n" + this.pollStream.toString());
-
     }
 
 
@@ -227,7 +269,7 @@ public class StreamHandler {
 
         public String toString() {
             return "EndpointUrl:\t" + endpointUrl + "\n" +
-                    "Authorization:\t" + authorization + "\n" +
+                    "Authorization:\t" + authorization.replaceAll(".", "*") + "\n" +
                     "IssuerKey:\t" + (issuerKey != null) + "\n" +
                     "ReceiverKey:\t" + (receiverKey != null) + "\n" +
                     "Unencrypted:\t" + isUnencrypted + "\n" +
@@ -304,11 +346,12 @@ public class StreamHandler {
         int timeOutSecs = 3600; // 1 hour by default
         int maxEvents = 1000;
         boolean returnImmediately = false; // long polling
+        boolean errorState = false;
         CloseableHttpClient client = HttpClients.createDefault();
 
         public String toString() {
             return "EndpointUrl:\t" + endpointUrl + "\n" +
-                    "Authorization:\t" + authorization + "\n" +
+                    "Authorization:\t" + authorization.replaceAll(".", "*") + "\n" +
                     "IssuerKey:\t" + (issuerKey != null) + "\n" +
                     "ReceiverKey:\t" + (receiverKey != null) + "\n" +
                     "Unencrypted:\t" + isUnencrypted + "\n" +
@@ -319,7 +362,7 @@ public class StreamHandler {
                     "ReturnImmed:\t" + returnImmediately + "\n";
         }
 
-        public Map<String, SecurityEventToken> pollEvents(List<String> acks, boolean ackOnly) {
+        public Map<String, SecurityEventToken> pollEvents(List<String> acknowledgements, boolean ackOnly) {
             Map<String, SecurityEventToken> eventMap = new HashMap<>();
             ObjectNode reqNode = JsonUtil.getMapper().createObjectNode();
             if (ackOnly) {
@@ -347,14 +390,14 @@ public class StreamHandler {
                 logger.info("Polling endpoint set to: " + this.endpointUrl);
             }
             try {
-
+                logger.info("Polling " + this.endpointUrl + " Acks:" + acknowledgements.size());
                 HttpPost pollRequest = new HttpPost(this.endpointUrl);
                 if (!this.authorization.equals("NONE")) {
                     pollRequest.setHeader("Authorization", this.authorization);
                 }
                 List<String> requestedAck = new ArrayList<>();
                 ArrayNode ackNode = reqNode.putArray("ack");
-                for (String item : acks) {
+                for (String item : acknowledgements) {
                     logger.info("POLLING: Acknowledging: " + item);
                     ackNode.add(item);
                     requestedAck.add(item);
@@ -364,9 +407,29 @@ public class StreamHandler {
 
                 pollRequest.setEntity(bodyEntity);
                 CloseableHttpResponse resp = client.execute(pollRequest);
-
+                if (resp.getStatusLine().getStatusCode() >= 400) {
+                    switch (resp.getStatusLine().getStatusCode()) {
+                        case HttpStatus.SC_UNAUTHORIZED:
+                            logger.error("Poll response was an Authorization Error. Check poll authorization configuration.");
+                            break;
+                        case HttpStatus.SC_BAD_REQUEST:
+                            logger.error("Received BAD request response.");
+                            HttpEntity respEntity = resp.getEntity();
+                            if (respEntity != null) {
+                                byte[] respBytes = respEntity.getContent().readAllBytes();
+                                String msg = new String(respBytes);
+                                logger.error("\n" + msg);
+                            }
+                            break;
+                        default:
+                            logger.error("Error response: " + resp.getStatusLine().getStatusCode() + " " + resp.getStatusLine().getReasonPhrase());
+                    }
+                    logger.error("POLLING DISABLED.");
+                    this.errorState = true;
+                    return eventMap;
+                }
                 // Update the acks pending list
-                if (resp.getStatusLine().getStatusCode() == HttpStatus.SC_OK && requestedAck.size() > 0) {
+                if (resp.getStatusLine().getStatusCode() == HttpStatus.SC_OK && !requestedAck.isEmpty()) {
                     logger.info("Updating acknowledgments");
                     for (String item : requestedAck) {
                         SignalsEventHandler.acksPending.remove(item);
@@ -385,6 +448,7 @@ public class StreamHandler {
                         logger.info("Received Event: " + token.getJti());
                     } catch (InvalidJwtException | JoseException e) {
                         logger.error("Invalid token received: " + e.getMessage());
+                        // TODO Need to respond with error ack
                     }
                 }
             } catch (UnsupportedEncodingException e) {

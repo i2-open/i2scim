@@ -67,6 +67,45 @@ public class JsonPath {
 			Attribute parent = targAttr.getParent();
 			if (parent == null)
 				throw new ScimException("Unexpected null parent returned for Attribute definition marked as 'child' attribute.");
+            if (parent.isMultiValued() && vpathFilter == null)
+                throw new NoTargetException("Target specified is the sub-attribute of a multi-valued attribute. No value filter specified.");
+        }
+    }
+
+    public JsonPath(JsonPatchOp op, RequestCtx ctx) throws ScimException {
+        if (op.path.contains("[")) {
+            int vstart = op.path.indexOf('[');
+            int vend = op.path.indexOf(']');
+            if (vstart >= vend)
+                throw new BadFilterException("Invalid valuepath filter detected for " + op.path);
+            aname = op.path.substring(0, vstart);
+            vpathFilter = op.path.substring(vstart + 1, vend);
+            if (op.path.length() > vend + 1) {
+                vpSubAttr = op.path.substring(vend + 1);
+                if (vpSubAttr.startsWith("."))
+                    vpSubAttr = vpSubAttr.substring(1);
+            } else
+                vpSubAttr = null;
+        } else {
+            vpathFilter = null;
+            vpSubAttr = null;
+            aname = op.path;
+        }
+
+        targAttr = ctx.getSchemaMgr().findAttribute(aname, ctx);
+
+        if (targAttr == null)
+            throw new NoTargetException("Invalid or undefined attribute: " + aname);
+
+        filter = null;
+        if (vpathFilter != null)
+            filter = Filter.parseFilter(vpathFilter, aname, ctx);
+
+        // check to see if attribute has a multi-value parent
+        if (targAttr.isChild()) {
+            Attribute parent = targAttr.getParent();
+            if (parent == null)
+                throw new ScimException("Unexpected null parent returned for Attribute definition marked as 'child' attribute.");
 			if (parent.isMultiValued() && vpathFilter == null)
 				throw new NoTargetException("Target specified is the sub-attribute of a multi-valued attribute. No value filter specified.");
 		}

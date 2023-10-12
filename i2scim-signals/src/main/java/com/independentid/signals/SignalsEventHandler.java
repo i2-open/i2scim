@@ -42,6 +42,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 //@ApplicationScoped
 @Startup
@@ -56,6 +57,18 @@ public class SignalsEventHandler implements IEventHandler {
 
     @ConfigProperty(name = "scim.event.enable", defaultValue = "true")
     boolean eventsEnabled;
+
+    @ConfigProperty(name = "scim.signals.pub.enable", defaultValue = "true")
+    boolean pubEnabled;
+
+    @ConfigProperty(name = "scim.signals.rcv.enable", defaultValue = "true")
+    boolean rcvEnabled;
+
+    @ConfigProperty(name = "scim.signals.pub.types", defaultValue = "*")
+    Optional<List<String>> pubTypes;
+
+    @ConfigProperty(name = "scim.signals.rcv.types", defaultValue = "*")
+    Optional<List<String>> rcvTypes;
 
     SignalsEventReceiver receiverThread;
 
@@ -78,6 +91,8 @@ public class SignalsEventHandler implements IEventHandler {
     @Inject
     BackendHandler backendHandler;
 
+    SignalsEventMapper mapper;
+
     static boolean isErrorState = false;
 
     boolean ready = false;
@@ -93,6 +108,25 @@ public class SignalsEventHandler implements IEventHandler {
             logger.info("Signals Event Handler *disabled*");
             return;
         }
+
+        List<String> rcvCfgTypes;
+        if (rcvTypes.isPresent()) {
+            rcvCfgTypes = rcvTypes.get();
+        } else {
+            rcvCfgTypes = new ArrayList<>();
+            rcvCfgTypes.add("*");
+        }
+
+        List<String> pubCfgTypes;
+        if (pubTypes.isPresent()) {
+            pubCfgTypes = pubTypes.get();
+        } else {
+            pubCfgTypes = new ArrayList<>();
+            pubCfgTypes.add("*");
+        }
+
+        this.mapper = new SignalsEventMapper(pubCfgTypes, rcvCfgTypes);
+
         try {
             Thread.sleep(5000); // wait for server to settle
         } catch (InterruptedException ignore) {
@@ -107,9 +141,10 @@ public class SignalsEventHandler implements IEventHandler {
         // ensure that config,schema managers are initialized.
         Operation.initialize(configMgr);
 
-        logger.debug("Starting SET Polling Receiver...");
-        this.receiverThread = new SignalsEventReceiver(configMgr, this, streamHandler);
-
+        if (rcvEnabled) {
+            logger.debug("Starting SET Polling Receiver...");
+            this.receiverThread = new SignalsEventReceiver(configMgr, this, streamHandler);
+        }
         ready = true;
     }
 
@@ -122,6 +157,8 @@ public class SignalsEventHandler implements IEventHandler {
      */
     public void consume(Object txn) {
 
+        // This won't get called if rcvEnabled is false (because SignalsEventReceiver is not started)
+
         if (txn == null) {
             logger.warn("Ignoring invalid replication message.");
             return;
@@ -129,7 +166,7 @@ public class SignalsEventHandler implements IEventHandler {
 
         if (txn instanceof SecurityEventToken) {
             SecurityEventToken event = (SecurityEventToken) txn;
-            Operation op = SignalsEventMapper.MapSetToOperation(event, configMgr.getSchemaManager());
+            Operation op = mapper.MapSetToOperation(event, configMgr.getSchemaManager());
             if (logger.isDebugEnabled())
                 logger.debug("\tReceived SCIM Event:\n" + event.toPrettyString());
             try {
@@ -154,7 +191,6 @@ public class SignalsEventHandler implements IEventHandler {
             acksPending.add(event.getJti());
 
         }
-
     }
 
 
@@ -163,20 +199,26 @@ public class SignalsEventHandler implements IEventHandler {
     public int getSendErrorCnt() { return sendErrorOps.size(); }
 
     private synchronized void produce(final Operation op) {
-        RequestCtx ctx = op.getRequestCtx();
-        if (ctx != null && ctx.isReplicaOp()) {
+        if (pubEnabled) {
+            RequestCtx ctx = op.getRequestCtx();
+            if (ctx != null && ctx.isReplicaOp()) {
+                if (logger.isDebugEnabled())
+                    logger.debug("Ignoring internal event: " + op);
+                return; // This is a replication op and should not be re-replicated!
+            }
             if (logger.isDebugEnabled())
-                logger.debug("Ignoring internal event: " + op);
-            return; // This is a replication op and should not be re-replicated!
-        }
-        if (logger.isDebugEnabled())
-            logger.debug("Processing event: " + op);
+                logger.debug("Processing event: " + op);
 
-        SecurityEventToken token = SignalsEventMapper.MapOperationToSet(op);
-        if (token != null) {
-            if (streamHandler.pushStream.pushEvent(token)) return;
+            List<SecurityEventToken> events = mapper.MapOperationToSet(op);
+            if (events != null && events.size() > 0) {
+                for (SecurityEventToken token : events) {
+                    if (!streamHandler.pushStream.pushEvent(token))
+                        sendErrorOps.add(op);
+                }
+                return;
+            }
+            sendErrorOps.add(op);
         }
-        sendErrorOps.add(op);
     }
 
     /**

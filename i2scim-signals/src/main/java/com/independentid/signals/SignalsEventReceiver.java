@@ -69,11 +69,8 @@ public class SignalsEventReceiver implements Runnable {
         } catch (InterruptedException ignore) {
         }
 
-        while (!closeRequest.get()) {
+        while (!closeRequest.get() && !this.streamHandler.pollStream.errorState) {
             if (eventHandler.ready) {
-                if (logger.isDebugEnabled())
-                    logger.debug("...polling Kafka for events");
-
                 Map<String, SecurityEventToken> events = this.streamHandler.pollStream.pollEvents(SignalsEventHandler.acksPending, false);
 
                 for (SecurityEventToken event : events.values()) {

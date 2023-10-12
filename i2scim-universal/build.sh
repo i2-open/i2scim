@@ -50,8 +50,7 @@ function compile_module() {
 }
 
 function build_package() {
-  echo "\n\nBuilding Packaging ${1} at ${2} ...\n\n"
-
+  echo "\n\nBuilding Packaging ${1} at ${2} ..."
   cd $2
   mvn clean install -DskipTests=$skip
   retVal=$?
@@ -74,9 +73,10 @@ function package_module() {
   fi
 }
 
+cd ../
 I2SCIM_ROOT=$(pwd)
 
-echo "cleaCurrent dir: ${I2SCIM_ROOT}"
+echo "Current dir: ${I2SCIM_ROOT}"
 
 skip=true
 rtag="0.7.0-SNAPSHOT"
@@ -84,7 +84,7 @@ buildOnly=0
 push=0
 
 echo "*************************************************"
-echo "  Starting i2scim Build "
+echo "  Starting i2scim-universal Build "
 
 while [ ! -z "$1" ]; do
   case "$1" in
@@ -118,24 +118,7 @@ echo "\tTag: $rtag"
 echo "\tStarting: "$(date +"%Y-%m-%d %H:%M:%S")
 echo "*************************************************"
 
-build_package "SCIM CORE" "${I2SCIM_ROOT}/i2scim-core"
-
-build_package "SCIM Server" "${I2SCIM_ROOT}/i2scim-server"
-
-build_package "SCIM Memory Provider" "${I2SCIM_ROOT}/i2scim-prov-memory"
-
-build_package "SCIM Mongo Provider" "${I2SCIM_ROOT}/i2scim-prov-mongo"
-
-build_package "SCIM Client" "${I2SCIM_ROOT}/i2scim-client"
-
-build_package "SCIM Signals" "${I2SCIM_ROOT}/i2scim-signals"
-
 build_package "SCIM Universal" "${I2SCIM_ROOT}/i2scim-universal"
-
-if [ $skip -eq false ]
-then
-  build_package "SCIM Signals" "${I2SCIM_ROOT}/i2scim-tests"
-fi
 
 if [ $buildOnly -eq 1 ]
 then
@@ -144,7 +127,7 @@ then
 fi
 
 echo ""
-echo "\tStarting Docker build i2scim-universal..."
+echo "\tBuilding Docker Image..."
 echo ""
 
 cd ${I2SCIM_ROOT}/i2scim-universal
@@ -157,10 +140,8 @@ fi
 retVal=$?
 if [ $retVal -ne 0 ]
 then
-  echo "Docker error packaging i2scim-mem: "+$retVal
+  echo "Docker error packaging i2scim-universal: "+$retVal
   exit $retVal
 fi
-#cp target/kubernetes/kubernetes.yml ./4-i2scim-memory-deploy.yml
-
 
 show_complete

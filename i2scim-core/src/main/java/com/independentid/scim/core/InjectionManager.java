@@ -55,21 +55,21 @@ public class InjectionManager {
     }
 
     private synchronized void initGenerator() {
-        logger.info("Initializing identifier generator.");
+        logger.debug("Initializing identifier generator.");
         if (generators == null) {
                 generators = CDI.current().select(IIdentifierGenerator.class);
         }
         if (generators == null || generators.isUnsatisfied()) {
-            System.err.println("**** No transaction generators beans found (including CDI loader) ****");
+            logger.error("**** No transaction generators beans found (including CDI loader) ****");
         }
         String name = provider.getGeneratorClass();
-        logger.info("Looking for generator matching ["+name+"]");
+        logger.debug("Looking for generator matching [" + name + "]");
         for (IIdentifierGenerator gen : generators) {
             String provClass = gen.getClass().getName();  // fix because provName may have "proxy" at end
-            logger.info("  Generator: "+provClass);
+            logger.debug("  Generator: " + provClass);
             if (provClass.startsWith(name)) {
                 generator = gen;
-                logger.info("Matched.");
+                logger.debug("Matched.");
                 // This makes generator available via schemaManager.
                 return;
             }
@@ -99,8 +99,12 @@ public class InjectionManager {
             Optional<String> optProv = config.getOptionalValue("scim.prov.providerClass", String.class);
             optProv.ifPresent(s -> providerName = s);
 
-            if (providers.isAmbiguous()) {   // More than one found
-                logger.warn("Multiple backend providers found...selecting one.");
+            if (providers.isAmbiguous()) {
+                // More than one found
+                if (providerName == null || providerName.equals("")) {
+                    providerName = "com.independentid.scim.backend.memory.MemoryProvider";
+                    logger.error("scim.prov.providerClass attribute is undefined. Defaulting to " + providerName);
+                }
                 for (IScimProvider prov : providers) {
                     String provClass = prov.getClass().getName();  //note provClass may have "proxy" proxy at the end
                     logger.debug("Checking provider class: " + provClass + " for match against " + providerName);

@@ -99,13 +99,15 @@ public class ResourceResponse extends ScimResponse {
 		 * sctx after result set creation (or have chosen to insert an override). 
 		 */
 
-		// For single results, just return the object itself.
-		ScimResource resource = getResultResource();
-		try {
-			resource.serialize(gen, ctx, false);
-		} catch (ScimException e) {
-			//TODO This should not happen
-			logger.error("Unexpected exception serializing a response value: "+e.getMessage(),e);
+        if (!ctx.isAsynchronous()) {
+            // For single results, just return the object itself.
+            ScimResource resource = getResultResource();
+            try {
+                resource.serialize(gen, ctx, false);
+            } catch (ScimException e) {
+                //TODO This should not happen
+                logger.error("Unexpected exception serializing a response value: " + e.getMessage(), e);
+            }
 		}
 
 		setHeaders(ctx);
@@ -115,6 +117,14 @@ public class ResourceResponse extends ScimResponse {
 		HttpServletResponse resp = ctx.getHttpServletResponse();
 		if (resp != null) {
 			resp.setStatus(getStatus());
+            if (ctx.isAsync) {
+                resp.setHeader("Preference-Applied", "respond-async");
+                if (this.getLocation() != null)
+                    resp.setHeader(ScimParams.HEADER_LOCATION, this.getLocation());
+                if (ctx.getTranId() != null)
+                    resp.setHeader("Set-txn", ctx.getTranId());
+                return;
+            }
 			if (this.lastMod != null)
 				resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
 			if (this.getLocation() != null)

@@ -86,6 +86,9 @@ public class SecurityEventToken {
 
     }
 
+    public void SetSubjectIdentifier(SubjectIdentifier subId) {
+        this.claims.set("sub_id", subId.toJsonNode());
+    }
 
     public void SetScimSubjectId(ScimResource res) {
         SubjectIdentifier subId = new SubjectIdentifier(res);

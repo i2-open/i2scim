@@ -1,8 +1,8 @@
 package com.independentid.scim.test.events;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.backend.memory.MemoryIdGenerator;
 import com.independentid.scim.backend.memory.MemoryProvider;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.PoolManager;
@@ -18,11 +18,13 @@ import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.set.SecurityEventToken;
+import com.independentid.signals.EventTypes;
 import com.independentid.signals.SignalsEventMapper;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Resource;
 import jakarta.inject.Inject;
+import org.jose4j.jwt.MalformedClaimException;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -34,6 +36,7 @@ import java.io.InputStream;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -55,14 +58,10 @@ public class SignalsEventMapperTest {
     MemoryProvider provider;
 
     @Inject
-    @Resource(name = "MemoryIdGen")
-    MemoryIdGenerator generator;
-
-    @Inject
     PoolManager poolManager;
 
     @Inject
-    ConfigMgr cmgr;
+    ConfigMgr configMgr;
 
     private static final String testUserFile1 = "classpath:/data/TestUser-bjensen.json";
     private static final String testUserFile2 = "classpath:/data/TestUser-jsmith.json";
@@ -70,8 +69,9 @@ public class SignalsEventMapperTest {
     private static String id1 = null;
     private static ScimResource res1 = null;
     private static JsonNode node1;
-    private static final List<SecurityEventToken> testEvents = new ArrayList<SecurityEventToken>();
+    private static final List<SecurityEventToken> testEvents = new ArrayList<>();
 
+    private final static SignalsEventMapper mapper = new SignalsEventMapper(new ArrayList<>(), new ArrayList<>());
     static CreateOp op1 = null, op2 = null;
 
     @Test
@@ -81,7 +81,7 @@ public class SignalsEventMapperTest {
 
         try {
             testUtils.resetMemDirectory();
-            Operation.initialize(cmgr);
+            Operation.initialize(configMgr);
             InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
             assertThat(userStream).isNotNull();
 
@@ -104,20 +104,28 @@ public class SignalsEventMapperTest {
             RequestCtx ctx = new RequestCtx("Users", null, null, schemaManager);
             CreateOp op = new CreateOp(node1, ctx, null, 0);
             poolManager.addJobAndWait(op);
-            SecurityEventToken event = SignalsEventMapper.MapOperationToSet(op);
-
-            // Save for later
+            List<SecurityEventToken> events = mapper.MapOperationToSet(op);
+            assert events != null;
+            assertThat(events.size()).as("Check there is 2 events").isEqualTo(2);
+            SecurityEventToken event = events.get(0);
             testEvents.add(event);
 
             assert event != null;
             String jsonString = event.toPrettyString();
             logger.info("Result:\n" + ((jsonString != null) ? jsonString : "NULL"));
 
-            id1 = op.getResourceId();  // Because on a create a new ID is generated.
+            id1 = op.getResourceId();  // Because on a creation a new ID is generated.
             res1 = op.getTransactionResource();  // Update with newly modified value
             node1 = res1.toJsonNode(op.getRequestCtx());
             assertThat(jsonString).contains(id1);
             assertThat(jsonString).contains("urn:ietf:params:SCIM:event:prov:create:full");
+
+            SecurityEventToken noticeEvent = events.get(1);
+            AtomicBoolean hasNotice = new AtomicBoolean(false);
+            noticeEvent.getEventUris().forEachRemaining((String type) -> {
+                if (type.equals(EventTypes.PROV_CREATE_NOTICE)) hasNotice.set(true);
+            });
+            assertThat(hasNotice.get()).isTrue();
         } catch (ScimException e) {
             fail("Error processing test operation: " + e.getMessage());
         }
@@ -133,8 +141,10 @@ public class SignalsEventMapperTest {
             poolManager.addJobAndWait(op);
             res1 = op.getTransactionResource();  // Update with newly modified value
             node1 = res1.toJsonNode(op.getRequestCtx());
-            SecurityEventToken event = SignalsEventMapper.MapOperationToSet(op);
-
+            List<SecurityEventToken> events = mapper.MapOperationToSet(op);
+            assert events != null;
+            assertThat(events.size()).as("Check there is 2 events").isEqualTo(2);
+            SecurityEventToken event = events.get(0);
             // Save for later
             testEvents.add(event);
 
@@ -145,6 +155,20 @@ public class SignalsEventMapperTest {
                     .as("Has the updated test123")
                     .contains("tester123");
             logger.info("Result:\n" + ((jsonString != null) ? jsonString : "NULL"));
+
+            SecurityEventToken noticeEvent = events.get(1);
+            try {
+                JsonNode node = noticeEvent.GetEvent(EventTypes.PROV_PUT_NOTICE);
+                assertThat(node).describedAs("Notice node is present", noticeEvent).isNotNull();
+                JsonNode attrsNode = node.get("attributes");
+                assertThat(attrsNode.isArray()).isTrue();
+                ArrayNode anode = (ArrayNode) attrsNode;
+                String valsString = anode.toPrettyString() + anode.size();
+                logger.info(valsString);
+                assertThat(anode.size()).isEqualTo(26);
+            } catch (MalformedClaimException e) {
+                fail(e.getMessage());
+            }
         } catch (ScimException e) {
             fail("Error processing test operation: " + e.getMessage());
         }
@@ -164,9 +188,10 @@ public class SignalsEventMapperTest {
             PatchOp op = new PatchOp(jpr.toJsonNode(), ctx, null, 0);
             poolManager.addJobAndWait(op);
 
-
-            SecurityEventToken event = SignalsEventMapper.MapOperationToSet(op);
-
+            List<SecurityEventToken> events = mapper.MapOperationToSet(op);
+            assert events != null;
+            assertThat(events.size()).as("Check there is 2 events").isEqualTo(2);
+            SecurityEventToken event = events.get(0);
             // Save for later
             testEvents.add(event);
 
@@ -190,7 +215,10 @@ public class SignalsEventMapperTest {
 
             DeleteOp op = new DeleteOp(ctx, null, 0);
             poolManager.addJobAndWait(op);
-            SecurityEventToken event = SignalsEventMapper.MapOperationToSet(op);
+            List<SecurityEventToken> events = mapper.MapOperationToSet(op);
+            assert events != null;
+            assertThat(events.size()).as("Check there is only 1 event").isEqualTo(1);
+            SecurityEventToken event = events.get(0);
 
             // Save for later
             testEvents.add(event);
@@ -215,7 +243,7 @@ public class SignalsEventMapperTest {
         logger.info("Resetting server database to pretend to be a new server");
         try {
             testUtils.resetMemoryDb();
-            Operation.initialize(cmgr);
+            Operation.initialize(configMgr);
             InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
             assertThat(userStream).isNotNull();
 
@@ -230,7 +258,7 @@ public class SignalsEventMapperTest {
 
         logger.info("G a. Map Set Create to CreateOp...");
         SecurityEventToken createEvent = testEvents.remove(0);
-        Operation op = SignalsEventMapper.MapSetToOperation(createEvent, schemaManager);
+        Operation op = mapper.MapSetToOperation(createEvent, schemaManager);
         poolManager.addJobAndWait(op);
 
         assertThat(op).isNotNull();
@@ -242,7 +270,7 @@ public class SignalsEventMapperTest {
 
         logger.info("G b. Map Set Put to PutOp...");
         SecurityEventToken putEvent = testEvents.remove(0);
-        Operation putOp = SignalsEventMapper.MapSetToOperation(putEvent, schemaManager);
+        Operation putOp = mapper.MapSetToOperation(putEvent, schemaManager);
         poolManager.addJobAndWait(putOp);
 
         assertThat(putOp).isNotNull();
@@ -260,7 +288,7 @@ public class SignalsEventMapperTest {
         assertThat(resp.getStatus()).isEqualTo(ScimResponse.ST_OK);
 
         logger.info("G c. Test Duplicate Txn rejected...");
-        Operation putOp2 = SignalsEventMapper.MapSetToOperation(putEvent, schemaManager);
+        Operation putOp2 = mapper.MapSetToOperation(putEvent, schemaManager);
         poolManager.addJobAndWait(putOp2);
 
         assertThat(putOp2).isNotNull();
@@ -273,7 +301,7 @@ public class SignalsEventMapperTest {
 
         logger.info("G d. Map Set Patch to PatchOp...");
         SecurityEventToken patchEvent = testEvents.remove(0);
-        Operation patchOp = SignalsEventMapper.MapSetToOperation(patchEvent, schemaManager);
+        Operation patchOp = mapper.MapSetToOperation(patchEvent, schemaManager);
         poolManager.addJobAndWait(patchOp);
 
         assertThat(patchOp).isNotNull();
@@ -285,7 +313,7 @@ public class SignalsEventMapperTest {
 
         logger.info("G e. Map Set Delete to DeleteOp...");
         SecurityEventToken delEvent = testEvents.remove(0);
-        Operation delOp = SignalsEventMapper.MapSetToOperation(delEvent, schemaManager);
+        Operation delOp = mapper.MapSetToOperation(delEvent, schemaManager);
         poolManager.addJobAndWait(delOp);
 
         assertThat(delOp).isNotNull();
