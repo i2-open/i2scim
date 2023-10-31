@@ -86,8 +86,19 @@ public class ScimAuthMechanism implements HttpAuthenticationMechanism {
 
         String prefix = authz.substring(0,6).toLowerCase(Locale.ENGLISH);
 
-        if (prefix.equals("bearer")) //Must be a JWT Token
+        if (prefix.equals("bearer")) {
+            if (!cmgr.isSecurityEnabled()) {
+                // Ignore the authorization and proceed as anonymous
+                SecurityIdentity identity = QuarkusSecurityIdentity.builder()
+                        .setPrincipal(new BasicUserPrincipal("anonymous"))
+                        .addRole("anonymous")
+                        .build();
+                return Uni.createFrom().item(identity);
+            }
+            //Must be a JWT Token
             return jdelegate.authenticate(context,identityProviderManager);
+        }
+
         //Otherwise process as BasicAuth
         return bdelegate.authenticate(context, identityProviderManager);
 
