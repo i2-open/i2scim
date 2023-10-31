@@ -9,7 +9,7 @@ import java.util.Map;
 /*
 This profile is sets up testing to validate the SignalsEventHandler for end-to-end processing.
  */
-public class SignalsHandlerTestProfile implements QuarkusTestProfile {
+public class SignalsEventTestProfile implements QuarkusTestProfile {
 
     public Map<String, String> getConfigOverrides() {
 

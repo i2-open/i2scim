@@ -86,10 +86,12 @@ public class SignalsEventHandler implements IEventHandler {
     PoolManager pool;
 
     @Inject
-    StreamHandler streamHandler;
+    BackendHandler backendHandler;
 
     @Inject
-    BackendHandler backendHandler;
+    StreamConfigProps configProps;
+
+    SsfHandler ssfClient;
 
     SignalsEventMapper mapper;
 
@@ -107,6 +109,13 @@ public class SignalsEventHandler implements IEventHandler {
         if (!this.enabled) {
             logger.info("Signals Event Handler *disabled*");
             return;
+        }
+
+        try {
+            this.ssfClient = SsfHandler.Open(configProps);
+        } catch (IOException e) {
+            logger.error("Problem opening event steam client: " + e.getMessage(), e);
+            throw new RuntimeException(e);
         }
 
         List<String> rcvCfgTypes;
@@ -143,7 +152,7 @@ public class SignalsEventHandler implements IEventHandler {
 
         if (rcvEnabled) {
             logger.debug("Starting SET Polling Receiver...");
-            this.receiverThread = new SignalsEventReceiver(configMgr, this, streamHandler);
+            this.receiverThread = new SignalsEventReceiver(configMgr, this, ssfClient);
         }
         ready = true;
     }
@@ -210,9 +219,9 @@ public class SignalsEventHandler implements IEventHandler {
                 logger.debug("Processing event: " + op);
 
             List<SecurityEventToken> events = mapper.MapOperationToSet(op);
-            if (events != null && events.size() > 0) {
+            if (events != null && !events.isEmpty()) {
                 for (SecurityEventToken token : events) {
-                    if (!streamHandler.pushStream.pushEvent(token))
+                    if (!ssfClient.getPushStream().pushEvent(token))
                         sendErrorOps.add(op);
                 }
                 return;
@@ -234,7 +243,7 @@ public class SignalsEventHandler implements IEventHandler {
     }
 
     private synchronized void processBuffer() {
-        while(pendingPubOps.size()>0 && isProducing())
+        while (!pendingPubOps.isEmpty() && isProducing())
             produce(pendingPubOps.remove(0));
     }
 
@@ -254,7 +263,7 @@ public class SignalsEventHandler implements IEventHandler {
         processBuffer(); //Ensure all trans sent!
 
         try {
-            this.streamHandler.pushStream.Close();
+            this.ssfClient.getPushStream().Close();
         } catch (IOException ignore) {
 
         }

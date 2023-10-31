@@ -25,6 +25,7 @@ import org.jose4j.lang.JoseException;
 
 import java.math.BigInteger;
 import java.security.Key;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -49,7 +50,7 @@ public class SecurityEventToken {
         this.claims = (ObjectNode) JsonUtil.getJsonTree(jsonString);
     }
 
-    public SecurityEventToken(String tokenString, Key issPubKey, Key audPrivKey) throws InvalidJwtException, JoseException, JsonProcessingException {
+    public SecurityEventToken(String tokenString, PublicKey issPubKey, Key audPrivKey) throws InvalidJwtException, JoseException, JsonProcessingException {
         String payload = tokenString;
         if (audPrivKey != null) {
             JsonWebEncryption jwe = new JsonWebEncryption();
@@ -237,6 +238,7 @@ public class SecurityEventToken {
         jws.setPayload(this.toJsonString());
         jws.setHeader("typ", "secevent+jwt");
         jws.setHeader("kid", issuer);
+
         if (issuerSignKey == null) {
             jws.setAlgorithmConstraints(AlgorithmConstraints.ALLOW_ONLY_NONE);
             jws.setAlgorithmHeaderValue(AlgorithmIdentifiers.NONE);

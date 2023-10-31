@@ -39,12 +39,12 @@ public class SignalsEventReceiver implements Runnable {
 
     SignalsEventHandler eventHandler;
 
-    StreamHandler streamHandler;
+    SsfHandler ssfClient;
 
-    public SignalsEventReceiver(ConfigMgr config, SignalsEventHandler handler, StreamHandler streamHandler) {
+    public SignalsEventReceiver(ConfigMgr config, SignalsEventHandler handler, SsfHandler client) {
         this.cmgr = config;
         this.eventHandler = handler;
-        this.streamHandler = streamHandler;
+        this.ssfClient = client;
         Operation.initialize(config);
         init();
     }
@@ -69,9 +69,9 @@ public class SignalsEventReceiver implements Runnable {
         } catch (InterruptedException ignore) {
         }
 
-        while (!closeRequest.get() && !this.streamHandler.pollStream.errorState) {
+        while (!closeRequest.get() && !this.ssfClient.getPollStream().errorState) {
             if (eventHandler.ready) {
-                Map<String, SecurityEventToken> events = this.streamHandler.pollStream.pollEvents(SignalsEventHandler.acksPending, false);
+                Map<String, SecurityEventToken> events = this.ssfClient.getPollStream().pollEvents(SignalsEventHandler.acksPending, false);
 
                 for (SecurityEventToken event : events.values()) {
                     eventHandler.consume(event);
@@ -101,12 +101,12 @@ public class SignalsEventReceiver implements Runnable {
         }
 
         // Now ack any processed events....
-        if (SignalsEventHandler.acksPending.size() > 0) {
-            this.streamHandler.pollStream.pollEvents(SignalsEventHandler.acksPending, true);
+        if (!SignalsEventHandler.acksPending.isEmpty()) {
+            this.ssfClient.getPollStream().pollEvents(SignalsEventHandler.acksPending, true);
         }
 
         try {
-            this.streamHandler.pollStream.Close();
+            this.ssfClient.getPollStream().Close();
         } catch (IOException ignore) {
 
         }

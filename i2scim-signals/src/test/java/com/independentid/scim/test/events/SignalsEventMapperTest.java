@@ -42,7 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
 @QuarkusTest
-@TestProfile(SignalsHandlerTestProfile.class)
+@TestProfile(SignalsEventTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
 public class SignalsEventMapperTest {
     private final static Logger logger = LoggerFactory.getLogger(SignalsEventMapperTest.class);

@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.security.Key;
 import java.security.KeyPair;
+import java.security.PublicKey;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -31,7 +32,8 @@ import static org.assertj.core.api.Assertions.fail;
 public class SetTest {
     private final static Logger logger = LoggerFactory.getLogger(SetTest.class);
 
-    static Key issPub, issSign, audPub, audSign;
+    static PublicKey issPub, audPub;
+    static Key issSign, audSign;
 
     static {
         try {
