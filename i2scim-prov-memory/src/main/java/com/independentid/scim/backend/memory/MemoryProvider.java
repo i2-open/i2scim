@@ -35,7 +35,6 @@ import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.Default;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -676,7 +675,7 @@ public class MemoryProvider implements IScimProvider {
             rollFile();
 
         try {
-            dataFile.createNewFile();
+            boolean newFile = dataFile.createNewFile();
             FileWriter writer = new FileWriter(dataFile);
 
             JsonGenerator gen = JsonUtil.getGenerator(writer, false);
@@ -695,8 +694,7 @@ public class MemoryProvider implements IScimProvider {
             logger.info("\tMemory written to: " + this.storeFile);
 
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            logger.warn(e.getMessage(), e);
         }
     }
 
