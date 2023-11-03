@@ -111,7 +111,7 @@ public class StreamConfigProps {
     @ConfigProperty(name = "scim.signals.rcv.poll.pem.value", defaultValue = "NONE")
     public String rcvPemValue;
 
-    @ConfigProperty(name = "scim.signals.ssf.configFile", defaultValue = "/scim/ssfConfig.dat")
+    @ConfigProperty(name = "scim.signals.ssf.configFile", defaultValue = "/scim/ssfConfig.json")
     public String ssfConfigfile;
 
     @ConfigProperty(name = "scim.signals.ssf.serverUrl", defaultValue = "NONE")
