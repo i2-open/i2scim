@@ -97,9 +97,6 @@ was made to develop a Security Event Router called goSignals (soon to be release
 
 ## Configuration Options
 
-> [!NOTE]
-> Highlights information that users should take into account, even when skimming.
-
 ### Automatic Configuration using SSF
 
 > [!NOTE]
