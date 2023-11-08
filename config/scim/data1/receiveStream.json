@@ -1,0 +1,10 @@
+{
+  "alias": "rMy",
+  "id": "6525f6a386b849e69ca1a77d",
+  "description": "Poll Publisher",
+  "token": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IkRFRkFVTFQiLCJ0eXAiOiJqd3QifQ.eyJzaWQiOlsiNjUyNWY2YTM4NmI4NDllNjljYTFhNzdkIl0sInByb2plY3RfaWQiOiJBa0NVIiwicm9sZXMiOlsiZXZlbnQiXSwiaXNzIjoiREVGQVVMVCIsImF1ZCI6WyJERUZBVUxUIl0sImV4cCI6MTcwNDc2Mjc4NywiaWF0IjoxNjk2OTg2Nzg3LCJqdGkiOiIyV2IyNzRDRGNnQThwcUs1WDJadmw1VDd3RUgifQ.dttFa-fcdeYdU00x2fPrY4DQVuXbeiWUjXNlIVlh_ST-9p6om6Al0q6Ucwge8L2B8V9y2dwfEZYKma8KsqBaeckKSMsLy1npPgWIRkiKuFY1k7tv7XGd8KfnzEuzqCaIQNt8M8i97hkmKlhf9OfsQ4HrJN_n3pRpEJXjIec90HQwItH-8XNBBF5CbHIinPjpFlizTd0c7SOHiWsgb3-LwQmAbLo1byNTMC-1ekz3N6xd79USB-qNWj56Ie_JZ-ijt7_3vf72zKM1N9MUNw3l7_U8MxaNf-T0y55q4VKzcGd0gDpY3LnpF_Mg8-l01LHEcvLkoMqF0Xgh4mrxIW2tvQ",
+  "endpoint": "http://goSignals1:8888/poll/6525f6a386b849e69ca1a77d",
+  "iss": "cluster.scim.example.com",
+  "aud": "cluster.example.com",
+  "issJwksUrl": "http://goSignals1:8888/jwks/cluster.scim.example.com"
+}
