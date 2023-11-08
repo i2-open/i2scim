@@ -366,7 +366,11 @@ public class SsfHandler {
         ObjectMapper mapper = JsonUtil.getMapper();
         File configFile = configProps.getConfigFile();
 
+
+        if (!configFile.exists())
+            configFile.createNewFile();
         mapper.writeValue(configFile, this);
+
     }
 
     /**

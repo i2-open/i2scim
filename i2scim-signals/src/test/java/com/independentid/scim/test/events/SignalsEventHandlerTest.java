@@ -87,7 +87,8 @@ public class SignalsEventHandlerTest {
                 } catch (InterruptedException ignored) {
                 }
             }
-            assertThat(MockSignalsServer.getReceived()).isEqualTo(2);
+            logger.info("Should be 4 events received (notice and full for each of 2 events sent");
+            assertThat(MockSignalsServer.getReceived()).isEqualTo(4);
 
             logger.info("Mock server pending count: " + MockSignalsServer.getPendingPollCnt());
             i = 0;
@@ -99,7 +100,7 @@ public class SignalsEventHandlerTest {
                 } catch (InterruptedException ignored) {
                 }
             }
-            assertThat(MockSignalsServer.getSent()).isEqualTo(2);
+            assertThat(MockSignalsServer.getSent()).isEqualTo(4);
         } catch (IOException | ScimException e) {
             fail(e.getMessage());
         }
