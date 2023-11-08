@@ -3,6 +3,8 @@ package com.independentid.scim.test.events;
 import com.independentid.scim.backend.memory.MemoryProvider;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,6 +14,13 @@ This profile is sets up testing to validate the SignalsEventHandler for end-to-e
 public class SignalsEventTestProfile implements QuarkusTestProfile {
 
     public Map<String, String> getConfigOverrides() {
+        String cfgFile = "cfg.json";
+        try {
+            File tempFile = File.createTempFile("SsfConfig", ".json");
+            cfgFile = tempFile.toString();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
 
         HashMap<String, String> map = new HashMap<>(Map.of(
                 "scim.prov.providerClass", MemoryProvider.class.getName(),
@@ -27,6 +36,7 @@ public class SignalsEventTestProfile implements QuarkusTestProfile {
 
         map.putAll(Map.of(
                 "scim.signals.enable", "true",  // Enable the SignalEventHandler.
+                "scim.signals.ssf.configFile", cfgFile,
                 "scim.signals.pub.pem.path", "/data/issuer.pem",
                 "scim.signals.pub.iss", "myissuer.io",
                 "scim.signals.pub.aud", "example.com",
