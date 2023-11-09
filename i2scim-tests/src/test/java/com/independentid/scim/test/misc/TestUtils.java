@@ -30,6 +30,7 @@ import com.independentid.scim.serializer.JsonUtil;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import io.quarkus.runtime.Shutdown;
 import io.smallrye.jwt.auth.principal.JWTParser;
 import io.smallrye.jwt.build.Jwt;
 import io.smallrye.jwt.build.JwtClaimsBuilder;
@@ -47,6 +48,8 @@ import org.jose4j.jwk.RsaJsonWebKey;
 import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import java.io.File;
 import java.io.IOException;
@@ -117,6 +120,9 @@ public class TestUtils {
 
     private MongoClient mclient = null;
 
+    // static MongoDBContainer mongoDBContainer = new MongoDBContainer(DockerImageName.parse("mongo:6.0.4"));
+    CustomMongoDbContainer mongoDBContainer;
+
     public static String mapPathToReqUrl(URL baseUrl, String path) throws MalformedURLException {
         URL rUrl = new URL(baseUrl, path);
         return rUrl.toString();
@@ -139,15 +145,36 @@ public class TestUtils {
         }
     }
 
+    public class CustomMongoDbContainer extends GenericContainer<CustomMongoDbContainer> {
+        public CustomMongoDbContainer() {
+            super(DockerImageName.parse("mongo:6.0.4"));
+            withEnv("MONGO_INITDB_ROOT_USERNAME", dbUser);
+            withEnv("MONGO_INITDB_ROOT_PASSWORD", dbPwd);
+            withEnv("MONGO_INITDB_DATABASE", scimDbName);
+            withExposedPorts(27017);
+        }
+
+    }
+
     @PostConstruct
     public void init()  {
         if (init) return;
 
+        mongoDBContainer = new CustomMongoDbContainer();
+        mongoDBContainer.start();
+        //dbUrl = mongoDBContainer.getConnectionString();
         try {
             initKeyPair();
         } catch (InstantiationException e) {
             logger.error("Error initializing keypair: "+e.getMessage(),e);
         }
+    }
+
+    @Shutdown
+    public void shutdown() {
+        logger.info("Shutting down test mongo server...");
+        mongoDBContainer.stop();
+        mongoDBContainer.close();
     }
 
     /**
@@ -247,6 +274,7 @@ public class TestUtils {
     }
 
     void resetMongoDb(MongoProvider mongoProvider) throws ScimException, BackendException, IOException {
+
         if (!dbUrl.contains("@") && dbUser != null) {
             logger.info("Connecting to Mongo using admin user: " + dbUser);
             try {
@@ -261,6 +289,7 @@ public class TestUtils {
             if (!dbUrl.contains("@"))
                 logger.warn("Attempting to connect to Mongo with unauthenticated connection.");
         }
+
 
         logger.warn("\t*** Resetting Mongo database [" + scimDbName + "] ***");
         if (mclient == null)
