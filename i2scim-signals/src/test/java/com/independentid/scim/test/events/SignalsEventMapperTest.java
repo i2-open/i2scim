@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.memory.MemoryProvider;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.PoolManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.*;
@@ -71,11 +72,13 @@ public class SignalsEventMapperTest {
     private static JsonNode node1;
     private static final List<SecurityEventToken> testEvents = new ArrayList<>();
 
-    private final static SignalsEventMapper mapper = new SignalsEventMapper(new ArrayList<>(), new ArrayList<>());
+    private static SignalsEventMapper mapper;
     static CreateOp op1 = null, op2 = null;
 
     @Test
     public void a_initTests() {
+        InjectionManager im = InjectionManager.getInstance();
+        mapper = new SignalsEventMapper(new ArrayList<>(), new ArrayList<>(), im.getGenerator());
         logger.info("=============== SCIM Events Mapper tests ===============");
         logger.info("A. Initializing tests");
 

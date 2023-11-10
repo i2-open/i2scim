@@ -36,15 +36,20 @@ public class InjectionManager {
 
     // This is used when InjectionManager is created outside of normal CDI injection
     public synchronized static InjectionManager getInstance() {
-        if (singleton != null)
+        if (singleton != null) {
             return singleton;
+        }
+
+        // This is a new startup
         singleton = new InjectionManager();
+        /*
         logger.info("Initializing Injection Manager...");
         IScimProvider prov = singleton.getProvider();
         IIdentifierGenerator gen = singleton.getGenerator();
         if (prov == null | gen == null)
             logger.error("Provider and Identifier generators did not initialize");
         // Initialization needs to occur later to give schemamanager time to start.
+         */
         return singleton;
     }
 
@@ -89,7 +94,7 @@ public class InjectionManager {
                     logger.error("*** No backend IScimProvider beans detected. ***");
                 }
             } catch (IllegalStateException e) {
-                logger.error("ERROR: Unable to instantiate CDI");
+                logger.error("ERROR: Unable to instantiate CDI: " + e.getMessage(), e);
             }
 
 
@@ -101,7 +106,7 @@ public class InjectionManager {
 
             if (providers.isAmbiguous()) {
                 // More than one found
-                if (providerName == null || providerName.equals("")) {
+                if (providerName == null || providerName.isEmpty()) {
                     providerName = "com.independentid.scim.backend.memory.MemoryProvider";
                     logger.error("scim.prov.providerClass attribute is undefined. Defaulting to " + providerName);
                 }
@@ -115,6 +120,7 @@ public class InjectionManager {
                 }
             } else {
                 provider = providers.get();
+                initialized = true;
                 String foundName = provider.getClass().getName();
                 if (providerName == null) {
                     providerName = foundName;

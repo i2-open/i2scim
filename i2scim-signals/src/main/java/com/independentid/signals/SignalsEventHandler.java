@@ -19,6 +19,7 @@ import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.FifoCache;
+import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.PoolManager;
 import com.independentid.scim.events.IEventHandler;
 import com.independentid.scim.op.Operation;
@@ -134,7 +135,7 @@ public class SignalsEventHandler implements IEventHandler {
             pubCfgTypes.add("*");
         }
 
-        this.mapper = new SignalsEventMapper(pubCfgTypes, rcvCfgTypes);
+        this.mapper = new SignalsEventMapper(pubCfgTypes, rcvCfgTypes, InjectionManager.getInstance().getGenerator());
 
         try {
             Thread.sleep(5000); // wait for server to settle

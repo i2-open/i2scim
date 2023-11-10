@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.IIdentifierGenerator;
-import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.BulkOps;
 import com.independentid.scim.op.Operation;
@@ -37,17 +36,18 @@ public class SignalsEventMapper {
     boolean rcvAll;
     List<String> pubEvents = new ArrayList<>();
     List<String> rcvEvents = new ArrayList<>();
-    static IIdentifierGenerator idGen = InjectionManager.getInstance().getGenerator();
+    static IIdentifierGenerator idGen;
 
-    public SignalsEventMapper(List<String> pubCfgEvents, List<String> rcvCfgEvents) {
+    public SignalsEventMapper(List<String> pubCfgEvents, List<String> rcvCfgEvents, IIdentifierGenerator idGenerator) {
+        idGen = idGenerator;
         pubAll = false;
         rcvAll = false;
-        if (pubCfgEvents.size() == 1 && pubCfgEvents.get(0).equals("*") || pubCfgEvents.size() == 0) {
+        if (pubCfgEvents.size() == 1 && pubCfgEvents.get(0).equals("*") || pubCfgEvents.isEmpty()) {
             pubAll = true;
         } else {
             pubEvents.addAll(pubCfgEvents);
         }
-        if (rcvCfgEvents.size() == 1 && rcvCfgEvents.get(0).equals("*") || rcvCfgEvents.size() == 0) {
+        if (rcvCfgEvents.size() == 1 && rcvCfgEvents.get(0).equals("*") || rcvCfgEvents.isEmpty()) {
             rcvAll = true;
         } else {
             rcvEvents.addAll(rcvCfgEvents);
@@ -107,7 +107,7 @@ public class SignalsEventMapper {
                 subjectIdentifier = new SubjectIdentifier(res);
             else {
                 subjectIdentifier = new SubjectIdentifier(op.getRequestCtx());
-                // TODO:  Not able to easily add additional items like externalid for PATCH and DELETE
+                // TODO:  Not able to easily add additional items like externalId for PATCH and DELETE
             }
         }
 
@@ -184,7 +184,7 @@ public class SignalsEventMapper {
                             try {
                                 JsonPath path = new JsonPath(patchOp, pop.getRequestCtx());
                                 String attrName = path.getTargetAttrName();
-                                if (attrName != null && !attrName.equals(""))
+                                if (attrName != null && !attrName.isEmpty())
                                     names.add(attrName);
                             } catch (ScimException e) {
                                 logger.error("Error parsing JSON patch op: " + e.getMessage(), e);
