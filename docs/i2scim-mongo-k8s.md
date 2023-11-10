@@ -3,8 +3,9 @@
 
 ## Kubernetes Mongo Quickstart Deployment
 
-This module is used to build the docker bundling necessary to run i2scim
-on Kubernetes using Mongo Database.
+The Kubernetes documentation will be updated shortly to accomodate migration to the scim-universal image. The
+instructions
+below are for configuring a 0.6.1 server.
 
 Included are a number of K8S yaml files that can be modified to suit
 your deployment. By default, all components are deployed in the scim-mongo K8S namespace.
@@ -41,7 +42,8 @@ for more information. Any properties described can be added to the `i2scim-mongo
 ### i2scim-config-schema ConfigMap
 This configmap (set by `3-i2scim-config-schema.yaml`) defines the access controls, resource types, and schema to
 be used by the server. Configmap includes the following files:
-* `acis.json` - The access controls to be used for the server as defined in [Access Control](../AccessControl.md).
+
+* `acis.json` - The access controls to be used for the server as defined in [Access Control](AccessControl.md).
 * `resourceTypes.json` - Is the configuration defining the resource types in the server. The format of this file
 corresponds to the format returned by the SCIM `/Resourcetypes` endpoint. See [RFC 7644 Section 4](https://datatracker.ietf.org/doc/html/rfc7644#section-4).
 * `scimSchema.json` - A file containing the resource schemas used in the server. By default, the schemas included 
