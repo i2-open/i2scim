@@ -17,11 +17,8 @@
 package com.independentid.scim.op;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.independentid.scim.protocol.RequestCtx;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 public class HeadOp extends GetOp {
 

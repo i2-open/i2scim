@@ -19,9 +19,9 @@ package com.independentid.scim.security;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.Operation;
 import com.independentid.scim.plugin.IScimPlugin;
+import jakarta.enterprise.context.ApplicationScoped;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
-import javax.enterprise.context.ApplicationScoped;
 import java.security.SecureRandom;
 
 @ApplicationScoped

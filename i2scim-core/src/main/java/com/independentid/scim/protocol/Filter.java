@@ -21,9 +21,9 @@ import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
+import jakarta.transaction.Transactional;
+import jakarta.validation.constraints.NotNull;
 
-import javax.transaction.Transactional;
-import javax.validation.constraints.NotNull;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
@@ -31,7 +31,7 @@ import java.util.Set;
 @Transactional
 public abstract class Filter {
 
-	public static SchemaManager smgr;
+	public static SchemaManager schemaManager;
 
 	private final String filter;
 
@@ -101,7 +101,7 @@ public abstract class Filter {
 	 * @throws BadFilterException Thrown if the filter is an invalid SCIM filter.
 	 */
 	public static Filter parseFilter(String filterStr, String parentAttr, @NotNull RequestCtx ctx) throws BadFilterException {
-		smgr = ctx.getSchemaMgr();
+		schemaManager = ctx.getSchemaMgr();
 		int bCnt = 0;  int bIndex = -1;
 		int valPathCnt = 0;  int vPathStartIndex = -1;
 		int wordIndex = -1;
@@ -256,7 +256,7 @@ public abstract class Filter {
 								value = phrase;
 								wordIndex = -1;
 								Filter attrExp = new AttributeFilter(attr,cond,value,parentAttr, ctx);
-								attr = null; isAttr = false;
+								attr = null; isAttr = 	false;
 								cond = null; isExpr = false;
 								isValue = false;
 								clauses.add(attrExp);

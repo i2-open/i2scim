@@ -18,9 +18,9 @@ package com.independentid.scim.test.memory;
 
 
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.backend.memory.MemoryProvider;
+import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.schema.ResourceType;
@@ -29,14 +29,15 @@ import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Resource;
+import jakarta.enterprise.inject.se.SeContainer;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Resource;
-import javax.inject.Inject;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
@@ -56,13 +57,9 @@ public class MemoryConfigTest {
 
     private static final Logger logger = LoggerFactory.getLogger(MemoryConfigTest.class);
 
-
     @Inject
     @Resource(name = "SchemaMgr")
     SchemaManager smgr;
-
-    @Inject
-    BackendHandler handler;
 
     @Inject
     TestUtils testUtils;
@@ -70,6 +67,8 @@ public class MemoryConfigTest {
     static IScimProvider provider = null;
 
     static Instant startTime = Instant.now();
+
+    private SeContainer container;
 
     @Test
     public void a_beanCheckTest() {
@@ -79,7 +78,7 @@ public class MemoryConfigTest {
             fail("Failed to reset provider: " + e.getMessage());
         }
 
-        provider = handler.getProvider();
+        provider = InjectionManager.getInstance().getProvider();
         assertThat(provider).isNotNull();
 
         logger.info("==========   MemoryConfig Tests ==========");
@@ -187,15 +186,14 @@ public class MemoryConfigTest {
         logger.info("\t* Restart and re-load provider and SchemaManager");
         provider.shutdown();
         smgr.resetConfig();
+
+
         try {
+            smgr.init();  // Schema will initially load with default schema
+
             // This time, the schema should be loaded from MemoryProvider
-            smgr.init();
-        } catch (ScimException | IOException | BackendException e) {
-            logger.error("Error while restarting SchemaManager", e);
-            fail("Error while restarting SchemaManager", e);
-        }
-        try {
-            provider.init();
+
+            provider.init();  // When provider starts it will sync schema.
         } catch (BackendException e) {
             logger.error("Error while restarting provider", e);
             fail("Error while restarting provider", e);

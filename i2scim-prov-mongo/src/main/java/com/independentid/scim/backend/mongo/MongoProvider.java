@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.err.*;
 import com.independentid.scim.protocol.*;
 import com.independentid.scim.resource.Meta;
@@ -34,6 +35,9 @@ import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import com.mongodb.client.model.ReplaceOptions;
 import io.quarkus.runtime.Startup;
+import jakarta.annotation.Priority;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -41,9 +45,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Priority;
-import javax.inject.Inject;
-import javax.inject.Singleton;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -79,7 +80,10 @@ public class MongoProvider implements IScimProvider {
 
 	private boolean ready = false;
 
-	@Inject
+
+	InjectionManager injectionManager = InjectionManager.getInstance();
+
+    @Inject
 	SchemaManager schemaManager;
 
 	@Inject
@@ -109,13 +113,6 @@ public class MongoProvider implements IScimProvider {
 	private MongoDatabase scimDb = null;
 	
 	public MongoProvider() {
-	}
-	
-	public static IScimProvider getProvider() {
-		if (singleton == null)
-			singleton = new MongoProvider();
-		// singleton.init();
-		return singleton;
 	}
 
 	//Note: We don't want auto start. Normally Backendhandler invokes this.
@@ -172,7 +169,12 @@ public class MongoProvider implements IScimProvider {
 			logger.info("====== SCIM Mongo Provider initialized =======");
 		}
 	}
-	
+
+	@Override
+	public String getGeneratorClass() {
+		return MongoIdGenerator.class.getName();
+	}
+
 	@Override
 	public ScimResponse create(RequestCtx ctx,final ScimResource res)
 			throws ScimException {

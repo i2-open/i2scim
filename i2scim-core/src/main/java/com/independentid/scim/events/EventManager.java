@@ -23,15 +23,14 @@ import com.independentid.scim.resource.TransactionRecord;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
 import io.quarkus.runtime.Startup;
+import jakarta.annotation.PostConstruct;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.PostConstruct;
-import javax.enterprise.inject.Instance;
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Singleton;
 
 @Startup
 @Singleton
@@ -57,8 +56,7 @@ public class EventManager {
     @Inject
     Instance<IEventHandler> handlers;
 
-    @Inject
-    BackendHandler backendHandler;
+    BackendHandler backendHandler = BackendHandler.getInstance();
 
     @Inject
     SchemaManager schemaManager;
@@ -79,11 +77,17 @@ public class EventManager {
 
     @PostConstruct
     public void init() {
-        if (isEnabled()) {
-            logger.info("Event Manager Started.");
-            return;
+        if (!isEnabled()) {
+            logger.warn("Event Manager *DISABLED*.");
         }
-       logger.warn("Event Manager *DISABLED*.");
+        logger.info("Event Manager starting.");
+        for (IEventHandler handler : handlers) {
+            // Do this to ensure the handlers are instantiated.
+            if (handler.isProducing()) {
+                logger.info("  loaded Event Handler: " + handler.getClass().getName());
+            }
+        }
+
     }
 
     public boolean isEnabled() {

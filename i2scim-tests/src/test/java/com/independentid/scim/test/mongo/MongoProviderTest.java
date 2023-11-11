@@ -21,9 +21,9 @@ import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.mongo.MongoProvider;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.*;
 import com.independentid.scim.resource.ExtensionValues;
@@ -35,6 +35,7 @@ import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
@@ -43,7 +44,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -60,9 +60,6 @@ public class MongoProviderTest {
 
     @Inject
     SchemaManager smgr;
-
-    @Inject
-    BackendHandler handler;
 
     @Inject
     TestUtils testUtils;
@@ -87,7 +84,7 @@ public class MongoProviderTest {
         } catch (ScimException | BackendException | IOException e) {
             Assertions.fail("Failed to reset provider: " + e.getMessage());
         }
-        mp = (MongoProvider) handler.getProvider();
+        mp = (MongoProvider) InjectionManager.getInstance().getProvider();
 
         assertThat(mp).isNotNull();
 

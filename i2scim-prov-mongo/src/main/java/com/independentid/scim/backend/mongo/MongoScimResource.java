@@ -23,12 +23,12 @@ import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.Schema;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
+import jakarta.validation.constraints.NotNull;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.NotNull;
 import java.lang.reflect.InvocationTargetException;
 import java.text.ParseException;
 import java.util.Set;

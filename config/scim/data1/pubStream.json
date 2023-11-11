@@ -1,0 +1,10 @@
+{
+  "alias": "sQs",
+  "id": "6525f54e86b849e69ca1a779",
+  "description": "Push Receiver",
+  "token": "Bearer eyJhbGciOiJSUzI1NiIsImtpZCI6IkRFRkFVTFQiLCJ0eXAiOiJqd3QifQ.eyJzaWQiOlsiNjUyNWY1NGU4NmI4NDllNjljYTFhNzc5Il0sInByb2plY3RfaWQiOiJBa0NVIiwicm9sZXMiOlsiZXZlbnQiXSwiaXNzIjoiREVGQVVMVCIsImF1ZCI6WyJERUZBVUxUIl0sImV4cCI6MTcwNDc2MjQ0NiwiaWF0IjoxNjk2OTg2NDQ2LCJqdGkiOiIyV2IxUUNoNTBjc2RBVUIyTFZtOTlnYzFYazMifQ.Tk5M7yn64kkfxr_ds9CJXMcifvefxxftq4e_gX9-KZzViUyd1SBNofz-_Dfzh5zIMsl0XBiLXLRofQU_yhsh_yGKGz6_9TlOzmwA3tNclJEeaCySOvtyUZ39D773u60Ss3ydXvTUtai8WE5PV5Qmu3wvyTSiABrTIbTv260MOLuk1hisPYQmpNE06BMCv3LIeBaMggZrJKJRTkCmgxHlgdVUh4BAPRlqiKG0jiCED1z6PHsMUaocT_1gVQEuchRdGgZTRBglMCAVSQibBLqOA6d1BrLGVGUKOMtJNj4tb59TrKpM--QCqAksNM02Kj1nOiiac7tR1BcnxBULhAj3gA",
+  "endpoint": "http://goSignals1:8888/events/6525f54e86b849e69ca1a779",
+  "iss": "cluster.scim.example.com",
+  "aud": "cluster.example.com,monitor.example.com,partner.scim.example.com",
+  "issJwksUrl": ""
+}

@@ -21,10 +21,10 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.security.AciSet;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -99,13 +99,15 @@ public class ResourceResponse extends ScimResponse {
 		 * sctx after result set creation (or have chosen to insert an override). 
 		 */
 
-		// For single results, just return the object itself.
-		ScimResource resource = getResultResource();
-		try {
-			resource.serialize(gen, ctx, false);
-		} catch (ScimException e) {
-			//TODO This should not happen
-			logger.error("Unexpected exception serializing a response value: "+e.getMessage(),e);
+        if (!ctx.isAsynchronous()) {
+            // For single results, just return the object itself.
+            ScimResource resource = getResultResource();
+            try {
+                resource.serialize(gen, ctx, false);
+            } catch (ScimException e) {
+                //TODO This should not happen
+                logger.error("Unexpected exception serializing a response value: " + e.getMessage(), e);
+            }
 		}
 
 		setHeaders(ctx);
@@ -115,6 +117,14 @@ public class ResourceResponse extends ScimResponse {
 		HttpServletResponse resp = ctx.getHttpServletResponse();
 		if (resp != null) {
 			resp.setStatus(getStatus());
+            if (ctx.isAsync) {
+                resp.setHeader("Preference-Applied", "respond-async");
+                if (this.getLocation() != null)
+                    resp.setHeader(ScimParams.HEADER_LOCATION, this.getLocation());
+                if (ctx.getTranId() != null)
+                    resp.setHeader("Set-txn", ctx.getTranId());
+                return;
+            }
 			if (this.lastMod != null)
 				resp.setHeader(ScimParams.HEADER_LASTMOD, headDate.format(this.lastMod));
 			if (this.getLocation() != null)

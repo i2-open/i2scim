@@ -22,9 +22,12 @@ import com.independentid.scim.resource.MultiValue;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.resource.StringValue;
 import com.independentid.scim.resource.Value;
-import com.independentid.scim.schema.*;
+import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.ResourceType;
+import com.independentid.scim.schema.Schema;
+import com.independentid.scim.schema.SchemaManager;
+import jakarta.validation.constraints.NotNull;
 
-import javax.validation.constraints.NotNull;
 import java.util.*;
 
 /**

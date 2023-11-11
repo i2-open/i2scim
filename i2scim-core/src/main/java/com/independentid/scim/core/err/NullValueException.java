@@ -16,8 +16,6 @@
 
 package com.independentid.scim.core.err;
 
-import javax.validation.constraints.Null;
-
 /**
  * This exception used to flag that a Value cannot be constructed because the input was empty or null. Used by virtual attributes.
  */

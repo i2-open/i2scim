@@ -16,19 +16,17 @@
 
 package com.independentid.scim.security;
 
-import com.independentid.scim.core.err.NotImplementedException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.*;
 import com.independentid.scim.plugin.IScimPlugin;
+import jakarta.annotation.Priority;
+import jakarta.annotation.Resource;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import jakarta.servlet.ServletException;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Priority;
-import javax.annotation.Resource;
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import javax.servlet.ServletException;
 
 @ApplicationScoped
 @Priority(2)

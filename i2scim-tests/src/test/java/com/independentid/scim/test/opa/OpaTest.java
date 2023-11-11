@@ -24,16 +24,15 @@ import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 
@@ -73,6 +72,46 @@ public class OpaTest {
     public static String bearer;
 
     static i2scimClient client = null;
+
+    static Process opaServer = null;
+
+
+    @BeforeAll
+    public static void startOpa() {
+        try {
+            logger.info("Starting OPA Server for testing...");
+
+            String opaCmd = "sh ./opa/opa_start.sh";
+            //String opaCmd = "ls";
+            opaServer = Runtime.getRuntime()
+                    .exec(opaCmd);
+            if (opaServer.isAlive()) {
+                // Give time for OPA to start!
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException ignored) {
+                }
+                logger.info("OPA Server started.");
+                return;
+            }
+            // Otherwise print diagnostics...
+
+            InputStream stream = opaServer.getErrorStream();
+            byte[] errBytes = stream.readAllBytes();
+            if (errBytes.length > 0) {
+                String output = new String(errBytes);
+                logger.error("OPA Errors at startup:\n"+output);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @AfterAll
+    public static void stopOpa() {
+        if (opaServer != null)
+            opaServer.destroy();
+    }
 
     /**
      * This test validates that all 3 initializer constructors work. The first connection is retained for transaction

@@ -31,14 +31,14 @@ import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.*;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.runtime.Startup;
+import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Default;
+import jakarta.inject.Inject;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Priority;
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Singleton;
 import java.io.*;
 import java.text.Format;
 import java.text.ParseException;
@@ -52,10 +52,11 @@ import java.util.concurrent.TimeUnit;
  * @author pjdhunt
  */
 
-@Singleton
+
+@ApplicationScoped
 @Startup // this is required or configproperty injection won't pick up application.properties ??!!
-@Priority(50)
-@Named("MemoryProvider")
+@Priority(10)
+@Default
 public class MemoryProvider implements IScimProvider {
 
     private static final Logger logger = LoggerFactory.getLogger(MemoryProvider.class);
@@ -318,6 +319,11 @@ public class MemoryProvider implements IScimProvider {
             } else
                 logger.debug("Skipping Memory Provider backup due to unmodified state.");
         }
+    }
+
+    @Override
+    public String getGeneratorClass() {
+        return MemoryIdGenerator.class.getName();
     }
 
     /* (non-Javadoc)
@@ -669,7 +675,7 @@ public class MemoryProvider implements IScimProvider {
             rollFile();
 
         try {
-            dataFile.createNewFile();
+            boolean newFile = dataFile.createNewFile();
             FileWriter writer = new FileWriter(dataFile);
 
             JsonGenerator gen = JsonUtil.getGenerator(writer, false);
@@ -688,8 +694,7 @@ public class MemoryProvider implements IScimProvider {
             logger.info("\tMemory written to: " + this.storeFile);
 
         } catch (IOException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            logger.warn(e.getMessage(), e);
         }
     }
 

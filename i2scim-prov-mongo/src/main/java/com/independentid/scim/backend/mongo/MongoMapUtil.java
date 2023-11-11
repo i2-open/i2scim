@@ -23,8 +23,10 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.*;
 import com.independentid.scim.serializer.JsonUtil;
+import jakarta.inject.Inject;
+import jakarta.inject.Singleton;
+import jakarta.validation.constraints.NotNull;
 import org.bson.Document;
-import org.bson.internal.Base64;
 import org.bson.json.JsonWriterSettings;
 import org.bson.types.Binary;
 import org.bson.types.Decimal128;
@@ -33,9 +35,6 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import javax.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -152,7 +151,7 @@ public class MongoMapUtil {
     }
 
     public static String mapExtensionId(String extensionId) {
-        return ScimResource.SCHEMA_EXT_PREFIX + Base64.encode(extensionId.getBytes());
+        return ScimResource.SCHEMA_EXT_PREFIX + Base64.getEncoder().encodeToString(extensionId.getBytes());
     }
 
     /**
@@ -349,7 +348,7 @@ public class MongoMapUtil {
                 val = new DateValue(attr, containerDoc.getDate(name));
                 break;
             case Attribute.TYPE_Binary:
-                val = mapBson(attr, Base64.decode(containerDoc.getString(name)));
+                val = mapBson(attr, Base64.getDecoder().decode(containerDoc.getString(name)));
                 break;
             case Attribute.TYPE_Integer:
                 val = mapBson(attr, containerDoc.getInteger(name));
@@ -467,7 +466,7 @@ public class MongoMapUtil {
      * @return A SCIM ExtensionValues object mapped from the containing Document
      */
     public static ExtensionValues mapBsonExtension(Schema schema, final Document containerDoc) {
-        String mschema = ScimResource.SCHEMA_EXT_PREFIX + Base64.encode(schema.getId().getBytes());
+        String mschema = ScimResource.SCHEMA_EXT_PREFIX + Base64.getEncoder().encodeToString(schema.getId().getBytes());
         Document extDoc = containerDoc.get(mschema, Document.class);
         if (extDoc == null)
             return null;

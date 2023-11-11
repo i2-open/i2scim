@@ -22,11 +22,11 @@ import com.independentid.scim.core.err.TooLargeException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.schema.SchemaException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -251,6 +251,12 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 
 	public static Operation parseOperation(
 			JsonNode bulkOpNode, BulkOps parent, int requestNum, boolean isReplicOp) throws ScimException {
+		if (schemaManager == null) {
+			logger.info("Schema manager was NULL attempting to fix...");
+			schemaManager = configMgr.getSchemaManager();
+			if (schemaManager == null)
+				logger.error("SchemaManager is still NULL");
+		}
 		RequestCtx octx = new RequestCtx(bulkOpNode, schemaManager, isReplicOp);
 
 		JsonNode item = bulkOpNode.get(BulkOps.PARAM_TRANID);

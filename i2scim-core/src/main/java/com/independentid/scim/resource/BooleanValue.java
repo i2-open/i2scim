@@ -25,7 +25,6 @@ import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
 
-import javax.validation.constraints.NotNull;
 import java.io.IOException;
 import java.text.ParseException;
 

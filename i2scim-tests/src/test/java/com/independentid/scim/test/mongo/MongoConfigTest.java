@@ -18,9 +18,9 @@ package com.independentid.scim.test.mongo;
 
 
 import com.independentid.scim.backend.BackendException;
-import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.backend.mongo.MongoProvider;
+import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.schema.Schema;
@@ -28,6 +28,8 @@ import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Resource;
+import jakarta.inject.Inject;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -35,8 +37,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Resource;
-import javax.inject.Inject;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
@@ -57,9 +57,6 @@ public class MongoConfigTest {
     private static final Logger logger = LoggerFactory.getLogger(MongoConfigTest.class);
 
     @Inject
-    BackendHandler handler;
-
-    @Inject
     @Resource(name = "SchemaMgr")
     SchemaManager smgr;
 
@@ -77,7 +74,7 @@ public class MongoConfigTest {
         } catch (ScimException | BackendException | IOException e) {
             Assertions.fail("Failed to reset provider: " + e.getMessage());
         }
-        provider = handler.getProvider();
+        provider = InjectionManager.getInstance().getProvider();
         assertThat(provider).isNotNull();
 
         logger.info("==========   MongoConfig Tests ==========");
@@ -182,13 +179,10 @@ public class MongoConfigTest {
         logger.info("\t* Restart and re-load provider and SchemaManager");
         provider.shutdown();
         smgr.resetConfig();
-        try {
+
             // This time, the schema should be loaded from MongoProvider
-            smgr.init();
-        } catch (ScimException | IOException | BackendException e) {
-            logger.error("Error while restarting SchemaManager", e);
-            fail("Error while restarting SchemaManager", e);
-        }
+        smgr.init();
+
         try {
             provider.init();
         } catch (BackendException e) {

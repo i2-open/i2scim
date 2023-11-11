@@ -38,8 +38,8 @@ public class FifoCache<T> {
         lock.lock();
         try {
             while (list.size() >= size)
-                list.remove(list.size() - 1);
-            list.add(0, item);
+                list.remove(0);
+            list.add(item);
         } finally {
             lock.unlock();
         }
@@ -49,6 +49,15 @@ public class FifoCache<T> {
         lock.lock();
         try {
             return list.get(ind);
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    public T next() {
+        lock.lock();
+        try {
+            return list.remove(0);
         } finally {
             lock.unlock();
         }

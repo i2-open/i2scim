@@ -1,0 +1,127 @@
+version: '3.8'
+volumes:
+  prometheus_data: { }
+services:
+  mongo1:
+    container_name: mongo1
+    image: mongo:6.0.11
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=dockTest
+      - MONGO_REPLICA_SET_NAME=dbrs
+    ports:
+      - "30001:30001"
+    command: [ "--replSet","dbrs","--keyFile","/data/replica.key","--bind_ip_all","--port","30001" ]
+    volumes:
+      - ".mongo/replica.key:/data/replica.key"
+      - ".mongo/mongo1:/data/db"
+  mongo2:
+    container_name: mongo2
+    image: mongo:6.0.11
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=dockTest
+      - MONGO_REPLICA_SET_NAME=dbrs
+    ports:
+      - "30002:30002"
+    command: [ "--replSet","dbrs","--keyFile","/data/replica.key","--bind_ip_all","--port","30002" ]
+    volumes:
+      - ".mongo/replica.key:/data/replica.key"
+      - ".mongo/mongo2:/data/db"
+  mongo3:
+    container_name: mongo3
+    image: mongo:6.0.11
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=dockTest
+      - MONGO_REPLICA_SET_NAME=dbrs
+    ports:
+      - "30003:30003"
+    command: [ "--replSet","dbrs","--keyFile","/data/replica.key","--bind_ip_all","--port","30003" ]
+    volumes:
+      - ".mongo/replica.key:/data/replica.key"
+      - ".mongo/mongo3:/data/db"
+  mongoSetup:
+    image: mongo:6.0.11
+    depends_on:
+      - mongo1
+      - mongo2
+      - mongo3
+    volumes:
+      - ".mongo/:/scripts"
+    restart: "no"
+    entrypoint: [ "bash", "/scripts/mongo_init.sh" ]
+
+  goSignals1:
+    image: i2gosignals:latest
+    command: /goSignalsServer
+    container_name: gosignals1
+    hostname: goSignals1
+    depends_on:
+      mongo1:
+        condition: service_started
+      mongoSetup:
+        condition: service_completed_successfully
+    ports:
+      - "8888:8888"
+    environment:
+      - MONGO_URL=mongodb://root:dockTest@mongo1:30001,mongo2:30002,mongo3:30003/?retryWrites=true&replicaSet=dbrs&readPreference=primary&serverSelectionTimeoutMS=5000&connectTimeoutMS=10000&authSource=admin&authMechanism=SCRAM-SHA-256
+      - DBNAME=goSignals1
+      - PORT=8888
+      - BASE_URL=http://goSignals1:8888/
+
+  scim_cluster1:
+    image: independentid/i2scim-universal:0.7.0-SNAPSHOT
+    container_name: scim_cluster1
+    ports:
+      - "9000:8080"
+    depends_on:
+      goSignals1:
+        condition: service_started
+    volumes:
+      - ./config/scim/data1:/scim
+    environment:
+      - scim.prov.memory.dir=/scim/data
+      - scim.prov.memory.file=scimdb.json
+      - scim.prov.memory.maxbackups=10
+      - scim.prov.memory.backup.mins=2
+      - scim.event.enable=true
+      - scim.security.enable=false
+      - scim.prov.providerClass=com.independentid.scim.backend.memory.MemoryProvider
+      - scim.signals.enable=true
+      - scim.signals.ssf.serverUrl=http://localhost:8888
+      - scim.signals.ssf.authorization=<add iat here>
+      - scim.signals.pub.iss=cluster.scim.example.com
+      - scim.signals.pub.aud=cluster.example.com,monitor.example.com,partner.example.com
+      - scim.signals.rcv.iss=cluster.scim.example.com
+      - scim.signals.rcv.aud=cluster.example.com
+      - scim.signals.rcv.iss.jwksUrl=http://localhost:8888/jwks/cluster.scim.example.com
+      - scim.signals.pub.pem.path=/scim/issuer.pem
+  scim_cluster2:
+    image: independentid/i2scim-universal:0.7.0-SNAPSHOT
+    container_name: scim_cluster2
+    ports:
+      - "9001:8080"
+    depends_on:
+      goSignals1:
+        condition: service_started
+    volumes:
+      - ./config/scim/data2:/scim
+    environment:
+      - scim.prov.memory.dir=/scim/data
+      - scim.prov.memory.file=scimdb.json
+      - scim.prov.memory.maxbackups=10
+      - scim.prov.memory.backup.mins=2
+      - scim.event.enable=true
+      - scim.security.enable=false
+      - scim.prov.providerClass=com.independentid.scim.backend.memory.MemoryProvider
+      - scim.signals.ssf.serverUrl=http://localhost:8888
+      - scim.signals.ssf.authorization=<add iat here>
+      - scim.signals.pub.iss=cluster.scim.example.com
+      - scim.signals.pub.aud=cluster.example.com,monitor.example.com,partner.example.com
+      - scim.signals.rcv.iss=cluster.scim.example.com
+      - scim.signals.rcv.aud=cluster.example.com
+      - scim.signals.rcv.iss.jwksUrl=http://localhost:8888/jwks/cluster.scim.example.com
+      - scim.signals.pub.pem.path=/scim/issuer.pem
+
+

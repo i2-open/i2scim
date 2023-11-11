@@ -17,11 +17,9 @@
 package com.independentid.scim.events;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.independentid.scim.core.FifoCache;
 import com.independentid.scim.op.Operation;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 
 public interface IEventHandler {
     @PostConstruct
@@ -30,9 +28,10 @@ public interface IEventHandler {
     /**
      * Takes a JsonNode input and interprets it and then may generate a SCIM {@link Operation} if action
      * is to be taken.
+     *
      * @param node A JsonNode parsed event
      */
-    void consume(JsonNode node);
+    void consume(Object node);
 
     /**
      * Takes a processed SCIM Operation and publishes it

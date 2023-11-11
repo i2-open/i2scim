@@ -17,23 +17,25 @@ package com.independentid.scim.core;
 
 import com.independentid.scim.backend.BackendHandler;
 import com.independentid.scim.core.err.ScimException;
+import com.independentid.scim.op.Operation;
 import com.independentid.scim.plugin.PluginHandler;
 import com.independentid.scim.resource.ValueUtil;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.security.AccessManager;
 import io.quarkus.runtime.Startup;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Priority;
+import jakarta.annotation.Resource;
+import jakarta.enterprise.inject.Default;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import jakarta.inject.Singleton;
+import jakarta.servlet.ServletContext;
 import org.eclipse.microprofile.config.Config;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.ManagedBean;
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Singleton;
-import javax.servlet.ServletContext;
 import java.io.*;
 import java.time.Instant;
 import java.util.*;
@@ -50,7 +52,8 @@ import java.util.*;
 //@ApplicationScoped
 @Singleton
 @Startup
-@ManagedBean
+@Priority(2)
+@Default
 @Named("ConfigMgr")
 public class ConfigMgr {
 
@@ -142,9 +145,14 @@ public class ConfigMgr {
     @ConfigProperty(name = "quarkus.http.access-log.log-directory")
     String logDir;
 
-    @Inject
-    @Resource(name = "BackendHandler")
-    BackendHandler backendHandler;
+
+    @ConfigProperty(name = "scim.security.mode", defaultValue = "i2scim")
+    String aciMode;
+
+    @ConfigProperty(name= "scim.opa.authz.url", defaultValue = "http://localhost:8181/v1/data/i2scim")
+    String opaUrl;
+
+    BackendHandler backendHandler = BackendHandler.getInstance();
 
     @Inject
     @Resource(name = "AccessMgr")
@@ -228,7 +236,7 @@ public class ConfigMgr {
     @PostConstruct
     public synchronized void init() throws ScimException, IOException {
 
-        logger.info("======Initializing SCIM Config Mangaer=====");
+        logger.info("======Initializing SCIM Config Manager=====");
 
         self = this;
         logger.info("Scim file system root: " + rootDir);
@@ -288,6 +296,9 @@ public class ConfigMgr {
             logger.info(" Creating log directory: " + logDir);
             dir.mkdir();
         }
+        if (this.smgr == null)
+            logger.error("Schema manager is NULL!!!");
+        Operation.initialize(this);
     }
 
     public int getPort() {
@@ -308,6 +319,14 @@ public class ConfigMgr {
      */
     public boolean isSecurityEnabled() {
         return isSecurityEnabled;
+    }
+
+    public String getAciMode() {
+        return aciMode;
+    }
+
+    public String getOpaUrl() {
+        return opaUrl;
     }
 
     /**
@@ -367,8 +386,8 @@ public class ConfigMgr {
             try {
                 input = new FileInputStream(mapFile);
             } catch (FileNotFoundException e) {
-                System.err.println("\tERROR: Unable to open file.");
-                logger.error("Unable to open: " + file);
+                System.err.println("\tERROR: Unable to open file:\n" + e.getMessage());
+                logger.error("Unable to open: " + file, e);
                 return null;
             }
         }

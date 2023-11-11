@@ -22,23 +22,23 @@ import com.independentid.scim.core.PoolManager;
 import com.independentid.scim.op.*;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.serializer.JsonUtil;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Resource;
+import jakarta.ejb.Startup;
+import jakarta.inject.Inject;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.ws.rs.HttpMethod;
 import org.apache.http.HttpStatus;
 import org.eclipse.microprofile.metrics.annotation.Counted;
 import org.eclipse.microprofile.metrics.annotation.Timed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
-import javax.ejb.Startup;
-import javax.inject.Inject;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.HttpMethod;
 import java.io.IOException;
 
 /**
@@ -51,6 +51,7 @@ import java.io.IOException;
 //@RequestScoped
 //@Named("ScimServlet")
 //@WebServlet("/")
+
 @WebServlet(name = "ScimServlet", urlPatterns = "/*")
 public class ScimV2Servlet extends HttpServlet {
 
@@ -235,7 +236,8 @@ public class ScimV2Servlet extends HttpServlet {
 
 	@Override
 	public void init() {
-		logger.info("====== SCIM V2 Servlet Initialized =====");
+        Operation.initialize(cfgMgr);
+        logger.info("====== SCIM V2 Servlet Initialized =====");
 		/*  This is already PostConstruct and should self start.
 			try {
 				cfgMgr.initializeConfiguration();
@@ -248,10 +250,14 @@ public class ScimV2Servlet extends HttpServlet {
 
 	@PostConstruct
 	@Override
-	public void init(ServletConfig config) throws ServletException {
+	public void init(ServletConfig config) {
 		// TODO Auto-generated method stub
-		super.init(config);
-		
+		try {
+			super.init(config);
+		} catch (ServletException e) {
+			logger.error("Error initializing SCIM servlet: "+e.getMessage(),e);
+		}
+
 		// trying to get ConfigMgr to load on startup...
 		// suggested by: https://stackoverflow.com/questions/3600534/how-do-i-force-an-application-scoped-bean-to-instantiate-at-application-startup
 		config.getServletContext().setAttribute("ConfigMgr", cfgMgr);

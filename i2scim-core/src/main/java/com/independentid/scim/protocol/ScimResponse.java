@@ -24,8 +24,8 @@ import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.security.AciSet;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.serializer.ScimSerializer;
+import jakarta.servlet.http.HttpServletResponse;
 
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**

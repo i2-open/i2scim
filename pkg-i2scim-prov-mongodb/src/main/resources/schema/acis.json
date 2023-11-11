@@ -1,0 +1,78 @@
+{
+  "acis": [
+    {
+      "path" : "/",
+      "name" : "Administrators can read, search, compare all records and operational attributes",
+      "targetAttrs" : "*",
+      "rights" : "read, search",
+      "actors" : [
+        "role=admin root"
+      ]
+    },
+    {
+      "path" : "/",
+      "name" : "Admins can update all resources",
+      "targetAttrs" : "*",
+      "rights" : "add, modify, delete",
+      "actors" : [
+        "role=admin root"
+      ]
+    },
+    {
+      "path" : "/Groups",
+      "name" : "Allow Authenticated access to search groups",
+      "targetAttrs" :"displayName,members",
+      "rights" : "search",
+      "actors" : ["role=user bearer root"]
+    },
+    {
+      "path" : "/Groups",
+      "name" : "Allow Authenticated access read groups",
+      "targetAttrs" :"displayName",
+      "rights" : "read",
+      "actors" : ["role=user bearer root"]
+    },
+    {
+      "path" : "/Users",
+      "name" : "Allow Authenticated access to names and email addresses of Users",
+      "targetAttrs" :"username,displayName,emails,name,phoneNumbers,ims,photos,nickName,profileUrl,title,preferredLanguage,locale,timezone",
+      "rights" : "read, search",
+      "actors" : ["role=user bearer root"]
+    },
+    {
+      "path" : "/Users",
+      "name" : "Allow self read,search",
+      "targetAttrs" :"*",
+      "rights" : "read, search",
+      "actors" : ["self"]
+    },
+    {
+      "path" : "/Users",
+      "name" : "Allow self modification some personal attributes",
+      "targetAttrs" :"username,displayName,emails,phoneNumbers,ims,photos,nickName,profileUrl,title,preferredLanguage,locale,timezone",
+      "rights" : "modify",
+      "actors" : ["self"]
+    },
+    {
+      "path" : "/ServiceProviderConfig",
+      "name" : "Allow unauthenticated access to ServiceProviderConfig",
+      "targetAttrs" :"*",
+      "rights" : "read, search",
+      "actors" : ["any"]
+    },
+    {
+      "path" : "/ResourceTypes",
+      "name" : "Allow unauthenticated access to ResourceTypes",
+      "targetAttrs" :"*",
+      "rights" : "read, search",
+      "actors" : ["any"]
+    },
+    {
+      "path" : "/Schemas",
+      "name" : "Allow unauthenticated access to Schemas",
+      "targetAttrs" :"*",
+      "rights" : "read, search",
+      "actors" : ["any"]
+    }
+  ]
+}

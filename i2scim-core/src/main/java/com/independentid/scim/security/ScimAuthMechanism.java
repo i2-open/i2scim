@@ -19,7 +19,6 @@ package com.independentid.scim.security;
 import com.independentid.scim.core.ConfigMgr;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpResponseStatus;
-import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.security.identity.IdentityProviderManager;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.quarkus.security.identity.request.AuthenticationRequest;
@@ -31,14 +30,14 @@ import io.quarkus.vertx.http.runtime.security.HttpAuthenticationMechanism;
 import io.quarkus.vertx.http.runtime.security.HttpCredentialTransport;
 import io.smallrye.mutiny.Uni;
 import io.vertx.ext.web.RoutingContext;
+import jakarta.annotation.Priority;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
+import jakarta.inject.Inject;
 import org.apache.http.auth.BasicUserPrincipal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Priority;
-import javax.enterprise.context.ApplicationScoped;
-import javax.enterprise.inject.Alternative;
-import javax.inject.Inject;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -87,8 +86,19 @@ public class ScimAuthMechanism implements HttpAuthenticationMechanism {
 
         String prefix = authz.substring(0,6).toLowerCase(Locale.ENGLISH);
 
-        if (prefix.equals("bearer")) //Must be a JWT Token
+        if (prefix.equals("bearer")) {
+            if (!cmgr.isSecurityEnabled()) {
+                // Ignore the authorization and proceed as anonymous
+                SecurityIdentity identity = QuarkusSecurityIdentity.builder()
+                        .setPrincipal(new BasicUserPrincipal("anonymous"))
+                        .addRole("anonymous")
+                        .build();
+                return Uni.createFrom().item(identity);
+            }
+            //Must be a JWT Token
             return jdelegate.authenticate(context,identityProviderManager);
+        }
+
         //Otherwise process as BasicAuth
         return bdelegate.authenticate(context, identityProviderManager);
 

@@ -17,8 +17,8 @@
 package com.independentid.scim.events;
 
 import com.independentid.scim.backend.BackendHandler;
-import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.core.err.DuplicateTxnException;
+import com.independentid.scim.op.Operation;
 import com.independentid.scim.resource.TransactionRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,11 +48,15 @@ public class PublishOperation extends RecursiveAction {
         try {
             backendHandler.storeTransactionRecord(rec);
         } catch (DuplicateTxnException e) {
-            logger.error("Error publishing transaction record("+rec.getId()+"). Event will not be published.");
+            logger.error("Duplicate transaction (" + rec.getId() + ") will not be published.");
             return;
         }
 
-        while (handlers.hasNext())
-            handlers.next().publish(rec.getOp());
+        while (handlers.hasNext()) {
+            IEventHandler handler = handlers.next();
+            Operation op = rec.getOp();
+            handler.publish(op);
+
+        }
     }
 }

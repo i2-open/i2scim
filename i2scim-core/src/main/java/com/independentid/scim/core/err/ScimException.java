@@ -15,11 +15,10 @@
  */
 package com.independentid.scim.core.err;
 
-import com.fasterxml.jackson.core.JsonGenerationException;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.independentid.scim.protocol.ScimResponse;
+import jakarta.servlet.http.HttpServletResponse;
 
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 public class ScimException extends Exception {

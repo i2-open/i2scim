@@ -37,8 +37,49 @@ function show_complete () {
     return 0
 }
 
+function compile_module() {
+  echo "\n\nCompiling ${1} at ${2} ..."
+  cd $2
+  mvn clean compile -DskipTests=$skip
+  retVal=$?
+  if [ $retVal -ne 0 ]
+  then
+    echo "Error performing maven packaging [${1}]: "+$retVal
+    exit $retVal
+  fi
+}
+
+function build_package() {
+  echo "\n\nBuilding Packaging ${1} at ${2} ...\n\n"
+
+  cd $2
+  mvn clean install -DskipTests=$skip
+  retVal=$?
+  if [ $retVal -ne 0 ]
+  then
+    echo "Error performing build packaging for [${1}]: "+$retVal
+    exit $retVal
+  fi
+}
+
+function package_module() {
+  echo "\n\nPackaging ${1} at ${2} ..."
+  cd $2
+  mvn package -DskipTests=$skip
+  retVal=$?
+  if [ $retVal -ne 0 ]
+  then
+    echo "Error performing maven packaging [${1}]: "+$retVal
+    exit $retVal
+  fi
+}
+
+I2SCIM_ROOT=$(pwd)
+
+echo "cleaCurrent dir: ${I2SCIM_ROOT}"
+
 skip=true
-rtag="0.6.1"
+rtag="0.7.0-SNAPSHOT"
 buildOnly=0
 push=0
 
@@ -77,14 +118,23 @@ echo "\tTag: $rtag"
 echo "\tStarting: "$(date +"%Y-%m-%d %H:%M:%S")
 echo "*************************************************"
 
-echo "\n\tStarting maven packaging..."
+build_package "SCIM CORE" "${I2SCIM_ROOT}/i2scim-core"
 
-mvn clean package -DskipTests=$skip
-retVal=$?
-if [ $retVal -ne 0 ]
+build_package "SCIM Server" "${I2SCIM_ROOT}/i2scim-server"
+
+build_package "SCIM Memory Provider" "${I2SCIM_ROOT}/i2scim-prov-memory"
+
+build_package "SCIM Mongo Provider" "${I2SCIM_ROOT}/i2scim-prov-mongo"
+
+build_package "SCIM Client" "${I2SCIM_ROOT}/i2scim-client"
+
+build_package "SCIM Signals" "${I2SCIM_ROOT}/i2scim-signals"
+
+build_package "SCIM Universal" "${I2SCIM_ROOT}/i2scim-universal"
+
+if [ $skip -eq false ]
 then
-  echo "Error performing maven packaging i2scim: "+$retVal
-  exit $retVal
+  build_package "SCIM Signals" "${I2SCIM_ROOT}/i2scim-tests"
 fi
 
 if [ $buildOnly -eq 1 ]
@@ -94,15 +144,15 @@ then
 fi
 
 echo ""
-echo "\tStarting Docker build i2scim-mem..."
+echo "\tStarting Docker build i2scim-universal..."
 echo ""
 
-cd ./pkg-i2scim-prov-memory
+cd ${I2SCIM_ROOT}/i2scim-universal
 if [ $push -eq 1 ]
 then
-  docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mem:$rtag .
+  docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-universal:$rtag .
 else
-  docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm -t independentid/i2scim-mem:$rtag .
+  docker buildx build --load -f src/main/docker/Dockerfile.jvm -t independentid/i2scim-universal:$rtag .
 fi
 retVal=$?
 if [ $retVal -ne 0 ]
@@ -112,23 +162,5 @@ then
 fi
 #cp target/kubernetes/kubernetes.yml ./4-i2scim-memory-deploy.yml
 
-echo ""
-echo "\tStarting Docker build i2scim-mongo..."
-echo ""
-
-cd ../pkg-i2scim-prov-mongodb
-if [ $push -eq 1 ]
-then
-  docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-mongo:$rtag .
-else
-  docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm -t independentid/i2scim-mongo:$rtag .
-fi
-retVal=$?
-if [ $retVal -ne 0 ]
-then
-  echo "Docker error packaging i2scim-mongo: "+$retVal
-  exit $retVal
-fi
-#cp target/kubernetes/kubernetes.yml ./4-i2scim-mongo-deploy.yml
 
 show_complete

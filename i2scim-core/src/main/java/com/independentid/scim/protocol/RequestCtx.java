@@ -32,13 +32,13 @@ import com.independentid.scim.security.ScimBasicIdentityProvider;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.security.identity.SecurityIdentity;
 import io.smallrye.jwt.auth.principal.JWTCallerPrincipal;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.constraints.NotNull;
 import org.apache.http.HttpHeaders;
 import org.apache.http.auth.BasicUserPrincipal;
 
-import javax.servlet.ServletContext;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.validation.constraints.NotNull;
 import java.io.InputStream;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -111,6 +111,8 @@ public class RequestCtx {
 
     protected Rights right;
 
+    protected boolean isAsync;
+
     // This can be used by a provider to request URL encoded extension names be used
     // Used to address field name and length restrictions in some dbs
     protected boolean encodeFields = false;
@@ -151,6 +153,7 @@ public class RequestCtx {
         this.sctx = null;
         this.tid = schemaManager.generateTransactionId();
         this.isReplicaOp = isReplicaOp;
+        this.isAsync = false;
 
         JsonNode item = bulkReqOp.get(BulkOps.PARAM_METHOD);
         if (item == null)
@@ -199,6 +202,7 @@ public class RequestCtx {
     public RequestCtx(String path, SchemaManager schemaManager) {
         this.path = path;
         this.smgr = schemaManager;
+        this.isAsync = false;
     }
 
     /**
@@ -212,6 +216,7 @@ public class RequestCtx {
     public RequestCtx(String resEndpoint, String id, String filter, SchemaManager schemaManager) throws ScimException {
         this.smgr = schemaManager;
         this.endpoint = resEndpoint;
+        this.isAsync = false;
         this.id = id;
         this.tid = schemaManager.generateTransactionId();
         StringBuilder buf = new StringBuilder();
@@ -326,6 +331,18 @@ public class RequestCtx {
             path = req.getServletPath();
 
         this.sctx = req.getServletContext();
+
+        this.isAsync = false;
+
+        // Detect if respond-async was requested.
+        Enumeration<String> prefer = req.getHeaders("Prefer");
+        for (Iterator<String> it = prefer.asIterator(); it.hasNext(); ) {
+            String value = it.next();
+            if (value.toLowerCase().contains("respond-async")) {
+                this.isAsync = true;
+                break;
+            }
+        }
 
         parseSecurityContext(req);
 
@@ -1050,5 +1067,11 @@ public class RequestCtx {
             return true;
         return this.req.getHeader(HttpHeaders.AUTHORIZATION) == null;
 
+    }
+
+    public boolean isAsynchronous() {
+        if (this.req == null)
+            return false;  // If internal, it is just a normal completion
+        return this.isAsync;
     }
 }

@@ -22,12 +22,11 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.ConfigResponse;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.schema.ResourceType;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.enterprise.context.RequestScoped;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 /**
  * @author pjdhunt

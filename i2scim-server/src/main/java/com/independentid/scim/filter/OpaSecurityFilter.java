@@ -16,12 +16,18 @@
 
 package com.independentid.scim.filter;
 
+import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.security.AccessManager;
 import io.quarkus.security.identity.SecurityIdentity;
+import jakarta.inject.Inject;
+import jakarta.servlet.*;
+import jakarta.servlet.annotation.WebFilter;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -31,15 +37,9 @@ import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.inject.Inject;
-import javax.servlet.*;
-import javax.servlet.annotation.WebFilter;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 @WebFilter(filterName = "OpaFilter", urlPatterns = "/*")
@@ -51,19 +51,15 @@ public class OpaSecurityFilter implements Filter {
     SchemaManager schemaManager;
 
     @Inject
-    AccessManager amgr;
+    AccessManager accessManager;
 
     @Inject
     SecurityIdentity identity;
 
-    @ConfigProperty(name = "scim.security.enable", defaultValue = "true")
-    boolean isSecurityEnabled;
+    @Inject
+    ConfigMgr configMgr;
 
-    @ConfigProperty(name = "scim.security.mode", defaultValue = "i2scim")
-    String aciMode;
 
-    @ConfigProperty(name= "scim.opa.authz.url", defaultValue = "http://localhost:8181/v1/data/i2scim")
-    String opaUrl;
 
     boolean enabled = true;
 
@@ -90,13 +86,14 @@ public class OpaSecurityFilter implements Filter {
      *                     parameters
      * @throws ServletException if an exception has occurred that interferes with the filter's normal operation
      */
-    @Override
     public void init(FilterConfig filterConfig) throws ServletException {
-        if (!isSecurityEnabled) {
+        //System.err.println("SchemaManager is "+((schemaManager == null)?"NULL":"DEFINED"));
+        if (!configMgr.isSecurityEnabled()) {
             enabled = false;
+            logger.warn("OPAFilter - Security is disabled");
             return;
         }
-        if (aciMode.equals(ACCESS_TYPE_OPA)) {
+        if (configMgr.getAciMode().equals(ACCESS_TYPE_OPA)) {
             logger.info("OPA Security Filter started.");
         } else
             enabled = false;
@@ -135,7 +132,7 @@ public class OpaSecurityFilter implements Filter {
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
 
         if (enabled) {
-            logger.info("OpaSecurityFilter called.");
+            logger.debug("OpaSecurityFilter called.");
             RequestCtx ctx = (RequestCtx) request.getAttribute(RequestCtx.REQUEST_ATTRIBUTE);
             if (ctx == null) {
                 try {
@@ -150,9 +147,9 @@ public class OpaSecurityFilter implements Filter {
 
             assert ctx != null;
             String input = ctx.toOpaInput();
-            logger.info("Calling OPA at: "+opaUrl);
-            logger.info("input:\n" + input);
-            HttpPost post = new HttpPost(opaUrl);
+            logger.debug("Calling OPA at: "+configMgr.getOpaUrl());
+            logger.debug("input:\n" + input);
+            HttpPost post = new HttpPost(configMgr.getOpaUrl());
             StringEntity body = new StringEntity(input, ContentType.APPLICATION_JSON);
             post.setEntity(body);
             try {
@@ -171,9 +168,9 @@ public class OpaSecurityFilter implements Filter {
                         return;
                     }
 
-                    logger.info("Result:\n"+result);
+                    logger.debug("Result:\n"+result);
                     resp.close();
-                    if (amgr.filterRequestOpaAcis(ctx,result)) {
+                    if (accessManager.filterRequestOpaAcis(ctx,result)) {
                         chain.doFilter(request,response);
                         return;
                     }

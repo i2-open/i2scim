@@ -26,10 +26,10 @@ import com.independentid.scim.op.IBulkIdTarget;
 import com.independentid.scim.protocol.*;
 import com.independentid.scim.schema.*;
 import com.independentid.scim.serializer.JsonUtil;
+import jakarta.validation.constraints.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.validation.constraints.NotNull;
 import java.io.*;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;

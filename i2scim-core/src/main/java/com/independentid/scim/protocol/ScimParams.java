@@ -16,9 +16,6 @@
 
 package com.independentid.scim.protocol;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 public class ScimParams {
 
 	public final static String QUERY_attributes = "attributes";

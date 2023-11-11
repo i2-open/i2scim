@@ -29,15 +29,15 @@ import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.security.identity.SecurityIdentity;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Resource;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
+import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
-import javax.inject.Inject;
-import javax.inject.Named;
-import javax.inject.Singleton;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -79,19 +79,29 @@ public class AccessManager {
     }
 
     @PostConstruct
-    public void init() throws IOException {
+    public void init()  {
         if (!aciEnable) {
             logger.warn("Access control is *disabled*.");
             return;
         }
         logger.info("Access Manager starting using: "+this.acisPath);
 
-        InputStream aciStream = ConfigMgr.findClassLoaderResource(this.acisPath);
-        if (aciStream == null) {
-            logger.error("Unable to locate ACI json file: "+this.acisPath);
-            throw new IOException("Missing ACI configuration.");
+        InputStream aciStream = null;
+        try {
+            aciStream = ConfigMgr.findClassLoaderResource(this.acisPath);
+            if (aciStream == null) {
+                logger.error("Unable to locate ACI file: "+this.acisPath);
+            }
+        } catch (IOException e) {
+            logger.error("Error opening ACI file: "+this.acisPath,e);
         }
-        JsonNode node = JsonUtil.getJsonTree(aciStream);
+
+        JsonNode node = null;
+        try {
+            node = JsonUtil.getJsonTree(aciStream);
+        } catch (IOException e) {
+            logger.error("Error parsing ACI JSON file: "+e.getMessage());
+        }
         JsonNode acis = node.get("acis");
         for (JsonNode anode : acis) {
             try {

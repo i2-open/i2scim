@@ -38,6 +38,7 @@ import java.util.Collection;
  */
 public interface IScimProvider {
 
+    String getGeneratorClass();
 
     ScimResponse create(RequestCtx ctx, final ScimResource res) throws ScimException, BackendException;
 

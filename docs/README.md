@@ -18,8 +18,24 @@ This open source project licensed under the Apache License 2.0.
 adapted to act as a gateway to internal proprietary identity APIs by implementing a custom provider.
 * It has a built in events interface that can be used to trigger async events and notifications (more to come).
 
-But wait, what is IETF SCIM? 
-- For more information on SCIM, See "What is SCIM?" below.
+- For more information on System for Cross-domain Identify Management(SCIM), See "What is SCIM?" below.
+
+## Recent Updates
+
+# 0.7-Dev
+
+* *New* Support for Security Events. For more information see the [Signals documentation](Signals.md).
+    * Support for [SCIM-Events](https://datatracker.ietf.org/doc/draft-ietf-scim-events/) draft
+    * Initial implementation
+      of [OpenID Shared Signals Framework SSF draft 02.](https://openid.net/specs/openid-sharedsignals-framework-1_0-02.html)
+* Updated to recent Quarkus Platform (3.1.1.Final)
+* Combined universal distribution allowing selection of backend store by environment settings
+* Improved Docker compose compatibility
+
+# 0.6
+
+* *New* Support for Open Policy Agent adding externalized access policy for i2scim.
+  See [i2scim Access Control With OPA](OPA_AccessControl.md).
 
 ## What is i2scim useful for?
 **i2scim** is a K8S deployable service that supports scenarios such as:
@@ -76,7 +92,7 @@ But wait, what is IETF SCIM?
     * `IEventHandler` interface enables deployment of asynchronous event handlers (e.g. for replication or security
       events)
       `IVirtualValue` enables support for derived or calculated values.
-    * Built on the [Quarkus](https://quarkus.io) platform version 1.13.6.Final for smaller deployments with faster 
+    * Built on the [Quarkus](https://quarkus.io) platform version 2.16.3.Final for smaller deployments with faster 
       startup
       running in Docker containers.
 

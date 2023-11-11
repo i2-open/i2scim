@@ -1,0 +1,86 @@
+#
+# PV and PVC set for running on NFS volume (e.g. on bare metal cluster)
+#
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: i2scim-pv1
+  namespace: scim-mem
+  labels:
+    app: i2scim
+spec:
+  capacity:
+    storage: 50Gi
+  volumeMode: Filesystem
+  accessModes: [ ReadWriteOnce ]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+  nfs:
+    path: /nfs/data/i2scim-pv/rep1
+    server: 10.1.10.110
+    readOnly: false
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: i2scim-pv2
+  namespace: scim-mem
+  labels:
+    app: i2scim
+spec:
+  capacity:
+    storage: 50Gi
+  volumeMode: Filesystem
+  accessModes: [ ReadWriteOnce ]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+  nfs:
+    path: /nfs/data/i2scim-pv/rep2
+    server: 10.1.10.110
+    readOnly: false
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: i2scim-pv3
+  namespace: scim-mem
+  labels:
+    app: i2scim
+spec:
+  capacity:
+    storage: 50Gi
+  volumeMode: Filesystem
+  accessModes: [ ReadWriteOnce ]
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: nfs
+  mountOptions:
+    - hard
+    - nfsvers=4.1
+  nfs:
+    path: /nfs/data/i2scim-pv/rep3
+    server: 10.1.10.110
+    readOnly: false
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  namespace: scim-mem
+  name: i2scim-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: nfs
+  resources:
+    requests:
+      storage: 5Gi
+  selector:
+    matchLabels:
+      app: i2scim
+---
+

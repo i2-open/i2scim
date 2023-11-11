@@ -34,12 +34,12 @@ import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.security.identity.SecurityIdentity;
+import jakarta.servlet.ServletInputStream;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.servlet.ServletInputStream;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -102,13 +102,20 @@ public class Operation extends RecursiveAction {
 
     public static void initialize(ConfigMgr configMgr) {
         Operation.configMgr = configMgr;
-        schemaManager = configMgr.getSchemaManager();
-        backendHandler = configMgr.getBackendHandler();
-        pluginHandler = configMgr.getPluginHandler();
+        Operation.schemaManager = configMgr.getSchemaManager();
+        if (Operation.schemaManager == null)
+            logger.error("SchemaManager was NULL during operation initialize!");
+        else {
+            logger.info("SchemaManager located.");
+        }
+        Operation.backendHandler = configMgr.getBackendHandler();
+        Operation.pluginHandler = configMgr.getPluginHandler();
     }
+
 
     /**
      * Constructor for a SCIM operation. Typically used in bulk requests.
+     *
      * @param ctx        The RequestCtx
      * @param requestNum To be used for tracking bulkId request numbers in a series (TBI)
      */
