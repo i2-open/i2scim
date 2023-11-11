@@ -50,12 +50,12 @@
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-core</artifactId>
-            <version>${i2scim.version}</version>
+            <version>0.7.0-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-prov-memory</artifactId>
-            <version>${i2scim.version}</version>
+            <version>0.7.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
