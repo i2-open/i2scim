@@ -18,8 +18,6 @@ This open source project licensed under the Apache License 2.0.
 adapted to act as a gateway to internal proprietary identity APIs by implementing a custom provider.
 * It has a built in events interface that can be used to trigger async events and notifications (more to come).
 
-What is SCIM?
-
 - For more information on System for Cross-domain Identify Management(SCIM), See "What is SCIM?" below.
 
 ## Recent Updates
@@ -33,6 +31,11 @@ What is SCIM?
 * Updated to recent Quarkus Platform (3.1.1.Final)
 * Combined universal distribution allowing selection of backend store by environment settings
 * Improved Docker compose compatibility
+
+# 0.6
+
+* *New* Support for Open Policy Agent adding externalized access policy for i2scim.
+  See [i2scim Access Control With OPA](OPA_AccessControl.md).
 
 ## What is i2scim useful for?
 **i2scim** is a K8S deployable service that supports scenarios such as:

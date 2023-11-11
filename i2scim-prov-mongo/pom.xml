@@ -39,8 +39,8 @@
         <i2scim.version>0.7.0-SNAPSHOT</i2scim.version>
     </properties>
     <scm>
-        <connection>scm:git:git://github.com/i2-open/i2scim.git</connection>
-        <developerConnection>scm:git:git://github.com/i2-open/i2scim.git</developerConnection>
+        <connection>scm:git:https://github.com/i2-open/i2scim.git</connection>
+        <developerConnection>scm:git:https://github.com/i2-open/i2scim.git</developerConnection>
         <url>https://github.com/i2-open/i2scim/tree/master</url>
     </scm>
     <distributionManagement>
