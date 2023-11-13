@@ -16,6 +16,7 @@
 
 package com.independentid.scim.test.opa;
 
+import com.independentid.scim.backend.memory.MemoryProvider;
 import com.independentid.scim.backend.mongo.MongoProvider;
 import com.independentid.scim.filter.OpaSecurityFilter;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -32,7 +33,7 @@ public class OpaTestProfile implements QuarkusTestProfile {
 
         String env_mongo_uri = System.getenv("TEST_MONGO_URI");
         if (env_mongo_uri == null)
-            env_mongo_uri = "mongodb://localhost:27017";
+            env_mongo_uri = "mongodb://localhost:27117";
 
         String env_mongo_db = System.getenv("TEST_MONGO_DBNAME");
         if (env_mongo_db == null)
@@ -47,17 +48,14 @@ public class OpaTestProfile implements QuarkusTestProfile {
             env_mongo_pass = "t0p-Secret";
 
         Map<String, String> cmap = new HashMap<>(Map.of(
-                "scim.prov.providerClass", MongoProvider.class.getName(),
-                "scim.prov.mongo.test", "true",
-                "scim.prov.mongo.dbname", env_mongo_db,
-                "scim.prov.mongo.uri", env_mongo_uri,
-                "scim.prov.mongo.username",env_mongo_user,
-                "scim.prov.mongo.password",env_mongo_pass,
+                "scim.prov.providerClass", MemoryProvider.class.getName(),
+                "scim.prov.memory.maxbackups", "2",
+                "scim.prov.memory.backup.mins","5",
 
                 "quarkus.http.test-port", "0",
                 "quarkus.log.level","INFO",
-                "logging.level.com.independentid.scim","INFO",
-                "quarkus.log.category.\"com.independentid.scim.test\".level", "INFO"
+                "logging.level.com.independentid.scim","DEBUG",
+                "quarkus.log.category.\"com.independentid.scim.test\".level", "DEBUG"
 
         ));
         cmap.putAll(Map.of(
@@ -72,6 +70,7 @@ public class OpaTestProfile implements QuarkusTestProfile {
                 "scim.security.mode", OpaSecurityFilter.ACCESS_TYPE_OPA, //enables local debug testing
                 "scim.opa.authz.url", env_opa_uri
         ));
+        // cmap.put("scim.prov.mongo.uri","mongodb://localhost:27117");
         return cmap;
 
 

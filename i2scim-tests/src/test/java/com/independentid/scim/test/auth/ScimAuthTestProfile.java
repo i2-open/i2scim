@@ -42,6 +42,7 @@ public class ScimAuthTestProfile implements QuarkusTestProfile {
                 "scim.security.acis","classpath:/schema/aciSecurityTest.json"
         ));
         cmap.putAll(Map.of(
+                    "scim.prov.mongo.uri","mongodb://localhost:27117",
                 "quarkus.http.auth.basic", "true",
                 "scim.security.authen.basic", "true",
                 "scim.security.authen.jwt", "true",

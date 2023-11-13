@@ -100,7 +100,7 @@ public class TestUtils {
     @ConfigProperty(name = "scim.prov.memory.persist.dir", defaultValue = "./scimdata")
     String storeDir;
 
-    @ConfigProperty(name = "scim.prov.mongo.uri", defaultValue = "mongodb://localhost:27017")
+    @ConfigProperty(name = "scim.prov.mongo.uri", defaultValue = "mongodb://localhost:27117")
     String dbUrl;
 
     @ConfigProperty(name = "scim.prov.mongo.dbname", defaultValue = "testSCIM")
@@ -151,7 +151,7 @@ public class TestUtils {
             withEnv("MONGO_INITDB_ROOT_USERNAME", dbUser);
             withEnv("MONGO_INITDB_ROOT_PASSWORD", dbPwd);
             withEnv("MONGO_INITDB_DATABASE", scimDbName);
-            withExposedPorts(27017);
+            addFixedExposedPort(27117,27017);
         }
 
     }
@@ -167,6 +167,10 @@ public class TestUtils {
             initKeyPair();
         } catch (InstantiationException e) {
             logger.error("Error initializing keypair: "+e.getMessage(),e);
+        }
+        try {
+            Thread.sleep(12000); // give the container time to start
+        } catch (InterruptedException ignore) {
         }
     }
 
@@ -289,7 +293,6 @@ public class TestUtils {
             if (!dbUrl.contains("@"))
                 logger.warn("Attempting to connect to Mongo with unauthenticated connection.");
         }
-
 
         logger.warn("\t*** Resetting Mongo database [" + scimDbName + "] ***");
         if (mclient == null)

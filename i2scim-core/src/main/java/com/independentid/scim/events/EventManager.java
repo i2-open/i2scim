@@ -79,6 +79,7 @@ public class EventManager {
     public void init() {
         if (!isEnabled()) {
             logger.warn("Event Manager *DISABLED*.");
+            return;
         }
         logger.info("Event Manager starting.");
         for (IEventHandler handler : handlers) {

@@ -40,6 +40,7 @@ public class ScimMongoTestProfile implements QuarkusTestProfile {
                 "scim.event.enable","false",
                 "scim.root.dir","."
         ));
+        cmap.put("scim.prov.mongo.uri","mongodb://localhost:27117");
         TestUtils.configTestEndpointsMap(cmap);
         return cmap;
     }

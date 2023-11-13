@@ -32,10 +32,6 @@ public class ScimHttpTestProfile implements QuarkusTestProfile {
                 "scim.prov.memory.maxbackups", "2",
                 "scim.prov.memory.backup.mins","5",
 
-                //"scim.prov.mongo.dbname", "testHttpSCIM",
-                //"scim.prov.mongo.uri","mongodb://localhost:27017",
-                //"scim.prov.providerClass","com.independentid.scim.backend.mongo.MongoProvider",
-
                 "quarkus.http.test-port","0",
                 "quarkus.log.min-level","DEBUG",
                 "logging.level.com.independentid.scim","INFO",

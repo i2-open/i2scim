@@ -18,16 +18,20 @@ package com.independentid.scim.test.opa;
 
 import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.client.i2scimClient;
+import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Resource;
 import jakarta.inject.Inject;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,17 +61,21 @@ public class OpaTest {
     static String modificationDate = null;
     static String etag = null;
 
+    @TestHTTPResource("/")
+    URL rootUrl;
+
+    @Inject
+    @Resource(name = "ConfigMgr")
+    ConfigMgr config;
+
+    @Inject
+    TestUtils testUtils;
+
     @ConfigProperty(name = "scim.security.root.username", defaultValue = "admin")
     String rootUser;
 
     @ConfigProperty(name = "scim.security.root.password", defaultValue = "admin")
     String rootPassword;
-
-    @TestHTTPResource("/")
-    URL rootUrl;
-
-    @Inject
-    TestUtils testUtils;
 
     public static String bearer;
 
@@ -76,10 +84,16 @@ public class OpaTest {
     static Process opaServer = null;
 
 
-    @BeforeAll
-    public static void startOpa() {
+    /**
+     * This test validates that all 3 initializer constructors work. The first connection is retained for transaction
+     * tests.
+     */
+    @Test
+    public void a_InitializeClientTest() {
         try {
             logger.info("Starting OPA Server for testing...");
+
+            logger.info("  Opa URL = "+config.getOpaUrl());
 
             String opaCmd = "sh ./opa/opa_start.sh";
             //String opaCmd = "ls";
@@ -105,20 +119,6 @@ public class OpaTest {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    @AfterAll
-    public static void stopOpa() {
-        if (opaServer != null)
-            opaServer.destroy();
-    }
-
-    /**
-     * This test validates that all 3 initializer constructors work. The first connection is retained for transaction
-     * tests.
-     */
-    @Test
-    public void a_InitializeClientTest() {
         bearer = testUtils.getAuthToken("admin",true);
 
         logger.info("A. Client Initialization Tests");
@@ -160,6 +160,8 @@ public class OpaTest {
             fail("Unexpected URI exception: " + e.getMessage(), e);
         }
 
+        if (opaServer != null)
+            opaServer.destroy();
     }
 
 

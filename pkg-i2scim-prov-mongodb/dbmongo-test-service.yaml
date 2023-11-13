@@ -41,7 +41,7 @@ spec:
     spec:
       containers:
         - name: db-mongodb
-          image: docker.io/library/mongo:latest
+          image: docker.io/library/mongo:6.0.4
           imagePullPolicy: "IfNotPresent"
           env:
             - name: MONGO_INITDB_ROOT_USERNAME
