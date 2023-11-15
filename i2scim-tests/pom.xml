@@ -21,7 +21,7 @@
     <artifactId>i2scim-tests</artifactId>
 
     <groupId>com.independentid</groupId>
-    <version>0.7.0</version>
+    <version>0.7.1-SNAPSHOT</version>
     <properties>
         <compiler-plugin.version>3.11.0</compiler-plugin.version>
         <maven.compiler.release>11</maven.compiler.release>
@@ -38,7 +38,7 @@
         <connection>scm:git:https://github.com/i2-open/i2scim.git</connection>
         <developerConnection>scm:git:https://github.com/i2-open/i2scim.git</developerConnection>
         <url>https://github.com/i2-open/i2scim/tree/master</url>
-      <tag>i2scim-0.7.0</tag>
+      <tag>HEAD</tag>
   </scm>
     <dependencyManagement>
         <dependencies>
@@ -62,28 +62,28 @@
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-core</artifactId>
-            <version>0.7.0</version>
+            <version>0.7.1-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-server</artifactId>
-            <version>0.7.0</version>
+            <version>0.7.1-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-prov-memory</artifactId>
-            <version>0.7.0</version>
+            <version>0.7.1-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-prov-mongo</artifactId>
-            <version>0.7.0</version>
+            <version>0.7.1-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -116,7 +116,7 @@
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-client</artifactId>
-            <version>0.7.0</version>
+            <version>0.7.1-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
         <dependency>
