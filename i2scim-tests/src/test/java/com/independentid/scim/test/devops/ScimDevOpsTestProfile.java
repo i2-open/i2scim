@@ -16,6 +16,8 @@
 
 package com.independentid.scim.test.devops;
 
+import com.independentid.scim.backend.memory.MemoryProvider;
+import com.independentid.scim.backend.mongo.MongoProvider;
 import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
@@ -28,8 +30,7 @@ public class ScimDevOpsTestProfile implements QuarkusTestProfile {
 
 
         Map<String, String> cmap = new HashMap<>(Map.of(
-                "scim.prov.mongo.dbname", "opsTestSCIM",
-
+                "scim.prov.providerClass", MongoProvider.class.getName(),
                 "quarkus.http.test-port", "0",
                 "quarkus.log.min-level","DEBUG",
                 "quarkus.log.category.\"com.independentid.scim.test\".level", "INFO",
@@ -39,12 +40,19 @@ public class ScimDevOpsTestProfile implements QuarkusTestProfile {
 
                 "scim.security.enable", "true",
                 "scim.security.authen.basic", "true",
-                "scim.security.authen.jwt", "true",
                 "scim.security.acis","classpath:/schema/aciSecurityTest.json"
         ));
-        cmap.put("scim.prov.mongo.uri","mongodb://localhost:27117");
+
+        cmap.putAll(Map.of(
+                "scim.security.authen.jwt", "true",
+                "mp.jwt.verify.publickey.location",TestUtils.VALIDATE_KEY,
+                "smallrye.jwt.always-check-authorization","true",
+                "mp.jwt.verify.issuer","test.i2scim.io",
+                "mp.jwt.verify.audience","aud.test.i2scim.io"
+        ));
 
         TestUtils.configTestEndpointsMap(cmap);
+        cmap.put("scim.prov.mongo.dbname", "opsTestSCIM");
 
         return cmap;
 

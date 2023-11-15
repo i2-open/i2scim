@@ -21,7 +21,6 @@ import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.backend.IScimProvider;
 import com.independentid.scim.backend.memory.MemoryProvider;
 import com.independentid.scim.backend.mongo.MongoProvider;
-import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.InjectionManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ScimResource;
@@ -30,7 +29,6 @@ import com.independentid.scim.serializer.JsonUtil;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
-import io.quarkus.runtime.Shutdown;
 import io.smallrye.jwt.auth.principal.JWTParser;
 import io.smallrye.jwt.build.Jwt;
 import io.smallrye.jwt.build.JwtClaimsBuilder;
@@ -48,10 +46,9 @@ import org.jose4j.jwk.RsaJsonWebKey;
 import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.utility.DockerImageName;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
@@ -64,6 +61,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.independentid.scim.core.ConfigMgr.findClassLoaderResource;
 import static org.assertj.core.api.Assertions.fail;
 
 @Singleton
@@ -71,8 +69,8 @@ public class TestUtils {
 
     private static final Logger logger = LoggerFactory.getLogger(TestUtils.class);
 
-    public static final String VALIDATE_KEY = "classpath:/certs/jwks-certs.json";
-    public static final String PRIVATE_JWK_FILE = "classpath:/data/jwk-sign.json";
+    public static final String VALIDATE_KEY = "scimdata/jwks-certs.json";
+    public static final String PRIVATE_JWK_FILE = "scimdata/jwk-sign.json";
 
     public static final String TEST_ISSUER = "test.i2scim.io";
     public static final String TEST_AUDIENCE = "aud.test.i2scim.io";
@@ -80,16 +78,12 @@ public class TestUtils {
     public static final String ENV_TEST_OPA_URL = "TEST_OPA_URL";
     public static final String DEF_TEST_OPA_URL = "http://localhost:8181/v1/data/i2scim";
 
-    public static final String ENV_TEST_MONGO_URI = "TEST_MONGO_URI";
-    public static final String DEF_TEST_MONGO_URI = "mongodb://localhost:27017";
+    public static final String DEF_TEST_MONGO_URI = "mongodb://localhost:27117";
 
     // Not supported because each profile sets its own DB name
     //public static final String ENV_TEST_MONGO_DBNAME = "TEST_MONGO_DBNAME";
     public static final String DEF_TEST_MONGO_DBNAME = "testSCIM";
-    public static final String ENV_TEST_MONGO_USER = "TEST_MONGO_USER";
-    public static final String DEF_TEST_MONGO_USER = "admin";
-    public static final String ENV_TEST_MONGO_SECRET = "TEST_MONGO_SECRET";
-    public static final String DEF_TEST_MONGO_SECRET = "t0p-Secret";
+
 
     @Inject
     SchemaManager smgr;
@@ -109,7 +103,7 @@ public class TestUtils {
     @ConfigProperty(name = "scim.prov.mongo.username", defaultValue = "UNDEFINED")
     String dbUser;
 
-    @ConfigProperty(name = "scim.prov.mongo.password", defaultValue = "t0p-Secret")
+    @ConfigProperty(name = "scim.prov.mongo.password", defaultValue = "UNDEFINED")
     String dbPwd;
 
     static Map<String,String> keyMap = new HashMap<>();
@@ -120,9 +114,6 @@ public class TestUtils {
 
     private MongoClient mclient = null;
 
-    // static MongoDBContainer mongoDBContainer = new MongoDBContainer(DockerImageName.parse("mongo:6.0.4"));
-    CustomMongoDbContainer mongoDBContainer;
-
     public static String mapPathToReqUrl(URL baseUrl, String path) throws MalformedURLException {
         URL rUrl = new URL(baseUrl, path);
         return rUrl.toString();
@@ -130,39 +121,28 @@ public class TestUtils {
 
     private void initKeyPair() throws InstantiationException {
         try {
-            InputStream inputStream = ConfigMgr.findClassLoaderResource(PRIVATE_JWK_FILE);
-            if (inputStream == null) {
-                throw new InstantiationException("Could not locate i2scim JWT signing key. Run CycleTestKeys utility.");
-            } else {
-                byte[] data = inputStream.readAllBytes();
-                String jsonString = new String (data);
-                RsaJsonWebKey rsaJwk = (RsaJsonWebKey) PublicJsonWebKey.Factory.newPublicJwk(jsonString);
-                signKey = rsaJwk.getRsaPrivateKey();
+            File keyFile = new File(PRIVATE_JWK_FILE);
+            logger.info("Looking for key at: "+keyFile.getPath());
+            if (!keyFile.exists()) {
+                CycleTestKeys.initKeyPair(VALIDATE_KEY,PRIVATE_JWK_FILE);
             }
+
+            InputStream inputStream = new FileInputStream(PRIVATE_JWK_FILE);
+            byte[] data = inputStream.readAllBytes();
+            String jsonString = new String(data);
+            RsaJsonWebKey rsaJwk = (RsaJsonWebKey) PublicJsonWebKey.Factory.newPublicJwk(jsonString);
+            signKey = rsaJwk.getRsaPrivateKey();
+
             init = true;
         } catch (JoseException | IOException  e) {
-            e.printStackTrace();
+            logger.error("Key pair initialization error: "+e.getMessage(),e);
         }
-    }
-
-    public class CustomMongoDbContainer extends GenericContainer<CustomMongoDbContainer> {
-        public CustomMongoDbContainer() {
-            super(DockerImageName.parse("mongo:6.0.4"));
-            withEnv("MONGO_INITDB_ROOT_USERNAME", dbUser);
-            withEnv("MONGO_INITDB_ROOT_PASSWORD", dbPwd);
-            withEnv("MONGO_INITDB_DATABASE", scimDbName);
-            addFixedExposedPort(27117,27017);
-        }
-
     }
 
     @PostConstruct
     public void init()  {
         if (init) return;
 
-        mongoDBContainer = new CustomMongoDbContainer();
-        mongoDBContainer.start();
-        //dbUrl = mongoDBContainer.getConnectionString();
         try {
             initKeyPair();
         } catch (InstantiationException e) {
@@ -172,13 +152,6 @@ public class TestUtils {
             Thread.sleep(12000); // give the container time to start
         } catch (InterruptedException ignore) {
         }
-    }
-
-    @Shutdown
-    public void shutdown() {
-        logger.info("Shutting down test mongo server...");
-        mongoDBContainer.stop();
-        mongoDBContainer.close();
     }
 
     /**
@@ -228,26 +201,12 @@ public class TestUtils {
         if (!map.containsKey("scim.opa.authz.url"))
             map.put("scim.opa.authz.url",opa_uri);
 
-        String mongo_uri = System.getenv(ENV_TEST_MONGO_URI);
-        if (mongo_uri == null)
-            mongo_uri = DEF_TEST_MONGO_URI;
         if (!map.containsKey("scim.prov.mongo.uri"))
-            map.put("scim.prov.mongo.uri",mongo_uri);
+            map.put("scim.prov.mongo.uri",DEF_TEST_MONGO_URI);
 
         if (!map.containsKey("scim.prov.mongo.dbname"))
             map.put("scim.prov.mongo.dbname",DEF_TEST_MONGO_DBNAME);
 
-        String mongo_user = System.getenv(ENV_TEST_MONGO_USER);
-        if (mongo_user == null)
-            mongo_user = DEF_TEST_MONGO_USER;
-        if (!map.containsKey("scim.prov.mongo.username"))
-            map.put("scim.prov.mongo.username",mongo_user);
-
-        String mongo_pass = System.getenv(ENV_TEST_MONGO_SECRET);
-        if (mongo_pass == null)
-            mongo_pass = DEF_TEST_MONGO_SECRET;
-        if (!map.containsKey("scim.prov.mongo.password"))
-            map.put("scim.prov.mongo.password",mongo_pass);
     }
 
     public static CloseableHttpResponse executeGet(URL baseUrl, String req) throws MalformedURLException {
@@ -277,9 +236,9 @@ public class TestUtils {
             resetMemoryDb((MemoryProvider) provider, eraseData);
     }
 
-    void resetMongoDb(MongoProvider mongoProvider) throws ScimException, BackendException, IOException {
+    void resetMongoDb(MongoProvider mongoProvider) {
 
-        if (!dbUrl.contains("@") && dbUser != null) {
+        if (!dbUrl.contains("@") && !dbUser.equals("UNDEFINED")) {
             logger.info("Connecting to Mongo using admin user: " + dbUser);
             try {
                 String userInfo = dbUser + ":" + dbPwd;
@@ -317,7 +276,7 @@ public class TestUtils {
 
     }
 
-    void resetMemoryDb(MemoryProvider provider, boolean eraseData) throws ScimException, BackendException, IOException {
+    void resetMemoryDb(MemoryProvider provider, boolean eraseData) {
         logger.warn("\t*** Resetting Memory Provider Data [" + storeDir + "] ***");
         // Shut the provider down
         if (provider.ready())
@@ -339,8 +298,9 @@ public class TestUtils {
         File memdir = new File(storeDir);
         File[] files = memdir.listFiles();
         if (files != null)
-            for (File afile : files)
-                afile.delete();
+            for (File afile : files) {
+                boolean delete = afile.delete();
+            }
 
     }
 
@@ -349,7 +309,7 @@ public class TestUtils {
         if (container == null)
             container = "Users";
         try {
-            userStream = ConfigMgr.findClassLoaderResource(jsonfilepath);
+            userStream = findClassLoaderResource(jsonfilepath);
             JsonNode node = JsonUtil.getJsonTree(userStream);
             return new ScimResource(smgr, node, container);
         } catch (ParseException | ScimException | IOException e) {

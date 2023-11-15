@@ -10,7 +10,26 @@
     "lastModified" : "2020-07-29T00:00:00Z",
     "resourceType" : "ResourceType",
     "version" : "beta0",
-    "location" : "/ResourceTypes/ServiceProviderConfig"
+    "location" : "/ResourceTypes/ServiceProviderConfig",
+    "acis" : [ {
+      "path" : "/ResourceTypes",
+      "name" : "Allow authenticated access to ResourceTypes",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "role=user", "role=bearer", "role=root" ]
+    }, {
+      "path" : "/",
+      "name" : "Administrators can read, search, compare all records and operational attributes",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "role=root", "role=admin", "role=full" ]
+    }, {
+      "path" : "/",
+      "name" : "Root can update all systems",
+      "targetAttrs" : "*",
+      "rights" : "add,modify,delete",
+      "actors" : [ "role=root", "role=admin", "role=full" ]
+    } ]
   }
 }, {
   "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:ResourceType" ],
@@ -24,7 +43,26 @@
     "lastModified" : "2020-07-29T00:00:00Z",
     "resourceType" : "ResourceType",
     "version" : "beta0",
-    "location" : "/ResourceTypes/ResourceType"
+    "location" : "/ResourceTypes/ResourceType",
+    "acis" : [ {
+      "path" : "/ResourceTypes",
+      "name" : "Allow authenticated access to ResourceTypes",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "role=user", "role=bearer", "role=root" ]
+    }, {
+      "path" : "/",
+      "name" : "Administrators can read, search, compare all records and operational attributes",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "role=root", "role=admin", "role=full" ]
+    }, {
+      "path" : "/",
+      "name" : "Root can update all systems",
+      "targetAttrs" : "*",
+      "rights" : "add,modify,delete",
+      "actors" : [ "role=root", "role=admin", "role=full" ]
+    } ]
   }
 }, {
   "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:ResourceType" ],
@@ -38,7 +76,26 @@
     "lastModified" : "2020-07-29T00:00:00Z",
     "resourceType" : "ResourceType",
     "version" : "beta0",
-    "location" : "/ResourceTypes/Schema"
+    "location" : "/ResourceTypes/Schema",
+    "acis" : [ {
+      "path" : "/ResourceTypes",
+      "name" : "Allow authenticated access to ResourceTypes",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "role=user", "role=bearer", "role=root" ]
+    }, {
+      "path" : "/",
+      "name" : "Administrators can read, search, compare all records and operational attributes",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "role=root", "role=admin", "role=full" ]
+    }, {
+      "path" : "/",
+      "name" : "Root can update all systems",
+      "targetAttrs" : "*",
+      "rights" : "add,modify,delete",
+      "actors" : [ "role=root", "role=admin", "role=full" ]
+    } ]
   }
 }, {
   "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:ResourceType" ],
@@ -52,7 +109,26 @@
     "lastModified" : "2011-05-13T04:42:34Z",
     "resourceType" : "ResourceType",
     "version" : "W/\"3694e05e9dff595\"",
-    "location" : "/ResourceTypes/Group"
+    "location" : "/ResourceTypes/Group",
+    "acis" : [ {
+      "path" : "/ResourceTypes",
+      "name" : "Allow authenticated access to ResourceTypes",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "role=user", "role=bearer", "role=root" ]
+    }, {
+      "path" : "/",
+      "name" : "Administrators can read, search, compare all records and operational attributes",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "role=root", "role=admin", "role=full" ]
+    }, {
+      "path" : "/",
+      "name" : "Root can update all systems",
+      "targetAttrs" : "*",
+      "rights" : "add,modify,delete",
+      "actors" : [ "role=root", "role=admin", "role=full" ]
+    } ]
   }
 }, {
   "schemas" : [ "urn:ietf:params:scim:schemas:core:2.0:ResourceType" ],
@@ -70,6 +146,25 @@
     "lastModified" : "2011-05-13T04:42:34Z",
     "resourceType" : "ResourceType",
     "version" : "W/\"3694e05e9dff595\"",
-    "location" : "/ResourceTypes/User"
+    "location" : "/ResourceTypes/User",
+    "acis" : [ {
+      "path" : "/ResourceTypes",
+      "name" : "Allow authenticated access to ResourceTypes",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "role=user", "role=bearer", "role=root" ]
+    }, {
+      "path" : "/",
+      "name" : "Administrators can read, search, compare all records and operational attributes",
+      "targetAttrs" : "*",
+      "rights" : "read,search",
+      "actors" : [ "role=root", "role=admin", "role=full" ]
+    }, {
+      "path" : "/",
+      "name" : "Root can update all systems",
+      "targetAttrs" : "*",
+      "rights" : "add,modify,delete",
+      "actors" : [ "role=root", "role=admin", "role=full" ]
+    } ]
   }
 } ]

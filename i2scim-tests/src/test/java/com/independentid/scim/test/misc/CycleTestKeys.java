@@ -46,10 +46,10 @@ public class CycleTestKeys {
         String response = scanner.nextLine();
         scanner.close();
         if (response.toLowerCase().startsWith("y"))
-            initKeyPair();
+            initKeyPair(PUB_KEY,PRIV_KEY);
     }
 
-    private static void initKeyPair() {
+    public static void initKeyPair(String pubKeyPath, String privKeyPath) {
         try {
 
             System.out.println("\nGenerating RSA key pair (this may take a while)...");
@@ -69,24 +69,24 @@ public class CycleTestKeys {
 
             // Write the public key so the server can validate certs
             String jsonString = set.toJson();
-            File pubFile = new File(PUB_KEY);
+            File pubFile = new File(pubKeyPath);
             FileWriter writer = new FileWriter(pubFile);
             writer.write(jsonString);
             writer.close();
-            System.out.println("...wrote JWKset to resources/certs folder");
+            System.out.println("...wrote JWKset to "+pubFile.getPath());
 
             // Write out the signing key
-            File privateFile = new File(PRIV_KEY);
+            File privateFile = new File(privKeyPath);
             jsonString = rsaJwk.toJson(JsonWebKey.OutputControlLevel.INCLUDE_PRIVATE);
             writer = new FileWriter(privateFile);
             writer.write(jsonString);
             writer.close();
-            System.out.println("...wrote JWK signing key to resources/data");
+            System.out.println("...wrote JWK signing key to "+privateFile.getPath());
 
             System.out.println("\nKey generation complete!");
 
         } catch (NoSuchAlgorithmException | JoseException | IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException("Error generating signing keys: "+e.getMessage(),e);
         }
     }
 }
