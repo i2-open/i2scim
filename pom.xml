@@ -39,6 +39,7 @@
         <connection>scm:git:https://github.com/i2-open/i2scim.git</connection>
         <developerConnection>scm:git:https://github.com/i2-open/i2scim.git</developerConnection>
         <url>https://github.com/i2-open/i2scim/tree/master</url>
+    </scm>
     <modules>
         <module>i2scim-core</module>
         <module>i2scim-client</module>
