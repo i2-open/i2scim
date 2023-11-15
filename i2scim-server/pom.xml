@@ -18,7 +18,23 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-
+    <name>i2scim-server</name>
+    <description>i2scim.io SCIM v2 Server on Quarkus - RFC7644 SCIM HTTP Server, Release 0.7</description>
+    <url>https://i2scim.io</url>
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>Phil Hunt</name>
+            <email>info@independentid.com</email>
+            <organization>Independent Identity Incorporated</organization>
+            <organizationUrl>https://www.independentid.com</organizationUrl>
+        </developer>
+    </developers>
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.independentid</groupId>
     <artifactId>i2scim-server</artifactId>
