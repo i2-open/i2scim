@@ -19,6 +19,7 @@ package com.independentid.scim.test.opa;
 import com.independentid.scim.backend.memory.MemoryProvider;
 import com.independentid.scim.backend.mongo.MongoProvider;
 import com.independentid.scim.filter.OpaSecurityFilter;
+import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 import java.util.HashMap;
@@ -31,21 +32,6 @@ public class OpaTestProfile implements QuarkusTestProfile {
         if (env_opa_uri == null)
             env_opa_uri = "http://localhost:8181/v1/data/i2scim";
 
-        String env_mongo_uri = System.getenv("TEST_MONGO_URI");
-        if (env_mongo_uri == null)
-            env_mongo_uri = "mongodb://localhost:27117";
-
-        String env_mongo_db = System.getenv("TEST_MONGO_DBNAME");
-        if (env_mongo_db == null)
-            env_mongo_db = "opaTestSCIM";
-
-        String env_mongo_user = System.getenv("TEST_MONGO_USER");
-        if (env_mongo_user == null)
-            env_mongo_user = "admin";
-
-        String env_mongo_pass = System.getenv("TEST_MONGO_SECRET");
-        if (env_mongo_pass == null)
-            env_mongo_pass = "t0p-Secret";
 
         Map<String, String> cmap = new HashMap<>(Map.of(
                 "scim.prov.providerClass", MemoryProvider.class.getName(),
@@ -70,6 +56,7 @@ public class OpaTestProfile implements QuarkusTestProfile {
                 "scim.security.mode", OpaSecurityFilter.ACCESS_TYPE_OPA, //enables local debug testing
                 "scim.opa.authz.url", env_opa_uri
         ));
+        TestUtils.configTestEndpointsMap(cmap);
         // cmap.put("scim.prov.mongo.uri","mongodb://localhost:27117");
         return cmap;
 
