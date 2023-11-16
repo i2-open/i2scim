@@ -22,7 +22,7 @@ adapted to act as a gateway to internal proprietary identity APIs by implementin
 
 ## Recent Updates
 
-# 0.7-Dev
+# Release 0.7.0
 
 * *New* Support for Security Events. For more information see the [Signals documentation](Signals.md).
     * Support for [SCIM-Events](https://datatracker.ietf.org/doc/draft-ietf-scim-events/) draft
@@ -32,10 +32,28 @@ adapted to act as a gateway to internal proprietary identity APIs by implementin
 * Combined universal distribution allowing selection of backend store by environment settings
 * Improved Docker compose compatibility
 
-# 0.6
+# Release 0.6.1
+
+* Fixes for Javadocs and related CVE
+* Amended testing code for JWT signing keys
+* All i2scim modules available in maven
+
+# Release 0.6.0-Alpha
 
 * *New* Support for Open Policy Agent adding externalized access policy for i2scim.
   See [i2scim Access Control With OPA](OPA_AccessControl.md).
+
+# Release 0.5.0-Alpha
+
+* *Initial Public Release* of i2scim. First public "alpha" release of i2scim for preview purposes. Server can be deployed using K8S using a mongo database or built-in memory based provider.
+
+In this release:
+* Basic SCIM Protocol functionality except for Bulk requests per RFC7644
+* Configurable resource types and schema and support for RFC7643
+* Support for HTTP Conditionals as per RFC7232
+* Access control system evolved from LDAP access control models (see AccessControl.md)
+* Basic and JWT based authentication via the Quarkus SmallRye JWT module
+* Quarkus platform docker modules
 
 ## What is i2scim useful for?
 **i2scim** is a K8S deployable service that supports scenarios such as:
