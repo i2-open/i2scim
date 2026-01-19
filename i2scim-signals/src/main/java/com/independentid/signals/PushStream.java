@@ -2,6 +2,7 @@ package com.independentid.signals;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.independentid.set.SecurityEventToken;
+import org.apache.http.HttpEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
@@ -32,6 +33,11 @@ public class PushStream {
     public String iss;
     public String aud;
     public String issJwksUrl;
+    public boolean errorState = false;
+
+    public int maxRetries = 10;
+    public int initialDelay = 2000;
+    public int maxDelay = 300000;
 
     @JsonIgnore
     CloseableHttpClient client = HttpClients.createDefault();
@@ -46,10 +52,15 @@ public class PushStream {
                 "ReceiverKey:\t" + (receiverKey != null) + "\n" +
                 "Unencrypted:\t" + isUnencrypted + "\n" +
                 "Issuer:    \t" + iss + "\n" +
-                "Audience:  \t" + aud + "\n";
+                "Audience:  \t" + aud + "\n" +
+                "RetryMax:\t" + maxRetries + "\n" +
+                "RetryInterval:\t" + initialDelay + "\n" +
+                "RetryMaxInterval:\t" + maxDelay + "\n";
     }
 
     public boolean pushEvent(SecurityEventToken event) {
+        if (this.errorState)
+            return false;
         if (this.aud != null)
             event.setAud(this.aud);
         event.setIssuer(this.iss);
@@ -80,27 +91,68 @@ public class PushStream {
             logger.error("Event signing error: " + e.getMessage());
             return false;
         }
-        StringEntity bodyEntity = new StringEntity(signed, ContentType.create("application/secevent+jwt"));
-        HttpPost req = new HttpPost(this.endpointUrl);
-        req.setEntity(bodyEntity);
-        if (!this.authorization.equals("NONE")) {
-            req.setHeader("Authorization", this.authorization);
-        }
-        try {
-            CloseableHttpResponse resp = client.execute(req);
+        int attempt = 0;
+        long delay = this.initialDelay;
 
-            int code = resp.getStatusLine().getStatusCode();
-            if (code >= 200 && code < 300) {
-                resp.close();
-                return true;
+        while (attempt <= this.maxRetries) {
+            try {
+                if (attempt > 0)
+                    logger.info("Pushing event to " + this.endpointUrl + " (Attempt " + (attempt + 1) + ")");
+
+                StringEntity bodyEntity = new StringEntity(signed, ContentType.create("application/secevent+jwt"));
+                HttpPost req = new HttpPost(this.endpointUrl);
+                req.setEntity(bodyEntity);
+                if (!this.authorization.equals("NONE")) {
+                    req.setHeader("Authorization", this.authorization);
+                }
+
+                try (CloseableHttpResponse resp = client.execute(req)) {
+                    int code = resp.getStatusLine().getStatusCode();
+                    if (code >= 200 && code < 300) {
+                        return true;
+                    }
+
+                    if (code == 429 || code >= 500) {
+                        logger.warn("Retryable error response: " + code + " " + resp.getStatusLine().getReasonPhrase());
+                        // Fall through to retry logic
+                    } else {
+                        // Fatal error
+                        if (code == 400) {
+                            logger.error("Received BAD request response.");
+                            HttpEntity respEntity = resp.getEntity();
+                            if (respEntity != null) {
+                                byte[] respBytes = respEntity.getContent().readAllBytes();
+                                String msg = new String(respBytes);
+                                logger.error("\n" + msg);
+                            }
+                        } else
+                            logger.error("Received fatal error on event submission: " + code + " " + resp.getStatusLine().getReasonPhrase());
+                        this.errorState = true;
+                        return false;
+                    }
+                }
+            } catch (IOException e) {
+                logger.warn("Communications error while pushing event (attempt " + (attempt + 1) + "): " + e.getMessage());
             }
-            logger.error("Received error on event submission: " + resp.getStatusLine().getReasonPhrase());
-            resp.close();
-            return false;
-        } catch (IOException e) {
-            logger.error("Error transmitting event: " + e.getMessage());
-            return false;
+
+            attempt++;
+            if (attempt > this.maxRetries) {
+                logger.error("Max retries reached. Event push failed.");
+                this.errorState = true;
+                break;
+            }
+
+            try {
+                logger.info("Retrying in " + delay + "ms...");
+                Thread.sleep(delay);
+                delay = Math.min(delay * 2, maxDelay);
+            } catch (InterruptedException ie) {
+                logger.warn("Interrupted while waiting for retry");
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
+        return false;
     }
 
     public void Close() throws IOException {

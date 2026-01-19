@@ -78,3 +78,9 @@ As currently implemented, I2 SCIM supports the MongoDB as its persistence databa
 **scim.signals.rcv.retry.interval** - The initial retry interval in milliseconds (DEFAULT: 2000).
 
 **scim.signals.rcv.retry.maxInterval** - The maximum retry interval in milliseconds when using backoff (DEFAULT: 300000).
+
+**scim.signals.pub.retry.max** - The maximum number of times to retry a push connection on error (DEFAULT: 10).
+
+**scim.signals.pub.retry.interval** - The initial retry interval in milliseconds (DEFAULT: 2000).
+
+**scim.signals.pub.retry.maxInterval** - The maximum retry interval in milliseconds when using backoff (DEFAULT: 300000).

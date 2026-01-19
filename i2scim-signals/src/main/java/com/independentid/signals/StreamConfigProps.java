@@ -133,6 +133,15 @@ public class StreamConfigProps {
     @ConfigProperty(name = "scim.signals.rcv.retry.maxInterval", defaultValue = "300000")
     public int rcvRetryMaxInterval;
 
+    @ConfigProperty(name = "scim.signals.pub.retry.max", defaultValue = "10")
+    public int pubRetryMax;
+
+    @ConfigProperty(name = "scim.signals.pub.retry.interval", defaultValue = "2000")
+    public int pubRetryInterval;
+
+    @ConfigProperty(name = "scim.signals.pub.retry.maxInterval", defaultValue = "300000")
+    public int pubRetryMaxInterval;
+
     @ConfigProperty(name = "scim.signals.test", defaultValue = "false")
     boolean isTest;
 
@@ -152,6 +161,9 @@ public class StreamConfigProps {
             pushStream.iss = pubIssuer;
             pushStream.aud = pubAud;
             pushStream.issJwksUrl = pubIssJwksUrl;
+            pushStream.maxRetries = pubRetryMax;
+            pushStream.initialDelay = pubRetryInterval;
+            pushStream.maxDelay = pubRetryMaxInterval;
             if (pubIsUnsigned) {
                 pushStream.isUnencrypted = true;
             } else {

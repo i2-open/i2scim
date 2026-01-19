@@ -250,7 +250,9 @@ public class SignalsEventHandler implements IEventHandler {
 
     @Override
     public boolean isProducing() {
-        return !isErrorState;
+        if (ssfClient == null || ssfClient.getPushStream() == null)
+            return !isErrorState;
+        return !isErrorState && !ssfClient.getPushStream().errorState;
     }
 
     @Override
