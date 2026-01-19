@@ -124,6 +124,15 @@ public class StreamConfigProps {
     @ConfigProperty(name = "scim.signals.rcv.algNone.override", defaultValue = "false")
     boolean unSignedMode;
 
+    @ConfigProperty(name = "scim.signals.rcv.retry.max", defaultValue = "10")
+    public int rcvRetryMax;
+
+    @ConfigProperty(name = "scim.signals.rcv.retry.interval", defaultValue = "2000")
+    public int rcvRetryInterval;
+
+    @ConfigProperty(name = "scim.signals.rcv.retry.maxInterval", defaultValue = "300000")
+    public int rcvRetryMaxInterval;
+
     @ConfigProperty(name = "scim.signals.test", defaultValue = "false")
     boolean isTest;
 
@@ -168,6 +177,9 @@ public class StreamConfigProps {
             pollStream.aud = rcvAud;
             pollStream.issJwksUrl = rcvIssJwksUrl;
             pollStream.isUnencrypted = unSignedMode;
+            pollStream.maxRetries = rcvRetryMax;
+            pollStream.initialDelay = rcvRetryInterval;
+            pollStream.maxDelay = rcvRetryMaxInterval;
 
             if (!unSignedMode) {
                 pollStream.receiverKey = getAudPrivateKey();

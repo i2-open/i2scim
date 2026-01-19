@@ -71,3 +71,10 @@ As currently implemented, I2 SCIM supports the MongoDB as its persistence databa
 **scim.bulk.max.ops** - The maximum number of operations that can be submitted in a single bulk request (DEFAULT: 1000).
 
 **scim.bulk.max.errors** - The maximum number of errors that can be tolerated in a single bulk request (DEFAULT: 5). Note that the result returned indicates which operations succeeded, which one failed, and those aborted.
+
+### SCIM Signals
+**scim.signals.rcv.retry.max** - The maximum number of times to retry a polling connection on error (DEFAULT: 10).
+
+**scim.signals.rcv.retry.interval** - The initial retry interval in milliseconds (DEFAULT: 2000).
+
+**scim.signals.rcv.retry.maxInterval** - The maximum retry interval in milliseconds when using backoff (DEFAULT: 300000).

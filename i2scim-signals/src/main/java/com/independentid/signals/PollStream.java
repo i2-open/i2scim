@@ -48,6 +48,10 @@ public class PollStream {
     boolean errorState = false;
     public String issJwksUrl;
 
+    public int maxRetries = 10;
+    public int initialDelay = 2000;
+    public int maxDelay = 300000;
+
     @JsonIgnore
     CloseableHttpClient client = HttpClients.createDefault();
 
@@ -65,7 +69,10 @@ public class PollStream {
                 "Audience: \t" + aud + "\n" +
                 "TimeoutSecs:\t" + timeOutSecs + "\n" +
                 "MaxEvents:\t" + maxEvents + "\n" +
-                "ReturnImmed:\t" + returnImmediately + "\n";
+                "ReturnImmed:\t" + returnImmediately + "\n" +
+                "RetryMax:\t" + maxRetries + "\n" +
+                "RetryInterval:\t" + initialDelay + "\n" +
+                "RetryMaxInterval:\t" + maxDelay + "\n";
     }
 
     public Map<String, SecurityEventToken> pollEvents(List<String> acknowledgements, boolean ackOnly) {
@@ -95,72 +102,111 @@ public class PollStream {
             }
             logger.info("Polling endpoint set to: " + this.endpointUrl);
         }
-        try {
-            logger.info("Polling " + this.endpointUrl + " Acks:" + acknowledgements.size());
-            HttpPost pollRequest = new HttpPost(this.endpointUrl);
-            if (!this.authorization.equals("NONE")) {
-                pollRequest.setHeader("Authorization", this.authorization);
-            }
-            List<String> requestedAck = new ArrayList<>();
-            ArrayNode ackNode = reqNode.putArray("ack");
-            for (String item : acknowledgements) {
-                logger.info("POLLING: Acknowledging: " + item);
-                ackNode.add(item);
-                requestedAck.add(item);
-            }
 
-            StringEntity bodyEntity = new StringEntity(reqNode.toPrettyString(), ContentType.APPLICATION_JSON);
+        ArrayNode ackNode = reqNode.putArray("ack");
+        for (String item : acknowledgements) {
+            logger.info("POLLING: Acknowledging: " + item);
+            ackNode.add(item);
+        }
 
-            pollRequest.setEntity(bodyEntity);
-            CloseableHttpResponse resp = client.execute(pollRequest);
-            if (resp.getStatusLine().getStatusCode() >= 400) {
-                switch (resp.getStatusLine().getStatusCode()) {
-                    case HttpStatus.SC_UNAUTHORIZED:
-                        logger.error("Poll response was an Authorization Error. Check poll authorization configuration.");
-                        break;
-                    case HttpStatus.SC_BAD_REQUEST:
-                        logger.error("Received BAD request response.");
+        int attempt = 0;
+        long delay = this.initialDelay;
+
+        while (attempt <= this.maxRetries) {
+            try {
+                if (attempt > 0)
+                    logger.info("Polling " + this.endpointUrl + " (Attempt " + (attempt + 1) + ")");
+                else
+                    logger.info("Polling " + this.endpointUrl + " Acks:" + acknowledgements.size());
+
+                HttpPost pollRequest = new HttpPost(this.endpointUrl);
+                if (!this.authorization.equals("NONE")) {
+                    pollRequest.setHeader("Authorization", this.authorization);
+                }
+
+                StringEntity bodyEntity = new StringEntity(reqNode.toPrettyString(), ContentType.APPLICATION_JSON);
+                pollRequest.setEntity(bodyEntity);
+
+                try (CloseableHttpResponse resp = client.execute(pollRequest)) {
+                    int statusCode = resp.getStatusLine().getStatusCode();
+                    if (statusCode >= 400) {
+                        if (statusCode == 429 || statusCode >= 500) {
+                            logger.warn("Retryable error response: " + statusCode + " " + resp.getStatusLine().getReasonPhrase());
+                            // Fall through to retry logic below
+                        } else {
+                            // Fatal error
+                            switch (statusCode) {
+                                case HttpStatus.SC_UNAUTHORIZED:
+                                    logger.error("Poll response was an Authorization Error. Check poll authorization configuration.");
+                                    break;
+                                case HttpStatus.SC_BAD_REQUEST:
+                                    logger.error("Received BAD request response.");
+                                    HttpEntity respEntity = resp.getEntity();
+                                    if (respEntity != null) {
+                                        byte[] respBytes = respEntity.getContent().readAllBytes();
+                                        String msg = new String(respBytes);
+                                        logger.error("\n" + msg);
+                                    }
+                                    break;
+                                default:
+                                    logger.error("Error response: " + statusCode + " " + resp.getStatusLine().getReasonPhrase());
+                            }
+                            logger.error("POLLING DISABLED.");
+                            this.errorState = true;
+                            return eventMap;
+                        }
+                    } else {
+                        // Success path
+                        // Update the acks pending list
+                        if (statusCode == HttpStatus.SC_OK && !acknowledgements.isEmpty()) {
+                            logger.info("Updating acknowledgments");
+                            for (String item : acknowledgements) {
+                                SignalsEventHandler.acksPending.remove(item);
+                            }
+                        }
                         HttpEntity respEntity = resp.getEntity();
                         if (respEntity != null) {
                             byte[] respBytes = respEntity.getContent().readAllBytes();
-                            String msg = new String(respBytes);
-                            logger.error("\n" + msg);
-                        }
-                        break;
-                    default:
-                        logger.error("Error response: " + resp.getStatusLine().getStatusCode() + " " + resp.getStatusLine().getReasonPhrase());
-                }
-                logger.error("POLLING DISABLED.");
-                this.errorState = true;
-                return eventMap;
-            }
-            // Update the acks pending list
-            if (resp.getStatusLine().getStatusCode() == HttpStatus.SC_OK && !requestedAck.isEmpty()) {
-                logger.info("Updating acknowledgments");
-                for (String item : requestedAck) {
-                    SignalsEventHandler.acksPending.remove(item);
-                }
-            }
-            HttpEntity respEntity = resp.getEntity();
-            byte[] respBytes = respEntity.getContent().readAllBytes();
-            JsonNode respNode = JsonUtil.getJsonTree(respBytes);
-            JsonNode setNode = respNode.get("sets");
+                            JsonNode respNode = JsonUtil.getJsonTree(respBytes);
+                            JsonNode setNode = respNode.get("sets");
 
-            for (JsonNode item : setNode) {
-                String tokenEncoded = item.textValue();
-                try {
-                    SecurityEventToken token = new SecurityEventToken(tokenEncoded, this.issuerKey, this.receiverKey);
-                    eventMap.put(token.getJti(), token);
-                    logger.info("Received Event: " + token.getJti());
-                } catch (InvalidJwtException | JoseException e) {
-                    logger.error("Invalid token received: " + e.getMessage());
-                    // TODO Need to respond with error ack
+                            if (setNode != null && setNode.isArray()) {
+                                for (JsonNode item : setNode) {
+                                    String tokenEncoded = item.textValue();
+                                    try {
+                                        SecurityEventToken token = new SecurityEventToken(tokenEncoded, this.issuerKey, this.receiverKey);
+                                        eventMap.put(token.getJti(), token);
+                                        logger.info("Received Event: " + token.getJti());
+                                    } catch (InvalidJwtException | JoseException e) {
+                                        logger.error("Invalid token received: " + e.getMessage());
+                                        // TODO Need to respond with error ack
+                                    }
+                                }
+                            }
+                        }
+                        return eventMap;
+                    }
                 }
+            } catch (IOException e) {
+                logger.warn("Communications error while polling (attempt " + (attempt + 1) + "): " + e.getMessage());
             }
-        } catch (UnsupportedEncodingException e) {
-            logger.error("Unsupported encoding exception while polling: " + e.getMessage());
-        } catch (IOException e) {
-            logger.error("Communications error while polling: " + e.getMessage());
+
+            attempt++;
+            if (attempt > this.maxRetries) {
+                logger.error("Max retries reached. POLLING DISABLED.");
+                this.errorState = true;
+                break;
+            }
+
+            try {
+                logger.info("Retrying in " + delay + "ms...");
+                Thread.sleep(delay);
+                delay = Math.min(delay * 2, maxDelay);
+            } catch (InterruptedException ie) {
+                logger.warn("Interrupted while waiting for retry");
+                Thread.currentThread().interrupt();
+                break;
+            }
         }
         return eventMap;
     }
