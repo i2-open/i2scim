@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.security.Key;
 import java.security.PublicKey;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PushStream {
     private final static Logger logger = LoggerFactory.getLogger(PushStream.class);
@@ -42,6 +43,8 @@ public class PushStream {
     @JsonIgnore
     CloseableHttpClient client = HttpClients.createDefault();
 
+    private final AtomicBoolean shuttingDown = new AtomicBoolean(false);
+
     public String toString() {
         if (endpointUrl == null || endpointUrl.isEmpty())
             return "<undefined>";
@@ -59,7 +62,7 @@ public class PushStream {
     }
 
     public boolean pushEvent(SecurityEventToken event) {
-        if (this.errorState)
+        if (this.errorState || this.shuttingDown.get())
             return false;
         if (this.aud != null)
             event.setAud(this.aud);
@@ -68,7 +71,7 @@ public class PushStream {
         if (this.endpointUrl.equals("NONE")) {
             logger.error("Push endpoint is not yet set. Waiting...");
             int i = 0;
-            while (this.endpointUrl.equals("NONE")) {
+            while (this.endpointUrl.equals("NONE") && !this.shuttingDown.get()) {
                 i++;
                 try {
                     Thread.sleep(1000);
@@ -81,6 +84,10 @@ public class PushStream {
                     logger.error("Continuing to wait for push endpoint configuration...");
                     i = 0;
                 }
+            }
+            if (this.shuttingDown.get()) {
+                logger.info("Push stream shutting down, aborting event push");
+                return false;
             }
             logger.info("SET Push endpoint set to: " + this.endpointUrl);
         }
@@ -97,7 +104,7 @@ public class PushStream {
         int attempt = 0;
         long delay = this.initialDelay;
 
-        while (attempt <= this.maxRetries) {
+        while (attempt <= this.maxRetries && !this.shuttingDown.get()) {
             try {
                 if (attempt > 0)
                     logger.info("Pushing event to " + this.endpointUrl + " (Attempt " + (attempt + 1) + ")");
@@ -135,6 +142,10 @@ public class PushStream {
                     }
                 }
             } catch (IOException e) {
+                if (this.shuttingDown.get()) {
+                    logger.info("Push stream shutting down, aborting event push");
+                    return false;
+                }
                 logger.warn("Communications error while pushing event (attempt " + (attempt + 1) + "): " + e.getMessage());
             }
 
@@ -143,6 +154,11 @@ public class PushStream {
                 logger.error("Max retries reached. Event push failed.");
                 this.errorState = true;
                 break;
+            }
+
+            if (this.shuttingDown.get()) {
+                logger.info("Push stream shutting down, aborting retry");
+                return false;
             }
 
             try {
@@ -159,6 +175,9 @@ public class PushStream {
     }
 
     public void Close() throws IOException {
+        logger.info("Closing push stream...");
+        this.shuttingDown.set(true);
+
         if (this.client != null)
             this.client.close();
     }
