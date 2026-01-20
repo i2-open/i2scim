@@ -72,7 +72,10 @@ public class PushStream {
                 i++;
                 try {
                     Thread.sleep(1000);
-                } catch (InterruptedException ignore) {
+                } catch (InterruptedException e) {
+                    logger.warn("Interrupted while waiting for push endpoint configuration");
+                    Thread.currentThread().interrupt();
+                    return false;
                 }
                 if (i == 30) {
                     logger.error("Continuing to wait for push endpoint configuration...");
