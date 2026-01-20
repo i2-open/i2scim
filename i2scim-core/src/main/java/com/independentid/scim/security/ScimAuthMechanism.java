@@ -125,10 +125,4 @@ public class ScimAuthMechanism implements HttpAuthenticationMechanism {
         return types;
     }
 
-    @Override
-    public HttpCredentialTransport getCredentialTransport() {
-        // typeTarget left blank. This does both Bearer and Basic ?? may need to revise
-        return new HttpCredentialTransport(HttpCredentialTransport.Type.AUTHORIZATION, "");
-    }
-
 }

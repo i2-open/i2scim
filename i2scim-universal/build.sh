@@ -79,7 +79,7 @@ I2SCIM_ROOT=$(pwd)
 echo "Current dir: ${I2SCIM_ROOT}"
 
 skip=true
-rtag="0.7.0-SNAPSHOT"
+rtag="0.7.2-SNAPSHOT"
 buildOnly=0
 push=0
 

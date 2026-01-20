@@ -71,7 +71,7 @@ services:
       - BASE_URL=http://goSignals1:8888/
 
   scim_cluster1:
-    image: independentid/i2scim-universal:0.7.0
+    image: independentid/i2scim-universal:0.7.2-SNAPSHOT
     container_name: scim_cluster1
     ports:
       - "9000:8080"
@@ -98,7 +98,7 @@ services:
       - scim.signals.rcv.iss.jwksUrl=http://localhost:8888/jwks/cluster.scim.example.com
       - scim.signals.pub.pem.path=/scim/issuer.pem
   scim_cluster2:
-    image: independentid/i2scim-universal:0.7.0
+    image: independentid/i2scim-universal:0.7.2-SNAPSHOT
     container_name: scim_cluster2
     ports:
       - "9001:8080"
