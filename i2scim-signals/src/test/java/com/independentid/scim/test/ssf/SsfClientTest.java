@@ -325,7 +325,7 @@ public class SsfClientTest {
                 JsonNode moreNode = respNode.get("moreAvailable");
                 assertThat(moreNode).as("No more events available - moreAvailable node null").isNull();
                 // The event should still be pending until acknowledged.
-                assertThat(MockSignalsServer.getPendingPollCnt()).as("Should still be a pending unacknowledged event").isEqualTo(1);
+                assertThat(MockSignalsServer.getUnAckedCnt()).as("Should still be a pending unacknowledged event").isEqualTo(1);
 
                 ArrayNode acks = reqNode.putArray("ack");
                 for (JsonNode item : setNode) {

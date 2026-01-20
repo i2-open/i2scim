@@ -189,7 +189,7 @@ public class PollStream {
                             JsonNode respNode = JsonUtil.getJsonTree(respBytes);
                             JsonNode setNode = respNode.get("sets");
 
-                            if (setNode != null && setNode.isArray()) {
+                            if (setNode != null && setNode.isObject()) {
                                 for (JsonNode item : setNode) {
                                     String tokenEncoded = item.textValue();
                                     try {

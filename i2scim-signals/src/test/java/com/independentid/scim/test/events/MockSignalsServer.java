@@ -72,6 +72,7 @@ public class MockSignalsServer {
     static int jwtErrs = 0;
     static int miscErrs = 0;
     static Map<String, SecurityEventToken> pollEvents = new HashMap<>();
+    static Map<String, SecurityEventToken> ackEvents = new HashMap<>();
     static int ackedCnt = 0;
     static int sent = 0;
 
@@ -334,7 +335,7 @@ public class MockSignalsServer {
             for (JsonNode node : array) {
                 String jti = node.asText();
                 // TODO should we check that the JTI is still unacked?
-                pollEvents.remove(jti);
+                ackEvents.remove(jti);
                 ackedCnt++;
                 hadAcks = true;
             }
@@ -376,6 +377,7 @@ public class MockSignalsServer {
                 logger.error(e.getMessage());
                 continue;
             }
+            ackEvents.put(jti, token);
             pollEvents.remove(jti);
             sent++;
             i++;
@@ -416,6 +418,10 @@ public class MockSignalsServer {
 
     public static int getAckedCnt() {
         return ackedCnt;
+    }
+
+    public static int getUnAckedCnt() {
+        return ackEvents.size();
     }
 
     public static int getPendingPollCnt() {
