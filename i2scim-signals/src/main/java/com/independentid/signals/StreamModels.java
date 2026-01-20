@@ -16,20 +16,18 @@ public class StreamModels {
     public static final String ReceivePoll = "urn:ietf:rfc:8936:receive";
     public static final String ReceivePush = "urn:ietf:rfc:8935:receive";
 
-    public static final String EventScimFeedAdd = "urn:ietf:params:SCIM:event:feed:add";
-    public static final String EventScimFeedRemove = "urn:ietf:params:SCIM:event:feed:remove";
-    public static final String EventScimCreateFull = "urn:ietf:params:SCIM:event:prov:create:full";
-    public static final String EventScimPutFull = "urn:ietf:params:SCIM:event:prov:put:full";
-    public static final String EventScimPatchFull = "urn:ietf:params:SCIM:event:prov:patch:full";
-    public static final String EventScimCreateNotice = "urn:ietf:params:SCIM:event:prov:create:notice";
-    public static final String EventScimPatchNotice = "urn:ietf:params:SCIM:event:prov:patch:notice";
-    public static final String EventScimPutNotice = "urn:ietf:params:SCIM:event:prov:put:notice";
-    public static final String EventScimDelete = "urn:ietf:params:SCIM:event:prov:delete";
-    public static final String EventScimActivate = "urn:ietf:params:SCIM:event:prov:activate";
-    public static final String EventScimDeactivate = "urn:ietf:params:SCIM:event:prov:deactivate";
-    public static final String EventScimSigAuthMethod = "urn:ietf:params:SCIM:event:sig:authMethod";
-    public static final String EventScimSigPwdReset = "urn:ietf:params:SCIM:event:sig:pwdReset";
-    public static final String EventScimAsyncResp = "urn:ietf:params:SCIM:event:misc:asyncResp";
+    public static final String EventScimFeedAdd = EventTypes.FEED_ADD;
+    public static final String EventScimFeedRemove = EventTypes.FEED_REMOVE;
+    public static final String EventScimCreateFull = EventTypes.PROV_CREATE_FULL;
+    public static final String EventScimPutFull = EventTypes.PROV_PUT_FULL;
+    public static final String EventScimPatchFull = EventTypes.PROV_PATCH_FULL;
+    public static final String EventScimCreateNotice = EventTypes.PROV_CREATE_NOTICE;
+    public static final String EventScimPatchNotice = EventTypes.PROV_PATCH_NOTICE;
+    public static final String EventScimPutNotice = EventTypes.PROV_PUT_NOTICE;
+    public static final String EventScimDelete = EventTypes.PROV_DELETE;
+    public static final String EventScimActivate = EventTypes.PROV_ACTIVATE;
+    public static final String EventScimDeactivate = EventTypes.PROV_DEACTIVATE;
+    public static final String EventScimAsyncResp = EventTypes.MISC_ASYNC_RESP;
 
     public static ArrayList<String> GetScimEventTypes(boolean inputEvents) {
         ArrayList<String> events = new ArrayList<>();

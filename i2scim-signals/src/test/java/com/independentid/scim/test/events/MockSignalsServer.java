@@ -20,6 +20,7 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.UriInfo;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -94,14 +95,13 @@ public class MockSignalsServer {
     @Path(SSF_IAT)
     @Produces(MediaType.APPLICATION_JSON)
     @PermitAll
-    public Response getIat(@Context HttpServletRequest req) {
-        String authz = req.getHeader("Authorization");
+    public Response getIat(@HeaderParam("Authorization") String authz) {
         SsfAuthorizationToken.AuthContext authContext = null;
         if (authz != null) {
             String[] scopes = new String[1];
             scopes[0] = "admin";
             try {
-                authContext = this.authIssuer.ValidateAuthorization(req, scopes);
+                authContext = this.authIssuer.ValidateAuthorization(authz, scopes);
             } catch (UnauthorizedException e) {
                 logger.error(e.getMessage());
                 return Response.status(Response.Status.UNAUTHORIZED.getStatusCode(), e.getMessage()).build();
@@ -126,14 +126,13 @@ public class MockSignalsServer {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @PermitAll
-    public Response registerClient(@Context HttpServletRequest req) {
-        String authz = req.getHeader("Authorization");
+    public Response registerClient(@HeaderParam("Authorization") String authz, StreamModels.RegisterParameters regParams) {
         SsfAuthorizationToken.AuthContext authContext = null;
         if (authz != null) {
             String[] scopes = new String[1];
             scopes[0] = "reg";
             try {
-                authContext = authIssuer.ValidateAuthorization(req, scopes);
+                authContext = authIssuer.ValidateAuthorization(authz, scopes);
             } catch (UnauthorizedException e) {
                 return Response.status(Response.Status.UNAUTHORIZED).build();
             }
@@ -143,20 +142,8 @@ public class MockSignalsServer {
             logger.info("Missing authorization header");
             Response.status(Response.Status.UNAUTHORIZED.getStatusCode(), "Missing authorization header");
         }
-        InputStream bodyStream = null;
-        try {
-            bodyStream = req.getInputStream();
-        } catch (IOException e) {
-            return Response.status(Response.Status.BAD_REQUEST.getStatusCode(), "Missing request body: " + e.getMessage()).build();
-        }
-        if (bodyStream != null) {
-            StreamModels.RegisterParameters regParams;
-            try {
-                regParams = JsonUtil.getMapper().readValue(bodyStream, StreamModels.RegisterParameters.class);
 
-            } catch (IOException e) {
-                return Response.status(Response.Status.BAD_REQUEST.getStatusCode(), "Invalid input: " + e.getMessage()).build();
-            }
+        if (regParams != null) {
 
             assert authContext != null;
             try {
@@ -199,11 +186,11 @@ public class MockSignalsServer {
     @Path(SSF_WELLKNOWN)
     @Produces(MediaType.APPLICATION_JSON)
     @PermitAll
-    public Response getWellKnown(@Context HttpServletRequest req) {
+    public Response getWellKnown(@Context UriInfo uriInfo) {
 
         StreamModels.TransmitterConfig config = new StreamModels.TransmitterConfig();
 
-        config.client_registration_endpoint = mapPathToServer(req, SSF_REG, SSF_WELLKNOWN);
+        config.client_registration_endpoint = mapPathToServer(uriInfo, SSF_REG, SSF_WELLKNOWN);
 
         config.issuer = this.pubIssuer;
 
@@ -211,7 +198,7 @@ public class MockSignalsServer {
         methods.add(DeliveryPoll);
         methods.add(ReceivePush);
         config.delivery_methods_supported = methods;
-        config.configuration_endpoint = mapPathToServer(req, SSF_CONFIG, SSF_WELLKNOWN);
+        config.configuration_endpoint = mapPathToServer(uriInfo, SSF_CONFIG, SSF_WELLKNOWN);
 
 
         try {
@@ -222,54 +209,39 @@ public class MockSignalsServer {
         }
     }
 
-    private String mapPathToServer(HttpServletRequest req, String newPath, String curPath) {
-        StringBuffer urlBuf = req.getRequestURL();
-        int trimIndex = urlBuf.indexOf(curPath);
-        return urlBuf.substring(0, trimIndex) + newPath;
+    private String mapPathToServer(UriInfo uriInfo, String newPath, String curPath) {
+        String requestUri = uriInfo.getRequestUri().toString();
+        int trimIndex = requestUri.indexOf(curPath);
+        return requestUri.substring(0, trimIndex) + newPath;
     }
 
     @POST
     @Path(SSF_CONFIG)
-    // @Consumes(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @PermitAll
-    public Response createStream(@Context HttpServletRequest req) {
-        String authz = req.getHeader("Authorization");
+    public Response createStream(@HeaderParam("Authorization") String authz, @Context UriInfo uriInfo, StreamModels.StreamConfig configRequest) {
         SsfAuthorizationToken.AuthContext authContext = null;
         if (authz != null) {
             String[] scopes = new String[2];
             scopes[0] = "reg";
             scopes[1] = "admin";
             try {
-                authContext = this.authIssuer.ValidateAuthorization(req, scopes);
+                authContext = this.authIssuer.ValidateAuthorization(authz, scopes);
             } catch (UnauthorizedException e) {
                 return Response.status(Response.Status.UNAUTHORIZED).build();
             }
             if (authContext == null)
                 return Response.status(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), "AuthContext was null").build();
         }
-        InputStream bodyStream = null;
-        try {
-            bodyStream = req.getInputStream();
-        } catch (IOException e) {
-            return Response.status(Response.Status.BAD_REQUEST.getStatusCode(), "Missing request body: " + e.getMessage()).build();
-        }
-        if (bodyStream != null) {
-            StreamModels.StreamConfig configRequest;
-            try {
-                configRequest = JsonUtil.getMapper().readValue(bodyStream, StreamModels.StreamConfig.class);
 
-            } catch (IOException e) {
-                return Response.status(Response.Status.BAD_REQUEST.getStatusCode(), "Invalid input: " + e.getMessage()).build();
-            }
-            if (configRequest == null)
-                return Response.status(Response.Status.BAD_REQUEST.getStatusCode(), "Invalid input: expecting Stream Config Json").build();
+        if (configRequest != null) {
             switch (configRequest.Delivery.Method) {
                 case DeliveryPoll:
-                    configRequest.Delivery.EndpointUrl = mapPathToServer(req, SSF_POLL, SSF_CONFIG);
+                    configRequest.Delivery.EndpointUrl = mapPathToServer(uriInfo, SSF_POLL, SSF_CONFIG);
                     break;
                 case ReceivePush:
-                    configRequest.Delivery.EndpointUrl = mapPathToServer(req, SSF_PUSH, SSF_CONFIG);
+                    configRequest.Delivery.EndpointUrl = mapPathToServer(uriInfo, SSF_PUSH, SSF_CONFIG);
             }
             configRequest.Id = UUID.randomUUID().toString();
             configRequest.Delivery.AuthorizationHeader = "Bearer nothingToBear";
@@ -345,18 +317,14 @@ public class MockSignalsServer {
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
     @PermitAll
-    public Response pollRequest(@Context HttpServletRequest req) {
+    public Response pollRequest(String body) {
 
-        InputStream bodyStream = null;
         JsonNode pollJson;
         try {
-            bodyStream = req.getInputStream();
-            pollJson = JsonUtil.getJsonTree(bodyStream);
-        } catch (JsonProcessingException e) {
+            pollJson = JsonUtil.getJsonTree(body.getBytes());
+        } catch (IOException e) {
             logger.error("Unexpected error at polling endpoint: " + e.getMessage(), e);
             return Response.status(Response.Status.BAD_REQUEST.getStatusCode(), "Invalid JSON: " + e.getMessage()).build();
-        } catch (IOException e) {
-            return Response.status(Response.Status.BAD_REQUEST.getStatusCode(), "Missing request body: " + e.getMessage()).build();
         }
 
         JsonNode ackNode = pollJson.get("ack");
@@ -381,7 +349,7 @@ public class MockSignalsServer {
             doWait = !returnImmediately.asBoolean();
         if (hadAcks) doWait = false; // we don't want to wait if there were acks.
         int waitCnt = 0;
-        while (pollEvents.size() == 0 && doWait && waitCnt < 5) {
+        while (pollEvents.isEmpty() && doWait && waitCnt < 5) {
             waitCnt++;
             logger.info("Waiting for events...");
             try {
@@ -389,15 +357,16 @@ public class MockSignalsServer {
             } catch (InterruptedException ignored) {
             }
         }
-        if (pollEvents.size() == 0) {
-            String body = "{\"sets\":{}}";
-            return Response.ok(body, MediaType.TEXT_PLAIN_TYPE).build();
+        if (pollEvents.isEmpty()) {
+            String emptyResponse = "{\"sets\":{}}";
+            return Response.ok(emptyResponse, MediaType.TEXT_PLAIN_TYPE).build();
         }
         ObjectNode respNode = JsonUtil.getMapper().createObjectNode();
         ObjectNode setsNode = JsonUtil.getMapper().createObjectNode();
 
         int i = 0;
-        for (String jti : pollEvents.keySet()) {
+        Set<String> set = new HashSet<>(pollEvents.keySet());
+        for (String jti : set) {
             SecurityEventToken token = pollEvents.get(jti);
             try {
                 // For this test, we use the same key as push stream to sign the event
@@ -407,6 +376,7 @@ public class MockSignalsServer {
                 logger.error(e.getMessage());
                 continue;
             }
+            pollEvents.remove(jti);
             sent++;
             i++;
             if (i == maxItems) break;
@@ -416,9 +386,7 @@ public class MockSignalsServer {
             respNode.put("moreAvailable", true);
         }
 
-        StringEntity body = new StringEntity(respNode.toPrettyString(), ContentType.DEFAULT_TEXT);
         return Response.ok(respNode.toPrettyString(), MediaType.TEXT_PLAIN_TYPE).build();
-        //.status(200).entity(body).build();
 
     }
 

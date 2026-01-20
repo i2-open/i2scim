@@ -84,6 +84,7 @@ public class ScimAuthMechanism implements HttpAuthenticationMechanism {
             return Uni.createFrom().item(identity);
         }
 
+        System.out.println("***************Authorization header: " + authz);
         String prefix = authz.substring(0,6).toLowerCase(Locale.ENGLISH);
 
         if (prefix.equals("bearer")) {

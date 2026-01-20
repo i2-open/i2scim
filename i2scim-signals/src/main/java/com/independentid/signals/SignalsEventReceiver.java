@@ -41,6 +41,8 @@ public class SignalsEventReceiver implements Runnable {
 
     SsfHandler ssfClient;
 
+    Thread pollingThread;
+
     public SignalsEventReceiver(ConfigMgr config, SignalsEventHandler handler, SsfHandler client) {
         this.cmgr = config;
         this.eventHandler = handler;
@@ -56,8 +58,8 @@ public class SignalsEventReceiver implements Runnable {
         //Ensure Operation class parser ready to go...
         Operation.initialize(cmgr);
 
-        Thread t = new Thread(this);
-        t.start();  // Start the receiver thread!
+        pollingThread = new Thread(this);
+        pollingThread.start();  // Start the receiver thread!
     }
 
     @Override
@@ -66,18 +68,41 @@ public class SignalsEventReceiver implements Runnable {
         try {
             // When in test mode, give the web server a chance to start.
             Thread.sleep(2000);
-        } catch (InterruptedException ignore) {
+        } catch (InterruptedException e) {
+            // Only exit if shutdown was actually requested
+            if (closeRequest.get()) {
+                logger.info("Polling receiver interrupted during startup - shutdown requested");
+                closed.set(true);
+                return;
+            }
+            // Otherwise, clear interrupt status and continue
+            logger.debug("Polling receiver interrupted during startup sleep, continuing");
+            Thread.interrupted(); // Clear the interrupt status
         }
 
         while (!closeRequest.get() && !this.ssfClient.getPollStream().errorState) {
             if (eventHandler.ready) {
-                Map<String, SecurityEventToken> events = this.ssfClient.getPollStream().pollEvents(SignalsEventHandler.acksPending, false);
+                try {
+                    Map<String, SecurityEventToken> events = this.ssfClient.getPollStream().pollEvents(SignalsEventHandler.acksPending, false);
 
-                for (SecurityEventToken event : events.values()) {
-                    eventHandler.consume(event);
+                    for (SecurityEventToken event : events.values()) {
+                        eventHandler.consume(event);
+                    }
+                } catch (Exception e) {
+                    if (closeRequest.get()) {
+                        logger.info("Polling interrupted during event processing - shutdown requested");
+                        break;
+                    }
+                    // Check if interrupted but shutdown not requested - clear and continue
+                    if (Thread.currentThread().isInterrupted()) {
+                        logger.debug("Thread interrupted but no shutdown requested, clearing interrupt status");
+                        Thread.interrupted(); // Clear interrupt status
+                    }
+                    logger.warn("Error processing events: " + e.getMessage());
                 }
             }
         }
+        logger.info("Polling receiver shutting down");
         closed.set(true);
 
     }
@@ -86,23 +111,38 @@ public class SignalsEventReceiver implements Runnable {
     // Shutdown hook which can be called from a separate thread
 
     public void shutdown() {
+        logger.info("Shutdown requested for polling receiver");
         closeRequest.set(true);
-        int i = 0;
-        while (!closed.get()) {
-            i++;
-            if (i > 10) {
-                logger.info("Waiting for polling thread to close...");
-                i = 0;
-            }
+
+        // Interrupt the polling thread to break out of any blocking operations
+        if (pollingThread != null && pollingThread.isAlive()) {
+            pollingThread.interrupt();
+        }
+
+        // Wait for the thread to finish with a timeout
+        int maxWaitSeconds = 10;
+        int waitCount = 0;
+        while (!closed.get() && waitCount < maxWaitSeconds * 10) {
+            waitCount++;
             try {
                 Thread.sleep(100);
             } catch (InterruptedException ignore) {
             }
         }
 
+        if (!closed.get()) {
+            logger.warn("Polling thread did not shut down within " + maxWaitSeconds + " seconds. Forcing shutdown.");
+        } else {
+            logger.info("Polling receiver shut down successfully");
+        }
+
         // Now ack any processed events....
         if (!SignalsEventHandler.acksPending.isEmpty()) {
-            this.ssfClient.getPollStream().pollEvents(SignalsEventHandler.acksPending, true);
+            try {
+                this.ssfClient.getPollStream().pollEvents(SignalsEventHandler.acksPending, true);
+            } catch (Exception e) {
+                logger.warn("Error acknowledging pending events during shutdown: " + e.getMessage());
+            }
         }
 
         try {

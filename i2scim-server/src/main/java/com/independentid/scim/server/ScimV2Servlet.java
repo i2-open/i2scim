@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.UUID;
 
 /**
  * @author pjdhunt
@@ -277,15 +278,58 @@ public class ScimV2Servlet extends HttpServlet {
 	@Timed (name="opsTimer",description = "Measures SCIM operation times (all types)")
 	protected void complete (Operation op) throws IOException {
 
+		// Check if this is an async request
+		if (op.isAsyncRequest()) {
+			completeAsync(op);
+			return;
+		}
+
+		// Standard synchronous completion
 		pool.addJobAndWait(op);
 
 		checkDone(op);
 
 		JsonGenerator gen = JsonUtil.getGenerator(op.getResponse().getWriter(), false);
-		op.doResponse(gen); 
+		op.doResponse(gen);
 
 		gen.flush();
 		gen.close();
+	}
+
+	/**
+	 * Handles asynchronous SCIM requests per draft-ietf-scim-events Section 2.5.1.
+	 * Returns HTTP 202 Accepted with Set-Txn header and processes operation asynchronously.
+	 *
+	 * @param op The SCIM operation to complete asynchronously
+	 * @throws IOException if there's an error setting response headers
+	 */
+	protected void completeAsync(Operation op) throws IOException {
+		// Generate unique transaction ID for event correlation
+		String txnId = UUID.randomUUID().toString().replace("-", "");
+		op.setTxnId(txnId);
+
+		// Set HTTP 202 Accepted response
+		HttpServletResponse resp = op.getResponse();
+		resp.setStatus(HttpStatus.SC_ACCEPTED);
+
+		// Set required headers per draft-ietf-scim-events
+		resp.setHeader("Set-Txn", txnId);
+		resp.setHeader("Preference-Applied", "respond-async");
+
+		// Set Location header to the resource path (not dependent on operation completion)
+		// Use the request path which represents where the resource will be/is located
+		String location = op.getRequestCtx().getPath();
+		if (location != null && !location.isEmpty()) {
+			resp.setHeader("Location", location);
+		}
+
+		// No response body for 202 Accepted
+		// Operation will be processed asynchronously and event will be sent with matching txn
+
+		// Submit operation for async processing
+		pool.addJob(op);
+
+		logger.info("Async request accepted with txn: " + txnId);
 	}
 
 

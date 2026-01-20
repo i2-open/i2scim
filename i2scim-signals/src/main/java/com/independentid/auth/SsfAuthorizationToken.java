@@ -391,9 +391,11 @@ public class SsfAuthorizationToken {
         }
 
         public AuthContext ValidateAuthorization(HttpServletRequest req, String[] acceptedScopes) throws UnauthorizedException {
-
             String authorization = req.getHeader("Authorization");
+            return ValidateAuthorization(authorization, acceptedScopes);
+        }
 
+        public AuthContext ValidateAuthorization(String authorization, String[] acceptedScopes) throws UnauthorizedException {
             if (authorization == null) return null;
 
             String[] parts = authorization.split(" ");
