@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.fail;
 @TestProfile(SignalsEventTestProfile.class)
 @TestMethodOrder(MethodOrderer.MethodName.class)
 public class SignalsEventHandlerTest {
-    private final static Logger logger = LoggerFactory.getLogger(SignalsEventHandler.class);
+    private final static Logger logger = LoggerFactory.getLogger(SignalsEventHandlerTest.class);
     private static final String testUserFile1 = "classpath:/data/TestUser-bjensen.json";
     private static final String testUserFile2 = "classpath:/data/TestUser-jsmith.json";
 
@@ -55,14 +55,13 @@ public class SignalsEventHandlerTest {
     public void a_TestHello() {
         utils.resetMemDirectory();
 
-        CloseableHttpClient client = HttpClients.createDefault();
-
-        HttpGet get = new HttpGet("http://localhost:8081/signals/hello");
-        try {
-            CloseableHttpResponse resp = client.execute(get);
-            assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(200);
-            String body = new String(resp.getEntity().getContent().readAllBytes());
-            assertThat(body).isEqualTo("Hello there");
+        try (CloseableHttpClient client = HttpClients.createDefault()) {
+            HttpGet get = new HttpGet("http://localhost:8081/signals/hello");
+            try (CloseableHttpResponse resp = client.execute(get)) {
+                assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(200);
+                String body = new String(resp.getEntity().getContent().readAllBytes());
+                assertThat(body).isEqualTo("Hello there");
+            }
         } catch (IOException e) {
             fail(e.getMessage());
         }

@@ -157,6 +157,13 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 
 			this.ops.add(op); // add to the list of operations
 
+			// For async bulk requests, set txn with operation index per draft-ietf-scim-events
+			if (this.isAsyncRequest() && this.getTxnId() != null) {
+				String opTxn = this.getTxnId() + ":" + (requestNum - 1); // Zero-based index
+				op.setTxnId(opTxn);
+				op.setAsyncRequest(true);
+			}
+
 			String bulkId = op.getBulkId();
 			if (bulkId != null) {
 				// Check if this is a repeat bulkId

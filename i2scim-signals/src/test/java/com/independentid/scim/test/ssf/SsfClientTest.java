@@ -79,7 +79,6 @@ public class SsfClientTest {
     @Inject
     ConfigMgr configMgr;
 
-    CloseableHttpClient client = HttpClients.createDefault();
     // The following is a copy of StreamHandler
 
     Key issuerKey;
@@ -188,19 +187,21 @@ public class SsfClientTest {
 
         assertThat(configProps.getMode()).isEqualTo(Mode_SsfAuto);
 
-        HttpGet req = new HttpGet(this.iatPath);
-        CloseableHttpResponse resp = client.execute(req);
-        assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(200);
+        try (CloseableHttpClient client = HttpClients.createDefault()) {
+            HttpGet req = new HttpGet(this.iatPath);
+            try (CloseableHttpResponse resp = client.execute(req)) {
+                assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(200);
 
-        HttpEntity entity = resp.getEntity();
+                HttpEntity entity = resp.getEntity();
 
-        JsonNode rootNode = JsonUtil.getJsonTree(entity.getContent());
-        assertThat(resp).isNotNull();
-        JsonNode tokenNode = rootNode.get("token");
-        resp.close();
+                JsonNode rootNode = JsonUtil.getJsonTree(entity.getContent());
+                assertThat(resp).isNotNull();
+                JsonNode tokenNode = rootNode.get("token");
 
-        configProps.ssfUrl = ssfUrl.toString();
-        configProps.ssfAuthorization = "Bearer " + tokenNode.asText();
+                configProps.ssfUrl = ssfUrl.toString();
+                configProps.ssfAuthorization = "Bearer " + tokenNode.asText();
+            }
+        }
 
         ssfClient = SsfHandler.Open(configProps);
         assertThat(ssfClient).isNotNull();
@@ -251,47 +252,40 @@ public class SsfClientTest {
         assertThat(signed).isNotNull();
 
         StringEntity bodyEntity = new StringEntity(signed, ContentType.create("application/secevent+jwt"));
-        CloseableHttpClient client = HttpClients.createDefault();
 
-        HttpPost req = new HttpPost(ssfClient.getPushStream().endpointUrl);
-        req.setHeader("Authorization", ssfClient.getPushStream().authorization);
-        req.setEntity(bodyEntity);
+        try (CloseableHttpClient client = HttpClients.createDefault()) {
+            HttpPost req = new HttpPost(ssfClient.getPushStream().endpointUrl);
+            req.setHeader("Authorization", ssfClient.getPushStream().authorization);
+            req.setEntity(bodyEntity);
 
-        try {
-            CloseableHttpResponse resp = client.execute(req);
+            try (CloseableHttpResponse resp = client.execute(req)) {
+                assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_ACCEPTED);
+                assertThat(MockSignalsServer.getReceived()).isEqualTo(1);
+            }
 
-            assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_ACCEPTED);
-            resp.close();
-            assertThat(MockSignalsServer.getReceived()).isEqualTo(1);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+            // unsigned test
+            String tokenString = "";
+            try {
+                tokenString = token.JWS(null);
+                logger.info("Unsigned token:\n" + signed);
 
-        // unsigned test
-        String tokenString = "";
-        try {
-            tokenString = token.JWS(null);
-            logger.info("Unsigned token:\n" + signed);
+            } catch (JoseException | MalformedClaimException e) {
+                fail("Token was not signed: " + e.getMessage());
+            }
 
-        } catch (JoseException | MalformedClaimException e) {
-            fail("Token was not signed: " + e.getMessage());
-        }
+            bodyEntity = new StringEntity(tokenString, ContentType.create("application/secevent+jwt"));
+            req = new HttpPost(ssfClient.getPushStream().endpointUrl);
+            req.setHeader("Authorization", ssfClient.getPushStream().authorization);
+            req.setEntity(bodyEntity);
 
-        bodyEntity = new StringEntity(tokenString, ContentType.create("application/secevent+jwt"));
-        req = new HttpPost(ssfClient.getPushStream().endpointUrl);
-        req.setHeader("Authorization", ssfClient.getPushStream().authorization);
-        req.setEntity(bodyEntity);
-
-        try {
-            CloseableHttpResponse resp = client.execute(req);
-            assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_BAD_REQUEST);
-            assertThat(MockSignalsServer.getJwtErrs()).isEqualTo(1);
-            assertThat(MockSignalsServer.getTotalReceivedEvents()).isEqualTo(2);
-            resp.close();
+            try (CloseableHttpResponse resp = client.execute(req)) {
+                assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_BAD_REQUEST);
+                assertThat(MockSignalsServer.getJwtErrs()).isEqualTo(1);
+                assertThat(MockSignalsServer.getTotalReceivedEvents()).isEqualTo(2);
+            }
         } catch (IOException e) {
             fail(e.getMessage());
         }
-        client.close();
     }
 
 
@@ -300,8 +294,6 @@ public class SsfClientTest {
      */
     @Test
     public void f_TestMockPollEvent() {
-        CloseableHttpClient client = HttpClients.createDefault();
-
         assertThat(MockSignalsServer.getPendingPollCnt()).isEqualTo(1);
 
         PublicKey issuerPublicKey = ssfClient.getPollStream().issuerKey;
@@ -311,39 +303,40 @@ public class SsfClientTest {
         reqNode.put("maxEvents", 5);
         reqNode.put("returnImmediately", true);
 
-        try {
+        try (CloseableHttpClient client = HttpClients.createDefault()) {
             StringEntity body = new StringEntity(reqNode.toPrettyString(), ContentType.APPLICATION_JSON);
             HttpPost pollRequest = new HttpPost(ssfClient.getPollStream().endpointUrl);
             pollRequest.setHeader("Authorization", ssfClient.getPollStream().authorization);
             pollRequest.setEntity(body);
 
             Instant start = Instant.now();
-            CloseableHttpResponse resp = client.execute(pollRequest);
-            Instant finish = Instant.now();
-            long msecs = finish.toEpochMilli() - start.toEpochMilli();
-            assertThat(msecs).as("Check return immediately").isLessThan(500);
+            try (CloseableHttpResponse resp = client.execute(pollRequest)) {
+                Instant finish = Instant.now();
+                long msecs = finish.toEpochMilli() - start.toEpochMilli();
+                assertThat(msecs).as("Check return immediately").isLessThan(500);
 
-            HttpEntity respEntity = resp.getEntity();
-            byte[] respBytes = respEntity.getContent().readAllBytes();
-            JsonNode respNode = JsonUtil.getJsonTree(respBytes);
-            JsonNode setNode = respNode.get("sets");
-            assertThat(setNode).isNotNull();
-            assertThat(setNode.isObject()).isTrue();
-            assertThat(setNode.size()).as("Should be no sets").isEqualTo(1);
-            JsonNode moreNode = respNode.get("moreAvailable");
-            assertThat(moreNode).as("No more events available - moreAvailable node null").isNull();
-            // The event should still be pending until acknowledged.
-            assertThat(MockSignalsServer.getPendingPollCnt()).as("Should still be a pending unacknowledged event").isEqualTo(1);
+                HttpEntity respEntity = resp.getEntity();
+                byte[] respBytes = respEntity.getContent().readAllBytes();
+                JsonNode respNode = JsonUtil.getJsonTree(respBytes);
+                JsonNode setNode = respNode.get("sets");
+                assertThat(setNode).isNotNull();
+                assertThat(setNode.isObject()).isTrue();
+                assertThat(setNode.size()).as("Should be no sets").isEqualTo(1);
+                JsonNode moreNode = respNode.get("moreAvailable");
+                assertThat(moreNode).as("No more events available - moreAvailable node null").isNull();
+                // The event should still be pending until acknowledged.
+                assertThat(MockSignalsServer.getUnAckedCnt()).as("Should still be a pending unacknowledged event").isEqualTo(1);
 
-            ArrayNode acks = reqNode.putArray("ack");
-            for (JsonNode item : setNode) {
-                String value = item.textValue();
-                try {
-                    SecurityEventToken token = new SecurityEventToken(value, issuerPublicKey, null);
-                    acks.add(token.getJti());
-                    logger.info("Token received: \n" + token.toPrettyString());
-                } catch (InvalidJwtException | JoseException e) {
-                    fail("Failed to validate received token: " + e.getMessage());
+                ArrayNode acks = reqNode.putArray("ack");
+                for (JsonNode item : setNode) {
+                    String value = item.textValue();
+                    try {
+                        SecurityEventToken token = new SecurityEventToken(value, issuerPublicKey, null);
+                        acks.add(token.getJti());
+                        logger.info("Token received: \n" + token.toPrettyString());
+                    } catch (InvalidJwtException | JoseException e) {
+                        fail("Failed to validate received token: " + e.getMessage());
+                    }
                 }
             }
 
@@ -353,18 +346,17 @@ public class SsfClientTest {
             pollRequest = new HttpPost(ssfClient.getPollStream().endpointUrl);
             pollRequest.setHeader("Authorization", ssfClient.getPollStream().authorization);
             pollRequest.setEntity(body);
-            resp = client.execute(pollRequest);
-            assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(200);
-            assertThat(MockSignalsServer.getPendingPollCnt()).isEqualTo(0);
+            try (CloseableHttpResponse resp = client.execute(pollRequest)) {
+                assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(200);
+                assertThat(MockSignalsServer.getPendingPollCnt()).isEqualTo(0);
 
-            respEntity = resp.getEntity();
-            respBytes = respEntity.getContent().readAllBytes();
-            respNode = JsonUtil.getJsonTree(respBytes);
-            setNode = respNode.get("sets");
-            assertThat(setNode.size()).as("Should be no new sets").isEqualTo(0);
-            logger.info("All events acked and received");
-
-            client.close();
+                HttpEntity respEntity = resp.getEntity();
+                byte[] respBytes = respEntity.getContent().readAllBytes();
+                JsonNode respNode = JsonUtil.getJsonTree(respBytes);
+                JsonNode setNode = respNode.get("sets");
+                assertThat(setNode.size()).as("Should be no new sets").isEqualTo(0);
+                logger.info("All events acked and received");
+            }
         } catch (UnsupportedEncodingException ignored) {
         } catch (IOException e) {
             fail(e.getMessage());

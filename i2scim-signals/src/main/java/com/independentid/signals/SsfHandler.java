@@ -190,6 +190,7 @@ public class SsfHandler {
         JsonUtil.getMapper().writeValue(configWriter, config);
         StringEntity entity = new StringEntity(configWriter.toString());
         createPost.setEntity(entity);
+        createPost.setHeader("Content-Type", MediaType.APPLICATION_JSON);
         createPost.setHeader("Authorization", "Bearer " + this.clientToken);
 
         CloseableHttpResponse resp = this.client.execute(createPost);
@@ -229,6 +230,7 @@ public class SsfHandler {
         JsonUtil.getMapper().writeValue(configWriter, config);
         StringEntity entity = new StringEntity(configWriter.toString());
         createPost.setEntity(entity);
+        createPost.setHeader("Content-Type", MediaType.APPLICATION_JSON);
         createPost.setHeader("Authorization", "Bearer " + this.clientToken);
 
         CloseableHttpResponse resp = this.client.execute(createPost);
@@ -256,7 +258,7 @@ public class SsfHandler {
         try {
             gen = JsonUtil.getGenerator(stringWriter, true);
             gen.writeStartObject();
-            gen.writeStringField("description", "i2scim.io v0.7.0-dev");
+            gen.writeStringField("description", "i2scim.io v0.8.0");
             gen.writeArrayFieldStart("scopes");
             gen.writeString("admin");
             gen.writeString("stream");

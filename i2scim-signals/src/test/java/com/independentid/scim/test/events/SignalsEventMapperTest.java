@@ -121,7 +121,7 @@ public class SignalsEventMapperTest {
             res1 = op.getTransactionResource();  // Update with newly modified value
             node1 = res1.toJsonNode(op.getRequestCtx());
             assertThat(jsonString).contains(id1);
-            assertThat(jsonString).contains("urn:ietf:params:SCIM:event:prov:create:full");
+            assertThat(jsonString).contains("urn:ietf:params:scim:event:prov:create:full");
 
             SecurityEventToken noticeEvent = events.get(1);
             AtomicBoolean hasNotice = new AtomicBoolean(false);
@@ -228,7 +228,7 @@ public class SignalsEventMapperTest {
 
             assert event != null;
             String jsonString = event.toPrettyString();
-            assertThat(jsonString).contains("urn:ietf:params:SCIM:event:prov:delete");
+            assertThat(jsonString).contains("urn:ietf:params:scim:event:prov:delete");
             assertThat(jsonString).contains(id1);
             logger.info("Result:\n" + ((jsonString != null) ? jsonString : "NULL"));
         } catch (ScimException e) {

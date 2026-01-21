@@ -21,18 +21,18 @@
     <artifactId>i2scim-tests</artifactId>
 
     <groupId>com.independentid</groupId>
-    <version>0.7.2-SNAPSHOT</version>
+    <version>0.8.0</version>
     <properties>
         <compiler-plugin.version>3.13.0</compiler-plugin.version>
-        <maven.compiler.release>24</maven.compiler.release>
+        <maven.compiler.release>21</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.30.6</quarkus.platform.version>
+        <quarkus.platform.version>3.15.1</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.2</surefire-plugin.version>
-        <i2scim.version>0.7.2-SNAPSHOT</i2scim.version>
+        <i2scim.version>0.8.0</i2scim.version>
     </properties>
     <scm>
         <connection>scm:git:https://github.com/i2-open/i2scim.git</connection>
@@ -62,28 +62,28 @@
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-core</artifactId>
-            <version>0.7.2-SNAPSHOT</version>
+            <version>0.8.0</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-server</artifactId>
-            <version>0.7.2-SNAPSHOT</version>
+            <version>0.8.0</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-prov-memory</artifactId>
-            <version>0.7.2-SNAPSHOT</version>
+            <version>0.8.0</version>
             <scope>test</scope>
         </dependency>
 
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-prov-mongo</artifactId>
-            <version>0.7.2-SNAPSHOT</version>
+            <version>0.8.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -116,7 +116,7 @@
         <dependency>
             <groupId>com.independentid</groupId>
             <artifactId>i2scim-client</artifactId>
-            <version>0.7.2-SNAPSHOT</version>
+            <version>0.8.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>

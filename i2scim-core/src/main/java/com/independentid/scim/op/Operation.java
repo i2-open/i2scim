@@ -100,6 +100,10 @@ public class Operation extends RecursiveAction {
     protected String bulkExecNumber = null;
     protected ArrayList<Operation> predicateOps;
 
+    // Async request support - transaction ID for event correlation
+    private String txnId = null;
+    private boolean asyncRequest = false;
+
     public static void initialize(ConfigMgr configMgr) {
         Operation.configMgr = configMgr;
         Operation.schemaManager = configMgr.getSchemaManager();
@@ -284,6 +288,45 @@ public class Operation extends RecursiveAction {
      */
     public ResourceType getResourceType() {
         return schemaManager.getResourceTypeByPath(ctx.getResourceContainer());
+    }
+
+    /**
+     * @return The transaction ID for async event correlation, or null if not set
+     */
+    public String getTxnId() {
+        return this.txnId;
+    }
+
+    /**
+     * Sets the transaction ID for async event correlation.
+     * Also updates the RequestCtx transaction ID.
+     * @param txn The transaction ID to set
+     */
+    public void setTxnId(String txn) {
+        this.txnId = txn;
+        if (this.ctx != null) {
+            this.ctx.setTranId(txn);
+        }
+    }
+
+    /**
+     * Checks if this is an asynchronous request by looking for the Prefer: respond-async header
+     * @return true if the request has Prefer: respond-async header
+     */
+    public boolean isAsyncRequest() {
+        if (this.req == null) {
+            return this.asyncRequest; // Bulk operations set this explicitly
+        }
+        String preferHeader = this.req.getHeader("Prefer");
+        return preferHeader != null && preferHeader.toLowerCase().contains("respond-async");
+    }
+
+    /**
+     * Sets the async request flag. Used primarily for bulk operations.
+     * @param async true if this should be treated as an async request
+     */
+    public void setAsyncRequest(boolean async) {
+        this.asyncRequest = async;
     }
 
     /**

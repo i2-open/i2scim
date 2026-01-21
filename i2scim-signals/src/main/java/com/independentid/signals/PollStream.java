@@ -77,6 +77,13 @@ public class PollStream {
 
     public Map<String, SecurityEventToken> pollEvents(List<String> acknowledgements, boolean ackOnly) {
         Map<String, SecurityEventToken> eventMap = new HashMap<>();
+
+        // Check for interruption at the start
+        if (Thread.currentThread().isInterrupted()) {
+            logger.info("Polling aborted - thread interrupted");
+            return eventMap;
+        }
+
         ObjectNode reqNode = JsonUtil.getMapper().createObjectNode();
         if (ackOnly) {
             reqNode.put("maxEvents", 0);
@@ -89,16 +96,22 @@ public class PollStream {
         if (this.endpointUrl.equals("NONE")) {
             logger.error("Polling endpoint is not yet set. Waiting...");
             int i = 0;
-            while (this.endpointUrl.equals("NONE")) {
+            while (this.endpointUrl.equals("NONE") && !Thread.currentThread().isInterrupted()) {
                 i++;
                 try {
                     Thread.sleep(1000);
-                } catch (InterruptedException ignore) {
+                } catch (InterruptedException e) {
+                    logger.info("Interrupted while waiting for endpoint configuration");
+                    Thread.currentThread().interrupt();
+                    return eventMap;
                 }
                 if (i == 30) {
                     logger.error("Continuing to wait for polling endpoint configuration...");
                     i = 0;
                 }
+            }
+            if (Thread.currentThread().isInterrupted()) {
+                return eventMap;
             }
             logger.info("Polling endpoint set to: " + this.endpointUrl);
         }
@@ -112,7 +125,13 @@ public class PollStream {
         int attempt = 0;
         long delay = this.initialDelay;
 
-        while (attempt <= this.maxRetries) {
+        while (attempt <= this.maxRetries && !Thread.currentThread().isInterrupted()) {
+            // Check for interruption before each attempt
+            if (Thread.currentThread().isInterrupted()) {
+                logger.info("Polling aborted - thread interrupted before attempt " + (attempt + 1));
+                return eventMap;
+            }
+
             try {
                 if (attempt > 0)
                     logger.info("Polling " + this.endpointUrl + " (Attempt " + (attempt + 1) + ")");
@@ -170,7 +189,7 @@ public class PollStream {
                             JsonNode respNode = JsonUtil.getJsonTree(respBytes);
                             JsonNode setNode = respNode.get("sets");
 
-                            if (setNode != null && setNode.isArray()) {
+                            if (setNode != null && setNode.isObject()) {
                                 for (JsonNode item : setNode) {
                                     String tokenEncoded = item.textValue();
                                     try {
@@ -188,6 +207,11 @@ public class PollStream {
                     }
                 }
             } catch (IOException e) {
+                // Check if this was caused by interruption
+                if (Thread.currentThread().isInterrupted()) {
+                    logger.info("Polling aborted - thread interrupted during HTTP request");
+                    return eventMap;
+                }
                 logger.warn("Communications error while polling (attempt " + (attempt + 1) + "): " + e.getMessage());
             }
 
@@ -196,6 +220,12 @@ public class PollStream {
                 logger.error("Max retries reached. POLLING DISABLED.");
                 this.errorState = true;
                 break;
+            }
+
+            // Check for interruption before sleeping
+            if (Thread.currentThread().isInterrupted()) {
+                logger.info("Polling aborted - thread interrupted before retry delay");
+                return eventMap;
             }
 
             try {
