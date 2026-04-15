@@ -79,7 +79,7 @@
 #FROM registry.access.redhat.com/ubi8/openjdk-17:1.14
 #FROM registry.access.redhat.com/ubi8/openjdk-17:1.15-1.1679485273
 #FROM registry.access.redhat.com/ubi8/openjdk-21:latest
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:25-jre-alpine AS runtime
 ENV LANGUAGE='en_US:en'
 
 

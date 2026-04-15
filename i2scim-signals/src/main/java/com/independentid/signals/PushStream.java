@@ -2,13 +2,16 @@ package com.independentid.signals;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.independentid.set.SecurityEventToken;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
+import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.jose4j.jwt.MalformedClaimException;
 import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
@@ -41,7 +44,20 @@ public class PushStream {
     public int maxDelay = 300000;
 
     @JsonIgnore
-    CloseableHttpClient client = HttpClients.createDefault();
+    CloseableHttpClient client;
+
+    public void setSslContext(javax.net.ssl.SSLContext sslContext) {
+        if (sslContext != null) {
+            SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE);
+            this.client = HttpClients.custom()
+                    .setConnectionManager(PoolingHttpClientConnectionManagerBuilder.create()
+                            .setSSLSocketFactory(sslsf)
+                            .build())
+                    .build();
+        } else {
+            this.client = HttpClients.createDefault();
+        }
+    }
 
     private final AtomicBoolean shuttingDown = new AtomicBoolean(false);
 
@@ -104,6 +120,9 @@ public class PushStream {
         int attempt = 0;
         long delay = this.initialDelay;
 
+        if (this.client == null)
+            setSslContext(null);
+
         while (attempt <= this.maxRetries && !this.shuttingDown.get()) {
             try {
                 if (attempt > 0)
@@ -117,13 +136,13 @@ public class PushStream {
                 }
 
                 try (CloseableHttpResponse resp = client.execute(req)) {
-                    int code = resp.getStatusLine().getStatusCode();
+                    int code = resp.getCode();
                     if (code >= 200 && code < 300) {
                         return true;
                     }
 
                     if (code == 429 || code >= 500) {
-                        logger.warn("Retryable error response: " + code + " " + resp.getStatusLine().getReasonPhrase());
+                        logger.warn("Retryable error response: " + code + " " + resp.getReasonPhrase());
                         // Fall through to retry logic
                     } else {
                         // Fatal error
@@ -136,7 +155,7 @@ public class PushStream {
                                 logger.error("\n" + msg);
                             }
                         } else
-                            logger.error("Received fatal error on event submission: " + code + " " + resp.getStatusLine().getReasonPhrase());
+                            logger.error("Received fatal error on event submission: " + code + " " + resp.getReasonPhrase());
                         this.errorState = true;
                         return false;
                     }

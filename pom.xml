@@ -19,21 +19,53 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.independentid</groupId>
-    <version>0.8.0</version>
+    <version>0.9.0</version>
     <artifactId>i2scim-root</artifactId>
     <packaging>pom</packaging>
+    <name>i2scim-root</name>
+    <description>i2scim.io SCIM v2 Server on Quarkus - Root Project, Release 0.8.1</description>
+    <url>https://i2scim.io</url>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Phil Hunt</name>
+            <email>info@independentid.com</email>
+            <organization>Independent Identity Incorporated</organization>
+            <organizationUrl>https://www.independentid.com</organizationUrl>
+        </developer>
+    </developers>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
 
     <properties>
-        <compiler-plugin.version>3.13.0</compiler-plugin.version>
-        <maven.compiler.release>21</maven.compiler.release>
+        <compiler-plugin.version>3.15.0</compiler-plugin.version>
+        <maven.compiler.release>25</maven.compiler.release>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.15.1</quarkus.platform.version>
+        <quarkus.platform.version>3.34.3</quarkus.platform.version>
         <skipITs>true</skipITs>
-        <surefire-plugin.version>3.5.2</surefire-plugin.version>
-        <i2scim.version>0.8.0</i2scim.version>
+        <surefire-plugin.version>3.5.5</surefire-plugin.version>
+        <i2scim.version>0.9.0</i2scim.version>
     </properties>
     <scm>
         <connection>scm:git:https://github.com/i2-open/i2scim.git</connection>
@@ -41,6 +73,98 @@
         <url>https://github.com/i2-open/i2scim/tree/master</url>
       <tag>HEAD</tag>
   </scm>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>${quarkus.platform.group-id}</groupId>
+                <artifactId>${quarkus.platform.artifact-id}</artifactId>
+                <version>${quarkus.platform.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.servlet</groupId>
+                <artifactId>jakarta.servlet-api</artifactId>
+                <version>6.1.0</version>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.ejb</groupId>
+                <artifactId>jakarta.ejb-api</artifactId>
+                <version>4.0.1</version>
+            </dependency>
+            <dependency>
+                <groupId>org.bitbucket.b_c</groupId>
+                <artifactId>jose4j</artifactId>
+                <version>0.9.6</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents.client5</groupId>
+                <artifactId>httpclient5</artifactId>
+                <version>5.4.1</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents.core5</groupId>
+                <artifactId>httpcore5</artifactId>
+                <version>5.4.2</version>
+            </dependency>
+            <dependency>
+                <groupId>io.rest-assured</groupId>
+                <artifactId>rest-assured</artifactId>
+                <version>6.0.0</version>
+            </dependency>
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>3.27.7</version>
+            </dependency>
+            <dependency>
+                <groupId>com.independentid</groupId>
+                <artifactId>i2scim-core</artifactId>
+                <version>${i2scim.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.independentid</groupId>
+                <artifactId>i2scim-client</artifactId>
+                <version>${i2scim.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.independentid</groupId>
+                <artifactId>i2scim-server</artifactId>
+                <version>${i2scim.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.independentid</groupId>
+                <artifactId>i2scim-prov-memory</artifactId>
+                <version>${i2scim.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.independentid</groupId>
+                <artifactId>i2scim-prov-mongo</artifactId>
+                <version>${i2scim.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.independentid</groupId>
+                <artifactId>i2scim-signals</artifactId>
+                <version>${i2scim.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.independentid</groupId>
+                <artifactId>i2scim-universal</artifactId>
+                <version>${i2scim.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.independentid</groupId>
+                <artifactId>pkg-i2scim-prov-memory</artifactId>
+                <version>${i2scim.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.independentid</groupId>
+                <artifactId>pkg-i2scim-prov-mongodb</artifactId>
+                <version>${i2scim.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <modules>
         <module>i2scim-core</module>
         <module>i2scim-client</module>
@@ -49,27 +173,62 @@
         <module>i2scim-prov-mongo</module>
         <module>i2scim-signals</module>
         <module>i2scim-tests</module>
+        <module>i2scim-universal</module>
+        <module>pkg-i2scim-prov-memory</module>
+        <module>pkg-i2scim-prov-mongodb</module>
     </modules>
-    <dependencies>
-        <dependency>
-            <groupId>org.sonatype.plugins</groupId>
-            <artifactId>nexus-staging-maven-plugin</artifactId>
-            <version>1.6.7</version>
-            <type>maven-plugin</type>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-gpg-plugin</artifactId>
-            <version>1.5</version>
-            <type>maven-plugin</type>
-        </dependency>
-    </dependencies>
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>3.2.7</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonatype.plugins</groupId>
+                    <artifactId>nexus-staging-maven-plugin</artifactId>
+                    <version>1.7.0</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${compiler-plugin.version}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.11.2</version>
+                    <configuration>
+                        <release>25</release>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.3.1</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
+            <plugin>
+                <groupId>org.cyclonedx</groupId>
+                <artifactId>cyclonedx-maven-plugin</artifactId>
+                <version>2.9.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>makeBom</goal>
+                            <goal>makeAggregateBom</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>io.smallrye</groupId>
                 <artifactId>jandex-maven-plugin</artifactId>
-                <version>3.2.2</version>
+                <version>3.2.7</version>
                 <executions>
                     <execution>
                         <id>make-index</id>
@@ -103,10 +262,7 @@
                         <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                         <maven.home>${maven.home}</maven.home>
                     </systemPropertyVariables>
-                    <argLine>
-                        --add-opens java.base/java.lang=ALL-UNNAMED
-                        --enable-native-access=ALL-UNNAMED
-                    </argLine>
+                    <argLine>@{argLine} --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/javax.net.ssl=ALL-UNNAMED --enable-native-access=ALL-UNNAMED</argLine>
                 </configuration>
             </plugin>
             <plugin>
@@ -126,6 +282,7 @@
                                 <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
                                 <maven.home>${maven.home}</maven.home>
                             </systemPropertyVariables>
+                            <argLine>@{argLine} --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/javax.net.ssl=ALL-UNNAMED --enable-native-access=ALL-UNNAMED</argLine>
                         </configuration>
                     </execution>
                 </executions>
@@ -140,7 +297,6 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.5</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
@@ -149,8 +305,10 @@
                                     <goal>sign</goal>
                                 </goals>
                                 <configuration>
-                                    <keyname>${gpg.keyname}</keyname>
-                                    <passphraseServerId>${gpg.keyname}</passphraseServerId>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
                                 </configuration>
                             </execution>
                         </executions>
@@ -158,7 +316,6 @@
                     <plugin>
                         <groupId>org.sonatype.plugins</groupId>
                         <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <version>1.6.7</version>
                         <extensions>true</extensions>
                         <configuration>
                             <serverId>ossrh</serverId>

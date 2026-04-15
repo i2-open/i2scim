@@ -55,7 +55,7 @@ public class BasicResourceSchemaConfigTest {
 	 * This test checks that the resource types file was parsed and that at least one object parsed correctly.
 	 */
 	@Test
-	public void a_resourceTypeTest() {
+	public void a_resourceTypeTest() throws Exception {
 		
 		logger.info("========== Resource Test ==========");
 
@@ -76,7 +76,7 @@ public class BasicResourceSchemaConfigTest {
 	 * This test checks the schema was loaded into config mgr and checks one of the definitions.
 	 */
 	@Test
-	public void b_schemaTest() {
+	public void b_schemaTest() throws Exception {
 		logger.info("==========  Schema Test  ==========");
 		Schema userSchema = smgr.getSchemaById(userSchemaId);
 		

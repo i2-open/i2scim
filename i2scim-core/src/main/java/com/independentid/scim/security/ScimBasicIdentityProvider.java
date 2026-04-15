@@ -40,9 +40,9 @@ import io.quarkus.security.runtime.QuarkusSecurityIdentity;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.http.auth.BasicUserPrincipal;
-import org.eclipse.microprofile.metrics.annotation.Counted;
-import org.eclipse.microprofile.metrics.annotation.Timed;
+import org.apache.hc.client5.http.auth.BasicUserPrincipal;
+import io.micrometer.core.annotation.Counted;
+import io.micrometer.core.annotation.Timed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,7 +74,7 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
         return UsernamePasswordAuthenticationRequest.class;
     }
 
-    @Counted(name = "scim.auth.root",description = "Number of times root has authenticated via basic auth")
+    @Counted(value = "scim.auth.root",description = "Number of times root has authenticated via basic auth")
     public Uni<SecurityIdentity> doRootAuthentication(String userName, PasswordCredential cred) {
         String pwd = new String(cred.getPassword());
         if (pwd.equals(cmgr.getRootPassword())) {
@@ -111,8 +111,8 @@ public class ScimBasicIdentityProvider implements IdentityProvider<UsernamePassw
         return Uni.createFrom().failure(new AuthenticationFailedException());
     }
 
-    @Counted(name = "scim.auth.internal.count",description = "Number of times intenral users have been authenticated.")
-    @Timed(name="scim.auth.internal.timer",description = "Measures internal(users in SCIM) SCIM user authentication rates")
+    @Counted(value = "scim.auth.internal.count",description = "Number of times intenral users have been authenticated.")
+    @Timed(value="scim.auth.internal.timer",description = "Measures internal(users in SCIM) SCIM user authentication rates")
     Uni<SecurityIdentity> doInternalAuthentication(String user, PasswordCredential cred) {
         String pwd = new String(cred.getPassword());
         if (pwd.contains("\"")) // check for embedded quotes for injection attack

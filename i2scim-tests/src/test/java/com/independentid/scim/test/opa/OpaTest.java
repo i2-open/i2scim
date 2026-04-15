@@ -27,7 +27,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Resource;
 import jakarta.inject.Inject;
-import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -89,7 +89,7 @@ public class OpaTest {
      * tests.
      */
     @Test
-    public void a_InitializeClientTest() {
+    public void a_InitializeClientTest() throws Exception {
         try {
             logger.info("Starting OPA Server for testing...");
 
@@ -131,7 +131,7 @@ public class OpaTest {
         }
 
 
-        UsernamePasswordCredentials cred = new UsernamePasswordCredentials(rootUser, rootPassword);
+        UsernamePasswordCredentials cred = new UsernamePasswordCredentials(rootUser, rootPassword.toCharArray());
         try {
             i2scimClient test = new i2scimClient(rootUrl.toString(), bearer);
             assertThat(test.hasSearchSupport())
@@ -152,10 +152,8 @@ public class OpaTest {
             client = test;
 
 
-        } catch (ScimException e) {
+        } catch (ScimException | IOException | org.apache.hc.core5.http.ParseException e) {
             fail("Failed with SCIM exception: " + e.getMessage(), e);
-        } catch (IOException e) {
-            fail("Failed with IO exception: " + e.getMessage(), e);
         } catch (URISyntaxException e) {
             fail("Unexpected URI exception: " + e.getMessage(), e);
         }

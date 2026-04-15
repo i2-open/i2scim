@@ -24,10 +24,10 @@ import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import com.mongodb.client.MongoClient;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequest;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,22 +74,22 @@ public class TestUtils {
         return rUrl.toString();
     }
 
-    public static HttpResponse executeGet(URL baseUrl, String req) throws MalformedURLException {
+    public static ClassicHttpResponse executeGet(URL baseUrl, String req) throws MalformedURLException {
         //if (req.startsWith("/"))
         req = mapPathToReqUrl(baseUrl, req);
         try {
             HttpUriRequest request = new HttpGet(req);
-            return HttpClientBuilder.create().build().execute(request);
+            return HttpClients.createDefault().execute(request);
         } catch (IOException e) {
             fail("Failed request: " + req + "\n" + e.getLocalizedMessage(), e);
         }
         return null;
     }
 
-    public static HttpResponse executeRequest(HttpUriRequest req) throws IOException {
+    public static ClassicHttpResponse executeRequest(HttpUriRequest req) throws IOException {
         //if (req.startsWith("/"))
 
-        return HttpClientBuilder.create().build().execute(req);
+        return HttpClients.createDefault().execute(req);
 
     }
 

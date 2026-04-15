@@ -64,6 +64,15 @@ As currently implemented, I2 SCIM supports the MongoDB as its persistence databa
 
 **smallrye.jwt.verify.key.location** - The URI used to locate the JWKS public key set for the token issuer.  This method is preferred as the server can load new keys automatically should the issuer change keys.
 
+### SSF Trust Configuration
+
+These properties allow the SSF client to trust custom CA roots (e.g., for self-signed or internal cluster certificates).
+
+**scim.signals.ssf.trust.certs.path** - The file path to a PEM-encoded CA certificate or bundle used to verify the SSF server's certificate. (DEFAULT: NONE)
+
+**scim.signals.ssf.trust.certs.value** - A PEM-encoded CA certificate or bundle string used to verify the SSF server's certificate. This is specifically designed for providing certificate roots via environment variables. (DEFAULT: NONE)
+
+**scim.signals.ssf.serverUrl** - The base URL of the SSF server. Custom trust roots will be applied to all connections to this host, including `.well-known` configuration and JWKS retrieval. (DEFAULT: NONE)
 
 ### SCIM Protocol
 **scim.query.max.resultsize** - The maximum number of resources returned in a query (DEFAULT: 1000).

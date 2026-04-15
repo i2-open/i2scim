@@ -33,6 +33,7 @@ return 0
 function show_complete () {
     echo "*************************************************"
     echo "  COMPLETE: "$(date +"%Y-%m-%d %H:%M:%S")
+    echo "  SBOMs generated in target/bom.json"
     echo "*************************************************"
     return 0
 }
@@ -79,9 +80,9 @@ I2SCIM_ROOT=$(pwd)
 echo "Current dir: ${I2SCIM_ROOT}"
 
 skip=true
-rtag="0.8.0"
+rtag="latest"
 buildOnly=0
-push=0
+push=p
 
 echo "*************************************************"
 echo "  Starting i2scim Build "

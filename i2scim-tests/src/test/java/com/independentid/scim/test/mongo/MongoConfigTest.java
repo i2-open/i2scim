@@ -68,7 +68,7 @@ public class MongoConfigTest {
     static Instant startTime = Instant.now();
 
     @Test
-    public void a_beanCheckTest() {
+    public void a_beanCheckTest() throws Exception {
         try {
             testUtils.resetProvider(true);
         } catch (ScimException | BackendException | IOException e) {
@@ -101,7 +101,7 @@ public class MongoConfigTest {
      * available
      */
     @Test
-    public void b_checkForConfigState() throws ParseException, ScimException, IOException {
+    public void b_checkForConfigState() throws Exception {
         logger.info("\t* Checking for stored PersistStateResource");
         PersistStateResource cfgState = null;
         int cnt = 0;
@@ -123,7 +123,7 @@ public class MongoConfigTest {
      * Now that config state was persisted, check that SchemaManager and provider agree.
      */
     @Test
-    public void c_compareSchemaAndTypeCounts() throws ScimException {
+    public void c_compareSchemaAndTypeCounts() throws Exception {
         logger.info("\t* Checking schema and type count matches");
         Collection<Schema> mSchemas = provider.loadSchemas();
 
@@ -139,7 +139,7 @@ public class MongoConfigTest {
 
 
     @Test
-    public void d_PersistedConfig() {
+    public void d_PersistedConfig() throws Exception {
 
         logger.info("\t* Checking PersistStateResource");
 
@@ -175,7 +175,7 @@ public class MongoConfigTest {
      * Check that a restart (withhout reset) properly loads the configs.
      */
     @Test
-    public void e_CheckRestart() throws ScimException {
+    public void e_CheckRestart() throws Exception {
         logger.info("\t* Restart and re-load provider and SchemaManager");
         provider.shutdown();
         smgr.resetConfig();

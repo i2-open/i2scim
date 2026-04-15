@@ -28,11 +28,11 @@ import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.serializer.JsonUtil;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,7 +41,7 @@ import java.util.Date;
 import java.util.Iterator;
 
 /**
- * i2scimResponse takes an HttpResponse and parses response SCIM payloads and error messages for easy access.
+ * i2scimResponse takes an ClassicHttpResponse and parses response SCIM payloads and error messages for easy access.
  */
 public class i2scimResponse extends ScimResponse implements Iterator<ScimResource> {
     CloseableHttpResponse resp;
@@ -62,12 +62,12 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
     /**
      * This constructor initiated by i2scimClient
      * @param client   The i2scimClient initiating the response
-     * @param response The HttpResponse received.
-     * @throws IOException    occurs when pulling data from HttpResponse.getEntity
+     * @param response The ClassicHttpResponse received.
+     * @throws IOException    occurs when pulling data from ClassicHttpResponse.getEntity
      * @throws ScimException  is thrown when a SCIM parsing error occurs.  Server errors conveyed through methods
      * @throws ParseException occurs when parsing URL, dates, etc.
      */
-    i2scimResponse(i2scimClient client, CloseableHttpResponse response) throws IOException, ScimException, ParseException {
+    i2scimResponse(i2scimClient client, CloseableHttpResponse response) throws IOException, ScimException, ParseException, org.apache.hc.core5.http.ParseException {
         this.resp = response;
         this.client = client;
         parseResponseHeaders();
@@ -237,10 +237,10 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
      * body is parsed for the SCIM error details.
      * @throws IOException Thrown when reading the HttpEntity.
      */
-    private void checkErrorResponse() throws IOException {
+    private void checkErrorResponse() throws IOException, org.apache.hc.core5.http.ParseException, ParseException {
 
         if (resp == null) return;
-        int status = resp.getStatusLine().getStatusCode();
+        int status = resp.getCode();
         setStatus(status);
         switch (status) {
             case HttpStatus.SC_ACCEPTED:
@@ -315,28 +315,28 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
                 return;
 
             case HttpStatus.SC_UNAUTHORIZED:
-                setError(new UnauthorizedException("Server responded with " + resp.getStatusLine().getReasonPhrase()));
+                setError(new UnauthorizedException("Server responded with " + resp.getReasonPhrase()));
                 return;
             case HttpStatus.SC_FORBIDDEN:
-                setError(new ForbiddenException("Server responded with " + resp.getStatusLine().getReasonPhrase()));
+                setError(new ForbiddenException("Server responded with " + resp.getReasonPhrase()));
                 return;
             case HttpStatus.SC_NOT_FOUND:
-                setError(new NotFoundException("Server responded with " + resp.getStatusLine().getReasonPhrase()));
+                setError(new NotFoundException("Server responded with " + resp.getReasonPhrase()));
                 return;
             case HttpStatus.SC_CONFLICT:
-                setError(new ConflictException("Server responded with " + resp.getStatusLine().getReasonPhrase()));
+                setError(new ConflictException("Server responded with " + resp.getReasonPhrase()));
                 return;
             case HttpStatus.SC_PRECONDITION_FAILED:
-                setError(new PreconditionFailException("Server responded with " + resp.getStatusLine().getReasonPhrase()));
+                setError(new PreconditionFailException("Server responded with " + resp.getReasonPhrase()));
                 return;
-            case HttpStatus.SC_REQUEST_TOO_LONG:
-                setError(new TooLargeException("Server responded with " + resp.getStatusLine().getReasonPhrase()));
+            case 413:
+                setError(new TooLargeException("Server responded with " + resp.getReasonPhrase()));
                 return;
             case HttpStatus.SC_INTERNAL_SERVER_ERROR:
-                setError(new InternalException("Server responded with " + resp.getStatusLine().getReasonPhrase()));
+                setError(new InternalException("Server responded with " + resp.getReasonPhrase()));
                 return;
             case HttpStatus.SC_NOT_IMPLEMENTED:
-                setError(new NotImplementedException("Server responded with " + resp.getStatusLine().getReasonPhrase()));
+                setError(new NotImplementedException("Server responded with " + resp.getReasonPhrase()));
         }
     }
 

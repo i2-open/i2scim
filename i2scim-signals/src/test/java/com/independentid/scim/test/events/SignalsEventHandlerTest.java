@@ -13,10 +13,10 @@ import com.independentid.signals.SignalsEventHandler;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -58,7 +58,7 @@ public class SignalsEventHandlerTest {
         try (CloseableHttpClient client = HttpClients.createDefault()) {
             HttpGet get = new HttpGet("http://localhost:8081/signals/hello");
             try (CloseableHttpResponse resp = client.execute(get)) {
-                assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(200);
+                assertThat(resp.getCode()).isEqualTo(200);
                 String body = new String(resp.getEntity().getContent().readAllBytes());
                 assertThat(body).isEqualTo("Hello there");
             }

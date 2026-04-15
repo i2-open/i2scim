@@ -25,12 +25,13 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Resource;
 import jakarta.inject.Inject;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequest;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -73,7 +74,7 @@ public class ScimAuthTest {
 	URL baseUrl;
 	
 	@Test
-	public void a_certTest() throws IOException {
+	public void a_certTest() throws Exception {
 
 		assertThat(jwks)
 				.as("JWKS file is not null")
@@ -91,7 +92,7 @@ public class ScimAuthTest {
 	 * This attempts to retrieve configs using anonymous.
 	 */
 	@Test
-	public void b_ScimGetConfigAnonTest() throws MalformedURLException {
+	public void b_ScimGetConfigAnonTest() throws Exception {
 		String req = TestUtils.mapPathToReqUrl(baseUrl, "/Schemas");
 		
 		logger.info("\n\n\tRetrieving /Schemas using anonymous: "+req);
@@ -101,15 +102,15 @@ public class ScimAuthTest {
 		// for this test, acis should allow anon access to /ServiceProviderConfig but require
 		// authenticated access to /Schemas and /ResourceTypes
 		try {
-			HttpResponse resp = TestUtils.executeRequest(request);
-			assertThat(resp.getStatusLine().getStatusCode())
+			ClassicHttpResponse resp = TestUtils.executeRequest(request);
+			assertThat(resp.getCode())
 				.as("Confirm anonymous request is unauthorized.")
 				.isEqualTo(ScimResponse.ST_UNAUTHORIZED);
 
 			req = TestUtils.mapPathToReqUrl(baseUrl, "/ServiceProviderConfig");
 			request = new HttpGet(req);
 			resp = TestUtils.executeRequest(request);
-			assertThat(resp.getStatusLine().getStatusCode())
+			assertThat(resp.getCode())
 					.as("Confirm anonymous access to ServiceProviderConfig")
 					.isEqualTo(ScimResponse.ST_OK);
 			
@@ -122,7 +123,7 @@ public class ScimAuthTest {
 	 * This test attempts to retrieve the previously created user using the returned location.
 	 */
 	@Test
-	public void c_ScimGetUserBasicRootTest() throws MalformedURLException {
+	public void c_ScimGetUserBasicRootTest() throws Exception {
 		String req = TestUtils.mapPathToReqUrl(baseUrl,
 				"/Schemas");
 		
@@ -135,9 +136,9 @@ public class ScimAuthTest {
 		request.addHeader(HttpHeaders.AUTHORIZATION, "Basic "+encoding);
 		
 		try {
-			HttpResponse resp = TestUtils.executeRequest(request);
+			ClassicHttpResponse resp = TestUtils.executeRequest(request);
 			
-			assertThat(resp.getStatusLine().getStatusCode())
+			assertThat(resp.getCode())
 				.as("GET /Schemas (Basic Auth) - Check for status response 200 OK")
 				.isEqualTo(ScimResponse.ST_OK);
 			
@@ -149,7 +150,7 @@ public class ScimAuthTest {
 				.as("Check that it is a ListResponse")
 				.contains(ScimParams.SCHEMA_API_ListResponse);
 			
-		} catch (IOException e) {
+		} catch (IOException | ParseException e) {
 			fail("Exception occured making GET request (Basic auth) for /Schemas",e);
 		}
 	}
@@ -158,7 +159,7 @@ public class ScimAuthTest {
 	 * This test attempts to retrieve the previously created user using the returned location.
 	 */
 	@Test
-	public void d_ScimGetUserJwtTest() throws MalformedURLException {
+	public void d_ScimGetUserJwtTest() throws Exception {
 		bearer = testUtils.getAuthToken("admin",true);
 
 		String req = TestUtils.mapPathToReqUrl(baseUrl,
@@ -171,14 +172,14 @@ public class ScimAuthTest {
 		request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 		
 		try {
-			HttpResponse resp = TestUtils.executeRequest(request);
+			ClassicHttpResponse resp = TestUtils.executeRequest(request);
 
 			HttpEntity entity = resp.getEntity();
 
 			String body = EntityUtils.toString(entity);
 			System.out.println("Response:\n"+body);
 			
-			assertThat(resp.getStatusLine().getStatusCode())
+			assertThat(resp.getCode())
 				.as("GET /Schemas (Bearer JWT Auth) - Check for status response 200 OK")
 				.isEqualTo(ScimResponse.ST_OK);
 			
@@ -187,7 +188,7 @@ public class ScimAuthTest {
 				.as("Check that it is a ListResponse")
 				.contains(ScimParams.SCHEMA_API_ListResponse);
 
-		} catch (IOException e) {
+		} catch (IOException | ParseException e) {
 			fail("Exception occured making GET request (Bearer JWT auth) for /Schemas",e);
 		}
 	}

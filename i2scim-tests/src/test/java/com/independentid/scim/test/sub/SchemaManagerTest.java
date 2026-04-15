@@ -55,7 +55,7 @@ public class SchemaManagerTest {
 	SchemaManager smgr;
 
 	@Test
-	public void a_ConfigTest() {
+	public void a_ConfigTest() throws Exception {
 		
 		
 		logger.info("==========Schema Manager Tests==========");
@@ -107,7 +107,7 @@ public class SchemaManagerTest {
 	}
 	
 	@Test
-	public void b_findAttributeNoCtxTest() {
+	public void b_findAttributeNoCtxTest() throws Exception {
 		logger.info("\tFind attribute with null RequestCtx test");
 		Attribute attr = smgr.findAttribute("name.middleName", null);
 		
@@ -175,7 +175,7 @@ public class SchemaManagerTest {
 	}
 	
 	@Test
-	public void c_findAttributesCtxTest() {
+	public void c_findAttributesCtxTest() throws Exception {
 		logger.info("\tFind Attributes with RequestCtx test");
 
 		RequestCtx ctx = null;
@@ -255,7 +255,7 @@ public class SchemaManagerTest {
 	}
 
 	@Test
-	public void d_addSchemaAndResTypeTest()  {
+	public void d_addSchemaAndResTypeTest() throws Exception {
 		Schema a = new Schema(smgr);
 		a.setId("urn:bla.de.blah.TEST");
 		a.setName("TestSchema");

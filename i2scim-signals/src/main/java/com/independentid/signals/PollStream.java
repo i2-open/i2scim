@@ -6,14 +6,17 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.set.SecurityEventToken;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
+import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.jose4j.jwt.consumer.InvalidJwtException;
 import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
@@ -53,7 +56,20 @@ public class PollStream {
     public int maxDelay = 300000;
 
     @JsonIgnore
-    CloseableHttpClient client = HttpClients.createDefault();
+    CloseableHttpClient client;
+
+    public void setSslContext(javax.net.ssl.SSLContext sslContext) {
+        if (sslContext != null) {
+            SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(sslContext, NoopHostnameVerifier.INSTANCE);
+            this.client = HttpClients.custom()
+                    .setConnectionManager(PoolingHttpClientConnectionManagerBuilder.create()
+                            .setSSLSocketFactory(sslsf)
+                            .build())
+                    .build();
+        } else {
+            this.client = HttpClients.createDefault();
+        }
+    }
 
     public String toString() {
         if (endpointUrl == null || endpointUrl.isEmpty())
@@ -76,6 +92,10 @@ public class PollStream {
     }
 
     public Map<String, SecurityEventToken> pollEvents(List<String> acknowledgements, boolean ackOnly) {
+        return pollEvents(acknowledgements, ackOnly, this.maxRetries);
+    }
+
+    public Map<String, SecurityEventToken> pollEvents(List<String> acknowledgements, boolean ackOnly, int retries) {
         Map<String, SecurityEventToken> eventMap = new HashMap<>();
 
         // Check for interruption at the start
@@ -125,7 +145,10 @@ public class PollStream {
         int attempt = 0;
         long delay = this.initialDelay;
 
-        while (attempt <= this.maxRetries && !Thread.currentThread().isInterrupted()) {
+        if (this.client == null)
+            setSslContext(null);
+
+        while (attempt <= retries && !Thread.currentThread().isInterrupted()) {
             // Check for interruption before each attempt
             if (Thread.currentThread().isInterrupted()) {
                 logger.info("Polling aborted - thread interrupted before attempt " + (attempt + 1));
@@ -147,10 +170,10 @@ public class PollStream {
                 pollRequest.setEntity(bodyEntity);
 
                 try (CloseableHttpResponse resp = client.execute(pollRequest)) {
-                    int statusCode = resp.getStatusLine().getStatusCode();
+                    int statusCode = resp.getCode();
                     if (statusCode >= 400) {
                         if (statusCode == 429 || statusCode >= 500) {
-                            logger.warn("Retryable error response: " + statusCode + " " + resp.getStatusLine().getReasonPhrase());
+                            logger.warn("Retryable error response: " + statusCode + " " + resp.getReasonPhrase());
                             // Fall through to retry logic below
                         } else {
                             // Fatal error
@@ -168,7 +191,7 @@ public class PollStream {
                                     }
                                     break;
                                 default:
-                                    logger.error("Error response: " + statusCode + " " + resp.getStatusLine().getReasonPhrase());
+                                    logger.error("Error response: " + statusCode + " " + resp.getReasonPhrase());
                             }
                             logger.error("POLLING DISABLED.");
                             this.errorState = true;
@@ -212,13 +235,41 @@ public class PollStream {
                     logger.info("Polling aborted - thread interrupted during HTTP request");
                     return eventMap;
                 }
-                logger.warn("Communications error while polling (attempt " + (attempt + 1) + "): " + e.getMessage());
+                // Walk the cause chain to find TLS/SSL root cause
+                Throwable root = e;
+                while (root.getCause() != null) root = root.getCause();
+                boolean isTls = e instanceof javax.net.ssl.SSLException
+                        || root instanceof javax.net.ssl.SSLException
+                        || e.getClass().getName().contains("SSL")
+                        || root.getClass().getName().contains("SSL");
+                if (isTls) {
+                    logger.warn("TLS/SSL error while polling {} (attempt {}): [{}] {}{}",
+                            this.endpointUrl, attempt + 1,
+                            e.getClass().getSimpleName(), e.getMessage(),
+                            root != e ? " caused by [" + root.getClass().getSimpleName() + "] " + root.getMessage() : "",
+                            e);
+                } else {
+                    logger.warn("Communications error while polling {} (attempt {}): [{}] {}",
+                            this.endpointUrl, attempt + 1,
+                            e.getClass().getSimpleName(), e.getMessage(), e);
+                }
+            } catch (Exception e) {
+                // Catch unexpected runtime exceptions (e.g. NPE, IllegalStateException from stale SSLContext)
+                if (Thread.currentThread().isInterrupted()) {
+                    logger.info("Polling aborted - thread interrupted during HTTP request");
+                    return eventMap;
+                }
+                logger.error("Unexpected error during poll {} (attempt {}): [{}] {}",
+                        this.endpointUrl, attempt + 1,
+                        e.getClass().getName(), e.getMessage(), e);
+                // Treat as retryable — fall through to retry logic
             }
 
             attempt++;
-            if (attempt > this.maxRetries) {
-                logger.error("Max retries reached. POLLING DISABLED.");
-                this.errorState = true;
+            if (attempt > retries) {
+                if (retries > 0)
+                    logger.error("Max retries reached. POLLING DISABLED.");
+                this.errorState = (retries > 0);
                 break;
             }
 
@@ -233,7 +284,7 @@ public class PollStream {
                 Thread.sleep(delay);
                 delay = Math.min(delay * 2, maxDelay);
             } catch (InterruptedException ie) {
-                logger.warn("Interrupted while waiting for retry");
+                logger.info("Interrupted while waiting for retry");
                 Thread.currentThread().interrupt();
                 break;
             }

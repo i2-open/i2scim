@@ -38,8 +38,8 @@ import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import org.apache.http.HttpStatus;
-import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -97,7 +97,7 @@ public class i2ClientTest {
      * tests.
      */
     @Test
-    public void a_InitializeClientTest() {
+    public void a_InitializeClientTest() throws Exception {
         bearer = testUtils.getAuthToken("admin",true);
 
         logger.info("A. Client Initialization Tests");
@@ -110,7 +110,7 @@ public class i2ClientTest {
         }
 
         logger.info("\t1. Using auto-load schema basic auth");
-        UsernamePasswordCredentials cred = new UsernamePasswordCredentials(rootUser, rootPassword);
+        UsernamePasswordCredentials cred = new UsernamePasswordCredentials(rootUser, rootPassword.toCharArray());
         try {
             i2scimClient test = new i2scimClient(rootUrl.toString(), cred);
             assertThat(test.hasSearchSupport())
@@ -205,7 +205,7 @@ public class i2ClientTest {
     }
 
     @Test
-    public void b_addTest() throws IOException, ParseException {
+    public void b_addTest() throws Exception {
         logger.info("B. Performing Add test");
 
         logger.info("\t1. Builder Tests");
@@ -409,7 +409,7 @@ public class i2ClientTest {
     }
 
     @Test
-    public void c_GetTests() throws ScimException, URISyntaxException, IOException, ParseException {
+    public void c_GetTests() throws Exception {
         logger.info("C. GET / Search tests");
         logger.info("\t1. Get specific resource test");
 
@@ -505,7 +505,7 @@ public class i2ClientTest {
     }
 
     @Test
-    public void d_SearchTests() throws ScimException, URISyntaxException, IOException, ParseException {
+    public void d_SearchTests() throws Exception {
         logger.info("D. Search Tests");
         logger.info("\t1. Search specific resource using searchGet (username eq bjensen@example.com)");
 
@@ -592,7 +592,7 @@ public class i2ClientTest {
     }
 
     @Test
-    public void e_PutTests() {
+    public void e_PutTests() throws Exception {
         logger.info("E. Modify with PUT Test");
 
 
@@ -626,7 +626,7 @@ public class i2ClientTest {
     }
 
     @Test
-    public void f_PatchTest() throws SchemaException {
+    public void f_PatchTest() throws Exception {
         logger.info("F. Modify with PATCH Test");
 
         try {
@@ -678,7 +678,7 @@ public class i2ClientTest {
     }
 
     @Test
-    public void g_DeleteTest() {
+    public void g_DeleteTest() throws Exception {
         logger.info("G. DELETE Test");
         try {
             i2scimResponse resp = client.delete(user2Url, null);
@@ -717,7 +717,7 @@ public class i2ClientTest {
     }
 
     @Test
-    public void h_HeadTest() {
+    public void h_HeadTest() throws Exception {
         logger.info("H. HTTP HEAD Test");
 
         try {
@@ -750,8 +750,8 @@ public class i2ClientTest {
     }
 
     @Test
-    public void i_authenticateTest() {
-        UsernamePasswordCredentials cred = new UsernamePasswordCredentials("bjensen@example.com","t1meMa$heen");
+    public void i_authenticateTest() throws Exception {
+        UsernamePasswordCredentials cred = new UsernamePasswordCredentials("bjensen@example.com", "t1meMa$heen".toCharArray());
         try {
             boolean res = client.authenticateUser(cred);
             assertThat(res)
@@ -763,7 +763,7 @@ public class i2ClientTest {
             fail("Received exception during authentication: "+e.getMessage(),e);
         }
 
-        cred = new UsernamePasswordCredentials("bjensen@example.com","wrong");
+        cred = new UsernamePasswordCredentials("bjensen@example.com", "wrong".toCharArray());
         try {
             boolean res = client.authenticateUser(cred);
             assertThat(res)
@@ -775,7 +775,7 @@ public class i2ClientTest {
             fail("Received exception during authentication: "+e.getMessage(),e);
         }
 
-        cred = new UsernamePasswordCredentials("dummy","wrong");
+        cred = new UsernamePasswordCredentials("dummy", "wrong".toCharArray());
         try {
             boolean res = client.authenticateUser(cred);
             assertThat(res)

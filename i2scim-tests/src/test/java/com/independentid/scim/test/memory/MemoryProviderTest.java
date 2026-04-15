@@ -73,7 +73,7 @@ public class MemoryProviderTest {
     private static String user1url; //,user2url;
 
     @Test
-    public void a_providerTest() {
+    public void a_providerTest() throws Exception {
 
         logger.info("========== Memory Provider CRUD Test ==========");
 
@@ -102,7 +102,7 @@ public class MemoryProviderTest {
      * This test checks that a JSON user can be parsed into a SCIM Resource
      */
     @Test
-    public void b_ScimAddUserTest() {
+    public void b_ScimAddUserTest() throws Exception {
 
         logger.info("\tB1. Add User BJensen...");
         try {
@@ -165,7 +165,7 @@ public class MemoryProviderTest {
      * This test attempts to retrieve the previously created user using the returned location.
      */
     @Test
-    public void c_ScimGetUserTest() {
+    public void c_ScimGetUserTest() throws Exception {
 
         try {
             logger.info("\tC. Retrieving user from backend using: " + user1url);
@@ -221,7 +221,7 @@ public class MemoryProviderTest {
      * This test tries to search for the previously created user by searching on filter name
      */
     @Test
-    public void d_ScimSearchUserTest() {
+    public void d_ScimSearchUserTest() throws Exception {
 
         logger.info("\tD. Search using GET for user from backend with filter=UserName eq bjensen@example.com");
 
@@ -273,7 +273,7 @@ public class MemoryProviderTest {
     }
 
     @Test
-    public void e_ScimSearchValPathUserTest() {
+    public void e_ScimSearchValPathUserTest() throws Exception {
 
         logger.info("\tD. Searching user from backend with filter=UserName eq bjensen@example.com and addresses[country eq \\\"USA\\\" and type eq \\\"home\\\"]");
 
@@ -325,7 +325,7 @@ public class MemoryProviderTest {
     }
 
     @Test
-    public void f_updateUserTest() {
+    public void f_updateUserTest() throws Exception {
         logger.info("\t E. Modify user with PUT Test");
 
 
@@ -385,7 +385,7 @@ public class MemoryProviderTest {
     }
 
     @Test
-    public void g_RereadDataTest() {
+    public void g_RereadDataTest() throws Exception {
         logger.info("\tG. Resetting and verifying data Test");
 
         try {
@@ -403,7 +403,7 @@ public class MemoryProviderTest {
     }
 
     @Test
-    public void h_ScimDeleteUserTest() {
+    public void h_ScimDeleteUserTest() throws Exception {
 
         logger.info("\tH. Deleting user from backend");
 

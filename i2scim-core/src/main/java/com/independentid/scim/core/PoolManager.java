@@ -25,8 +25,6 @@ import jakarta.ejb.Startup;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
-import org.eclipse.microprofile.metrics.MetricUnits;
-import org.eclipse.microprofile.metrics.annotation.Gauge;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -184,17 +182,14 @@ public class PoolManager {
 		return false;
 	}
 
-	@Gauge(unit = MetricUnits.NONE, name = "Pool: Operation Count")
 	public int getOperationCnt() {
 		return this.opCnt;
 	}
 
-	@Gauge(unit = MetricUnits.NONE, name = "Pool: Active Threads")
 	public int getThreadCnt() {
 		return operationPool.getActiveThreadCount();
 	}
 
-	@Gauge(unit = MetricUnits.NONE, name = "Pool: Pending Ops")
 	public int getPendingTasksCnt() {
 		return operationPool.getQueuedSubmissionCount();
 	}

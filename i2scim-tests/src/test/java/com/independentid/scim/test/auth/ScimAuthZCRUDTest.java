@@ -37,12 +37,11 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Resource;
 import jakarta.inject.Inject;
-import org.apache.http.*;
-import org.apache.http.client.methods.*;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.InputStreamEntity;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.classic.methods.*;
+import org.apache.hc.client5.http.impl.classic.*;
+import org.apache.hc.core5.http.*;
+import org.apache.hc.core5.http.io.entity.*;
+import org.apache.hc.core5.net.URIBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
@@ -103,7 +102,7 @@ public class ScimAuthZCRUDTest {
     private static String bJensonUrl = null;
     private static String jSmithUrl = null;
 
-    private synchronized HttpResponse execute(HttpUriRequest req) throws IOException {
+    private synchronized ClassicHttpResponse execute(org.apache.hc.client5.http.classic.methods.HttpUriRequest req) throws IOException {
 
         return TestUtils.executeRequest(req);
     }
@@ -112,7 +111,7 @@ public class ScimAuthZCRUDTest {
      * This test actually resets and re-initializes the SCIM Mongo test database.
      */
     @Test
-    public void a_initializeAuthTests() {
+    public void a_initializeAuthTests() throws Exception {
         bearer = testUtils.getAuthToken("admin",true);
 
         //PasswordToken.init(parser,"AyM1SysPpbyDfgZld3umj1qzKObwVMko","TESTER",10000,PasswordToken.ALG_PBKDF2);
@@ -134,45 +133,37 @@ public class ScimAuthZCRUDTest {
      * This test checks that a JSON user can be parsed into a SCIM Resource
      */
     @Test
-    public void b1_AddUserByAnonymous() {
+    public void b1_AddUserByAnonymous() throws Exception {
 
-        try {
-            logger.info("B1. Attempting add BJensen as anonymous (SHOULD FAIL)");
+        logger.info("B1. Attempting add BJensen as anonymous (SHOULD FAIL)");
 
-            InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
+        InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
 
-            URL rUrl = new URL(baseUrl, "/Users");
-            String req = rUrl.toString();
+        URL rUrl = new URL(baseUrl, "/Users");
+        String req = rUrl.toString();
 
-            HttpPost post = new HttpPost(req);
+        HttpPost post = new HttpPost(req);
 
-            // This section should fail, anonymous request
+        // This section should fail, anonymous request
 
-            assert userStream != null;
-            InputStreamEntity reqEntity = new InputStreamEntity(
-                    userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
-            reqEntity.setChunked(false);
-            post.setEntity(reqEntity);
+        assert userStream != null;
+        InputStreamEntity reqEntity = new InputStreamEntity(
+                userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
+        post.setEntity(reqEntity);
 
-            logger.debug("Executing test add for bjensen: " + post.getRequestLine());
-            //logger.debug(EntityUtils.toString(reqEntity));
+        logger.debug("Executing test add for bjensen: " + post.getMethod() + " " + post.getUri());
+        //logger.debug(EntityUtils.toString(reqEntity));
 
-            HttpResponse resp = execute(post);
-            int statcode = resp.getStatusLine().getStatusCode();
-            assertThat(statcode)
-                    .as("Anonymous request should be unauthorized")
-                    .isEqualTo(HttpStatus.SC_UNAUTHORIZED);
-            userStream.close();
-
-
-        } catch (IOException e) {
-            logger.error("Unexpected error: " + e.getLocalizedMessage(), e);
-            Assertions.fail("Exception occured creating bjenson. " + e.getMessage(), e);
-        }
+        ClassicHttpResponse resp = execute(post);
+        int statcode = resp.getCode();
+        assertThat(statcode)
+                .as("Anonymous request should be unauthorized")
+                .isEqualTo(HttpStatus.SC_UNAUTHORIZED);
+        userStream.close();
     }
 
     @Test
-    public void b2_addUserTest_JWTadmin() throws IOException {
+    public void b2_addUserTest_JWTadmin() throws Exception {
 
         // Perform add with JWT bearer authorization
         logger.info("B2. Attempting add bjensen as with JWT Bearer with role admin (SHOULD SUCCEED)");
@@ -188,23 +179,22 @@ public class ScimAuthZCRUDTest {
         assert userStream != null;
         InputStreamEntity reqEntity = new InputStreamEntity(
                 userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
-        reqEntity.setChunked(false);
         post.setEntity(reqEntity);
         post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
-        Header[] heads = post.getAllHeaders();
+        Header[] heads = post.getHeaders();
 
         System.err.println("Request:\n" + post);
         System.err.println("Headers:\n" + Arrays.toString(heads));
         //System.out.println("Body:\n"+EntityUtils.toString(post.getEntity()));
 
-        HttpResponse resp = execute(post);
+        ClassicHttpResponse resp = execute(post);
 
-        logger.info("\tResponse is: " + resp.getStatusLine());
+        logger.info("\tResponse is: " + resp.getCode());
         String body = EntityUtils.toString(resp.getEntity());
         logger.debug("Body:\n" + body);
 
-        heads = resp.getAllHeaders();
+        heads = resp.getHeaders();
         for (Header head : heads) {
             logger.debug(head.getName() + "\t" + head.getValue());
         }
@@ -222,7 +212,7 @@ public class ScimAuthZCRUDTest {
         }
 
 
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Create user response status of 201")
                 .isEqualTo(ScimResponse.ST_CREATED);
 
@@ -245,7 +235,7 @@ public class ScimAuthZCRUDTest {
     }
 
     @Test
-    public void b3_addDuplicateUserTest_JWTadmin() throws IOException {
+    public void b3_addDuplicateUserTest_JWTadmin() throws Exception {
 
         logger.info("B3. Attempt to add User BJensen again (uniquenes test)...");
 
@@ -259,7 +249,6 @@ public class ScimAuthZCRUDTest {
         assert userStream != null;
         InputStreamEntity reqEntity = new InputStreamEntity(
                 userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
-        reqEntity.setChunked(false);
         post.setEntity(reqEntity);
         post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
         /* Repeat add test
@@ -272,12 +261,11 @@ public class ScimAuthZCRUDTest {
         assert userStream != null;
         reqEntity = new InputStreamEntity(
                 userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
-        reqEntity.setChunked(false);
         post.setEntity(reqEntity);
 
-        HttpResponse resp = execute(post);
+        ClassicHttpResponse resp = execute(post);
 
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Confirm error 400 occurred (uniqueness)")
                 .isEqualTo(ScimResponse.ST_BAD_REQUEST);
         String body = EntityUtils.toString(resp.getEntity());
@@ -290,7 +278,7 @@ public class ScimAuthZCRUDTest {
     }
 
     @Test
-    public void b4_addJSmith_JWTadmin() throws IOException {
+    public void b4_addJSmith_JWTadmin() throws Exception {
         /*  Add User JSmith */
         logger.info("B4. Add another User JSmith");
 
@@ -305,10 +293,9 @@ public class ScimAuthZCRUDTest {
         assert userStream != null;
         InputStreamEntity reqEntity = new InputStreamEntity(
                 userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
-        reqEntity.setChunked(false);
         post.setEntity(reqEntity);
-        HttpResponse resp = execute(post);
-        assertThat(resp.getStatusLine().getStatusCode())
+        ClassicHttpResponse resp = execute(post);
+        assertThat(resp.getCode())
                 .as("Check JSmith added")
                 .isEqualTo(ScimResponse.ST_CREATED);
         Header[] headers = resp.getHeaders(HttpHeaders.LOCATION);
@@ -319,7 +306,7 @@ public class ScimAuthZCRUDTest {
     }
 
     @Test
-    public void c1_ScimGetUserAnonymous() throws MalformedURLException {
+    public void c1_ScimGetUserAnonymous() throws Exception {
         String req = TestUtils.mapPathToReqUrl(baseUrl, bJensonUrl);
 
         logger.info("\tC1. Retrieving user (anonymous) from backend using: " + req);
@@ -327,24 +314,18 @@ public class ScimAuthZCRUDTest {
         HttpUriRequest request = new HttpGet(req);
         //request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
-        try {
-            HttpResponse resp = execute(request);
+        ClassicHttpResponse resp = execute(request);
 
-            assertThat(resp.getStatusLine().getStatusCode())
-                    .as("GET User - Check for status unauthorized.")
-                    .isEqualTo(ScimResponse.ST_UNAUTHORIZED);
-
-
-        } catch (IOException e) {
-            fail("Exception occured making GET request for bjensen", e);
-        }
+        assertThat(resp.getCode())
+                .as("GET User - Check for status unauthorized.")
+                .isEqualTo(ScimResponse.ST_UNAUTHORIZED);
     }
 
     /**
      * This test attempts to retrieve the previously created user using the returned location.
      */
     @Test
-    public void c2_ScimGetUser_JWTadmin() throws MalformedURLException {
+    public void c2_ScimGetUser_JWTadmin() throws Exception {
         String req = TestUtils.mapPathToReqUrl(baseUrl, bJensonUrl);
 
         logger.info("C2. Retrieving user from backend (Bearer JWTadmin) using: " + req);
@@ -353,10 +334,10 @@ public class ScimAuthZCRUDTest {
         request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
         try {
-            HttpResponse resp = execute(request);
+            ClassicHttpResponse resp = execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -401,7 +382,7 @@ public class ScimAuthZCRUDTest {
      * This test attempts to retrieve the previously created user using the returned location.
      */
     @Test
-    public void c3_ScimGetUser_RootBasic() throws MalformedURLException {
+    public void c3_ScimGetUser_RootBasic() throws Exception {
         String req = TestUtils.mapPathToReqUrl(baseUrl, bJensonUrl);
 
         logger.info("C3. Retrieving user from backend (with root basic auth) using: " + req);
@@ -416,10 +397,10 @@ public class ScimAuthZCRUDTest {
         request.addHeader(HttpHeaders.AUTHORIZATION, auth);
 
         try {
-            HttpResponse resp = execute(request);
+            ClassicHttpResponse resp = execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -464,7 +445,7 @@ public class ScimAuthZCRUDTest {
     }
 
     @Test
-    public void c4_ScimGetUsersAsBJensen() throws MalformedURLException {
+    public void c4_ScimGetUsersAsBJensen() throws Exception {
         String req = TestUtils.mapPathToReqUrl(baseUrl, bJensonUrl);
 
         logger.info("C4a. Retrieving self (as bjensent@example.com BASIC auth) from backend using: " + req);
@@ -477,10 +458,10 @@ public class ScimAuthZCRUDTest {
         request.addHeader(HttpHeaders.AUTHORIZATION, auth);
 
         try {
-            HttpResponse resp = execute(request);
+            ClassicHttpResponse resp = execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -514,7 +495,7 @@ public class ScimAuthZCRUDTest {
 
             resp = execute(request);
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 401 unauthorized")
                     .isEqualTo(ScimResponse.ST_UNAUTHORIZED);
 
@@ -528,7 +509,7 @@ public class ScimAuthZCRUDTest {
             resp = execute(request);
             entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -556,7 +537,7 @@ public class ScimAuthZCRUDTest {
 
             logger.debug("Entry retrieved:\n" + body);
 
-        } catch (IOException e) {
+        } catch (IOException | org.apache.hc.core5.http.ParseException e) {
             fail("Exception occured making GET request for bjensen", e);
         }
     }
@@ -565,7 +546,7 @@ public class ScimAuthZCRUDTest {
      * This test tries to search for the previously created user by searching on filter name
      */
     @Test
-    public void d1_ScimSearchUserAsJwtAdminTest() throws MalformedURLException {
+    public void d1_ScimSearchUserAsJwtAdminTest() throws Exception {
 
         logger.info("D1. Search using GET for user from backend with filter=UserName eq bjensen@example.com");
 
@@ -575,10 +556,10 @@ public class ScimAuthZCRUDTest {
         HttpUriRequest request = new HttpGet(req);
         request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
         try {
-            HttpResponse resp = execute(request);
+            ClassicHttpResponse resp = execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -624,7 +605,7 @@ public class ScimAuthZCRUDTest {
      * This test searches for the previously created user by searching on filter name and uses POST
      */
     @Test
-    public void d2_ScimSearchUserTest() throws MalformedURLException {
+    public void d2_ScimSearchUserTest() throws Exception {
 
         logger.info("D2. POST Search user from backend with filter=UserName eq bjensen@example.com");
 
@@ -661,10 +642,10 @@ public class ScimAuthZCRUDTest {
 
             request.setEntity(sEntity);
 
-            HttpResponse resp = execute(request);
+            ClassicHttpResponse resp = execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -683,13 +664,13 @@ public class ScimAuthZCRUDTest {
                     .contains("bjensen@example.com");
             logger.debug("Entry retrieved:\n" + body);
 
-        } catch (IOException e) {
+        } catch (IOException | org.apache.hc.core5.http.ParseException e) {
             fail("Exception occured making POST Search filter request for bjensen", e);
         }
     }
 
     @Test
-    public void e_ScimSearchValPathUserTest() throws MalformedURLException {
+    public void e_ScimSearchValPathUserTest() throws Exception {
 
         logger.info("\tD. Searching user from backend with filter=UserName eq bjensen@example.com and addresses[country eq \\\"USA\\\" and type eq \\\"home\\\"]");
 
@@ -700,10 +681,10 @@ public class ScimAuthZCRUDTest {
         request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
         try {
-            HttpResponse resp = execute(request);
+            ClassicHttpResponse resp = execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -746,7 +727,7 @@ public class ScimAuthZCRUDTest {
     }
 
     @Test
-    public void f_updateUserTest() throws MalformedURLException {
+    public void f_updateUserTest() throws Exception {
 
 
         String req = TestUtils.mapPathToReqUrl(baseUrl, bJensonUrl);
@@ -757,9 +738,9 @@ public class ScimAuthZCRUDTest {
         try {
             // first try anonymous test
             logger.debug("\t\tAnonymous sub-test");
-            HttpResponse resp = execute(request);
+            ClassicHttpResponse resp = execute(request);
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("Confirm annonymous is unauthorized")
                     .isEqualTo(ScimResponse.ST_UNAUTHORIZED);
 
@@ -771,7 +752,7 @@ public class ScimAuthZCRUDTest {
 
             resp = execute(request);
             HttpEntity entity = resp.getEntity();
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -806,7 +787,7 @@ public class ScimAuthZCRUDTest {
             put.setEntity(entity);
 
             resp = execute(put);
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("PUT User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -826,7 +807,7 @@ public class ScimAuthZCRUDTest {
     }
 
     @Test
-    public void g_ScimDeleteUserTest() throws MalformedURLException {
+    public void g_ScimDeleteUserTest() throws Exception {
 
         String req = TestUtils.mapPathToReqUrl(baseUrl, bJensonUrl);
         logger.info("\tG. Deleting user at: " + req);
@@ -834,43 +815,37 @@ public class ScimAuthZCRUDTest {
         HttpUriRequest request = new HttpDelete(req);
         request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
-        try {
-            HttpResponse resp = execute(request);
+        ClassicHttpResponse resp = execute(request);
 
-            // confirm status 204 per RFC7644 Sec 3.6
-            assertThat(resp.getStatusLine().getStatusCode())
-                    .as("Confirm succesfull deletion of user")
-                    .isEqualTo(ScimResponse.ST_NOCONTENT);
+        // confirm status 204 per RFC7644 Sec 3.6
+        assertThat(resp.getCode())
+                .as("Confirm succesfull deletion of user")
+                .isEqualTo(ScimResponse.ST_NOCONTENT);
 
-            // Try to retrieve the deleted object. Should return 404
-            request = new HttpGet(req);
-            request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
-            resp = execute(request);
-            assertThat(resp.getStatusLine().getStatusCode())
-                    .as("Confirm deleted user was not findable")
-                    .isEqualTo(ScimResponse.ST_NOTFOUND);
+        // Try to retrieve the deleted object. Should return 404
+        request = new HttpGet(req);
+        request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+        resp = execute(request);
+        assertThat(resp.getCode())
+                .as("Confirm deleted user was not findable")
+                .isEqualTo(ScimResponse.ST_NOTFOUND);
 
-            // Try delete of non-existent object, should be 404
-            request = new HttpDelete(req);
-            request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
-            resp = execute(request);
-            assertThat(resp.getStatusLine().getStatusCode())
-                    .as("Confirm not found when deleting non-existent resource")
-                    .isEqualTo(ScimResponse.ST_NOTFOUND);
-
-
-        } catch (IOException e) {
-            fail("Exception occured in DELETE test for bjensen", e);
-        }
+        // Try delete of non-existent object, should be 404
+        request = new HttpDelete(req);
+        request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
+        resp = execute(request);
+        assertThat(resp.getCode())
+                .as("Confirm not found when deleting non-existent resource")
+                .isEqualTo(ScimResponse.ST_NOTFOUND);
     }
 
     @Test
-    public void h_ConfigEndpointsTest() throws IOException {
+    public void h_ConfigEndpointsTest() throws Exception {
         String req = TestUtils.mapPathToReqUrl(baseUrl, "/ServiceProviderConfig");
         logger.info("\tH. Testing Config Endpoints");
         HttpUriRequest request = new HttpGet(req);
         request.addHeader(HttpHeaders.AUTHORIZATION, bearer);
-        HttpResponse resp = execute(request);
+        ClassicHttpResponse resp = execute(request);
         HttpEntity body = resp.getEntity();
         String res = EntityUtils.toString(body);
 

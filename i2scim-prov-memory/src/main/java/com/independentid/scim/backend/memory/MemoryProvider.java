@@ -703,7 +703,8 @@ public class MemoryProvider implements IScimProvider {
      */
     @Override
     public synchronized void shutdown() {
-        timer.cancel();
+        if (timer != null)
+            timer.cancel();
         if (isModified)
             writeDatabase();
 

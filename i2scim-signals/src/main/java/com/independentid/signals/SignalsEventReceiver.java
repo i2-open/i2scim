@@ -98,7 +98,14 @@ public class SignalsEventReceiver implements Runnable {
                         logger.debug("Thread interrupted but no shutdown requested, clearing interrupt status");
                         Thread.interrupted(); // Clear interrupt status
                     }
-                    logger.warn("Error processing events: " + e.getMessage());
+                    logger.warn("Error processing events: [{}] {}", e.getClass().getName(), e.getMessage(), e);
+                    // Backoff to prevent tight loop when polling throws an unexpected exception
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException ie) {
+                        if (closeRequest.get()) break;
+                        Thread.interrupted();
+                    }
                 }
             }
         }
@@ -139,7 +146,7 @@ public class SignalsEventReceiver implements Runnable {
         // Now ack any processed events....
         if (!SignalsEventHandler.acksPending.isEmpty()) {
             try {
-                this.ssfClient.getPollStream().pollEvents(SignalsEventHandler.acksPending, true);
+                this.ssfClient.getPollStream().pollEvents(SignalsEventHandler.acksPending, true, 0);
             } catch (Exception e) {
                 logger.warn("Error acknowledging pending events during shutdown: " + e.getMessage());
             }

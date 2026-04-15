@@ -18,8 +18,8 @@ package com.independentid.scim.client;
 
 import com.independentid.scim.protocol.Filter;
 import com.independentid.scim.protocol.ScimParams;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.client.utils.URIBuilder;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequest;
+import org.apache.hc.core5.net.URIBuilder;
 
 import java.net.URI;
 import java.net.URISyntaxException;

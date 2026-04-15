@@ -30,18 +30,18 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Resource;
 import jakarta.inject.Inject;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHeaders;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.InputStreamEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequest;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.InputStreamEntity;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -89,7 +89,7 @@ public class ScimAttributeQualTest {
      * Do test setup by re-initializes the SCIM Mongo test database.
      */
     @Test
-    public void a_initializeTestProvider() {
+    public void a_initializeTestProvider() throws Exception {
         if (isInit)
             return;
         logger.info("========== Attribute Qualifier Tests ==========");
@@ -131,12 +131,11 @@ public class ScimAttributeQualTest {
 
             InputStreamEntity reqEntity = new InputStreamEntity(
                     userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
-            reqEntity.setChunked(false);
             post.setEntity(reqEntity);
 
             CloseableHttpResponse resp = client.execute(post);
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("Create user response status of 201")
                     .isEqualTo(ScimResponse.ST_CREATED);
 
@@ -159,7 +158,7 @@ public class ScimAttributeQualTest {
      * This test attempts to retrieve the previously created user using the returned location.
      */
     @Test
-    public void b_ScimGetUserTest() throws MalformedURLException {
+    public void b_ScimGetUserTest() throws Exception {
 
         assertThat(isInit)
                 .as("Check test databse initialized")
@@ -177,7 +176,7 @@ public class ScimAttributeQualTest {
             CloseableHttpResponse resp = client.execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -220,7 +219,7 @@ public class ScimAttributeQualTest {
     }
 
     @Test
-    public void c_ScimGetUserInclTest() throws MalformedURLException {
+    public void c_ScimGetUserInclTest() throws Exception {
 
         assertThat(isInit)
                 .as("Check test databse initialized")
@@ -239,7 +238,7 @@ public class ScimAttributeQualTest {
             CloseableHttpResponse resp = client.execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -276,7 +275,7 @@ public class ScimAttributeQualTest {
      * This test tries to search for the previously created user by searching on filter name
      */
     @Test
-    public void d_ScimSearchUserExcludeTest() throws MalformedURLException {
+    public void d_ScimSearchUserExcludeTest() throws Exception {
         assertThat(isInit)
                 .as("Check test databse initialized")
                 .isTrue();
@@ -293,7 +292,7 @@ public class ScimAttributeQualTest {
             CloseableHttpResponse resp = client.execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -332,7 +331,7 @@ public class ScimAttributeQualTest {
     }
 
     @Test
-    public void e_ScimGetUserInclExtTest() throws MalformedURLException {
+    public void e_ScimGetUserInclExtTest() throws Exception {
 
         assertThat(isInit)
                 .as("Check test databse initialized")
@@ -351,7 +350,7 @@ public class ScimAttributeQualTest {
             CloseableHttpResponse resp = client.execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 

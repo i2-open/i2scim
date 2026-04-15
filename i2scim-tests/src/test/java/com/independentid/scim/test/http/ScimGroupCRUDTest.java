@@ -27,14 +27,14 @@ import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import org.apache.http.Header;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.InputStreamEntity;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.InputStreamEntity;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -76,7 +77,7 @@ public class ScimGroupCRUDTest {
      * This test actually resets and re-initializes the SCIM Mongo test database.
      */
     @Test
-    public void a_initializeMongo() {
+    public void a_initializeMongo() throws Exception {
 
         logger.info("========== Scim HTTP CRUD Test ==========");
         logger.info("\tA. Initializing test data");
@@ -94,7 +95,7 @@ public class ScimGroupCRUDTest {
      * This test checks that a JSON user can be parsed into a SCIM Resource
      */
     @Test
-    public void b_PrepareUsers() {
+    public void b_PrepareUsers() throws Exception {
 
         logger.info("\tB1. Add two users...");
 
@@ -110,13 +111,12 @@ public class ScimGroupCRUDTest {
 
             InputStreamEntity reqEntity = new InputStreamEntity(
                     userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
-            reqEntity.setChunked(false);
             post.setEntity(reqEntity);
 
-            logger.debug("Executing test add for bjensen: " + post.getRequestLine());
+            logger.debug("Executing test add for bjensen: " + post.getMethod() + " " + post.getUri());
             //logger.debug(EntityUtils.toString(reqEntity));
 
-            HttpResponse resp = TestUtils.executeRequest(post);
+            ClassicHttpResponse resp = TestUtils.executeRequest(post);
 
             Header[] hloc = resp.getHeaders(HttpHeaders.LOCATION);
             if (hloc == null || hloc.length == 0)
@@ -125,7 +125,7 @@ public class ScimGroupCRUDTest {
                 Header loc = hloc[0];
                 user1url = loc.getValue();  // This will be used to retrieve the user later
             }
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("Create user response status of 201")
                     .isEqualTo(ScimResponse.ST_CREATED);
 
@@ -133,7 +133,6 @@ public class ScimGroupCRUDTest {
             post = new HttpPost(req);
             reqEntity = new InputStreamEntity(
                     userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
-            reqEntity.setChunked(false);
             post.setEntity(reqEntity);
             resp = TestUtils.executeRequest(post);
 
@@ -145,7 +144,7 @@ public class ScimGroupCRUDTest {
                 user2url = loc.getValue();  // This will be used to retrieve the user later
             }
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("Create user response status of 201")
                     .isEqualTo(ScimResponse.ST_CREATED);
 
@@ -161,7 +160,7 @@ public class ScimGroupCRUDTest {
     }
 
     @Test
-    public void c_createGroupTest() throws IOException {
+    public void c_createGroupTest() throws Exception {
         logger.info("\tC. Creating Group...");
         String jsonGroup = "{\n" +
                 "     \"schemas\": [\"urn:ietf:params:scim:schemas:core:2.0:Group\"],\n" +
@@ -174,11 +173,10 @@ public class ScimGroupCRUDTest {
 
         HttpPost postGroup = new HttpPost(req);
         StringEntity body = new StringEntity(jsonGroup);
-        body.setChunked(false);
         postGroup.setEntity(body);
 
-        HttpResponse resp = TestUtils.executeRequest(postGroup);
-        assertThat(resp.getStatusLine().getStatusCode())
+        ClassicHttpResponse resp = TestUtils.executeRequest(postGroup);
+        assertThat(resp.getCode())
                 .as("Create user response status of 201")
                 .isEqualTo(ScimResponse.ST_CREATED);
         Header[] hloc = resp.getHeaders(HttpHeaders.LOCATION);
@@ -191,13 +189,13 @@ public class ScimGroupCRUDTest {
     }
 
     @Test
-    public void d_getGroupTest() throws IOException {
+    public void d_getGroupTest() throws Exception {
         logger.info("\tD. Get Group...");
 
-        HttpResponse resp = TestUtils.executeGet(baseUrl, grpUrl);
+        ClassicHttpResponse resp = TestUtils.executeGet(baseUrl, grpUrl);
 
         assert resp != null;
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("GET Group- Check for status response 200 OK")
                 .isEqualTo(ScimResponse.ST_OK);
 
@@ -219,13 +217,13 @@ public class ScimGroupCRUDTest {
     }
 
     @Test
-    public void e_getUserTest() throws IOException {
+    public void e_getUserTest() throws Exception {
         logger.info("\tE. Check Groups on User...");
 
-        HttpResponse resp = TestUtils.executeGet(baseUrl, user1url);
+        ClassicHttpResponse resp = TestUtils.executeGet(baseUrl, user1url);
 
         assert resp != null;
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("GET Group- Check for status response 200 OK")
                 .isEqualTo(ScimResponse.ST_OK);
 
@@ -247,14 +245,14 @@ public class ScimGroupCRUDTest {
     }
 
     @Test
-    public void f_getUserFilterTest() throws IOException {
+    public void f_getUserFilterTest() throws Exception {
         logger.info("\tF. Search filter for groups on User...");
 
 
-        HttpResponse resp = TestUtils.executeGet(baseUrl, user2url + "?filter=" + URLEncoder.encode("groups.$ref eq " + grpUrl, StandardCharsets.UTF_8));
+        ClassicHttpResponse resp = TestUtils.executeGet(baseUrl, user2url + "?filter=" + URLEncoder.encode("groups.$ref eq " + grpUrl, StandardCharsets.UTF_8));
 
         assert resp != null;
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("GET Group- Check for status response 200 OK")
                 .isEqualTo(ScimResponse.ST_OK);
 

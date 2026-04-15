@@ -36,10 +36,10 @@ import io.smallrye.jwt.build.JwtSignatureBuilder;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpUriRequest;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jose4j.jwk.PublicJsonWebKey;
 import org.jose4j.jwk.RsaJsonWebKey;
@@ -78,7 +78,7 @@ public class TestUtils {
     public static final String ENV_TEST_OPA_URL = "TEST_OPA_URL";
     public static final String DEF_TEST_OPA_URL = "http://localhost:8181/v1/data/i2scim";
 
-    public static final String DEF_TEST_MONGO_URI = "mongodb://localhost:27117";
+    public static final String DEF_TEST_MONGO_URI = "${quarkus.mongodb.connection-string:mongodb://localhost:27017}";
 
     // Not supported because each profile sets its own DB name
     //public static final String ENV_TEST_MONGO_DBNAME = "TEST_MONGO_DBNAME";
@@ -94,7 +94,7 @@ public class TestUtils {
     @ConfigProperty(name = "scim.prov.memory.persist.dir", defaultValue = "./scimdata")
     String storeDir;
 
-    @ConfigProperty(name = "scim.prov.mongo.uri", defaultValue = "mongodb://localhost:27117")
+    @ConfigProperty(name = "scim.prov.mongo.uri", defaultValue = "${quarkus.mongodb.connection-string:mongodb://localhost:27017}")
     String dbUrl;
 
     @ConfigProperty(name = "scim.prov.mongo.dbname", defaultValue = "testSCIM")

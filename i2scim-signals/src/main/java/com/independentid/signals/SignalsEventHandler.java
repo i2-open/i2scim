@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 //@ApplicationScoped
 @Startup
@@ -71,12 +72,15 @@ public class SignalsEventHandler implements IEventHandler {
     @ConfigProperty(name = "scim.signals.rcv.types", defaultValue = "*")
     Optional<List<String>> rcvTypes;
 
+    @ConfigProperty(name = "scim.signals.test", defaultValue = "false")
+    boolean isTest;
+
     SignalsEventReceiver receiverThread;
 
-    protected static final List<String> acksPending = Collections.synchronizedList(new ArrayList<>());
-    protected static final List<Operation> pendingPubOps = Collections.synchronizedList(new ArrayList<>());
+    protected static final List<String> acksPending = new CopyOnWriteArrayList<>();
+    protected static final List<Operation> pendingPubOps = new CopyOnWriteArrayList<>();
 
-    protected static final List<Operation> acceptedOps = Collections.synchronizedList(new ArrayList<>());
+    protected static final List<Operation> acceptedOps = new CopyOnWriteArrayList<>();
 
     protected static final FifoCache<Operation> sendErrorOps = new FifoCache<>(1024);
 
@@ -138,7 +142,10 @@ public class SignalsEventHandler implements IEventHandler {
         this.mapper = new SignalsEventMapper(pubCfgTypes, rcvCfgTypes, InjectionManager.getInstance().getGenerator());
 
         try {
-            Thread.sleep(5000); // wait for server to settle
+            if (isTest)
+                Thread.sleep(100); // give some time for server to settle
+            else
+                Thread.sleep(5000); // wait for server to settle
         } catch (InterruptedException ignore) {
         }
         SchemaManager mgr = configMgr.getSchemaManager();
@@ -270,6 +277,9 @@ public class SignalsEventHandler implements IEventHandler {
         } catch (IOException ignore) {
 
         }
+        acksPending.clear();
+        pendingPubOps.clear();
+        acceptedOps.clear();
     }
 
 }

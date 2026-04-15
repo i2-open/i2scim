@@ -36,14 +36,14 @@ import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpPatch;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpPatch;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -100,7 +100,7 @@ public class ScimPatchTest {
      * This test actually resets and re-initializes the SCIM Mongo test database.
      */
     @Test
-    public void a_initializeProvider() {
+    public void a_initializeProvider() throws Exception {
 
         logger.info("========== Scim HTTP CRUD Test ==========");
         logger.info("\tA. Initializing test data");
@@ -118,7 +118,7 @@ public class ScimPatchTest {
      * This test checks that a JSON user can be parsed into a SCIM Resource
      */
     @Test
-    public void b_PrepareTestData() throws MalformedURLException, UnsupportedEncodingException {
+    public void b_PrepareTestData() throws Exception {
 
         logger.info("\tB1. Add users and group...");
 
@@ -135,13 +135,12 @@ public class ScimPatchTest {
             HttpPost post = new HttpPost(req);
 
             StringEntity reqEntity = new StringEntity(userNode.toString());
-            reqEntity.setChunked(false);
             post.setEntity(reqEntity);
 
-            logger.debug("Executing test add for bjensen: " + post.getRequestLine());
+            logger.debug("Executing test add for bjensen: " + post.toString());
             //logger.debug(EntityUtils.toString(reqEntity));
 
-            HttpResponse resp = TestUtils.executeRequest(post);
+            ClassicHttpResponse resp = TestUtils.executeRequest(post);
 
             Header[] hloc = resp.getHeaders(HttpHeaders.LOCATION);
             if (hloc == null || hloc.length == 0)
@@ -150,7 +149,7 @@ public class ScimPatchTest {
                 Header loc = hloc[0];
                 user1url = loc.getValue();  // This will be used to retrieve the user later
             }
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("Create user response status of 201")
                     .isEqualTo(ScimResponse.ST_CREATED);
 
@@ -160,7 +159,6 @@ public class ScimPatchTest {
             res2 = new ScimResource(smgr, userNode, "Users");
             reqEntity = new StringEntity(userNode.toString());
 
-            reqEntity.setChunked(false);
             post.setEntity(reqEntity);
             resp = TestUtils.executeRequest(post);
 
@@ -172,7 +170,7 @@ public class ScimPatchTest {
                 user2url = loc.getValue();  // This will be used to retrieve the user later
             }
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("Create user response status of 201")
                     .isEqualTo(ScimResponse.ST_CREATED);
 
@@ -193,17 +191,16 @@ public class ScimPatchTest {
 
         HttpPost postGroup = new HttpPost(req);
         StringEntity body = new StringEntity(jsonGroup);
-        body.setChunked(false);
         postGroup.setEntity(body);
 
-        HttpResponse resp = null;
+        ClassicHttpResponse resp = null;
         try {
             resp = TestUtils.executeRequest(postGroup);
         } catch (IOException e) {
             fail("Failed to create group: " + e.getMessage(), e);
         }
         assert resp != null;
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Create user response status of 201")
                 .isEqualTo(ScimResponse.ST_CREATED);
         Header[] hloc = resp.getHeaders(HttpHeaders.LOCATION);
@@ -223,13 +220,13 @@ public class ScimPatchTest {
     }
 
     @Test
-    public void c_GroupTest() throws IOException {
+    public void c_GroupTest() throws Exception {
         logger.info("\tC. Test Modify Group...");
 
-        HttpResponse resp = TestUtils.executeGet(baseUrl, grpUrl);
+        ClassicHttpResponse resp = TestUtils.executeGet(baseUrl, grpUrl);
 
         assert resp != null;
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("GET Group- Check for status response 200 OK")
                 .isEqualTo(ScimResponse.ST_OK);
 
@@ -265,14 +262,13 @@ public class ScimPatchTest {
         String requestBody = reqJson.toPrettyString();
         logger.info("\t...Patch request\n" + requestBody);
         StringEntity reqEntity = new StringEntity(requestBody);
-        reqEntity.setChunked(false);
         post.setEntity(reqEntity);
 
         logger.info("\t...Patching group to add JSmith");
         //logger.debug(EntityUtils.toString(reqEntity));
 
         resp = TestUtils.executeRequest(post);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Has HTTP response status of 200 - ok")
                 .isEqualTo(ScimResponse.ST_OK);
         String rbody = EntityUtils.toString(resp.getEntity());
@@ -283,7 +279,7 @@ public class ScimPatchTest {
     }
 
     @Test
-    public void d_CheckPatchUser() throws ScimException, IOException {
+    public void d_CheckPatchUser() throws Exception {
         logger.info("D. Checking Patch User");
 
         Attribute phone = smgr.findAttribute("User:phoneNumbers", null);
@@ -318,11 +314,10 @@ public class ScimPatchTest {
 
         HttpPatch patchUser = new HttpPatch(req);
         StringEntity body = new StringEntity(patchRequestBody);
-        body.setChunked(false);
         patchUser.setEntity(body);
 
-        HttpResponse resp = TestUtils.executeRequest(patchUser);
-        assertThat(resp.getStatusLine().getStatusCode())
+        ClassicHttpResponse resp = TestUtils.executeRequest(patchUser);
+        assertThat(resp.getCode())
                 .as("Patch user response status of 200 OK")
                 .isEqualTo(ScimResponse.ST_OK);
 
@@ -338,7 +333,7 @@ public class ScimPatchTest {
     }
 
     @Test
-    public void e_NoTargetTest() throws IOException {
+    public void e_NoTargetTest() throws Exception {
         logger.info("E. Checking No Target Response");
         // This is a valid request, however, there is no type equal to blah so No_target
         JsonPatchOp faultyValueOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REMOVE, "phoneNumbers[type eq blah].value", null);
@@ -349,11 +344,10 @@ public class ScimPatchTest {
 
         HttpPatch patchUser = new HttpPatch(req);
         StringEntity body = new StringEntity(jpr.toJsonNode().toPrettyString());
-        body.setChunked(false);
         patchUser.setEntity(body);
 
-        HttpResponse resp = TestUtils.executeRequest(patchUser);
-        assertThat(resp.getStatusLine().getStatusCode())
+        ClassicHttpResponse resp = TestUtils.executeRequest(patchUser);
+        assertThat(resp.getCode())
                 .as("Patch resposne bad request")
                 .isEqualTo(ScimResponse.ST_BAD_REQUEST);
 
@@ -369,7 +363,7 @@ public class ScimPatchTest {
     }
 
     @Test
-    public void f_InvalidValueTest() throws IOException {
+    public void f_InvalidValueTest() throws Exception {
         logger.info("F. Checking Invalid Value Response");
         JsonPatchOp faultyValueOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE, "phoneNumbers[type eq blah].value", null);
         jpr = new JsonPatchRequest();
@@ -379,11 +373,10 @@ public class ScimPatchTest {
 
         HttpPatch patchUser = new HttpPatch(req);
         StringEntity body = new StringEntity(jpr.toJsonNode().toPrettyString());
-        body.setChunked(false);
         patchUser.setEntity(body);
 
-        HttpResponse resp = TestUtils.executeRequest(patchUser);
-        assertThat(resp.getStatusLine().getStatusCode())
+        ClassicHttpResponse resp = TestUtils.executeRequest(patchUser);
+        assertThat(resp.getCode())
                 .as("Patch resposne bad request")
                 .isEqualTo(ScimResponse.ST_BAD_REQUEST);
 
@@ -399,7 +392,7 @@ public class ScimPatchTest {
     }
 
     @Test
-    public void g_MethodNotAllowedTest() throws IOException {
+    public void g_MethodNotAllowedTest() throws Exception {
         logger.info("G. Checking PATCH on Container not allowed");
         JsonPatchOp dummyOp = new JsonPatchOp(JsonPatchOp.OP_ACTION_REMOVE, "phoneNumbers", null);
         jpr = new JsonPatchRequest();
@@ -409,11 +402,10 @@ public class ScimPatchTest {
 
         HttpPatch patchUser = new HttpPatch(req);
         StringEntity body = new StringEntity(jpr.toJsonNode().toPrettyString());
-        body.setChunked(false);
         patchUser.setEntity(body);
 
-        HttpResponse resp = TestUtils.executeRequest(patchUser);
-        assertThat(resp.getStatusLine().getStatusCode())
+        ClassicHttpResponse resp = TestUtils.executeRequest(patchUser);
+        assertThat(resp.getCode())
                 .as("Patch resposne bad request")
                 .isEqualTo(ScimResponse.ST_METHODNOTALLOWED);
 

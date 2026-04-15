@@ -108,14 +108,14 @@ public class FilterParserTest {
 	
 	
 	@Test
-	public void a_cfgTest() {
+	public void a_cfgTest() throws Exception {
 		assertThat(smgr).as("Check injection worked")
 			.isNotNull();
 
 	}
 	
 	@Test
-	public void b_testParseFilterString() {
+	public void b_testParseFilterString() throws Exception {
 		for(int i = 0; i < testArray.length; i++) {
 			logger.debug("Parsing filter: ("+i+"):\t"+testArray[i][1]);
 			RequestCtx ctx = null;

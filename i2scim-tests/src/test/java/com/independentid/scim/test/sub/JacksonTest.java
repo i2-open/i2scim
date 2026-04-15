@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 public class JacksonTest {
 
     @Test
-    public void aTest() {
+    public void aTest() throws Exception {
        ObjectNode node = getNode();
        System.out.println("Basic Node:\n"+node.toPrettyString());
        String nstring = node.toString();

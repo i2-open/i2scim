@@ -28,15 +28,16 @@ import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -154,7 +155,7 @@ public class OpaSecurityFilter implements Filter {
             post.setEntity(body);
             try {
                 CloseableHttpResponse resp = opaClient.execute(post);
-                if (resp.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
+                if (resp.getCode() == HttpStatus.SC_OK) {
                     HttpEntity entity = resp.getEntity();
                     if (entity == null) {
                         logger.error("Error calling OpenPolicyAgent: OPA may not be properly configured.");
@@ -176,7 +177,7 @@ public class OpaSecurityFilter implements Filter {
                     }
                     ((HttpServletResponse)response).setStatus(ScimResponse.ST_UNAUTHORIZED);
                 }
-            } catch (IOException e) {
+            } catch (IOException | ParseException e) {
                 logger.error("Error calling OpenPolicyAgent: "+e.getMessage(),e);
                 ((HttpServletResponse)response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }

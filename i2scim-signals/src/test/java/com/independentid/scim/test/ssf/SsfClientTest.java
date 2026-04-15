@@ -17,15 +17,15 @@ import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.jose4j.jwt.MalformedClaimException;
 import org.jose4j.jwt.NumericDate;
 import org.jose4j.jwt.consumer.InvalidJwtException;
@@ -190,7 +190,7 @@ public class SsfClientTest {
         try (CloseableHttpClient client = HttpClients.createDefault()) {
             HttpGet req = new HttpGet(this.iatPath);
             try (CloseableHttpResponse resp = client.execute(req)) {
-                assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(200);
+                assertThat(resp.getCode()).isEqualTo(200);
 
                 HttpEntity entity = resp.getEntity();
 
@@ -259,7 +259,7 @@ public class SsfClientTest {
             req.setEntity(bodyEntity);
 
             try (CloseableHttpResponse resp = client.execute(req)) {
-                assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_ACCEPTED);
+                assertThat(resp.getCode()).isEqualTo(HttpStatus.SC_ACCEPTED);
                 assertThat(MockSignalsServer.getReceived()).isEqualTo(1);
             }
 
@@ -279,7 +279,7 @@ public class SsfClientTest {
             req.setEntity(bodyEntity);
 
             try (CloseableHttpResponse resp = client.execute(req)) {
-                assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(HttpStatus.SC_BAD_REQUEST);
+                assertThat(resp.getCode()).isEqualTo(HttpStatus.SC_BAD_REQUEST);
                 assertThat(MockSignalsServer.getJwtErrs()).isEqualTo(1);
                 assertThat(MockSignalsServer.getTotalReceivedEvents()).isEqualTo(2);
             }
@@ -347,7 +347,7 @@ public class SsfClientTest {
             pollRequest.setHeader("Authorization", ssfClient.getPollStream().authorization);
             pollRequest.setEntity(body);
             try (CloseableHttpResponse resp = client.execute(pollRequest)) {
-                assertThat(resp.getStatusLine().getStatusCode()).isEqualTo(200);
+                assertThat(resp.getCode()).isEqualTo(200);
                 assertThat(MockSignalsServer.getPendingPollCnt()).isEqualTo(0);
 
                 HttpEntity respEntity = resp.getEntity();

@@ -76,7 +76,7 @@ public class MongoProviderTest {
     private static String user1url, user2url, grpurl; //,user2url;
 
     @Test
-    public void a_providerTest() {
+    public void a_providerTest() throws Exception {
 
         logger.info("========== Mongo Provider CRUD Test ==========");
         try {
@@ -105,7 +105,7 @@ public class MongoProviderTest {
      * This test checks that a JSON user can be parsed into a SCIM Resource
      */
     @Test
-    public void b_ScimAddUserTest() {
+    public void b_ScimAddUserTest() throws Exception {
 
         logger.info("\tB1. Add User BJensen...");
         try {
@@ -186,7 +186,7 @@ public class MongoProviderTest {
      * This test attempts to retrieve the previously created user using the returned location.
      */
     @Test
-    public void c_ScimGetUserTest() {
+    public void c_ScimGetUserTest() throws Exception {
 
         try {
             logger.info("\tC. Retrieving user from backend using: " + user1url);
@@ -242,7 +242,7 @@ public class MongoProviderTest {
      * This test tries to search for the previously created user by searching on filter name
      */
     @Test
-    public void d_ScimSearchUserTest() {
+    public void d_ScimSearchUserTest() throws Exception {
 
         logger.info("\tD. Search using GET for user from backend with filter=UserName eq bjensen@example.com");
 
@@ -294,7 +294,7 @@ public class MongoProviderTest {
     }
 
     @Test
-    public void e_ScimSearchValPathUserTest() {
+    public void e_ScimSearchValPathUserTest() throws Exception {
 
         logger.info("\tE. Searching user from backend with filter=UserName eq bjensen@example.com and addresses[country eq \\\"USA\\\" and type eq \\\"home\\\"]");
 
@@ -346,7 +346,7 @@ public class MongoProviderTest {
     }
 
     @Test
-    public void f_updateUserTest() {
+    public void f_updateUserTest() throws Exception {
         logger.info("\tF. Modify user with PUT Test");
 
         try {
@@ -411,7 +411,7 @@ public class MongoProviderTest {
     }
 
     @Test
-    public void g_AddGroupTest() throws JsonProcessingException, ScimException, ParseException {
+    public void g_AddGroupTest() throws Exception {
         logger.info("\tG. Add Group Test(also second container)");
 
         String jsonGroup = "{\n" +
@@ -430,7 +430,7 @@ public class MongoProviderTest {
     }
 
     @Test
-    public void h_GlobalSearchTest() throws ScimException, BackendException {
+    public void h_GlobalSearchTest() throws Exception {
         logger.info("\tH. Global Search Test");
 
         String filter = "members.value eq " + user1uid + " or id eq " + user1uid; // we want to match a resource in each container
@@ -451,7 +451,7 @@ public class MongoProviderTest {
     }
 
     @Test
-    public void i_ScimDeleteUserTest() {
+    public void i_ScimDeleteUserTest() throws Exception {
         logger.info("\tI. Deleting user test");
 
         try {

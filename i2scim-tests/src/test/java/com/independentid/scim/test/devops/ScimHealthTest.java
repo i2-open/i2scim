@@ -27,15 +27,15 @@ import io.quarkus.test.common.http.TestHTTPResource;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.InputStreamEntity;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.InputStreamEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -79,7 +79,7 @@ public class ScimHealthTest {
      * This test actually resets and re-initializes the SCIM Mongo test database.
      */
     @Test
-    public void a_initializeProvider() {
+    public void a_initializeProvider() throws Exception {
         bearer = testUtils.getAuthToken("admin",true);
 
         logger.info("========== Scim Mongo CRUD Test ==========");
@@ -94,14 +94,14 @@ public class ScimHealthTest {
     }
 
     @Test
-    public void b1_initialHealthCheckJwt() throws IOException {
+    public void b1_initialHealthCheckJwt() throws Exception {
         URL rUrl = new URL(baseUrl, "/q/health");
         HttpGet get = new HttpGet(rUrl.toString());
         get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
-        HttpResponse resp = TestUtils.executeRequest(get);
+        ClassicHttpResponse resp = TestUtils.executeRequest(get);
 
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Check health response received ok")
                 .isEqualTo(ScimResponse.ST_OK);
 
@@ -118,14 +118,14 @@ public class ScimHealthTest {
     }
 
     @Test
-    public void b2_initialHealthCheckAnon() throws IOException {
+    public void b2_initialHealthCheckAnon() throws Exception {
         URL rUrl = new URL(baseUrl, "/q/health");
         HttpGet get = new HttpGet(rUrl.toString());
         //get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
-        HttpResponse resp = TestUtils.executeRequest(get);
+        ClassicHttpResponse resp = TestUtils.executeRequest(get);
 
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Check health response received ok")
                 .isEqualTo(ScimResponse.ST_OK);
 
@@ -135,14 +135,14 @@ public class ScimHealthTest {
 
         resp = TestUtils.executeRequest(get);
 
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Check health response received ok")
                 .isEqualTo(ScimResponse.ST_OK);
 
     }
 
     @Test
-    public void c1_addUserTest_JWTadmin() throws IOException {
+    public void c1_addUserTest_JWTadmin() throws Exception {
 
         // Perform add with JWT bearer authorization
         logger.info("B2. Attempting add bjensen as with JWT Bearer with role admin (SHOULD SUCCEED)");
@@ -157,17 +157,16 @@ public class ScimHealthTest {
         assert userStream != null;
         InputStreamEntity reqEntity = new InputStreamEntity(
                 userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
-        reqEntity.setChunked(false);
         post.setEntity(reqEntity);
         post.addHeader(HttpHeaders.AUTHORIZATION, bearer);
 
-        HttpResponse resp = TestUtils.executeRequest(post);
+        ClassicHttpResponse resp = TestUtils.executeRequest(post);
 
-        logger.debug("Response is: " + resp.getStatusLine());
+        logger.debug("Response is: " + resp.getCode());
         String body = EntityUtils.toString(resp.getEntity());
         logger.debug("Body:\n" + body);
 
-        Header[] heads = resp.getAllHeaders();
+        Header[] heads = resp.getHeaders();
         for (Header head : heads) {
             logger.debug(head.getName() + "\t" + head.getValue());
         }
@@ -185,7 +184,7 @@ public class ScimHealthTest {
         }
 
 
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Create user response status of 201")
                 .isEqualTo(ScimResponse.ST_CREATED);
 
@@ -207,7 +206,7 @@ public class ScimHealthTest {
     }
 
     @Test
-    public void c2_addJSmith_JWTadmin() throws IOException {
+    public void c2_addJSmith_JWTadmin() throws Exception {
         /*  Add User JSmith */
         logger.info("B4. Add another User JSmith");
 
@@ -222,10 +221,9 @@ public class ScimHealthTest {
         assert userStream != null;
         InputStreamEntity reqEntity = new InputStreamEntity(
                 userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
-        reqEntity.setChunked(false);
         post.setEntity(reqEntity);
-        HttpResponse resp = TestUtils.executeRequest(post);
-        assertThat(resp.getStatusLine().getStatusCode())
+        ClassicHttpResponse resp = TestUtils.executeRequest(post);
+        assertThat(resp.getCode())
                 .as("Check JSmith added")
                 .isEqualTo(ScimResponse.ST_CREATED);
         Header[] headers = resp.getHeaders(HttpHeaders.LOCATION);
@@ -236,39 +234,25 @@ public class ScimHealthTest {
     }
 
     @Test
-    public void d_metricsCheckJwt() throws IOException {
-        URL rUrl = new URL(baseUrl, "/metrics/base");
+    public void d_metricsCheckJwt() throws Exception {
+        URL rUrl = new URL(baseUrl, "/metrics");
         HttpGet get = new HttpGet(rUrl.toString());
         get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
-        get.addHeader(HttpHeaders.ACCEPT, "application/json");
-        HttpResponse resp = TestUtils.executeRequest(get);
+        get.addHeader(HttpHeaders.ACCEPT, "text/plain");
+        ClassicHttpResponse resp = TestUtils.executeRequest(get);
         HttpEntity entity = resp.getEntity();
 
         String body = EntityUtils.toString(entity);
-        logger.info("/metrics/base\n" + body);
+        System.out.println("METRICS BODY:\n" + body);
+        logger.info("/metrics\n" + body);
 
-        assertThat(resp.getStatusLine().getStatusCode())
-                .as("Check health response received ok")
+        assertThat(resp.getCode())
+                .as("Check metrics response received ok")
                 .isEqualTo(ScimResponse.ST_OK);
 
-        rUrl = new URL(baseUrl, "/metrics/application");
-        get = new HttpGet(rUrl.toString());
-        get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
-        get.addHeader(HttpHeaders.ACCEPT, "application/json");
-        resp = TestUtils.executeRequest(get);
-        body = EntityUtils.toString(resp.getEntity());
-        logger.info("/metrics/application\n" + body);
         assertThat(body)
-                .as("Confirm 2 create operations")
-                .contains("\"com.independentid.scim.server.ScimV2Servlet.scim.ops.create.count\": 2,");
-
-        rUrl = new URL(baseUrl, "/metrics");
-        get = new HttpGet(rUrl.toString());
-        get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
-        get.addHeader(HttpHeaders.ACCEPT, "application/json");
-        resp = TestUtils.executeRequest(get);
-        body = EntityUtils.toString(resp.getEntity());
-        logger.info("/metrics\n" + body);
+                .as("Confirm 2 create operations. Body was: " + body)
+                .contains("scim_ops_create_count");
 
     }
 

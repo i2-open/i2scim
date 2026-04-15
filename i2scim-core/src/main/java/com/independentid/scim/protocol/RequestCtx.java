@@ -36,8 +36,8 @@ import jakarta.servlet.ServletContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.constraints.NotNull;
-import org.apache.http.HttpHeaders;
-import org.apache.http.auth.BasicUserPrincipal;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.client5.http.auth.BasicUserPrincipal;
 
 import java.io.InputStream;
 import java.net.URLDecoder;

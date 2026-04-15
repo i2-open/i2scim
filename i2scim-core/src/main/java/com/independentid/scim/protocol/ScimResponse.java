@@ -132,7 +132,7 @@ public class ScimResponse implements ScimSerializer {
     /**
      * Serialize the response by setting the appropriate HTTP response headers (from RequestCtx) and generating a JSON
      * body response if required (e.g. for SCIM Errors HTTP Status 400).
-     * @param gen A JsonGenerator object usually bound to an HttpResponse object writer.
+     * @param gen A JsonGenerator object usually bound to an ClassicHttpResponse object writer.
      * @param ctx A RequestCtx object containing the original request/response.
      * @throws IOException may be thrown when attempting to write to generator
      */

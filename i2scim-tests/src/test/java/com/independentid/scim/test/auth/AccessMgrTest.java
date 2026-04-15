@@ -45,8 +45,8 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Resource;
 import jakarta.inject.Inject;
-import org.apache.http.HttpStatus;
-import org.apache.http.auth.BasicUserPrincipal;
+import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.client5.http.auth.BasicUserPrincipal;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -93,7 +93,7 @@ public class AccessMgrTest {
     private static SecurityIdentity idUser1;
 
     @Test
-    public void a_AmgrInitTest() throws ScimException {
+    public void a_AmgrInitTest() throws Exception {
         logger.info("========== Beginning Access Manager Tests ==========");
         logger.info("\tA.\tBasic init test");
         assertThat(amgr)
@@ -207,7 +207,7 @@ public class AccessMgrTest {
     }
 
     @Test
-    public void b_TestReadAsRoot() {
+    public void b_TestReadAsRoot() throws Exception {
 
         try {
             RequestCtx ctx = new RequestCtx("/Users", null, null, smgr);
@@ -248,7 +248,7 @@ public class AccessMgrTest {
     }
 
     @Test
-    public void c_TestReadAsBJensen_self() {
+    public void c_TestReadAsBJensen_self() throws Exception {
 
         try {
             RequestCtx ctx = new RequestCtx("/Users/" + user1.getId(), null, null, smgr);
@@ -309,7 +309,7 @@ public class AccessMgrTest {
     }
 
     @Test
-    public void d_TestReadAsBJensen_Other() {
+    public void d_TestReadAsBJensen_Other() throws Exception {
 
         try {
             RequestCtx ctx = new RequestCtx("/Users/" + user2.getId(), null, null, smgr);
@@ -375,7 +375,7 @@ public class AccessMgrTest {
     }
 
     @Test
-    public void e_TestSearchAsBJensen_Other() {
+    public void e_TestSearchAsBJensen_Other() throws Exception {
 
         try {
             RequestCtx ctx = new RequestCtx("/Users", user2.getId(), "userName eq jsmith@example.com", smgr);

@@ -23,8 +23,9 @@ import com.independentid.scim.resource.*;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
-import org.apache.http.HttpEntity;
-import org.apache.http.entity.StringEntity;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.entity.StringEntity;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -254,7 +255,7 @@ public class ResourceBuilder {
      * @return A {@link StringEntity} containing the constructed SCIM Resource.
      */
     public HttpEntity buildHttpEntity() {
-        return new StringEntity(this.resource.toJsonString(), ScimParams.SCIM_MIME_TYPE);
+        return new StringEntity(this.resource.toJsonString(), ContentType.create(ScimParams.SCIM_MIME_TYPE));
     }
 
     /**
@@ -267,7 +268,7 @@ public class ResourceBuilder {
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues
      */
-    public ScimResource buildAndCreate(ScimReqParams params) throws IOException, ScimException, URISyntaxException, ParseException {
+    public ScimResource buildAndCreate(ScimReqParams params) throws IOException, ScimException, URISyntaxException, ParseException, org.apache.hc.core5.http.ParseException {
         if (this.client == null)
             throw new IOException("SCIM client not defined.");
         i2scimResponse resp = client.create(this.resource, params);
@@ -294,7 +295,7 @@ public class ResourceBuilder {
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues
      */
-    public ScimResource buildAndPut(ScimReqParams params) throws IOException, ScimException, URISyntaxException, ParseException {
+    public ScimResource buildAndPut(ScimReqParams params) throws IOException, ScimException, URISyntaxException, ParseException, org.apache.hc.core5.http.ParseException {
         if (this.client == null)
             throw new IOException("SCIM client not defined.");
 

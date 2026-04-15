@@ -19,7 +19,17 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.util.List;
+
+import javax.net.ssl.SSLContext;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.KeyManagementException;
+import org.apache.hc.core5.ssl.SSLContexts;
+import java.io.ByteArrayInputStream;
 
 import static com.independentid.scim.core.ConfigMgr.findClassLoaderResource;
 
@@ -117,8 +127,27 @@ public class StreamConfigProps {
     @ConfigProperty(name = "scim.signals.ssf.serverUrl", defaultValue = "NONE")
     public String ssfUrl;
 
+    @ConfigProperty(name = "scim.signals.ssf.trust.certs.path", defaultValue = "NONE")
+    public String ssfTrustCertsPath;
+
+    @ConfigProperty(name = "scim.signals.ssf.trust.certs.value", defaultValue = "NONE")
+    public String ssfTrustCertsValue;
+
     @ConfigProperty(name = "scim.signals.ssf.authorization", defaultValue = "NONE")
     public String ssfAuthorization;
+
+    @ConfigProperty(name = "scim.signals.ssf.iat.path", defaultValue = "NONE")
+    public String ssfIatPath;
+
+
+    @ConfigProperty(name = "scim.signals.ssf.retry.max", defaultValue = "5")
+    public int ssfRetryMax;
+
+    @ConfigProperty(name = "scim.signals.ssf.retry.interval", defaultValue = "5000")
+    public int ssfRetryInterval;
+
+    @ConfigProperty(name = "scim.signals.ssf.retry.maxInterval", defaultValue = "60000")
+    public int ssfRetryMaxInterval;
 
     // When true, unsigned tokens will be generated
     @ConfigProperty(name = "scim.signals.rcv.algNone.override", defaultValue = "false")
@@ -252,9 +281,15 @@ public class StreamConfigProps {
         }
     }
 
-    private static PublicKey loadJwksPublicKey(String url, String jwksJson, String kid) {
+    private PublicKey loadJwksPublicKey(String url, String jwksJson, String kid) {
         if (!url.equals("NONE")) {
             HttpsJwks httpJkws = new HttpsJwks(url);
+            SSLContext sslContext = getSslContext();
+            if (sslContext != null) {
+                org.jose4j.http.Get get = new org.jose4j.http.Get();
+                get.setSslSocketFactory(sslContext.getSocketFactory());
+                httpJkws.setSimpleHttpGet(get);
+            }
             try {
                 List<JsonWebKey> keys = httpJkws.getJsonWebKeys();
 
@@ -265,12 +300,12 @@ public class StreamConfigProps {
                         return (PublicKey) key.getKey();
                     }
                 }
-                String msg = "No aud public key was located from: " + url;
+                String msg = "No public key was located from: " + url;
                 logger.error(msg);
-                throw new RuntimeException("No receiver aud key was located from: " + url);
+                throw new RuntimeException("No public key was located from: " + url);
 
             } catch (JoseException | IOException e) {
-                logger.error("Error loading aud public key from: " + url, e);
+                logger.error("Error loading public key from: " + url, e);
                 throw new RuntimeException(e);
             }
         } else {
@@ -304,5 +339,45 @@ public class StreamConfigProps {
 
     public File getConfigFile() {
         return new File(this.ssfConfigfile);
+    }
+
+    public SSLContext getSslContext() {
+        if (ssfTrustCertsPath.equals("NONE") && ssfTrustCertsValue.equals("NONE")) {
+            return null;
+        }
+
+        try {
+            CertificateFactory cf = CertificateFactory.getInstance("X.509");
+            KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+            ks.load(null, null);
+
+            if (!ssfTrustCertsPath.equals("NONE")) {
+                InputStream certInput = findClassLoaderResource(ssfTrustCertsPath);
+                if (certInput == null) {
+                    logger.error("Could not load SSF Trust CA at: " + ssfTrustCertsPath);
+                } else {
+                    int count = 0;
+                    for (Certificate cert : cf.generateCertificates(certInput)) {
+                        ks.setCertificateEntry("ssfTrustCa" + count++, cert);
+                    }
+                    logger.info("Loaded " + count + " SSF Trust CA(s) from: " + ssfTrustCertsPath);
+                }
+            } else {
+                InputStream certInput = new ByteArrayInputStream(ssfTrustCertsValue.getBytes());
+                int count = 0;
+                for (Certificate cert : cf.generateCertificates(certInput)) {
+                    ks.setCertificateEntry("ssfTrustCa" + count++, cert);
+                }
+                logger.info("Loaded " + count + " SSF Trust CA(s) from provided PEM value");
+            }
+
+            return SSLContexts.custom()
+                    .loadTrustMaterial(ks, null)
+                    .build();
+
+        } catch (CertificateException | KeyStoreException | IOException | NoSuchAlgorithmException | KeyManagementException e) {
+            logger.error("Error creating custom SSLContext: " + e.getMessage(), e);
+            return null;
+        }
     }
 }

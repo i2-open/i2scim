@@ -36,16 +36,11 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Resource;
 import jakarta.inject.Inject;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHeaders;
-import org.apache.http.client.methods.*;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.InputStreamEntity;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.classic.methods.*;
+import org.apache.hc.client5.http.impl.classic.*;
+import org.apache.hc.core5.http.*;
+import org.apache.hc.core5.http.io.entity.*;
+import org.apache.hc.core5.net.URIBuilder;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -94,7 +89,7 @@ public class ScimUserCRUDTest {
      * This test actually resets and re-initializes the SCIM Mongo test database.
      */
     @Test
-    public void a_initializeMongo() {
+    public void a_initializeMongo() throws Exception {
 
         logger.info("========== Scim HTTP CRUD Test ==========");
         logger.info("\tA. Initializing test data");
@@ -108,7 +103,7 @@ public class ScimUserCRUDTest {
 
     }
 
-    private CloseableHttpResponse addUser(CloseableHttpClient client, String file) throws IOException {
+    private CloseableHttpResponse addUser(CloseableHttpClient client, String file) throws IOException, java.net.URISyntaxException, org.apache.hc.core5.http.ParseException {
         InputStream userStream = ConfigMgr.findClassLoaderResource(file);
 
         URL rUrl = new URL(baseUrl, "/Users");
@@ -119,10 +114,9 @@ public class ScimUserCRUDTest {
 
         InputStreamEntity reqEntity = new InputStreamEntity(
                 userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
-        reqEntity.setChunked(false);
         post.setEntity(reqEntity);
 
-        logger.debug("Executing test add for bjensen: " + post.getRequestLine());
+        logger.debug("Executing test add for bjensen: " + post.getMethod() + " " + post.getUri());
         //logger.debug(EntityUtils.toString(reqEntity));
 
         CloseableHttpResponse resp = client.execute(post);
@@ -135,7 +129,7 @@ public class ScimUserCRUDTest {
      * This test checks that a JSON user can be parsed into a SCIM Resource
      */
     @Test
-    public void b_ScimAddUserTest() {
+    public void b_ScimAddUserTest() throws Exception {
 
         logger.info("\tB1. Add User BJensen...");
         CloseableHttpClient client = HttpClients.createDefault();
@@ -143,7 +137,7 @@ public class ScimUserCRUDTest {
         try {
 
             CloseableHttpResponse resp = addUser(client, testUserFile1);
-            Header[] heads = resp.getAllHeaders();
+            Header[] heads = resp.getHeaders();
             for (Header head : heads) {
                 logger.debug(head.getName() + "\t" + head.getValue());
             }
@@ -160,10 +154,10 @@ public class ScimUserCRUDTest {
                 user1url = loc.getValue();  // This will be used to retrieve the user later
             }
 
-            logger.debug("Response is: " + resp.getStatusLine());
+            logger.debug("Response is: " + resp.getCode());
             String body = EntityUtils.toString(resp.getEntity());
             logger.debug("Body:\n" + body);
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("Create user response status of 201")
                     .isEqualTo(ScimResponse.ST_CREATED);
 
@@ -190,7 +184,7 @@ public class ScimUserCRUDTest {
 
             resp = addUser(client, testUserFile1);
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("Confirm error 400 occurred (uniqueness)")
                     .isEqualTo(ScimResponse.ST_BAD_REQUEST);
             body = EntityUtils.toString(resp.getEntity());
@@ -203,7 +197,7 @@ public class ScimUserCRUDTest {
             // Add the JSmith entry...this will be needed for sort test.
             logger.info("\tB3. Adding second user JSmith...");
             resp = addUser(client, testUserFile2);
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("Create JSmith user response expected status 201")
                     .isEqualTo(ScimResponse.ST_CREATED);
             hloc = resp.getHeaders(HttpHeaders.LOCATION);
@@ -218,7 +212,7 @@ public class ScimUserCRUDTest {
                 user2url = loc.getValue();  // This will be used to retrieve the user later
             }
 
-        } catch (IOException e) {
+        } catch (IOException | org.apache.hc.core5.http.ParseException e) {
             Assertions.fail("Exception occured creating bjenson. " + e.getMessage(), e);
         } finally {
             try {
@@ -234,7 +228,7 @@ public class ScimUserCRUDTest {
      * This test attempts to retrieve the previously created user using the returned location.
      */
     @Test
-    public void c_ScimGetUserTest() throws MalformedURLException {
+    public void c_ScimGetUserTest() throws Exception {
         String req = TestUtils.mapPathToReqUrl(baseUrl, user1url);
 
         logger.info("\tC. Retrieving user from backend using: " + req);
@@ -247,7 +241,7 @@ public class ScimUserCRUDTest {
             CloseableHttpResponse resp = client.execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -296,7 +290,7 @@ public class ScimUserCRUDTest {
      * This test tries to search for the previously created user by searching on filter name
      */
     @Test
-    public void d1_ScimSearchUserTest() throws MalformedURLException {
+    public void d1_ScimSearchUserTest() throws Exception {
 
         logger.info("\tD1. Search using GET for user from backend with filter=UserName eq bjensen@example.com");
         CloseableHttpClient client = HttpClients.createDefault();
@@ -310,7 +304,7 @@ public class ScimUserCRUDTest {
             CloseableHttpResponse resp = client.execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -358,7 +352,7 @@ public class ScimUserCRUDTest {
      * This test searches for the previously created user by searching on filter name and uses POST
      */
     @Test
-    public void d2_ScimSearchUserTest() throws MalformedURLException {
+    public void d2_ScimSearchUserTest() throws Exception {
 
         logger.info("\tD2. POST Search user from backend with filter=UserName eq bjensen@example.com");
         CloseableHttpClient client = HttpClients.createDefault();
@@ -397,7 +391,7 @@ public class ScimUserCRUDTest {
             CloseableHttpResponse resp = client.execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -419,13 +413,13 @@ public class ScimUserCRUDTest {
 
             resp.close();
 
-        } catch (IOException e) {
+        } catch (IOException | org.apache.hc.core5.http.ParseException e) {
             fail("Exception occured making POST Search filter request for bjensen", e);
         }
     }
 
     @Test
-    public void e_ScimSearchValPathUserTest() throws MalformedURLException {
+    public void e_ScimSearchValPathUserTest() throws Exception {
 
         logger.info("\tE. Searching user from backend with valuePath filter");
         CloseableHttpClient client = HttpClients.createDefault();
@@ -439,7 +433,7 @@ public class ScimUserCRUDTest {
             CloseableHttpResponse resp = client.execute(request);
             HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -484,13 +478,13 @@ public class ScimUserCRUDTest {
     }
 
     @Test
-    public void f_sortandPagingTests() throws IOException {
+    public void f_sortandPagingTests() throws Exception {
         logger.info("\tF1. Performing sort by attribute test - ascending");
         String req = "/Users?sortBy=name.givenName";
         logger.info("\t\tGET " + req);
 
         CloseableHttpResponse resp = TestUtils.executeGet(baseUrl, req);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Confirm success returned as status OK")
                 .isEqualTo(ScimResponse.ST_OK);
         String body = EntityUtils.toString(resp.getEntity());
@@ -513,7 +507,7 @@ public class ScimUserCRUDTest {
         req = "/Users?sortBy=name.givenName&sortOrder=descend";
         logger.info("\t\tGET " + req);
         resp = TestUtils.executeGet(baseUrl, req);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Confirm success returned as status OK")
                 .isEqualTo(ScimResponse.ST_OK);
         body = EntityUtils.toString(resp.getEntity());
@@ -535,7 +529,7 @@ public class ScimUserCRUDTest {
         req = "/Users?sortBy=title,name.familyName&sortOrder=asc";
         logger.info("\t\tGET " + req);
         resp = TestUtils.executeGet(baseUrl, req);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Confirm success returned as status OK")
                 .isEqualTo(ScimResponse.ST_OK);
         body = EntityUtils.toString(resp.getEntity());
@@ -557,7 +551,7 @@ public class ScimUserCRUDTest {
         req = "/Users?sortBy=title,name.familyName&sortOrder=descending";
         logger.info("\t\tGET " + req);
         resp = TestUtils.executeGet(baseUrl, req);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Confirm success returned as status OK")
                 .isEqualTo(ScimResponse.ST_OK);
         body = EntityUtils.toString(resp.getEntity());
@@ -579,7 +573,7 @@ public class ScimUserCRUDTest {
         req = "/Users?sortBy=User:name.familyName&sortOrder=descending&startIndex=1&count=1";
         logger.info("\t\tGET " + req);
         resp = TestUtils.executeGet(baseUrl, req);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Confirm success returned as status OK")
                 .isEqualTo(ScimResponse.ST_OK);
         body = EntityUtils.toString(resp.getEntity());
@@ -599,7 +593,7 @@ public class ScimUserCRUDTest {
         req = "/Users?sortBy=title,name.familyName&sortOrder=descending&startIndex=2&count=1";
         logger.info("\t\tGET " + req);
         resp = TestUtils.executeGet(baseUrl, req);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Confirm success returned as status OK")
                 .isEqualTo(ScimResponse.ST_OK);
         body = EntityUtils.toString(resp.getEntity());
@@ -616,7 +610,7 @@ public class ScimUserCRUDTest {
     }
 
     @Test
-    public void g_updateUserTest() throws MalformedURLException {
+    public void g_updateUserTest() throws Exception {
         logger.info("\tG. Modify user with PUT Test (GET followed by PUT");
         CloseableHttpClient client = HttpClients.createDefault();
 
@@ -624,67 +618,63 @@ public class ScimUserCRUDTest {
         logger.info("\t\tGET " + req);
         HttpUriRequest request = new HttpGet(req);
 
-        try {
-            CloseableHttpResponse resp = client.execute(request);
-            HttpEntity entity = resp.getEntity();
+        CloseableHttpResponse resp = client.execute(request);
+        HttpEntity entity = resp.getEntity();
 
-            assertThat(resp.getStatusLine().getStatusCode())
-                    .as("GET User - Check for status response 200 OK")
-                    .isEqualTo(ScimResponse.ST_OK);
+        assertThat(resp.getCode())
+                .as("GET User - Check for status response 200 OK")
+                .isEqualTo(ScimResponse.ST_OK);
 
-            String body = EntityUtils.toString(entity);
+        String body = EntityUtils.toString(entity);
 
-            assertThat(body)
-                    .as("Check that it is not a ListResponse")
-                    .doesNotContain(ScimParams.SCHEMA_API_ListResponse);
+        assertThat(body)
+                .as("Check that it is not a ListResponse")
+                .doesNotContain(ScimParams.SCHEMA_API_ListResponse);
 
-            assertThat(body)
-                    .as("Is user bjensen")
-                    .contains("bjensen@example.com");
-            logger.debug("Entry retrieved:\n" + body);
+        assertThat(body)
+                .as("Is user bjensen")
+                .contains("bjensen@example.com");
+        logger.debug("Entry retrieved:\n" + body);
 
-            // Check that the result can be parsed as a SCIM object
-            JsonNode jres = JsonUtil.getJsonTree(body);
-            ScimResource res = new ScimResource(smgr, jres, "Users");
-            resp.close();
+        // Check that the result can be parsed as a SCIM object
+        JsonNode jres = JsonUtil.getJsonTree(body);
+        ScimResource res = new ScimResource(smgr, jres, "Users");
+        resp.close();
 
-            Attribute name = res.getAttribute("displayName", null);
+        Attribute name = res.getAttribute("displayName", null);
 
-            // Modify the result and put back
-            String dname = "\"Babs (TEST) Jensen\"";
-            JsonNode node = JsonUtil.getJsonTree(dname);
-            //node.get("displayName");
-            StringValue newval = new StringValue(name, node);
-            //res.removeValue(name);
-            res.addValue(newval);
+        // Modify the result and put back
+        String dname = "\"Babs (TEST) Jensen\"";
+        JsonNode node = JsonUtil.getJsonTree(dname);
+        //node.get("displayName");
+        StringValue newval = new StringValue(name, node);
+        //res.removeValue(name);
+        res.addValue(newval);
 
-            logger.info("\t\tPUT " + req);
-            HttpPut put = new HttpPut(req);
-            entity = new StringEntity(res.toJsonString(), ContentType.create(ScimParams.SCIM_MIME_TYPE));
-            put.setEntity(entity);
+        logger.info("\t\tPUT " + req);
+        HttpPut put = new HttpPut(req);
+        entity = new StringEntity(res.toJsonString(), ContentType.create(ScimParams.SCIM_MIME_TYPE));
+        put.setEntity(entity);
 
-            resp = client.execute(put);
-            assertThat(resp.getStatusLine().getStatusCode())
-                    .as("PUT User - Check for status response 200 OK")
-                    .isEqualTo(ScimResponse.ST_OK);
+        resp = client.execute(put);
+        assertThat(resp.getCode())
+                .as("PUT User - Check for status response 200 OK")
+                .isEqualTo(ScimResponse.ST_OK);
 
-            body = EntityUtils.toString(entity);
+        body = EntityUtils.toString(entity);
 
-            assertThat(body)
-                    .as("Check that PUT response is not a ListResponse")
-                    .doesNotContain(ScimParams.SCHEMA_API_ListResponse);
+        assertThat(body)
+                .as("Check that PUT response is not a ListResponse")
+                .doesNotContain(ScimParams.SCHEMA_API_ListResponse);
 
-            assertThat(body)
-                    .as("Contains test value")
-                    .contains("Babs (TEST)");
-            logger.debug("Entry retrieved:\n" + body);
-        } catch (IOException | ParseException | ScimException e) {
-            fail("Exception occured making GET request for bjensen", e);
-        }
+        assertThat(body)
+                .as("Contains test value")
+                .contains("Babs (TEST)");
+        logger.debug("Entry retrieved:\n" + body);
     }
 
     @Test
-    public void h_ScimDeleteUserTest() throws MalformedURLException {
+    public void h_ScimDeleteUserTest() throws Exception {
 
         logger.info("\tH. Deleting user from backend");
         CloseableHttpClient client = HttpClients.createDefault();
@@ -693,33 +683,29 @@ public class ScimUserCRUDTest {
 
         HttpUriRequest request = new HttpDelete(req);
 
-        try {
-            CloseableHttpResponse resp = client.execute(request);
+        CloseableHttpResponse resp = client.execute(request);
 
-            // confirm status 204 per RFC7644 Sec 3.6
-            assertThat(resp.getStatusLine().getStatusCode())
-                    .as("Confirm succesfull deletion of user")
-                    .isEqualTo(ScimResponse.ST_NOCONTENT);
+        // confirm status 204 per RFC7644 Sec 3.6
+        assertThat(resp.getCode())
+                .as("Confirm succesfull deletion of user")
+                .isEqualTo(ScimResponse.ST_NOCONTENT);
 
 
-            // Try to retrieve the deleted object. Should return 404
-            request = new HttpGet(req);
-            resp = client.execute(request);
-            assertThat(resp.getStatusLine().getStatusCode())
-                    .as("Confirm deleted user was not findable")
-                    .isEqualTo(ScimResponse.ST_NOTFOUND);
+        // Try to retrieve the deleted object. Should return 404
+        request = new HttpGet(req);
+        resp = client.execute(request);
+        assertThat(resp.getCode())
+                .as("Confirm deleted user was not findable")
+                .isEqualTo(ScimResponse.ST_NOTFOUND);
 
-            // Try delete of non-existent object, should be 404
-            request = new HttpDelete(req);
-            resp = client.execute(request);
-            assertThat(resp.getStatusLine().getStatusCode())
-                    .as("Confirm not found when deleting non-existent resource")
-                    .isEqualTo(ScimResponse.ST_NOTFOUND);
+        // Try delete of non-existent object, should be 404
+        request = new HttpDelete(req);
+        resp = client.execute(request);
+        assertThat(resp.getCode())
+                .as("Confirm not found when deleting non-existent resource")
+                .isEqualTo(ScimResponse.ST_NOTFOUND);
 
-            resp.close();
-        } catch (IOException e) {
-            fail("Exception occured in DELETE test for bjensen", e);
-        }
+        resp.close();
     }
 
 }

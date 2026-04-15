@@ -33,9 +33,9 @@ import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.HttpMethod;
-import org.apache.http.HttpStatus;
-import org.eclipse.microprofile.metrics.annotation.Counted;
-import org.eclipse.microprofile.metrics.annotation.Timed;
+import org.apache.hc.core5.http.HttpStatus;
+import io.micrometer.core.annotation.Counted;
+import io.micrometer.core.annotation.Timed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -100,8 +100,8 @@ public class ScimV2Servlet extends HttpServlet {
 	}
 
 
-	@Counted(name="scim.ops.patch.count",description="Counts the number of SCIM Patch requests")
-	@Timed (name="scim.ops.patch.timer",description = "Measures SCIM Patch operation times")
+	@Counted(value="scim.ops.patch.count",description="Counts the number of SCIM Patch requests")
+	@Timed(value="scim.ops.patch.timer",description = "Measures SCIM Patch operation times")
 	protected void doPatch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 
 		PatchOp op = new PatchOp(req, resp);
@@ -112,8 +112,8 @@ public class ScimV2Servlet extends HttpServlet {
 	/* (non-Javadoc)
 	 * @see javax.servlet.http.HttpServlet#doPut(javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse)
 	 */
-	@Counted(name="scim.ops.put.count",description="Counts the number of SCIM Put requests")
-	@Timed (name="scim.ops.put.timer",description = "Measures SCIM Put operation times")
+	@Counted(value="scim.ops.put.count",description="Counts the number of SCIM Put requests")
+	@Timed(value="scim.ops.put.timer",description = "Measures SCIM Put operation times")
 	@Override
 	protected void doPut(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
@@ -130,8 +130,8 @@ public class ScimV2Servlet extends HttpServlet {
 	 * javax.servlet.http.HttpServlet#doDelete(javax.servlet.http.HttpServletRequest
 	 * , javax.servlet.http.HttpServletResponse)
 	 */
-	@Counted(name="scim.ops.delete.count",description="Counts the number of SCIM Delete requests")
-	@Timed (name="scim.ops.delete.timer",description = "Measures SCIM Delete operation times")
+	@Counted(value="scim.ops.delete.count",description="Counts the number of SCIM Delete requests")
+	@Timed(value="scim.ops.delete.timer",description = "Measures SCIM Delete operation times")
 	@Override
 	protected void doDelete(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
@@ -141,8 +141,8 @@ public class ScimV2Servlet extends HttpServlet {
 		complete(op);
 	}
 
-	@Counted(name="scim.ops.search.count",description="Counts the number of SCIM Post Search requests")
-	@Timed (name="scim.ops.search.timer",description = "Measures SCIM Post Search operation times")
+	@Counted(value="scim.ops.search.count",description="Counts the number of SCIM Post Search requests")
+	@Timed(value="scim.ops.search.timer",description = "Measures SCIM Post Search operation times")
 	protected void doSearch(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		
 		SearchOp op = new SearchOp(req, resp);
@@ -150,15 +150,15 @@ public class ScimV2Servlet extends HttpServlet {
 		complete(op);
 	}
 
-	@Counted(name="scim.ops.head.count",description="Counts the number of SCIM HEAD requests")
-	@Timed (name="scim.ops.head.timer",description = "Measures SCIM HEAD times")
+	@Counted(value="scim.ops.head.count",description="Counts the number of SCIM HEAD requests")
+	@Timed(value="scim.ops.head.timer",description = "Measures SCIM HEAD times")
 	protected void doHead(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		HeadOp op = new HeadOp(req,resp);
 		complete(op);
 	}
 
-	@Counted(name="scim.ops.get.count",description="Counts the number of SCIM Get requests")
-	@Timed (name="scim.ops.get.timer",description = "Measures SCIM Get operation times")
+	@Counted(value="scim.ops.get.count",description="Counts the number of SCIM Get requests")
+	@Timed(value="scim.ops.get.timer",description = "Measures SCIM Get operation times")
 	@Override
 	protected void doGet(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
@@ -186,8 +186,8 @@ public class ScimV2Servlet extends HttpServlet {
 		complete(op);
 	}
 
-	@Counted(name="scim.ops.bulk.count",description="Counts the number of SCIM Bulk requests")
-	@Timed (name="scim.ops.bulk.timer",description = "Measures SCIM Bulk operation times")
+	@Counted(value="scim.ops.bulk.count",description="Counts the number of SCIM Bulk requests")
+	@Timed(value="scim.ops.bulk.timer",description = "Measures SCIM Bulk operation times")
 	protected void doBulk(HttpServletRequest req, HttpServletResponse resp)
 			throws IOException {
 		
@@ -226,8 +226,8 @@ public class ScimV2Servlet extends HttpServlet {
 		
 	}
 
-	@Counted(name="scim.ops.create.count",description="Counts the number of SCIM Create requests")
-	@Timed (name="scim.ops.create.timer",description = "Measures SCIM Create operation times")
+	@Counted(value="scim.ops.create.count",description="Counts the number of SCIM Create requests")
+	@Timed(value="scim.ops.create.timer",description = "Measures SCIM Create operation times")
 	protected void doCreate(HttpServletRequest req, HttpServletResponse resp) throws IOException {
 		CreateOp op = new CreateOp(req, resp);
 
@@ -274,8 +274,8 @@ public class ScimV2Servlet extends HttpServlet {
 	}
 
 
-	@Counted(name="opsCnt",description="Counts the total number of SCIM operations")
-	@Timed (name="opsTimer",description = "Measures SCIM operation times (all types)")
+	@Counted(value="opsCnt",description="Counts the total number of SCIM operations")
+	@Timed(value="opsTimer",description = "Measures SCIM operation times (all types)")
 	protected void complete (Operation op) throws IOException {
 
 		// Check if this is an async request

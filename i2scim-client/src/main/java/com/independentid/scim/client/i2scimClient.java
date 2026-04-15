@@ -29,16 +29,17 @@ import com.independentid.scim.schema.ResourceType;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpStatus;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.methods.*;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.classic.methods.*;
+import org.apache.hc.core5.net.URIBuilder;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,7 +92,7 @@ public class i2scimClient {
      * @throws URISyntaxException due to an invalid serverRootUrl
      */
     public i2scimClient(String serverRootUrl, String authorization)
-            throws ScimException, IOException, URISyntaxException {
+            throws ScimException, IOException, URISyntaxException, org.apache.hc.core5.http.ParseException {
         this(serverRootUrl, authorization, null, null);
     }
 
@@ -107,7 +108,7 @@ public class i2scimClient {
      * @throws URISyntaxException due to an invalid serverRootUrl
      */
     public i2scimClient(String serverRootUrl, UsernamePasswordCredentials cred)
-            throws ScimException, IOException, URISyntaxException {
+            throws ScimException, IOException, URISyntaxException, org.apache.hc.core5.http.ParseException {
         this(serverRootUrl,
                 encodeAuthorization(cred),
                 null,
@@ -152,7 +153,7 @@ public class i2scimClient {
 
     private static String encodeAuthorization(UsernamePasswordCredentials cred) {
         return "Basic "
-                + Base64.getEncoder().encodeToString((cred.getUserName() + ":" + cred.getPassword()).getBytes(StandardCharsets.UTF_8));
+                + Base64.getEncoder().encodeToString((cred.getUserName() + ":" + new String(cred.getPassword())).getBytes(StandardCharsets.UTF_8));
 
     }
 
@@ -171,7 +172,7 @@ public class i2scimClient {
      * @throws URISyntaxException due to an invalid serverRootUrl
      */
     public i2scimClient(String serverRootUrl, String authorization, String schemaPath, String resourceTypesPath)
-            throws ScimException, IOException, URISyntaxException {
+            throws ScimException, IOException, URISyntaxException, org.apache.hc.core5.http.ParseException {
 
         serverRoot = new URL(serverRootUrl);
         this.authorization = authorization;
@@ -184,8 +185,8 @@ public class i2scimClient {
         prepareHeaders(get, null);
         CloseableHttpResponse resp = client.execute(get);
 
-        if (resp.getStatusLine().getStatusCode() != HttpStatus.SC_OK)
-            switch (resp.getStatusLine().getStatusCode()) {
+        if (resp.getCode() != HttpStatus.SC_OK)
+            switch (resp.getCode()) {
                 case HttpStatus.SC_UNAUTHORIZED:
                     throw new UnauthorizedException("Received unauthorized from: " + spcUrl);
                 case HttpStatus.SC_FORBIDDEN:
@@ -195,7 +196,7 @@ public class i2scimClient {
                             + spcUrl);
                 default:
                     throw new ScimException("Received unexpected error status: "
-                            + resp.getStatusLine().getStatusCode());
+                            + resp.getCode());
             }
 
         loadServiceProviderConfig(resp.getEntity().getContent());
@@ -215,9 +216,9 @@ public class i2scimClient {
 
             // Note: because we need both input streams to instantiate SchemaManager, we need to copy one stream in order to
             // re-use the existing client connection.
-            if (resp.getStatusLine().getStatusCode() != ScimResponse.ST_OK)
+            if (resp.getCode() != ScimResponse.ST_OK)
                 throw new ScimException("Received unexpected response to /ResourceTypes endpoint request: "
-                        + resp.getStatusLine().getReasonPhrase());
+                        + resp.getReasonPhrase());
 
             InputStream typeStream = new ByteArrayInputStream(EntityUtils.toString(resp.getEntity()).getBytes(StandardCharsets.UTF_8));
             resp.close();
@@ -228,9 +229,9 @@ public class i2scimClient {
             prepareHeaders(get, null);
             resp = client.execute(get);
 
-            if (resp.getStatusLine().getStatusCode() != ScimResponse.ST_OK)
+            if (resp.getCode() != ScimResponse.ST_OK)
                 throw new ScimException("Received unexpected response to /Schemas endpoint request: "
-                        + resp.getStatusLine().getReasonPhrase());
+                        + resp.getReasonPhrase());
 
 
             InputStream schemaStream = new ByteArrayInputStream(EntityUtils.toString(resp.getEntity()).getBytes(StandardCharsets.UTF_8));
@@ -439,8 +440,8 @@ public class i2scimClient {
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues
      */
-    public boolean authenticateUser(UsernamePasswordCredentials cred) throws ScimException, URISyntaxException, IOException, ParseException {
-        String filter = "userName eq \"" + cred.getUserName() + "\" and password eq \"" + cred.getPassword() + "\"";
+    public boolean authenticateUser(UsernamePasswordCredentials cred) throws ScimException, URISyntaxException, IOException, ParseException, org.apache.hc.core5.http.ParseException {
+        String filter = "userName eq \"" + cred.getUserName() + "\" and password eq \"" + new String(cred.getPassword()) + "\"";
         ScimReqParams params = new ScimReqParams();
         params.setAttributesRequested("id,username");
         i2scimResponse sresp = searchPost("/Users", filter, params);
@@ -460,7 +461,7 @@ public class i2scimClient {
      * @throws IOException        due to connection issues
      */
     public i2scimResponse get(String path, ScimReqParams params)
-            throws ScimException, URISyntaxException, IOException, ParseException {
+            throws ScimException, URISyntaxException, IOException, ParseException, org.apache.hc.core5.http.ParseException {
         validateRetrieveParams(params, null);
         URI reqUri = prepareRequestUri(path, null, params);
         HttpGet get = new HttpGet(reqUri);
@@ -481,7 +482,7 @@ public class i2scimClient {
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues
      */
-    public ResourceBuilder retrieveAndBuild(String path, ScimReqParams params) throws ScimException, URISyntaxException, IOException, ParseException {
+    public ResourceBuilder retrieveAndBuild(String path, ScimReqParams params) throws ScimException, URISyntaxException, IOException, ParseException, org.apache.hc.core5.http.ParseException {
         i2scimResponse resp = get(path, params);
         if (resp.hasNext()) {
             ScimResource res = resp.next();
@@ -507,7 +508,7 @@ public class i2scimClient {
      * @throws IOException        due to connection issues
      */
     public i2scimResponse searchGet(String path, String filter, ScimReqParams params)
-            throws ScimException, URISyntaxException, IOException, ParseException {
+            throws ScimException, URISyntaxException, IOException, ParseException, org.apache.hc.core5.http.ParseException {
         // Check that the request is valid by attempting to parse path and filter using RequestCtx
         new RequestCtx(path, null, filter, schemaManager);
 
@@ -537,7 +538,7 @@ public class i2scimClient {
      * @throws IOException        due to connection issues
      */
     public i2scimResponse searchPost(String path, String filter, ScimReqParams params)
-            throws ScimException, URISyntaxException, IOException, ParseException {
+            throws ScimException, URISyntaxException, IOException, ParseException, org.apache.hc.core5.http.ParseException {
         validateRetrieveParams(params, filter);
 
         //The following line is executed to validate the request filter
@@ -618,7 +619,7 @@ public class i2scimClient {
      * @throws IOException        due to connection issues
      */
     public i2scimResponse create(final ScimResource res, ScimReqParams params)
-            throws ScimException, URISyntaxException, IOException, ParseException {
+            throws ScimException, URISyntaxException, IOException, ParseException, org.apache.hc.core5.http.ParseException {
         if (isSchemaMode())
             throw new IOException("i2scimClient currently configured for builder operations only.");
         validateModifyParams(params);
@@ -630,7 +631,6 @@ public class i2scimClient {
         prepareHeaders(post, params);
 
         StringEntity body = new StringEntity(res.toJsonString(), ContentType.create(ScimParams.SCIM_MIME_TYPE));
-        body.setChunked(false);
         post.setEntity(body);
 
         CloseableHttpResponse resp = client.execute(post);
@@ -650,7 +650,7 @@ public class i2scimClient {
      * @throws IOException        due to connection issues
      */
     public i2scimResponse put(final ScimResource res, ScimReqParams params)
-            throws ScimException, URISyntaxException, IOException, ParseException {
+            throws ScimException, URISyntaxException, IOException, ParseException, org.apache.hc.core5.http.ParseException {
         if (isSchemaMode())
             throw new IOException("i2scimClient currently configured for builder operations only.");
         validateModifyParams(params);
@@ -716,7 +716,7 @@ public class i2scimClient {
      * @throws IOException        due to connection issues
      */
     public i2scimResponse patch(String path, JsonPatchRequest req, ScimReqParams params)
-            throws ScimException, URISyntaxException, IOException, ParseException {
+            throws ScimException, URISyntaxException, IOException, ParseException, org.apache.hc.core5.http.ParseException {
         if (isSchemaMode())
             throw new IOException("i2scimClient currently configured for builder operations only.");
         validateModifyParams(params);
@@ -743,7 +743,7 @@ public class i2scimClient {
      * @throws IOException        due to connection issues
      * @throws ParseException     when a response is not formatted correctly
      */
-    public i2scimResponse delete(String path, ScimReqParams params) throws ScimException, IOException, ParseException, URISyntaxException {
+    public i2scimResponse delete(String path, ScimReqParams params) throws ScimException, IOException, ParseException, URISyntaxException, org.apache.hc.core5.http.ParseException {
         if (isSchemaMode())
             throw new IOException("i2scimClient currently configured for builder operations only.");
         validateModifyParams(params);
@@ -766,7 +766,7 @@ public class i2scimClient {
      * @throws ParseException     when a response is not formatted correctly
      * @throws IOException        due to connection issues
      */
-    public i2scimResponse headInfo(String path, ScimReqParams params) throws ScimException, IOException, URISyntaxException, ParseException {
+    public i2scimResponse headInfo(String path, ScimReqParams params) throws ScimException, IOException, URISyntaxException, org.apache.hc.core5.http.ParseException, ParseException {
         if (isSchemaMode())
             throw new IOException("i2scimClient currently configured for builder operations only.");
         validateRetrieveParams(params, null);
@@ -786,7 +786,7 @@ public class i2scimClient {
      * another request.
      * @throws IOException If an error occurs communicating with the server.
      */
-    public CloseableHttpResponse execute(HttpUriRequest req) throws IOException {
+    public CloseableHttpResponse execute(HttpUriRequest req) throws IOException, org.apache.hc.core5.http.ParseException {
 
         return client.execute(req);
     }

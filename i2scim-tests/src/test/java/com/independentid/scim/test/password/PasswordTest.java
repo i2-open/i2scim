@@ -55,7 +55,7 @@ public class PasswordTest {
     SchemaManager smgr;
 
     @Test
-    public void a_TestPwdToken() throws NoSuchAlgorithmException, java.text.ParseException, ParseException {
+    public void a_TestPwdToken() throws Exception {
         //PasswordToken.init(parser,"AyM1SysPpbyDfgZld3umj1qzKObwVMko","TESTER",10000,PasswordToken.ALG_PBKDF2);
         PasswordToken tkn = new PasswordToken("anon","password");
 
@@ -84,7 +84,7 @@ public class PasswordTest {
     }
 
     @Test
-    public void b_CheckVirtuals() {
+    public void b_CheckVirtuals() throws Exception {
         Attribute password = smgr.findAttribute("password",null);
         Constructor<?> cons = smgr.getAttributeJsonConstructor(password);
 
@@ -93,7 +93,7 @@ public class PasswordTest {
     }
 
     @Test
-    public void c_TestPasswordValue() {
+    public void c_TestPasswordValue() throws Exception {
         Attribute password = smgr.findAttribute("password",null);
         StringValue sval = new StringValue(password,"password");
         JsonNode node = sval.toJsonNode(null,password.getName()).get("password");

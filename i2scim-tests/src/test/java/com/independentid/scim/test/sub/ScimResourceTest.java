@@ -85,7 +85,7 @@ public class ScimResourceTest {
 	 * This test checks that a JSON user can be parsed into a SCIM Resource
 	 */
 	@Test
-	public void a_ScimResParseUser1Test() {
+	public void a_ScimResParseUser1Test() throws Exception {
 		
 		logger.info("========== ScimResource Test ==========");
 
@@ -149,7 +149,7 @@ public class ScimResourceTest {
 	}
 
 	@Test
-	public void b_serializationTest_NoCtx() {
+	public void b_serializationTest_NoCtx() throws Exception {
 		assert user1 != null;
 		assert user2 != null;
 
@@ -203,7 +203,7 @@ public class ScimResourceTest {
 	}
 
 	@Test
-	public void c_serializationTest_Ctx() {
+	public void c_serializationTest_Ctx() throws Exception {
 		assert user1 != null;
 		assert user2 != null;
 
@@ -253,7 +253,7 @@ public class ScimResourceTest {
 	}
 
 	@Test
-	public void d_copyTest() {
+	public void d_copyTest() throws Exception {
 		try {
 			ScimResource copyRes = user1.copy(null);
 
@@ -307,7 +307,7 @@ public class ScimResourceTest {
 	}
 
 	@Test
-	public void e_AddRemoveValueTest() throws SchemaException {
+	public void e_AddRemoveValueTest() throws Exception {
 		Attribute phoneNum = smgr.findAttribute("User:phoneNumbers",null);
 		String pnumber = "604-307-1751";
 		String ptype = "test";
@@ -370,7 +370,7 @@ public class ScimResourceTest {
 	}
 
 	@Test
-	public void f_AddRemoveExtValueTest() throws SchemaException {
+	public void f_AddRemoveExtValueTest() throws Exception {
 		String refMatch = "/Users/dummyManager";
 		String origMatch = "John Smith";
 		String refMatchName = "Test Manager";
@@ -424,7 +424,7 @@ public class ScimResourceTest {
 	}
 
 	@Test
-	public void g_RevisionTest() throws ScimException {
+	public void g_RevisionTest() throws Exception {
 		RequestCtx ctx = new RequestCtx("/Uses",user1.getId(),null,smgr);
 
 		try {
@@ -461,7 +461,7 @@ public class ScimResourceTest {
 	}
 
 	@Test
-	public void h_patchTests() throws ScimException, IOException, ParseException {
+	public void h_patchTests() throws Exception {
 		logger.info("H. Checking Patch functions");
 
 		//reload user1

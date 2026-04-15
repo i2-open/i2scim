@@ -49,7 +49,7 @@ public class JwtTokenTest {
     JsonWebKey vkey;
 
     @Test
-    public void aTest() {
+    public void aTest() throws Exception {
 
         try {
             loadVerifyKey();

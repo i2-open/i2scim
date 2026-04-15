@@ -7,18 +7,24 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.serializer.JsonUtil;
 import jakarta.ws.rs.core.MediaType;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
+import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Objects;
@@ -41,6 +47,8 @@ public class SsfHandler {
     StreamConfigProps configProps;
     @JsonIgnore
     CloseableHttpClient client;
+    @JsonIgnore
+    javax.net.ssl.SSLContext sslContext;
 
     public String serverUrl;
     public String iat;
@@ -78,6 +86,7 @@ public class SsfHandler {
             client = new SsfHandler();
         }
         client.configProps = props;
+        client.sslContext = props.getSslContext();
         client.init();
         PollStream pollStream = client.getPollStream();
         if (pollStream.enabled) {
@@ -93,50 +102,95 @@ public class SsfHandler {
     }
 
     public void init() throws IOException {
-        if (initialized) return;
+        if (!initialized) {
 
-        // Both stream types initialize as disabled by default
-        this.pollStream = new PollStream();
-        this.pushStream = new PushStream();
+            // Both stream types initialize as disabled by default
+            this.pollStream = new PollStream();
+            this.pushStream = new PushStream();
 
-        switch (configProps.getMode()) {
-            case Mode_SsfAuto:
-                logger.info("Initializing using SSF registration to (" + configProps.ssfUrl + ")....");
-                try {
-                    getWellKnownConfig();
-                    registerAsClient();
-                    registerPushStream();
-                    registerPollStream();
-                } catch (ScimException e) {
-                    throw new RuntimeException(e);
-                }
-                break;
+            switch (configProps.getMode()) {
+                case Mode_SsfAuto:
+                    logger.info("Initializing using SSF registration to (" + configProps.ssfUrl + ")....");
+                    int maxRetries = configProps.ssfRetryMax;
+                    int retryDelay = configProps.ssfRetryInterval;
+                    int attempt = 0;
+                    while (true) {
+                        try {
+                            getWellKnownConfig();
+                            registerAsClient();
+                            registerPushStream();
+                            registerPollStream();
+                            break;
+                        } catch (ScimException | IOException e) {
+                            attempt++;
+                            if (attempt >= maxRetries) {
+                                throw new RuntimeException("SSF registration failed after " + maxRetries + " attempts: " + e.getMessage(), e);
+                            }
+                            logger.warn("SSF registration failed (attempt {}/{}), retrying in {}ms: {}",
+                                    attempt, maxRetries, retryDelay, e.getMessage());
+                            try {
+                                Thread.sleep(retryDelay);
+                            } catch (InterruptedException ie) {
+                                Thread.currentThread().interrupt();
+                                throw new RuntimeException("Interrupted during SSF registration retry", ie);
+                            }
+                            retryDelay = Math.min(retryDelay * 2, configProps.ssfRetryMaxInterval);
+                        }
+                    }
+                    break;
 
-            case Mode_PreConfig:
-                logger.info("Initializing using pre-config files....");
-                if (!configProps.pubConfigFile.equals("NONE"))
-                    loadTransmitterFile(configProps.pubConfigFile);
+                case Mode_PreConfig:
+                    logger.info("Initializing using pre-config files....");
+                    if (!configProps.pubConfigFile.equals("NONE"))
+                        loadTransmitterFile(configProps.pubConfigFile);
 
-                if (!configProps.rcvConfigFile.equals("NONE"))
-                    loadReceiverFile(configProps.rcvConfigFile);
+                    if (!configProps.rcvConfigFile.equals("NONE"))
+                        loadReceiverFile(configProps.rcvConfigFile);
 
-                break;
+                    break;
 
-            default:
-                logger.info("Initializing using environment properties....");
-                // In default mode, the streams are manually configured using properties alone.
-                this.pushStream = configProps.getConfigPropPushStream();
-                this.pollStream = configProps.getConfigPropPollStream();
+                default:
+                    logger.info("Initializing using environment properties....");
+                    // In default mode, the streams are manually configured using properties alone.
+                    this.pushStream = configProps.getConfigPropPushStream();
+                    this.pollStream = configProps.getConfigPropPollStream();
 
+            }
+            initialized = true;
+            this.save();
         }
-        initialized = true;
-        this.save();
+        if (this.pollStream != null)
+            this.pollStream.setSslContext(this.sslContext);
+        if (this.pushStream != null)
+            this.pushStream.setSslContext(this.sslContext);
     }
 
     private void getWellKnownConfig() throws ScimException {
         this.serverUrl = configProps.ssfUrl;
         this.iat = configProps.ssfAuthorization;
-        this.client = HttpClients.createDefault();
+        // Calculate IAT token, preferring ssfIatToken if available
+        if (configProps.ssfIatPath != null && !configProps.ssfIatPath.equals("NONE")) {
+            try {
+                String token = Files.readString(Paths.get(configProps.ssfIatPath)).trim();
+                this.iat = "BEARER " + token;
+            } catch (IOException e) {
+                logger.error("Error reading IAT token from file: " + configProps.ssfIatPath, e);
+                throw new ScimException("Error reading IAT token from file: " + e.getMessage(), e);
+            }
+        }
+        if (this.sslContext != null) {
+            // SPIRE/SPIFFE certs use URI-type SANs, not DNS SANs. The default hostname verifier
+            // only checks DNS/IP SANs and reports an empty list, causing verification to fail.
+            // Trust is enforced by the CA bundle; hostname verification is irrelevant for SPIFFE.
+            SSLConnectionSocketFactory sslsf = new SSLConnectionSocketFactory(this.sslContext, NoopHostnameVerifier.INSTANCE);
+            this.client = HttpClients.custom()
+                    .setConnectionManager(PoolingHttpClientConnectionManagerBuilder.create()
+                            .setSSLSocketFactory(sslsf)
+                            .build())
+                    .build();
+        } else {
+            this.client = HttpClients.createDefault();
+        }
 
         String wellKnownUrl = serverUrl;
         if (!serverUrl.endsWith(SSF_WELLKNOWN)) {
@@ -148,7 +202,7 @@ public class SsfHandler {
         try {
             CloseableHttpResponse resp = this.client.execute(req);
 
-            int code = resp.getStatusLine().getStatusCode();
+            int code = resp.getCode();
             if (code >= 200 && code < 300) {
                 HttpEntity respEntity = resp.getEntity();
                 InputStream contentStream = respEntity.getContent();
@@ -158,7 +212,7 @@ public class SsfHandler {
                 this.ssfConfig = txConfig;
 
             } else {
-                String msg = "Received error retrieving Ssf Well-Known data from: " + serverUrl + " - " + resp.getStatusLine().getReasonPhrase();
+                String msg = "Received error retrieving Ssf Well-Known data from: " + serverUrl + " - " + resp.getReasonPhrase();
                 logger.error(msg);
                 resp.close();
                 throw new ScimException(msg);
@@ -195,9 +249,9 @@ public class SsfHandler {
 
         CloseableHttpResponse resp = this.client.execute(createPost);
 
-        if (resp.getStatusLine().getStatusCode() >= 400) {
-            logger.error("Create push stream failed. Status " + resp.getStatusLine().toString());
-            throw new ScimException("Push stream creation failed: " + resp.getStatusLine().toString());
+        if (resp.getCode() >= 400) {
+            logger.error("Create push stream failed. Status " + resp.getCode() + " " + resp.getReasonPhrase());
+            throw new ScimException("Push stream creation failed: " + resp.getCode() + " " + resp.getReasonPhrase());
         }
         HttpEntity body = resp.getEntity();
 
@@ -235,9 +289,9 @@ public class SsfHandler {
 
         CloseableHttpResponse resp = this.client.execute(createPost);
 
-        if (resp.getStatusLine().getStatusCode() >= 400) {
-            logger.error("Create push stream failed. Status " + resp.getStatusLine().toString());
-            throw new ScimException("Receive poll stream creation failed: " + resp.getStatusLine().toString());
+        if (resp.getCode() >= 400) {
+            logger.error("Create push stream failed. Status " + resp.getCode() + " " + resp.getReasonPhrase());
+            throw new ScimException("Receive poll stream creation failed: " + resp.getCode() + " " + resp.getReasonPhrase());
         }
         HttpEntity body = resp.getEntity();
 
@@ -258,7 +312,7 @@ public class SsfHandler {
         try {
             gen = JsonUtil.getGenerator(stringWriter, true);
             gen.writeStartObject();
-            gen.writeStringField("description", "i2scim.io v0.8.0");
+            gen.writeStringField("description", "i2scim.io v0.9.0");
             gen.writeArrayFieldStart("scopes");
             gen.writeString("admin");
             gen.writeString("stream");
@@ -270,9 +324,9 @@ public class SsfHandler {
         }
 
         try {
-            HttpEntity entity = new StringEntity(stringWriter.toString());
+            HttpEntity entity = new StringEntity(stringWriter.toString(), ContentType.APPLICATION_JSON);
             postRequest.setEntity(entity);
-        } catch (UnsupportedEncodingException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
 
@@ -280,8 +334,8 @@ public class SsfHandler {
             postRequest.setHeader("Content-Type", MediaType.APPLICATION_JSON);
             postRequest.setHeader("Accept", MediaType.APPLICATION_JSON);
             CloseableHttpResponse resp = this.client.execute(postRequest);
-            if (resp.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
-                throw new ScimException("Ssf registration failed " + resp.getStatusLine().toString());
+            if (resp.getCode() != HttpStatus.SC_OK) {
+                throw new ScimException("Ssf registration failed " + resp.getCode() + " " + resp.getReasonPhrase());
             }
             HttpEntity entity = resp.getEntity();
             JsonNode rootNode = JsonUtil.getJsonTree(entity.getContent());

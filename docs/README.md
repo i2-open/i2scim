@@ -22,6 +22,36 @@ adapted to act as a gateway to internal proprietary identity APIs by implementin
 
 ## Recent Updates
 
+# Release 0.9.0
+
+This release introduces several enhancements and bug fixes, including support for RESTEasy Reactive and improved test stability.
+
+*   **New Features**:
+  * TLS enhancements to support SPIFFE compatibility for SSF communications
+  * Ability to load CA and trust certificates from environment variables
+    * `scim.signals.ssf.trust.certs.path` and `scim.signals.ssf.trust.certs.value` configuration properties.
+*   **Updates**: Updated to Quarkus 3.34.3 and Java 25.  Updated dependencies to latest compatible versions.
+*   **RESTEasy Reactive Support**: Standardized on RESTEasy Reactive for improved performance and reduced resource consumption.
+*   **Test Stability**: Resolved `ConcurrentModificationException` in `PollStream.pollEvents` by using `CopyOnWriteArrayList` for tracking acknowledgments and pending operations in `SignalsEventHandler`, and reduced initialization sleep during tests to prevent stalls.
+
+# Release 0.8.1
+
+This release adds support for specifying CA trust certificate roots for the SSF (Shared Signals Framework) server via environment variables and updates the project to Quarkus 3.30.8.
+
+*   **SSF CA Trust Support**: Added `scim.signals.ssf.trust.certs.path` and `scim.signals.ssf.trust.certs.value` configuration properties. This enables secure HTTPS connections to SSF servers using self-signed or SPIFFE cluster certificates for discovery, JWKS retrieval, and event streams.
+*   **Quarkus Update**: Upgraded the project to Quarkus platform version `3.30.8` and resolved compatibility issues for Java 17/21.
+*   **Bug Fixes**: Resolved `InaccessibleObjectException` failures in `i2scim-signals` tests by adding necessary JVM `--add-opens` exports for SSL context introspection.
+
+# Release 0.8.0
+
+I2 SCIM has been updated to support the latest[ SCIM Events draft](https://www.ietf.org/archive/id/draft-ietf-scim-events-16.html) which includes:
+* Updated Event URIs
+* Support for Asynchronous Event Processing
+
+Other bug fixes include:
+* Improved connection handling when pushing or polling for events with an SSF server (e.g. i2gosignals).
+* Updated to Java 21 and Eclipse Temurin hardened image
+
 # Release 0.7.0
 
 * *New* Support for Security Events. For more information see the [Signals documentation](Signals.md).
@@ -146,6 +176,14 @@ organizations. This stood in stark contrast to services like the Facebook API. T
 but only 1 organization supporting Facebook's API. Unlike most APIs, SCIM needed mutual interoperability. WG members 
 recognized that every SCIM service provider would likely be somewhat different. In order to make interop possible, 
 the SCIM schema was developed. 
+
+## Supply Chain Security
+
+i2scim provides proper supply chain attestations to ensure the integrity and provenance of its builds.
+
+*   **SBOM (Software Bill of Materials)**: A CycloneDX SBOM is generated during the build process, providing a comprehensive list of all dependencies.
+*   **Build Provenance**: Artifact attestations are generated using GitHub's native support for SLSA-compliant build provenance. This allows users to verify that the artifacts were built in a trusted environment.
+*   **Artifact Signing**: JARs and Docker images are attested using Sigstore, enabling cryptographic verification without the need for manual GPG key management (though GPG signing is still supported in the release profile).
 
 How SCIM and XML are alike:
 * Schema defines attributes, their syntax, mutability, optionality, visibility, etc.

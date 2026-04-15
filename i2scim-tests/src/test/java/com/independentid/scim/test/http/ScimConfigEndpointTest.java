@@ -27,10 +27,10 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Resource;
 import jakarta.inject.Inject;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.ParseException;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.ParseException;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -66,7 +66,7 @@ public class ScimConfigEndpointTest {
     @Resource(name = "ConfigMgr")
     ConfigMgr cfgMgr;
 
-    private HttpResponse executeGet(String req) throws MalformedURLException {
+    private ClassicHttpResponse executeGet(String req) throws MalformedURLException {
        return TestUtils.executeGet(baseUrl,req);
     }
 
@@ -75,7 +75,7 @@ public class ScimConfigEndpointTest {
      * endpoint test works.
      */
     @Test
-    public void a_basic_webTest() throws IOException {
+    public void a_basic_webTest() throws Exception {
         logger.info("========= SCIM Servlet Basic Test          =========");
 
         logger.debug("  Starting Web Test");
@@ -90,7 +90,7 @@ public class ScimConfigEndpointTest {
 
         //We need a rest template to run
 
-        HttpResponse resp = executeGet(ScimParams.PATH_SERV_PROV_CFG);
+        ClassicHttpResponse resp = executeGet(ScimParams.PATH_SERV_PROV_CFG);
         assert resp != null;
         HttpEntity body = resp.getEntity();
         String res = EntityUtils.toString(body);
@@ -102,9 +102,9 @@ public class ScimConfigEndpointTest {
     }
 
     @Test
-    public void b_SchemasEndpoint() throws IOException {
+    public void b_SchemasEndpoint() throws Exception {
         logger.info("=========      Schemas Endpoint Test       =========");
-        HttpResponse resp = executeGet("/Schemas");
+        ClassicHttpResponse resp = executeGet("/Schemas");
         assert resp != null;
         HttpEntity body = resp.getEntity();
 
@@ -130,14 +130,14 @@ public class ScimConfigEndpointTest {
     }
 
     @Test
-    public void c_SchemasFilterTest() throws IOException {
+    public void c_SchemasFilterTest() throws Exception {
 
         logger.debug("Fetching schema by id eq \"Service\" filter");
         String req = "/Schemas?filter=" + URLEncoder.encode("id eq \"Service\"", StandardCharsets.UTF_8);
 
-        HttpResponse httpResponse = executeGet(req);
+        ClassicHttpResponse httpResponse = executeGet(req);
         assert httpResponse != null;
-        assertThat(httpResponse.getStatusLine().getStatusCode())
+        assertThat(httpResponse.getCode())
                 .as("Check filter on schema is forbidden per RFC7644 Sec 4, pg 73.")
                 .isEqualTo(ScimResponse.ST_FORBIDDEN);
 
@@ -152,7 +152,7 @@ public class ScimConfigEndpointTest {
         res = EntityUtils.toString(entity, StandardCharsets.UTF_8);
         logger.debug("Response returned: \n"+res);
 
-        assertThat(httpResponse.getStatusLine().getStatusCode())
+        assertThat(httpResponse.getCode())
                 .as("Check for status response 200 OK")
                 .isEqualTo(ScimResponse.ST_OK);
 
@@ -166,11 +166,11 @@ public class ScimConfigEndpointTest {
     }
 
     @Test
-    public void d_ServiceProviderConfigTest() throws IOException {
+    public void d_ServiceProviderConfigTest() throws Exception {
         logger.info("=========      ServiceProviderConfig Test  =========");
         String req = "/ServiceProviderConfig";
 
-        HttpResponse resp = executeGet(req);
+        ClassicHttpResponse resp = executeGet(req);
         assert resp != null;
 
 
@@ -188,10 +188,10 @@ public class ScimConfigEndpointTest {
                 .contains(ScimParams.SCHEMA_SCHEMA_ServiceProviderConfig);
 
         req = "/ServiceProviderConfig/test";
-        HttpResponse httpResponse = executeGet(req);
+        ClassicHttpResponse httpResponse = executeGet(req);
         assert httpResponse != null;
 
-        assertThat(httpResponse.getStatusLine().getStatusCode())
+        assertThat(httpResponse.getCode())
                 .as("Check for not found response to /ServiceProviderConfigs/test")
                 .isEqualTo(ScimResponse.ST_NOTFOUND);
 
@@ -199,7 +199,7 @@ public class ScimConfigEndpointTest {
         req = "/ServiceProviderConfigs?filter=" + URLEncoder.encode("patch.supported eq true", StandardCharsets.UTF_8);
         httpResponse = executeGet(req);
         assert httpResponse != null;
-        assertThat(httpResponse.getStatusLine().getStatusCode())
+        assertThat(httpResponse.getCode())
                 .as("Check incorrect endpoint returns NOT FOUND")
                 .isEqualTo(ScimResponse.ST_NOTFOUND);
 
@@ -208,17 +208,17 @@ public class ScimConfigEndpointTest {
         httpResponse = executeGet(req);
         assert httpResponse != null;
         HttpEntity entity = httpResponse.getEntity();
-        assertThat(httpResponse.getStatusLine().getStatusCode())
+        assertThat(httpResponse.getCode())
                 .as("Check if a filter was accepted (should not be error 400")
                 .isNotEqualTo(ScimResponse.ST_BAD_REQUEST);
-        assertThat(httpResponse.getStatusLine().getStatusCode())
+        assertThat(httpResponse.getCode())
                 .as("Check for normal 200 response to filtered SPC request")
                 .isEqualByComparingTo(ScimResponse.ST_OK);
 
         res = EntityUtils.toString(entity, StandardCharsets.UTF_8);
 
         logger.debug("Filter reject result:\n" + res);
-        assertThat(httpResponse.getStatusLine().getStatusCode())
+        assertThat(httpResponse.getCode())
                 .as("Check for normal 200 response to filtered SPC request")
                 .isEqualByComparingTo(ScimResponse.ST_OK);
         assertThat(res)
@@ -237,7 +237,7 @@ public class ScimConfigEndpointTest {
         assert httpResponse != null;
         entity = httpResponse.getEntity();
 
-        assertThat(httpResponse.getStatusLine().getStatusCode())
+        assertThat(httpResponse.getCode())
                 .as("Check for normal 200 response to filtered SPC request")
                 .isEqualByComparingTo(ScimResponse.ST_OK);
 
@@ -254,15 +254,15 @@ public class ScimConfigEndpointTest {
     }
 
     @Test
-    public void e_ResourceTypesTest() {
+    public void e_ResourceTypesTest() throws Exception {
         logger.info("=========      ResourceTypes Endpoint Test =========");
 
         try {
             // Return all Resource Types
             String req = "/ResourceTypes";
-            HttpResponse httpResponse = executeGet(req);
+            ClassicHttpResponse httpResponse = executeGet(req);
             assert httpResponse != null;
-            assertThat(httpResponse.getStatusLine().getStatusCode())
+            assertThat(httpResponse.getCode())
                     .as("Check for OK response to ResourceTypes endpoint")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -289,7 +289,7 @@ public class ScimConfigEndpointTest {
 
             httpResponse = executeGet(req);
             assert httpResponse != null;
-            assertThat(httpResponse.getStatusLine().getStatusCode())
+            assertThat(httpResponse.getCode())
                     .as("Check filter on ResourceTypes is forbidden per RFC7644 Sec 4, pg 73.")
                     .isEqualTo(ScimResponse.ST_FORBIDDEN);
 
@@ -297,7 +297,7 @@ public class ScimConfigEndpointTest {
             req = "/ResourceTypes/User";
             httpResponse = executeGet(req);
             assert httpResponse != null;
-            assertThat(httpResponse.getStatusLine().getStatusCode())
+            assertThat(httpResponse.getCode())
                     .as("Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 

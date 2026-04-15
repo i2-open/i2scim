@@ -26,9 +26,9 @@ import io.smallrye.jwt.auth.principal.JWTCallerPrincipal;
 import io.smallrye.mutiny.Uni;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.http.auth.BasicUserPrincipal;
-import org.eclipse.microprofile.metrics.annotation.Counted;
-import org.eclipse.microprofile.metrics.annotation.Timed;
+import org.apache.hc.client5.http.auth.BasicUserPrincipal;
+import io.micrometer.core.annotation.Counted;
+import io.micrometer.core.annotation.Timed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,8 +55,8 @@ public class ScimRoleAugmentor implements SecurityIdentityAugmentor {
         // if a blocking call is required to customize the identity
     }
 
-    @Counted(name="scim.auth.jwt.count",description="Counts the number JWT identities")
-    @Timed(name="scim.auth.jwt.timer",description = "Measures JWT processing time")
+    @Counted(value="scim.auth.jwt.count",description="Counts the number JWT identities")
+    @Timed(value="scim.auth.jwt.timer",description = "Measures JWT processing time")
     public Supplier<SecurityIdentity> build(SecurityIdentity identity) {
 
         if(identity.isAnonymous()) {

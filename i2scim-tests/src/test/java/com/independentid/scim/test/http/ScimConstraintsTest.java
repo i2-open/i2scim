@@ -38,15 +38,15 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Resource;
 import jakarta.inject.Inject;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHeaders;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.methods.*;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.InputStreamEntity;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.client5.http.classic.methods.*;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.InputStreamEntity;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -103,7 +103,7 @@ public class ScimConstraintsTest {
      * This test actually resets and re-initializes the SCIM Mongo test database.
      */
     @Test
-    public void a_AddEtagTest() {
+    public void a_AddEtagTest() throws Exception {
 
         logger.info("========== Scim Constraints Test ==========");
         logger.info("\tA. Testing Add Request Headers Etags and Last-Modified");
@@ -131,19 +131,18 @@ public class ScimConstraintsTest {
 
             InputStreamEntity reqEntity = new InputStreamEntity(
                     userStream, -1, ContentType.create(ScimParams.SCIM_MIME_TYPE));
-            reqEntity.setChunked(false);
             post.setEntity(reqEntity);
 
-            HttpResponse resp = TestUtils.executeRequest(post);
+            ClassicHttpResponse resp = TestUtils.executeRequest(post);
 
-            logger.debug("Response is: " + resp.getStatusLine());
+            logger.debug("Response is: " + resp.getCode());
             String body = EntityUtils.toString(resp.getEntity());
             logger.debug("Body:\n" + body);
 
             JsonNode userNode = JsonUtil.getJsonTree(body);
             userres = new ScimResource(smgr, userNode, "Users");
 
-            Header[] heads = resp.getAllHeaders();
+            Header[] heads = resp.getHeaders();
             for (Header head : heads) {
                 System.out.println(head.getName() + "\t" + head.getValue());
             }
@@ -184,7 +183,7 @@ public class ScimConstraintsTest {
      * This test attempts to retrieve the previously created user using the returned location.
      */
     @Test
-    public void b_GetEtagTest() throws MalformedURLException {
+    public void b_GetEtagTest() throws Exception {
         String req = TestUtils.mapPathToReqUrl(baseUrl, user1url);
 
         logger.info("\tB. Test Get Etags and Last-Modified headers");
@@ -192,9 +191,9 @@ public class ScimConstraintsTest {
         HttpUriRequest request = new HttpGet(req);
 
         try {
-            HttpResponse resp = TestUtils.executeRequest(request);
+            ClassicHttpResponse resp = TestUtils.executeRequest(request);
 
-            assertThat(resp.getStatusLine().getStatusCode())
+            assertThat(resp.getCode())
                     .as("GET User - Check for status response 200 OK")
                     .isEqualTo(ScimResponse.ST_OK);
 
@@ -223,7 +222,7 @@ public class ScimConstraintsTest {
     }
 
     @Test
-    public void c_GetConstraintsTest() throws IOException {
+    public void c_GetConstraintsTest() throws Exception {
         String req = TestUtils.mapPathToReqUrl(baseUrl, user1url);
 
         logger.info("\tC. Get Constraint Tests");
@@ -231,9 +230,9 @@ public class ScimConstraintsTest {
         HttpGet request = new HttpGet(req);
         request.setHeader(ScimParams.HEADER_IFMODSINCE, moddate);
 
-        HttpResponse resp = TestUtils.executeRequest(request);
+        ClassicHttpResponse resp = TestUtils.executeRequest(request);
 
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Confirm not modified since")
                 .isEqualTo(ScimResponse.ST_NOTMODIFIED);
 
@@ -241,7 +240,7 @@ public class ScimConstraintsTest {
         request.setHeader(ScimParams.HEADER_IFMODSINCE, headDate.format(start));
         resp = TestUtils.executeRequest(request);
 
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Response is returned as resource is newer")
                 .isEqualTo(ScimResponse.ST_OK);
 
@@ -249,20 +248,20 @@ public class ScimConstraintsTest {
         request = new HttpGet(req);
         request.setHeader(ScimParams.HEADER_IFNONEMATCH, etag);
         resp = TestUtils.executeRequest(request);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Check that precondition fails (because it is the same)")
                 .isEqualTo(ScimResponse.ST_NOTMODIFIED);
 
         request = new HttpGet(req);
         request.setHeader(ScimParams.HEADER_IFNONEMATCH, "\"afafafafaf\"");
         resp = TestUtils.executeRequest(request);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Check that precondition fails (because it is the same)")
                 .isEqualTo(ScimResponse.ST_OK);
     }
 
     @Test
-    public void d_PutConstraintsTest() throws IOException, SchemaException {
+    public void d_PutConstraintsTest() throws Exception {
         String req = TestUtils.mapPathToReqUrl(baseUrl, user1url);
 
         logger.info("\tD. PUT Constraints Test");
@@ -278,8 +277,8 @@ public class ScimConstraintsTest {
         putreq.setEntity(reqentity);
         putreq.setHeader(ScimParams.HEADER_IFUNMODSINCE, headDate.format(start));
 
-        HttpResponse resp = TestUtils.executeRequest(putreq);
-        assertThat(resp.getStatusLine().getStatusCode())
+        ClassicHttpResponse resp = TestUtils.executeRequest(putreq);
+        assertThat(resp.getCode())
                 .as("Check for precondition failed")
                 .isEqualTo(ScimResponse.ST_PRECONDITION);
 
@@ -289,7 +288,7 @@ public class ScimConstraintsTest {
         putreq.setHeader(ScimParams.HEADER_IFUNMODSINCE, moddate);
 
         resp = TestUtils.executeRequest(putreq);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Check for success")
                 .isEqualTo(ScimResponse.ST_OK);
 
@@ -312,7 +311,7 @@ public class ScimConstraintsTest {
         putreq.setEntity(reqentity);
         putreq.setHeader(ScimParams.HEADER_IFMATCH, etag);
         resp = TestUtils.executeRequest(putreq);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Check for etag precondition failed")
                 .isEqualTo(ScimResponse.ST_PRECONDITION);
 
@@ -321,7 +320,7 @@ public class ScimConstraintsTest {
         putreq.setEntity(reqentity);
         putreq.setHeader(ScimParams.HEADER_IFMATCH, new_etag);
         resp = TestUtils.executeRequest(putreq);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Check for match success")
                 .isEqualTo(ScimResponse.ST_OK);
 
@@ -340,7 +339,7 @@ public class ScimConstraintsTest {
     }
 
     @Test
-    public void e_PatchConstraintsTest() throws ScimException, IOException {
+    public void e_PatchConstraintsTest() throws Exception {
         logger.info("\tE. Patch Constraints Test");
         String req = TestUtils.mapPathToReqUrl(baseUrl, user1url);
         Attribute phone = smgr.findAttribute("User:phoneNumbers", null);
@@ -368,12 +367,11 @@ public class ScimConstraintsTest {
 
         HttpPatch patReq = new HttpPatch(req);
         StringEntity body = new StringEntity(patchRequestBody);
-        body.setChunked(false);
         patReq.setEntity(body);
         patReq.setHeader(ScimParams.HEADER_IFUNMODSINCE, headDate.format(start));
 
-        HttpResponse resp = TestUtils.executeRequest(patReq);
-        assertThat(resp.getStatusLine().getStatusCode())
+        ClassicHttpResponse resp = TestUtils.executeRequest(patReq);
+        assertThat(resp.getCode())
                 .as("Check for precondition failed")
                 .isEqualTo(ScimResponse.ST_PRECONDITION);
 
@@ -383,7 +381,7 @@ public class ScimConstraintsTest {
         patReq.setHeader(ScimParams.HEADER_IFUNMODSINCE, moddate);
 
         resp = TestUtils.executeRequest(patReq);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Check for success")
                 .isEqualTo(ScimResponse.ST_OK);
 
@@ -414,7 +412,7 @@ public class ScimConstraintsTest {
         patReq.setEntity(body);
         patReq.setHeader(ScimParams.HEADER_IFMATCH, etag);
         resp = TestUtils.executeRequest(patReq);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Check for etag precondition failed")
                 .isEqualTo(ScimResponse.ST_PRECONDITION);
 
@@ -424,22 +422,22 @@ public class ScimConstraintsTest {
         patReq.setEntity(body);
         patReq.setHeader(ScimParams.HEADER_IFMATCH, new_etag);
         resp = TestUtils.executeRequest(patReq);
-        assertThat(resp.getStatusLine().getStatusCode())
+        assertThat(resp.getCode())
                 .as("Check for match success")
                 .isEqualTo(ScimResponse.ST_OK);
 
     }
 
     @Test
-    public void f_HeadTest() throws IOException {
+    public void f_HeadTest() throws Exception {
         String req = TestUtils.mapPathToReqUrl(baseUrl, user1url);
 
         logger.info("\tF. HEAD Test");
 
         HttpHead request = new HttpHead(req);
 
-        HttpResponse resp = TestUtils.executeRequest(request);
-        assertThat(resp.getStatusLine().getStatusCode())
+        ClassicHttpResponse resp = TestUtils.executeRequest(request);
+        assertThat(resp.getCode())
                 .as("Status is returned as OK")
                 .isEqualTo(ScimResponse.ST_OK);
 

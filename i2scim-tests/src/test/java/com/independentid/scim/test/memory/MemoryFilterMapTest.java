@@ -189,7 +189,7 @@ public class MemoryFilterMapTest {
     static String user1loc, user2loc;
 
     @Test
-    public void a_memProviderInit() throws ScimException, IOException, ParseException, BackendException {
+    public void a_memProviderInit() throws Exception {
         logger.info("========== MemoryProvider Filter Test ==========");
 
         try {
@@ -257,7 +257,7 @@ public class MemoryFilterMapTest {
      * usually resolved at the SCIM layer rather than within Mongo.
      */
     @Test
-    public void b_testFilterById() {
+    public void b_testFilterById() throws Exception {
         logger.info("Testing filter match against specific resources");
         for (int i = 0; i < testArray.length; i++) {
             logger.debug("");
@@ -300,7 +300,7 @@ public class MemoryFilterMapTest {
      * appiled by Mongo
      */
     @Test
-    public void c_testFilterByContainer() {
+    public void c_testFilterByContainer() throws Exception {
         logger.info("Testing filter matches against all Users");
         for (int i = 0; i < testArray.length; i++) {
             logger.debug("");

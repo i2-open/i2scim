@@ -28,16 +28,16 @@ import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Resource;
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpHeaders;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.HttpHeaders;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -232,7 +232,7 @@ public class LoadScimClusterTest {
             post.setHeader(HttpHeaders.AUTHORIZATION, auth);
             CloseableHttpResponse resp = client.execute(post);
 
-            if (resp.getStatusLine().getStatusCode() == ScimResponse.ST_BAD_REQUEST) {
+            if (resp.getCode() == ScimResponse.ST_BAD_REQUEST) {
 
                 //logger.error("Request entity:\n" + record);
                 HttpEntity bentity = resp.getEntity();
@@ -245,7 +245,7 @@ public class LoadScimClusterTest {
                 return;
             } else {
 
-                assertThat(resp.getStatusLine().getStatusCode())
+                assertThat(resp.getCode())
                         .as("Create user response status of 201")
                         .isEqualTo(ScimResponse.ST_CREATED);
 
@@ -255,7 +255,7 @@ public class LoadScimClusterTest {
             paths.add(hloc[0].getValue());
             resp.close();
 
-        } catch (IOException e) {
+        } catch (IOException | org.apache.hc.core5.http.ParseException e) {
             Assertions.fail("Exception occured loading records: " + e.getMessage(), e);
         }
     }

@@ -64,7 +64,7 @@
       * This test checks that a JSON user can be parsed into a SCIM Resource
       */
      @Test
-     public void a_ScimResParseUser1Test() {
+     public void a_ScimResParseUser1Test() throws Exception {
 
          logger.info("========== SCIM ValuePath Match Test ==========");
 
@@ -86,7 +86,7 @@
      }
 
      @Test
-     public void b_ValPathFilterTest() throws ScimException {
+     public void b_ValPathFilterTest() throws Exception {
          Attribute addr = smgr.findAttribute("addresses", null);
          assertThat(addr).isNotNull();
          Value val = user1.getValue(addr);
@@ -116,7 +116,7 @@
      }
 
      @Test
-     public void c_FaultyValPathFilterTest() {
+     public void c_FaultyValPathFilterTest() throws Exception {
          // Create a dummy RequestCtx to pass schemaMgr.
          RequestCtx ctx = new RequestCtx("/",smgr);
          boolean isBadDetected = false;

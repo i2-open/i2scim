@@ -80,7 +80,7 @@ public class MemoryIndexTest {
     TestUtils testUtils;
 
     @Test
-    public void a_initializeTest() {
+    public void a_initializeTest() throws Exception {
         logger.info("==========   Memory Index Tests ==========");
         try {
             testUtils.resetProvider(true);
@@ -98,7 +98,7 @@ public class MemoryIndexTest {
     }
 
     @Test
-    public void b_checkIndex() {
+    public void b_checkIndex() throws Exception {
         Map<String, IndexResourceType> imap = provider.getIndexes();
         IndexResourceType userIndex = imap.get("Users");
 
@@ -127,7 +127,7 @@ public class MemoryIndexTest {
     }
 
     @Test
-    public void c_indexResource() throws IOException, ScimException, ParseException {
+    public void c_indexResource() throws Exception {
         InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
         assert userStream != null;
         JsonNode node = JsonUtil.getJsonTree(userStream);
@@ -183,7 +183,7 @@ public class MemoryIndexTest {
     }
 
     @Test
-    public void d_deIndexResource() {
+    public void d_deIndexResource() throws Exception {
         Map<String, IndexResourceType> imap = provider.getIndexes();
         IndexResourceType userIndex = imap.get("Users");
         userIndex.deIndexResource(user1);
@@ -211,7 +211,7 @@ public class MemoryIndexTest {
     }
 
     @Test
-    public void e_loadAndTestSearch() throws ScimException, BackendException, IOException {
+    public void e_loadAndTestSearch() throws Exception {
         RequestCtx ctx = new RequestCtx("/Users", null, null, smgr);
         ScimResponse resp = provider.create(ctx, user1);
         Assertions.assertThat(resp.getStatus())
@@ -291,7 +291,7 @@ public class MemoryIndexTest {
     }
 
     @Test
-    public void f_searchtest() throws ScimException {
+    public void f_searchtest() throws Exception {
         RequestCtx ctx = new RequestCtx("/Users", null, "username gt bjensen@example.com", smgr);
         ScimResponse resp = provider.get(ctx);
         assertThat(resp).isInstanceOf(ListResponse.class);
