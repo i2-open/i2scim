@@ -22,6 +22,10 @@ adapted to act as a gateway to internal proprietary identity APIs by implementin
 
 ## Recent Updates
 
+# Release 0.9.1
+
+* Updated org.apache.httpcomponents.client5.httpclient5 to 5.4.3 to address CVE-2025-27820
+
 # Release 0.9.0
 
 This release introduces several enhancements and bug fixes, including support for RESTEasy Reactive and improved test stability.

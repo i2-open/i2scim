@@ -3,13 +3,13 @@
     <parent>
         <groupId>com.independentid</groupId>
         <artifactId>i2scim-root</artifactId>
-        <version>0.9.0</version>
+        <version>0.9.1</version>
     </parent>
 
     <artifactId>i2scim-signals</artifactId>
 
     <properties>
-        <i2scim.version>0.9.0</i2scim.version>
+        <i2scim.version>0.9.1</i2scim.version>
     </properties>
     <scm>
         <connection>scm:git:https://github.com/i2-open/i2scim.git</connection>

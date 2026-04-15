@@ -119,6 +119,10 @@ echo "\tTag: $rtag"
 echo "\tStarting: "$(date +"%Y-%m-%d %H:%M:%S")
 echo "*************************************************"
 
+echo "Installing root POM..."
+
+mvn install -N -DskipTests=true
+
 build_package "SCIM CORE" "${I2SCIM_ROOT}/i2scim-core"
 
 build_package "SCIM Server" "${I2SCIM_ROOT}/i2scim-server"
@@ -151,9 +155,21 @@ echo ""
 cd ${I2SCIM_ROOT}/i2scim-universal
 if [ $push -eq 1 ]
 then
-  docker buildx build --platform linux/amd64,linux/arm64 -f src/main/docker/Dockerfile.jvm --push -t independentid/i2scim-universal:$rtag .
+  docker buildx build \
+    --platform linux/amd64,linux/arm64 \
+    -f src/main/docker/Dockerfile.jvm \
+    --push \
+    --attest type=provenance,mode=max \
+    --attest type=sbom \
+    -t independentid/i2scim-universal:$rtag \
+    .
 else
-  docker buildx build --load -f src/main/docker/Dockerfile.jvm -t independentid/i2scim-universal:$rtag .
+  docker buildx build \
+    --load \
+    -f src/main/docker/Dockerfile.jvm \
+    --provenance=mode=min \
+    -t independentid/i2scim-universal:$rtag \
+    .
 fi
 retVal=$?
 if [ $retVal -ne 0 ]

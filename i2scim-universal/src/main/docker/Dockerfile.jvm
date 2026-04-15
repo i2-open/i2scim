@@ -82,6 +82,13 @@
 FROM eclipse-temurin:25-jre-alpine AS runtime
 ENV LANGUAGE='en_US:en'
 
+LABEL org.opencontainers.image.title="i2scim-universal" \
+      org.opencontainers.image.description="i2scim.io SCIM v2 Server on Quarkus" \
+      org.opencontainers.image.url="https://i2scim.io" \
+      org.opencontainers.image.source="https://github.com/i2-open/i2scim" \
+      org.opencontainers.image.vendor="Independent Identity Incorporated" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
 
 # We make four distinct layers so if there are application changes the library layers can be re-used
 COPY --chown=185 target/quarkus-app/lib/ /deployments/lib/
