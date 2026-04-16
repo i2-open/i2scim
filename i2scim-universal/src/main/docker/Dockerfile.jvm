@@ -79,7 +79,7 @@
 #FROM registry.access.redhat.com/ubi8/openjdk-17:1.14
 #FROM registry.access.redhat.com/ubi8/openjdk-17:1.15-1.1679485273
 #FROM registry.access.redhat.com/ubi8/openjdk-21:latest
-FROM eclipse-temurin:25-jre-alpine AS runtime
+FROM cgr.dev/chainguard/jre:latest
 ENV LANGUAGE='en_US:en'
 
 LABEL org.opencontainers.image.title="i2scim-universal" \
@@ -91,18 +91,19 @@ LABEL org.opencontainers.image.title="i2scim-universal" \
 
 
 # We make four distinct layers so if there are application changes the library layers can be re-used
-COPY --chown=185 target/quarkus-app/lib/ /deployments/lib/
-COPY --chown=185 target/quarkus-app/*.jar /deployments/
-COPY --chown=185 target/quarkus-app/app/ /deployments/app/
-COPY --chown=185 target/quarkus-app/quarkus/ /deployments/quarkus/
-COPY --chown=185 src/main/resources/schema/ /config/
-COPY --chown=185 scim/ /scim/
+COPY --chown=65532 target/quarkus-app/lib/ /deployments/lib/
+COPY --chown=65532 target/quarkus-app/*.jar /deployments/
+COPY --chown=65532 target/quarkus-app/app/ /deployments/app/
+COPY --chown=65532 target/quarkus-app/quarkus/ /deployments/quarkus/
+COPY --chown=65532 src/main/resources/schema/ /config/
+COPY --chown=65532 scim/ /scim/
 
 # Create a mountable volume, used for logs and other storage (e.g. memory)  scim.root.dir
 VOLUME /scim
 
 EXPOSE 8080
-USER 185
-ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
-ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
-CMD ["java", "-jar", "/deployments/quarkus-run.jar"]
+USER 65532
+# JAVA_TOOL_OPTIONS is read natively by the JVM (no shell required)
+ENV JAVA_TOOL_OPTIONS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+# chainguard/jre ENTRYPOINT is ["java"]; CMD supplies the arguments
+CMD ["-jar", "/deployments/quarkus-run.jar"]

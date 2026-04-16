@@ -312,7 +312,7 @@ public class SsfHandler {
         try {
             gen = JsonUtil.getGenerator(stringWriter, true);
             gen.writeStartObject();
-            gen.writeStringField("description", "i2scim.io v0.9.1");
+            gen.writeStringField("description", "i2scim.io v0.9.2");
             gen.writeArrayFieldStart("scopes");
             gen.writeString("admin");
             gen.writeString("stream");

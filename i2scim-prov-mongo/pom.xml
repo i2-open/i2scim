@@ -18,7 +18,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <name>i2scim-mongo</name>
-    <description>i2scim.io SCIM v2 Server on Quarkus - MongoDB Storage Provider, Release 0.9.1</description>
+    <description>i2scim.io SCIM v2 Server on Quarkus - MongoDB Storage Provider, Release 0.9.2</description>
     <url>https://i2scim.io</url>
     <licenses>
         <license>
@@ -39,11 +39,11 @@
     <parent>
         <groupId>com.independentid</groupId>
         <artifactId>i2scim-root</artifactId>
-        <version>0.9.1</version>
+        <version>0.9.2</version>
     </parent>
 
     <properties>
-        <i2scim.version>0.9.1</i2scim.version>
+        <i2scim.version>0.9.2</i2scim.version>
     </properties>
     <scm>
         <connection>scm:git:https://github.com/i2-open/i2scim.git</connection>

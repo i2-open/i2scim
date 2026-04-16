@@ -7,12 +7,12 @@
     <parent>
         <groupId>com.independentid</groupId>
         <artifactId>i2scim-root</artifactId>
-        <version>0.9.1</version>
+        <version>0.9.2</version>
     </parent>
 
     <artifactId>i2scim-universal</artifactId>
     <properties>
-        <i2scim.version>0.9.1</i2scim.version>
+        <i2scim.version>0.9.2</i2scim.version>
     </properties>
     <dependencies>
         <dependency>
