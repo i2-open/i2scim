@@ -79,6 +79,7 @@
 #FROM registry.access.redhat.com/ubi8/openjdk-17:1.14
 #FROM registry.access.redhat.com/ubi8/openjdk-17:1.15-1.1679485273
 #FROM registry.access.redhat.com/ubi8/openjdk-21:latest
+#FROM chainguard/jre:latest
 FROM cgr.dev/chainguard/jre:latest
 ENV LANGUAGE='en_US:en'
 
@@ -105,5 +106,6 @@ EXPOSE 8080
 USER 65532
 # JAVA_TOOL_OPTIONS is read natively by the JVM (no shell required)
 ENV JAVA_TOOL_OPTIONS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
-# chainguard/jre ENTRYPOINT is ["java"]; CMD supplies the arguments
+# For Chainguard, the ENTRYPOINT is ["java"], so CMD only contains arguments.
+# For Temurin, use: CMD ["java", "-jar", "/deployments/quarkus-run.jar"]
 CMD ["-jar", "/deployments/quarkus-run.jar"]

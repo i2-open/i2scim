@@ -96,6 +96,7 @@ EXPOSE 8080
 USER 65532
 # JAVA_TOOL_OPTIONS is read natively by the JVM (no shell required)
 ENV JAVA_TOOL_OPTIONS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
-# chainguard/jre ENTRYPOINT is ["java"]; CMD supplies the arguments
-CMD ["-jar", "/deployments/quarkus-run.jar"]
 
+# For Chainguard, the ENTRYPOINT is ["java"], so CMD only contains arguments.
+# For Temurin, use: CMD ["java", "-jar", "/deployments/quarkus-run.jar"]
+CMD ["-jar", "/deployments/quarkus-run.jar"]

@@ -76,7 +76,7 @@
 #
 ###
 #FROM registry.access.redhat.com/ubi8/openjdk-17:1.14
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM cgr.dev/chainguard/jre:latest AS runtime
 
 ENV LANGUAGE='en_US:en'
 
@@ -84,10 +84,12 @@ ENV LANGUAGE='en_US:en'
 COPY target/lib/* /deployments/lib/
 COPY target/*-runner.jar /deployments/quarkus-run.jar
 
-RUN mkdir /scim && chown 185 /scim
+RUN mkdir /scim && chown 65532 /scim
 
 EXPOSE 8080
-USER 185
-ENV JAVA_OPTS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
+USER 65532
+ENV JAVA_TOOL_OPTIONS="-Dquarkus.http.host=0.0.0.0 -Djava.util.logging.manager=org.jboss.logmanager.LogManager"
 ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"
-CMD ["java", "-jar", "/deployments/quarkus-run.jar"]
+# For Chainguard, the ENTRYPOINT is ["java"], so CMD only contains arguments.
+# For Temurin, use: CMD ["java", "-jar", "/deployments/quarkus-run.jar"]
+CMD ["-jar", "/deployments/quarkus-run.jar"]
