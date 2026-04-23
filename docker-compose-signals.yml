@@ -1,60 +1,103 @@
-version: '3.8'
+name: i2scim-signals
 volumes:
-  prometheus_data: { }
+  mongo1_data: { }
+  mongo2_data: { }
+  mongo3_data: { }
+  scim1_data: { }
+  scim2_data: { }
+  mongo_config: { }
 services:
   mongo1:
     container_name: mongo1
-    image: mongo:6.0.11
+    image: mongo:latest
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=dockTest
       - MONGO_REPLICA_SET_NAME=dbrs
+    networks:
+      - backend
     ports:
       - "30001:30001"
-    command: [ "--replSet","dbrs","--keyFile","/data/replica.key","--bind_ip_all","--port","30001" ]
+    command: ["sh", "-c", "until [ -f /data/config/replica.key ]; do echo 'Waiting for replica.key...'; sleep 2; done; exec /usr/local/bin/docker-entrypoint.sh mongod --replSet dbrs --keyFile /data/config/replica.key --bind_ip_all --port 30001"]
     volumes:
-      - ".mongo/replica.key:/data/replica.key"
-      - ".mongo/mongo1:/data/db"
+      - mongo1_data:/data/db
+      - mongo_config:/data/config
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "30001", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   mongo2:
     container_name: mongo2
-    image: mongo:6.0.11
+    image: mongo:latest
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=dockTest
       - MONGO_REPLICA_SET_NAME=dbrs
+    networks:
+      - backend
     ports:
       - "30002:30002"
-    command: [ "--replSet","dbrs","--keyFile","/data/replica.key","--bind_ip_all","--port","30002" ]
+    command: ["sh", "-c", "until [ -f /data/config/replica.key ]; do echo 'Waiting for replica.key...'; sleep 2; done; exec /usr/local/bin/docker-entrypoint.sh mongod --replSet dbrs --keyFile /data/config/replica.key --bind_ip_all --port 30002"]
     volumes:
-      - ".mongo/replica.key:/data/replica.key"
-      - ".mongo/mongo2:/data/db"
+      - mongo2_data:/data/db
+      - mongo_config:/data/config
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "30002", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   mongo3:
     container_name: mongo3
-    image: mongo:6.0.11
+    image: mongo:latest
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=dockTest
       - MONGO_REPLICA_SET_NAME=dbrs
     ports:
       - "30003:30003"
-    command: [ "--replSet","dbrs","--keyFile","/data/replica.key","--bind_ip_all","--port","30003" ]
+    networks:
+      - backend
+    command: ["sh", "-c", "until [ -f /data/config/replica.key ]; do echo 'Waiting for replica.key...'; sleep 2; done; exec /usr/local/bin/docker-entrypoint.sh mongod --replSet dbrs --keyFile /data/config/replica.key --bind_ip_all --port 30003"]
     volumes:
-      - ".mongo/replica.key:/data/replica.key"
-      - ".mongo/mongo3:/data/db"
-  mongoSetup:
-    image: mongo:6.0.11
+      - mongo3_data:/data/db
+      - mongo_config:/data/config
+    healthcheck:
+      test: ["CMD", "mongosh", "--port", "30003", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  mongo-init:
+    image: mongo:latest
+    container_name: mongo-init
     depends_on:
-      - mongo1
-      - mongo2
-      - mongo3
+      mongo1:
+        condition: service_started
+      mongo2:
+        condition: service_started
+      mongo3:
+        condition: service_started
     volumes:
-      - ".mongo/:/scripts"
+      - "./config/mongo:/scripts"
+      - mongo_config:/data/config
     restart: "no"
-    entrypoint: [ "bash", "/scripts/mongo_init.sh" ]
+    networks:
+      - backend
+    entrypoint:
+      - "bash"
+      - "-c"
+      - |
+        if [ ! -f /data/config/replica.key ]; then
+          echo "Generating replica.key..."
+          openssl rand -base64 756 > /data/config/replica.key
+          chmod 400 /data/config/replica.key
+          chown 999:999 /data/config/replica.key
+        fi
+        exec bash /scripts/mongo_init.sh
 
   goSignals1:
     image: i2gosignals:latest
-    command: /goSignalsServer
+    command: /app/goSignalsServer
     container_name: gosignals1
     hostname: goSignals1
     depends_on:
@@ -64,11 +107,16 @@ services:
         condition: service_completed_successfully
     ports:
       - "8888:8888"
+    networks:
+      - frontend
+      - backend
     environment:
       - MONGO_URL=mongodb://root:dockTest@mongo1:30001,mongo2:30002,mongo3:30003/?retryWrites=true&replicaSet=dbrs&readPreference=primary&serverSelectionTimeoutMS=5000&connectTimeoutMS=10000&authSource=admin&authMechanism=SCRAM-SHA-256
       - DBNAME=goSignals1
       - PORT=8888
       - BASE_URL=http://goSignals1:8888/
+      - MONGO_WATCH_FILE=/app/resources/mongo_token_1.json
+      - TLS_ENABLED=false
 
   scim_cluster1:
     image: independentid/i2scim-universal:latest
@@ -78,8 +126,11 @@ services:
     depends_on:
       goSignals1:
         condition: service_started
+    networks:
+      - frontend
+      - backend
     volumes:
-      - ./config/scim/data1:/scim
+      - scim1_data:/scim
     environment:
       - scim.prov.memory.dir=/scim/data
       - scim.prov.memory.file=scimdb.json
@@ -105,8 +156,11 @@ services:
     depends_on:
       goSignals1:
         condition: service_started
+    networks:
+      - frontend
+      - backend
     volumes:
-      - ./config/scim/data2:/scim
+      - scim2_data:/scim
     environment:
       - scim.prov.memory.dir=/scim/data
       - scim.prov.memory.file=scimdb.json
@@ -124,4 +178,10 @@ services:
       - scim.signals.rcv.iss.jwksUrl=http://localhost:8888/jwks/cluster.scim.example.com
       - scim.signals.pub.pem.path=/scim/issuer.pem
 
-
+networks:
+  frontend:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.host_binding_ipv4: "0.0.0.0"
+  backend:
+    driver: bridge
