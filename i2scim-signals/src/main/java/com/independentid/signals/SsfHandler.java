@@ -258,7 +258,14 @@ public class SsfHandler {
         StreamConfig pushResp = JsonUtil.getMapper().readValue(body.getContent(), StreamConfig.class);
         this.pushStream.streamId = pushResp.Id;
         this.pushStream.endpointUrl = pushResp.Delivery.EndpointUrl;
-        this.pushStream.authorization = pushResp.Delivery.EndpointUrl;
+        this.pushStream.authorization = pushResp.Delivery.AuthorizationHeader;
+        this.pushStream.iss = configProps.pubIssuer;
+        this.pushStream.aud = configProps.pubAud;
+        this.pushStream.issJwksUrl = configProps.pubIssJwksUrl;
+        this.pushStream.isUnencrypted = configProps.pubIsUnsigned;
+        this.pushStream.maxRetries = configProps.pubRetryMax;
+        this.pushStream.initialDelay = configProps.pubRetryInterval;
+        this.pushStream.maxDelay = configProps.pubRetryMaxInterval;
         this.pushStream.enabled = true;
 
         resp.close();
@@ -299,6 +306,13 @@ public class SsfHandler {
         this.pollStream.streamId = pollResp.Id;
         this.pollStream.endpointUrl = pollResp.Delivery.EndpointUrl;
         this.pollStream.authorization = pollResp.Delivery.AuthorizationHeader;
+        this.pollStream.iss = configProps.rcvIss;
+        this.pollStream.aud = configProps.rcvAud;
+        this.pollStream.issJwksUrl = configProps.rcvIssJwksUrl;
+        this.pollStream.isUnencrypted = configProps.unSignedMode;
+        this.pollStream.maxRetries = configProps.rcvRetryMax;
+        this.pollStream.initialDelay = configProps.rcvRetryInterval;
+        this.pollStream.maxDelay = configProps.rcvRetryMaxInterval;
         this.pollStream.enabled = true;
         resp.close();
     }
@@ -312,7 +326,7 @@ public class SsfHandler {
         try {
             gen = JsonUtil.getGenerator(stringWriter, true);
             gen.writeStartObject();
-            gen.writeStringField("description", "i2scim.io v0.9.2");
+            gen.writeStringField("description", "i2scim.io v0.9.3");
             gen.writeArrayFieldStart("scopes");
             gen.writeString("admin");
             gen.writeString("stream");

@@ -19,11 +19,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.independentid</groupId>
-    <version>0.9.2</version>
+    <version>0.9.3</version>
     <artifactId>i2scim-root</artifactId>
     <packaging>pom</packaging>
     <name>i2scim-root</name>
-    <description>i2scim.io SCIM v2 Server on Quarkus - Root Project, Release 0.9.2</description>
+    <description>i2scim.io SCIM v2 Server on Quarkus - Root Project, Release 0.9.3</description>
     <url>https://i2scim.io</url>
 
     <licenses>
@@ -65,7 +65,7 @@
         <quarkus.platform.version>3.34.3</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.5</surefire-plugin.version>
-        <i2scim.version>0.9.2</i2scim.version>
+        <i2scim.version>0.9.3</i2scim.version>
     </properties>
     <scm>
         <connection>scm:git:https://github.com/i2-open/i2scim.git</connection>
