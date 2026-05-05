@@ -62,8 +62,8 @@ jobs:
         id: push
         uses: docker/build-push-action@v5
         with:
-          context: i2scim-universal
-          file: i2scim-universal/src/main/docker/Dockerfile.jvm
+          context: i2scim-server
+          file: i2scim-server/src/main/docker/Dockerfile.jvm
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
