@@ -1,39 +1,25 @@
 # Developer Notes
 
-These notes are for those developers who wish to work with the i2scim project directly. An overview of maven modules 
+These notes are for those developers who wish to work with the i2scim project directly. An overview of maven modules
 is provided along with build and test instructions.
 
 ## Introduction
-The i2scim project is built using the Quarkus.io platform. The project is broken into a series of maven modules for 
-usage in 3 ways:
-1. As SCIM Protocol microservice front-ending a database (MongoDB).
-2. As a SCIM server with built-in memory index and disk based storage.
+The i2scim project is built using the Quarkus.io platform. As of release 0.10.0 the project is structured as three Maven modules supporting three usage patterns:
+1. As a SCIM Protocol microservice front-ending a database (MongoDB).
+2. As a SCIM server with a built-in memory index and disk-based storage.
 3. As a SCIM client library for building and manipulating SCIM resources on a service provider.
 
-This project is a Quarkus based project that uses injection to instantiate services based on an Eclipse Microprofie run 
-configuration which which supports configuration variables provided by environment, application properties or K8S 
-ConfigMaps. See: https://github.com/smallrye.
+This project uses CDI/ArC dependency injection to instantiate services based on a MicroProfile run-time configuration that supports environment variables, application properties, and K8s `ConfigMap` data.
 
-The project modules consist of the following:
-* `i2scim-core` - The core protocol engine modules including JSON to SCIM parser and serializers, SchemaManager, 
-  Access Control, Event/Operation Processing, and Provider interfaces.
-* `i2scim-client` - Client libraries for building SCIM resources and accessing a SCIMv2 service.
-* `i2scim-prov-memory` - An implementation of the provider interface that stores entries on disk with a memory based 
-  index.
-* `i2scim-prov-mongo` - An implementation of the provider interface that translates from SCIM JSON to BSON and 
-  manages resources as documents in Mongo Database.
-* `i2scim-server` - This contains the main servlet code that is injected at run time and boots the server. Also 
-  included are servlet filters for i2scim access control or [Open Policy Agent](https://www.openpolicyagent.org) integrated access control. 
-* `i2scim-tests` - This module includes unit tests for the entire server. Tests a broken out into major functional 
-  area. See the **Testing Configuration** section for more info on how to configure test Mongo and OPA services for 
-  testing.
+The project modules:
 
-Finally there are two packaging modules that assemble combinations of the modules above into Dockers images for 
-direct deployment in docker or as part of a Kubernets configuration.
-* `pkg-i2scim-prov-memory` - Packaging, prooperties, and builds for running i2scim with the Memory Provider. 
-  Includes example YAML files for K8S deployments.
-* `pkg-i2scim-prov-mongodb` - Packaging, prooperties, and builds for running i2scim with the Mongo Provider.
-  Includes example YAML files for K8S deployments.
+* `i2scim-core` — The protocol engine: JSON↔SCIM parsers/serializers, `SchemaManager`, access-control evaluation, event/operation processing, the `IScimProvider` SPI, and the canonical SCIM schema JSON loaded by the server at startup. Published to Maven Central (when publishing is enabled).
+* `i2scim-client` — Client library for building SCIM resources and calling a SCIMv2 service. Used by tests and by external consumers. Depends on Apache HttpClient 5.x. Published to Maven Central (when publishing is enabled).
+* `i2scim-server` — The Quarkus runtime application. Contains the HTTP servlet, the memory and Mongo provider implementations, the SCIM Events / SSF (signals) implementation, the OPA integration, the DevOps/health endpoints, the integration test suite, the Docker build, and the example Kubernetes manifests. This is the module that becomes `independentid/i2scim-universal:<tag>`.
+
+Backend selection is a runtime configuration choice (`scim.prov.providerClass`) rather than a packaging-time choice — the same JAR/image runs against either backend.
+
+Releases prior to 0.10.0 split this code across ten modules (`i2scim-prov-memory`, `i2scim-prov-mongo`, `i2scim-signals`, `i2scim-tests`, `i2scim-universal`, plus two `pkg-*` packagings). See [DECISIONS.md](../DECISIONS.md), 2026-05-04 entry, for why those were collapsed.
 
 ## Testing Configuration
 

@@ -22,6 +22,16 @@ adapted to act as a gateway to internal proprietary identity APIs by implementin
 
 ## Recent Updates
 
+# Release 0.10.0
+
+This release collapses the build from ten Maven modules into three (`i2scim-core`, `i2scim-client`, `i2scim-server`) and hardens the deployment image.
+
+* **Three-module structure** — Provider, signals, packaging, and tests are now part of `i2scim-server`. Root `mvn install` works without the prior `-N` workaround. See [DECISIONS.md](../DECISIONS.md), 2026-05-04 entry.
+* **Single Docker image** — `independentid/i2scim-universal:<tag>` is the only published image. Backend selection is runtime via `scim.prov.providerClass`. The previous per-backend images (`i2scim-mem`, `i2scim-mongo`) are no longer built.
+* **Supply-chain hardening** — Image carries OCI labels (`org.opencontainers.image.*`), an embedded CycloneDX SBOM at `/sbom/i2scim.cdx.json`, and SLSA build provenance. `build.sh -p` produces multi-arch (linux/amd64, linux/arm64) attested builds.
+* **Maven Central publishing dormant** — Release plugins removed; `i2scim-server` sets `maven.deploy.skip=true`. To restore, follow [docs/publishing.md](publishing.md).
+* **Canonical SCIM schemas** in `i2scim-core` — `scimSchema.json`, `scimCommonSchema.json`, `scimFixedSchema.json`, `resourceTypes.json` are loaded from the core JAR's classpath instead of duplicated in each module.
+
 # Release 0.9.1
 
 * Updated org.apache.httpcomponents.client5.httpclient5 to 5.4.3 to address CVE-2025-27820
@@ -105,12 +115,32 @@ In this release:
     * [Contributing](CONTRIBUTING.md)
     * [Notes for developers](DeveloperNotes.md)
 * Quick Starts
-    * Deploying i2scim using memory database(TBD).
-    * [Deploying i2scim using MongoDb on K8S](i2scim-mongo-k8s.md).
+    * [Building and running locally](#building-and-running) — see below.
+    * [Kubernetes deployment (memory or MongoDB backend)](../i2scim-server/k8s/README.md).
 * General Documentation
     * [Configuration](Configuration.md) - i2scim Configuration Properties
     * [i2scim Access Control](AccessControl.md) - Standalone access control using i2scim
     * Open Policy Agent [Integrated Access Control](OPA_AccessControl.md) - Access control using an external [OPA Agent](https://www.openpolicyagent.org).
+
+## Building and Running
+
+i2scim is a three-module Maven project (`i2scim-core`, `i2scim-client`, `i2scim-server`) on Java 25 and Quarkus 3.34.x.
+
+```bash
+# Build everything (skips tests by default):
+mvn install
+
+# Build + run tests (requires MongoDB on localhost:27017 with admin/t0p-Secret):
+mvn install -DskipTests=false
+
+# Run the server in dev mode at http://localhost:8080/ :
+mvn -pl i2scim-server quarkus:dev
+
+# Build a multi-arch Docker image and push to docker.io/independentid:
+./build.sh -p --tag <ver>
+```
+
+The published Docker image is `independentid/i2scim-universal:<tag>`. The same image runs against the in-memory backend or MongoDB; the choice is made at runtime via `scim.prov.providerClass`. See [Configuration](Configuration.md) for the full property list and [k8s/README.md](../i2scim-server/k8s/README.md) for cluster deployment.
 
 ## i2scim Feature Details
 
@@ -150,7 +180,7 @@ In this release:
 
 Note: Inter-SCIM server replication services are not currently part of this project and are currently only supported as
 part of a database cluster. For fault-tolerant scaled systems use i2scim deployed
-with a [MongoDB cluster on K8S](i2scim-mongo-k8s.md) along with an enterprise MongoDB
+with a [MongoDB cluster on K8S](../i2scim-server/k8s/README.md) along with an enterprise MongoDB
 deployment.
 
 ## Where can I get more help if needed?
