@@ -1,183 +1,81 @@
 #!/bin/bash
 #
 # Copyright 2021.  Independent Identity Incorporated
+# Licensed under the Apache License, Version 2.0
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
+# Build helper: builds the multi-arch i2scim-universal docker image.
+# JVM compile/test/package now happen via plain `mvn install` from the repo root —
+# this script only wraps `docker buildx build`.
 
-# This script runs the maven build and builds the docker packages
+set -euo pipefail
 
-function show_usage (){
-    printf "Usage: $0 [options [parameters]]\n"
-    printf "\n"
-    printf "Options:\n"
-    printf " -t|--test, run maven tests\n"
-    printf " --tag [tag-version], Specify tag number\n"
-    printf " -p|--push, push to docker"
-    printf " -b|--build, maven build only"
-    printf " -h|--help, Print help\n"
+usage() {
+  cat <<EOF
+Usage: $0 [options]
 
-return 0
+Options:
+  -t, --test        run maven tests (default skips them)
+  -p, --push        multi-arch buildx + push to docker.io
+      --tag TAG     image tag (default: latest)
+  -b, --build       maven build only — skip docker step (back-compat no-op for the
+                    docker step; mvn install is the build now)
+  -h, --help        show this help
+EOF
 }
 
-function show_complete () {
-    echo "*************************************************"
-    echo "  COMPLETE: "$(date +"%Y-%m-%d %H:%M:%S")
-    echo "  SBOMs generated in target/bom.json"
-    echo "*************************************************"
-    return 0
-}
+I2SCIM_ROOT=$(cd "$(dirname "$0")" && pwd)
 
-function compile_module() {
-  echo "\n\nCompiling ${1} at ${2} ..."
-  cd $2
-  mvn clean compile -DskipTests=$skip
-  retVal=$?
-  if [ $retVal -ne 0 ]
-  then
-    echo "Error performing maven packaging [${1}]: "+$retVal
-    exit $retVal
-  fi
-}
+skip_tests=true
+tag="latest"
+push=0
+build_only=0
 
-function build_package() {
-  echo "\n\nBuilding Packaging ${1} at ${2} ...\n\n"
-
-  cd $2
-  mvn clean install -DskipTests=$skip
-  retVal=$?
-  if [ $retVal -ne 0 ]
-  then
-    echo "Error performing build packaging for [${1}]: "+$retVal
-    exit $retVal
-  fi
-}
-
-function package_module() {
-  echo "\n\nPackaging ${1} at ${2} ..."
-  cd $2
-  mvn package -DskipTests=$skip
-  retVal=$?
-  if [ $retVal -ne 0 ]
-  then
-    echo "Error performing maven packaging [${1}]: "+$retVal
-    exit $retVal
-  fi
-}
-
-I2SCIM_ROOT=$(pwd)
-
-echo "Current dir: ${I2SCIM_ROOT}"
-
-skip=true
-rtag="latest"
-buildOnly=0
-push=p
-
-echo "*************************************************"
-echo "  Starting i2scim Build "
-
-while [ ! -z "$1" ]; do
+while [[ $# -gt 0 ]]; do
   case "$1" in
-     --push|-p)
-         shift
-         echo "\tPush requested"
-         push=1
-         ;;
-     --test|-t)
-         shift
-         echo "\tTests requested"
-         skip=false
-         ;;
-     --build|-b)
-         shift
-         echo "\tSkipping Docker build"
-         buildOnly=1
-         ;;
-     --tag)
-         shift
-         rtag=$1
-         ;;
-     *)
-        show_usage
-        ;;
+    -t|--test)   skip_tests=false ;;
+    -p|--push)   push=1 ;;
+    -b|--build)  build_only=1 ;;
+    --tag)       tag="$2"; shift ;;
+    -h|--help)   usage; exit 0 ;;
+    *)           usage; exit 1 ;;
   esac
-shift
+  shift
 done
 
-echo "\tTag: $rtag"
-echo "\tStarting: "$(date +"%Y-%m-%d %H:%M:%S")
+echo "*************************************************"
+echo "  i2scim build — tag=${tag} push=${push} skipTests=${skip_tests}"
 echo "*************************************************"
 
-echo "Installing root POM..."
+# Maven build (root-level install — fixed in slice 6 to no longer require -N + per-module install)
+mvn -f "${I2SCIM_ROOT}/pom.xml" clean install -DskipTests=${skip_tests}
 
-mvn install -N -DskipTests=true
-
-build_package "SCIM CORE" "${I2SCIM_ROOT}/i2scim-core"
-
-build_package "SCIM Server" "${I2SCIM_ROOT}/i2scim-server"
-
-build_package "SCIM Memory Provider" "${I2SCIM_ROOT}/i2scim-prov-memory"
-
-build_package "SCIM Mongo Provider" "${I2SCIM_ROOT}/i2scim-prov-mongo"
-
-build_package "SCIM Client" "${I2SCIM_ROOT}/i2scim-client"
-
-build_package "SCIM Signals" "${I2SCIM_ROOT}/i2scim-signals"
-
-build_package "SCIM Universal" "${I2SCIM_ROOT}/i2scim-universal"
-
-if [ $skip -eq false ]
-then
-  build_package "SCIM Signals" "${I2SCIM_ROOT}/i2scim-tests"
-fi
-
-if [ $buildOnly -eq 1 ]
-then
-  show_complete
+if [[ ${build_only} -eq 1 ]]; then
+  echo "Build only requested — skipping docker."
   exit 0
 fi
 
-echo ""
-echo "\tStarting Docker build i2scim-universal..."
-echo ""
+GIT_COMMIT=$(git -C "${I2SCIM_ROOT}" rev-parse HEAD)
+BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+VERSION=$(mvn -q -f "${I2SCIM_ROOT}/pom.xml" help:evaluate -Dexpression=project.version -DforceStdout)
 
-cd ${I2SCIM_ROOT}/i2scim-universal
-if [ $push -eq 1 ]
-then
-  docker buildx build \
-    --platform linux/amd64,linux/arm64 \
-    -f src/main/docker/Dockerfile.jvm \
-    --push \
-    --attest type=provenance,mode=max \
-    --attest type=sbom \
-    -t independentid/i2scim-universal:$rtag \
-    .
+cd "${I2SCIM_ROOT}/i2scim-server"
+
+common_args=(
+  -f src/main/docker/Dockerfile.jvm
+  --attest type=sbom
+  --attest type=provenance,mode=max
+  --build-arg GIT_COMMIT="${GIT_COMMIT}"
+  --build-arg BUILD_DATE="${BUILD_DATE}"
+  --build-arg VERSION="${VERSION}"
+  -t "independentid/i2scim-universal:${tag}"
+)
+
+if [[ ${push} -eq 1 ]]; then
+  docker buildx build --platform linux/amd64,linux/arm64 --push "${common_args[@]}" .
 else
-  docker buildx build \
-    --load \
-    -f src/main/docker/Dockerfile.jvm \
-    --provenance=mode=min \
-    -t independentid/i2scim-universal:$rtag \
-    .
+  docker buildx build --load "${common_args[@]}" .
 fi
-retVal=$?
-if [ $retVal -ne 0 ]
-then
-  echo "Docker error packaging i2scim-mem: "+$retVal
-  exit $retVal
-fi
-#cp target/kubernetes/kubernetes.yml ./4-i2scim-memory-deploy.yml
 
-
-show_complete
+echo "*************************************************"
+echo "  COMPLETE: $(date +"%Y-%m-%d %H:%M:%S")"
+echo "*************************************************"

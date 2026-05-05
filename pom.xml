@@ -19,11 +19,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.independentid</groupId>
-    <version>0.9.3</version>
     <artifactId>i2scim-root</artifactId>
+    <version>0.10.0</version>
     <packaging>pom</packaging>
     <name>i2scim-root</name>
-    <description>i2scim.io SCIM v2 Server on Quarkus - Root Project, Release 0.9.3</description>
+    <description>i2scim.io SCIM v2 Server on Quarkus - Root Project</description>
     <url>https://i2scim.io</url>
 
     <licenses>
@@ -42,16 +42,12 @@
         </developer>
     </developers>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-        <repository>
-            <id>ossrh</id>
-            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>
-    </distributionManagement>
+    <scm>
+        <connection>scm:git:https://github.com/i2-open/i2scim.git</connection>
+        <developerConnection>scm:git:https://github.com/i2-open/i2scim.git</developerConnection>
+        <url>https://github.com/i2-open/i2scim/tree/master</url>
+        <tag>HEAD</tag>
+    </scm>
 
     <properties>
         <compiler-plugin.version>3.15.0</compiler-plugin.version>
@@ -65,14 +61,8 @@
         <quarkus.platform.version>3.34.3</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.5</surefire-plugin.version>
-        <i2scim.version>0.9.3</i2scim.version>
     </properties>
-    <scm>
-        <connection>scm:git:https://github.com/i2-open/i2scim.git</connection>
-        <developerConnection>scm:git:https://github.com/i2-open/i2scim.git</developerConnection>
-        <url>https://github.com/i2-open/i2scim/tree/master</url>
-      <tag>HEAD</tag>
-  </scm>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -120,47 +110,17 @@
             <dependency>
                 <groupId>com.independentid</groupId>
                 <artifactId>i2scim-core</artifactId>
-                <version>${i2scim.version}</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.independentid</groupId>
                 <artifactId>i2scim-client</artifactId>
-                <version>${i2scim.version}</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.independentid</groupId>
                 <artifactId>i2scim-server</artifactId>
-                <version>${i2scim.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.independentid</groupId>
-                <artifactId>i2scim-prov-memory</artifactId>
-                <version>${i2scim.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.independentid</groupId>
-                <artifactId>i2scim-prov-mongo</artifactId>
-                <version>${i2scim.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.independentid</groupId>
-                <artifactId>i2scim-signals</artifactId>
-                <version>${i2scim.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.independentid</groupId>
-                <artifactId>i2scim-universal</artifactId>
-                <version>${i2scim.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.independentid</groupId>
-                <artifactId>pkg-i2scim-prov-memory</artifactId>
-                <version>${i2scim.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.independentid</groupId>
-                <artifactId>pkg-i2scim-prov-mongodb</artifactId>
-                <version>${i2scim.version}</version>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -169,44 +129,15 @@
         <module>i2scim-core</module>
         <module>i2scim-client</module>
         <module>i2scim-server</module>
-        <module>i2scim-prov-memory</module>
-        <module>i2scim-prov-mongo</module>
-        <module>i2scim-signals</module>
-        <module>i2scim-tests</module>
-        <module>i2scim-universal</module>
-        <module>pkg-i2scim-prov-memory</module>
-        <module>pkg-i2scim-prov-mongodb</module>
     </modules>
+
     <build>
         <pluginManagement>
             <plugins>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-gpg-plugin</artifactId>
-                    <version>3.2.7</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.sonatype.plugins</groupId>
-                    <artifactId>nexus-staging-maven-plugin</artifactId>
-                    <version>1.7.0</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>${compiler-plugin.version}</version>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>3.11.2</version>
-                    <configuration>
-                        <release>25</release>
-                    </configuration>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-source-plugin</artifactId>
-                    <version>3.3.1</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -215,6 +146,9 @@
                 <groupId>org.cyclonedx</groupId>
                 <artifactId>cyclonedx-maven-plugin</artifactId>
                 <version>2.9.1</version>
+                <configuration>
+                    <skipNotDeployed>false</skipNotDeployed>
+                </configuration>
                 <executions>
                     <execution>
                         <phase>package</phase>
@@ -289,42 +223,4 @@
             </plugin>
         </plugins>
     </build>
-    <profiles>
-        <profile>
-            <id>release</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <id>sign-artifacts</id>
-                                <phase>verify</phase>
-                                <goals>
-                                    <goal>sign</goal>
-                                </goals>
-                                <configuration>
-                                    <gpgArguments>
-                                        <arg>--pinentry-mode</arg>
-                                        <arg>loopback</arg>
-                                    </gpgArguments>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
-                        <extensions>true</extensions>
-                        <configuration>
-                            <serverId>ossrh</serverId>
-                            <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
-                            <autoReleaseAfterClose>false</autoReleaseAfterClose>
-                        </configuration>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 </project>
