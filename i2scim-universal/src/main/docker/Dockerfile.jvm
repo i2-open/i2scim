@@ -83,12 +83,21 @@
 FROM cgr.dev/chainguard/jre:latest
 ENV LANGUAGE='en_US:en'
 
+ARG GIT_COMMIT
+ARG BUILD_DATE
+ARG VERSION
+
 LABEL org.opencontainers.image.title="i2scim-universal" \
       org.opencontainers.image.description="i2scim.io SCIM v2 Server on Quarkus" \
       org.opencontainers.image.url="https://i2scim.io" \
       org.opencontainers.image.source="https://github.com/i2-open/i2scim" \
       org.opencontainers.image.vendor="Independent Identity Incorporated" \
-      org.opencontainers.image.licenses="Apache-2.0"
+      org.opencontainers.image.licenses="Apache-2.0" \
+      org.opencontainers.image.version="${VERSION}" \
+      org.opencontainers.image.revision="${GIT_COMMIT}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.authors="info@independentid.com" \
+      org.opencontainers.image.documentation="https://github.com/i2-open/i2scim/blob/master/README.md"
 
 
 # We make four distinct layers so if there are application changes the library layers can be re-used
@@ -98,6 +107,7 @@ COPY --chown=65532 target/quarkus-app/app/ /deployments/app/
 COPY --chown=65532 target/quarkus-app/quarkus/ /deployments/quarkus/
 COPY --chown=65532 src/main/resources/schema/ /config/
 COPY --chown=65532 scim/ /scim/
+COPY --chown=65532 target/bom.json /sbom/i2scim.cdx.json
 
 # Create a mountable volume, used for logs and other storage (e.g. memory)  scim.root.dir
 VOLUME /scim

@@ -79,6 +79,10 @@ I2SCIM_ROOT=$(pwd)
 
 echo "Current dir: ${I2SCIM_ROOT}"
 
+GIT_COMMIT=$(git rev-parse HEAD)
+BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+VERSION=$(mvn -q -f "${I2SCIM_ROOT}/pom.xml" help:evaluate -Dexpression=project.version -DforceStdout)
+
 skip=true
 rtag="latest"
 buildOnly=0
@@ -161,13 +165,20 @@ then
     --push \
     --attest type=provenance,mode=max \
     --attest type=sbom \
+    --build-arg GIT_COMMIT="${GIT_COMMIT}" \
+    --build-arg BUILD_DATE="${BUILD_DATE}" \
+    --build-arg VERSION="${VERSION}" \
     -t independentid/i2scim-universal:$rtag \
     .
 else
   docker buildx build \
     --load \
     -f src/main/docker/Dockerfile.jvm \
-    --provenance=mode=min \
+    --attest type=sbom \
+    --attest type=provenance,mode=max \
+    --build-arg GIT_COMMIT="${GIT_COMMIT}" \
+    --build-arg BUILD_DATE="${BUILD_DATE}" \
+    --build-arg VERSION="${VERSION}" \
     -t independentid/i2scim-universal:$rtag \
     .
 fi
