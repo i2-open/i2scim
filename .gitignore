@@ -35,11 +35,11 @@ build/
 .vscode/
 /.DS_Store
 /.gitignore
-/i2scim-tests/scimdata/
+/i2scim-server/scimdata/
 /opa/.run/
 
 
-/i2scim-tests/logs/
+/i2scim-server/logs/
 
 ### Release artifacts and runtime data ###
 *.releaseBackup

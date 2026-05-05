@@ -19,11 +19,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.independentid</groupId>
-    <version>0.9.3</version>
     <artifactId>i2scim-root</artifactId>
+    <version>0.10.0</version>
     <packaging>pom</packaging>
     <name>i2scim-root</name>
-    <description>i2scim.io SCIM v2 Server on Quarkus - Root Project, Release 0.9.3</description>
+    <description>i2scim.io SCIM v2 Server on Quarkus - Root Project</description>
     <url>https://i2scim.io</url>
 
     <licenses>
@@ -42,6 +42,13 @@
         </developer>
     </developers>
 
+    <scm>
+        <connection>scm:git:https://github.com/i2-open/i2scim.git</connection>
+        <developerConnection>scm:git:https://github.com/i2-open/i2scim.git</developerConnection>
+        <url>https://github.com/i2-open/i2scim/tree/master</url>
+        <tag>HEAD</tag>
+    </scm>
+
     <properties>
         <compiler-plugin.version>3.15.0</compiler-plugin.version>
         <maven.compiler.release>25</maven.compiler.release>
@@ -54,14 +61,8 @@
         <quarkus.platform.version>3.34.3</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.5</surefire-plugin.version>
-        <i2scim.version>0.9.3</i2scim.version>
     </properties>
-    <scm>
-        <connection>scm:git:https://github.com/i2-open/i2scim.git</connection>
-        <developerConnection>scm:git:https://github.com/i2-open/i2scim.git</developerConnection>
-        <url>https://github.com/i2-open/i2scim/tree/master</url>
-      <tag>HEAD</tag>
-  </scm>
+
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -109,47 +110,17 @@
             <dependency>
                 <groupId>com.independentid</groupId>
                 <artifactId>i2scim-core</artifactId>
-                <version>${i2scim.version}</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.independentid</groupId>
                 <artifactId>i2scim-client</artifactId>
-                <version>${i2scim.version}</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.independentid</groupId>
                 <artifactId>i2scim-server</artifactId>
-                <version>${i2scim.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.independentid</groupId>
-                <artifactId>i2scim-prov-memory</artifactId>
-                <version>${i2scim.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.independentid</groupId>
-                <artifactId>i2scim-prov-mongo</artifactId>
-                <version>${i2scim.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.independentid</groupId>
-                <artifactId>i2scim-signals</artifactId>
-                <version>${i2scim.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.independentid</groupId>
-                <artifactId>i2scim-universal</artifactId>
-                <version>${i2scim.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.independentid</groupId>
-                <artifactId>pkg-i2scim-prov-memory</artifactId>
-                <version>${i2scim.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.independentid</groupId>
-                <artifactId>pkg-i2scim-prov-mongodb</artifactId>
-                <version>${i2scim.version}</version>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -158,14 +129,8 @@
         <module>i2scim-core</module>
         <module>i2scim-client</module>
         <module>i2scim-server</module>
-        <module>i2scim-prov-memory</module>
-        <module>i2scim-prov-mongo</module>
-        <module>i2scim-signals</module>
-        <module>i2scim-tests</module>
-        <module>i2scim-universal</module>
-        <module>pkg-i2scim-prov-memory</module>
-        <module>pkg-i2scim-prov-mongodb</module>
     </modules>
+
     <build>
         <pluginManagement>
             <plugins>
@@ -181,6 +146,9 @@
                 <groupId>org.cyclonedx</groupId>
                 <artifactId>cyclonedx-maven-plugin</artifactId>
                 <version>2.9.1</version>
+                <configuration>
+                    <skipNotDeployed>false</skipNotDeployed>
+                </configuration>
                 <executions>
                     <execution>
                         <phase>package</phase>

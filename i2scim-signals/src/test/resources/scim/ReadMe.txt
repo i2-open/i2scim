@@ -1,1 +1,0 @@
-Temp directory for signals config storage.

@@ -1,1 +1,0 @@
-# This directory is used to become the root directory for the SCIM server on Docker.
