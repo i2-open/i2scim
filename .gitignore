@@ -40,3 +40,9 @@ build/
 
 
 /i2scim-tests/logs/
+
+### Release artifacts and runtime data ###
+*.releaseBackup
+release.properties
+/src/
+/config/scim/
