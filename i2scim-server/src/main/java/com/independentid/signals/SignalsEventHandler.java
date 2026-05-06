@@ -27,6 +27,8 @@ import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.set.SecurityEventToken;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Priority;
@@ -36,26 +38,26 @@ import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jose4j.jwt.MalformedClaimException;
+import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.independentid.set.SecurityEventToken;
 import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-//@ApplicationScoped
 @Startup
 @Singleton
 @Priority(5)
 @Named("SignalsEventHandler")
 public class SignalsEventHandler implements IEventHandler {
     private final static Logger logger = LoggerFactory.getLogger(SignalsEventHandler.class);
+
+    public static final String MONGO_PROVIDER_FQCN = "com.independentid.scim.backend.mongo.MongoProvider";
 
     @ConfigProperty(name = "scim.signals.enable", defaultValue = "false")
     boolean enabled;
@@ -78,10 +80,18 @@ public class SignalsEventHandler implements IEventHandler {
     @ConfigProperty(name = "scim.signals.test", defaultValue = "false")
     boolean isTest;
 
+    @ConfigProperty(name = "scim.prov.providerClass", defaultValue = "com.independentid.scim.backend.memory.MemoryProvider")
+    String providerClassName;
+
+    @ConfigProperty(name = "scim.prov.mongo.uri", defaultValue = "mongodb://localhost:27017")
+    String mongoUri;
+
+    @ConfigProperty(name = "scim.prov.mongo.dbname", defaultValue = "SCIM")
+    String mongoDbName;
+
     SignalsEventReceiver receiverThread;
 
     protected static final List<String> acksPending = new CopyOnWriteArrayList<>();
-    protected static final List<Operation> pendingPubOps = new CopyOnWriteArrayList<>();
 
     protected static final List<Operation> acceptedOps = new CopyOnWriteArrayList<>();
 
@@ -104,6 +114,10 @@ public class SignalsEventHandler implements IEventHandler {
     SignalsEventMapper mapper;
 
     StreamMaintenanceScheduler scheduler;
+
+    PendingPushStore pendingPushStore;
+    MongoClient signalsMongoClient; // only set when scim.prov.providerClass=Mongo
+    PushRetryWorker pushRetryWorker;
 
     boolean ready = false;
 
@@ -146,9 +160,9 @@ public class SignalsEventHandler implements IEventHandler {
 
         try {
             if (isTest)
-                Thread.sleep(100); // give some time for server to settle
+                Thread.sleep(100);
             else
-                Thread.sleep(5000); // wait for server to settle
+                Thread.sleep(5000);
         } catch (InterruptedException ignore) {
         }
         SchemaManager mgr = configMgr.getSchemaManager();
@@ -158,17 +172,41 @@ public class SignalsEventHandler implements IEventHandler {
 
         logger.info("Signals Event Handler STARTING....");
 
-        // ensure that config,schema managers are initialized.
         Operation.initialize(configMgr);
+
+        this.pendingPushStore = createPendingPushStore();
 
         this.scheduler = new StreamMaintenanceScheduler();
         installStatusInterrogation();
+
+        startPushRetryWorker();
 
         if (rcvEnabled) {
             logger.debug("Starting SET Polling Receiver...");
             this.receiverThread = new SignalsEventReceiver(configMgr, this, ssfClient);
         }
         ready = true;
+    }
+
+    private PendingPushStore createPendingPushStore() {
+        if (MONGO_PROVIDER_FQCN.equals(providerClassName)) {
+            logger.info("Creating MongoPendingPushStore (uri={}, db={})", mongoUri, mongoDbName);
+            this.signalsMongoClient = MongoClients.create(mongoUri);
+            MongoPendingPushStore store = new MongoPendingPushStore(signalsMongoClient, mongoDbName);
+            store.init();
+            return store;
+        }
+        logger.info("Using NoOpPendingPushStore (provider={}). Filesystem parity arrives in slice #74.",
+                providerClassName);
+        return new NoOpPendingPushStore();
+    }
+
+    private void startPushRetryWorker() {
+        if (!pubEnabled || ssfClient == null) return;
+        PushStream pushStream = ssfClient.getPushStream();
+        if (pushStream == null || !pushStream.enabled) return;
+        this.pushRetryWorker = new PushRetryWorker(pushStream, pendingPushStore);
+        this.pushRetryWorker.start();
     }
 
     private void installStatusInterrogation() {
@@ -194,7 +232,6 @@ public class SignalsEventHandler implements IEventHandler {
                     scheduler.cancelIdleVerify(key);
                 }
             });
-            // Initial schedule (state holder starts in ENABLED)
             if (push.state.getStatus() == StreamStatus.ENABLED) {
                 scheduler.scheduleIdleVerify(key, idleVerifyRun,
                         Duration.ofMillis(push.idleVerifyInterval));
@@ -231,13 +268,7 @@ public class SignalsEventHandler implements IEventHandler {
         return !enabled || !eventsEnabled;
     }
 
-    /*
-    consume is called by SignalsEventReceiver for each event it receives. The event is mapped to an operation for processing.
-     */
     public void consume(Object txn) {
-
-        // This won't get called if rcvEnabled is false (because SignalsEventReceiver is not started)
-
         if (txn == null) {
             logger.warn("Ignoring invalid replication message.");
             return;
@@ -249,7 +280,6 @@ public class SignalsEventHandler implements IEventHandler {
             if (logger.isDebugEnabled())
                 logger.debug("\tReceived SCIM Event:\n" + event.toPrettyString());
             if (op == null) {
-                // Non-provisioning event (e.g. SSF verification) or unsubscribed event type — ack and skip.
                 if (logger.isDebugEnabled())
                     logger.debug("Acking non-provisioning event jti={}", event.getJti());
                 acksPending.add(event.getJti());
@@ -260,7 +290,6 @@ public class SignalsEventHandler implements IEventHandler {
                 if (tranId != null) {
                     ScimResource txnResource = backendHandler.getTransactionRecord(tranId);
                     if (txnResource != null) {
-                        // Even though we've seen this, we want to ack it so we don't get it again.
                         acksPending.add(event.getJti());
                         logger.warn("Duplicate transaction detected, ignoring.");
                         return;
@@ -270,7 +299,6 @@ public class SignalsEventHandler implements IEventHandler {
                 logger.error("Backend error fetching transaction: " + e.getMessage());
                 return;
             } catch (MalformedClaimException e) {
-                // We want to ack the event so we don't get it again.
                 acksPending.add(event.getJti());
                 logger.error("Invalid txn value. Ignoring event");
                 return;
@@ -278,53 +306,79 @@ public class SignalsEventHandler implements IEventHandler {
             acceptedOps.add(op);
             pool.addJobAndWait(op);
             acksPending.add(event.getJti());
-
         }
     }
-
 
     public FifoCache<Operation> getSendErrorOps() { return sendErrorOps; }
 
     public int getSendErrorCnt() { return sendErrorOps.size(); }
 
-    private synchronized void produce(final Operation op) {
-        if (pubEnabled) {
-            RequestCtx ctx = op.getRequestCtx();
-            if (ctx != null && ctx.isReplicaOp()) {
-                if (logger.isDebugEnabled())
-                    logger.debug("Ignoring internal event: " + op);
-                return; // This is a replication op and should not be re-replicated!
-            }
-            if (logger.isDebugEnabled())
-                logger.debug("Processing event: " + op);
+    /**
+     * PRD-B slice #73: single inline {@link PushStream#attemptOnce} per SET; on
+     * any non-Success outcome the SET is enqueued to {@link PendingPushStore}
+     * and the worker drives retry. The producer thread MUST NOT block on push
+     * health, throw, or drop events — those invariants are the whole point of
+     * the durability slice.
+     */
+    @Override
+    public void publish(Operation op) {
+        if (!pubEnabled || ssfClient == null) return;
+        RequestCtx ctx = op.getRequestCtx();
+        if (ctx != null && ctx.isReplicaOp()) return;
+        PushStream push = ssfClient.getPushStream();
+        if (push == null) return;
 
-            List<SecurityEventToken> events = mapper.MapOperationToSet(op);
-            if (events != null && !events.isEmpty()) {
-                for (SecurityEventToken token : events) {
-                    if (!ssfClient.getPushStream().pushEvent(token))
-                        sendErrorOps.add(op);
-                }
-                return;
-            }
-            sendErrorOps.add(op);
+        List<SecurityEventToken> events = mapper.MapOperationToSet(op);
+        if (events == null || events.isEmpty()) return;
+
+        for (SecurityEventToken token : events) {
+            attemptInlineAndEnqueueOnFailure(push, pendingPushStore, token, op);
         }
     }
 
     /**
-     * This method takes an operation and produces a stream.
-     * @param op The {@link Operation} to be published
+     * Visible for testing. Performs one {@link PushStream#attemptOnce} and, on
+     * any non-Success result, signs the SET with the stream's current issuer
+     * key (which {@code attemptOnce} may have just reloaded) and enqueues it
+     * for the retry worker.
      */
-    @Override
-    public void publish(Operation op) {
-        // Ignore search and get requests
-        pendingPubOps.add(op);
-        processBuffer();
+    static void attemptInlineAndEnqueueOnFailure(PushStream push,
+                                                 PendingPushStore store,
+                                                 SecurityEventToken token,
+                                                 Operation originatingOp) {
+        AttemptResult result = push.attemptOnce(token);
+        if (result instanceof AttemptResult.Success) return;
 
+        String signed = signForStorage(push, token);
+        if (signed == null) {
+            sendErrorOps.add(originatingOp);
+            return;
+        }
+        try {
+            store.enqueue(PendingPushRecord.ofNew(
+                    push.streamId,
+                    token.getJti(),
+                    signed,
+                    PendingPushState.pending,
+                    Instant.now()
+            ));
+        } catch (RuntimeException re) {
+            logger.error("Failed to enqueue pending push (streamId={}, jti={}): {}",
+                    push.streamId, token.getJti(), re.getMessage(), re);
+            sendErrorOps.add(originatingOp);
+        }
     }
 
-    private synchronized void processBuffer() {
-        while (!pendingPubOps.isEmpty() && isProducing())
-            produce(pendingPubOps.remove(0));
+    private static String signForStorage(PushStream push, SecurityEventToken token) {
+        if (push.aud != null) token.setAud(push.aud);
+        token.setIssuer(push.iss);
+        try {
+            return token.JWS(push.issuerKey);
+        } catch (JoseException | MalformedClaimException e) {
+            logger.error("Cannot sign SET for storage (streamId={}, jti={}): {}",
+                    push.streamId, token.getJti(), e.getMessage());
+            return null;
+        }
     }
 
     @Override
@@ -337,26 +391,23 @@ public class SignalsEventHandler implements IEventHandler {
     @Override
     @PreDestroy
     public void shutdown() {
-        //repEmitter.complete();
         if (notEnabled())
             return;
-        this.receiverThread.shutdown();
-
-        processBuffer(); //Ensure all trans sent!
+        if (this.receiverThread != null) this.receiverThread.shutdown();
+        if (this.pushRetryWorker != null) this.pushRetryWorker.shutdown();
 
         try {
-            this.ssfClient.getPushStream().Close();
+            if (this.ssfClient != null && this.ssfClient.getPushStream() != null)
+                this.ssfClient.getPushStream().Close();
         } catch (IOException ignore) {
-
         }
         if (this.scheduler != null) {
             this.scheduler.shutdown();
         }
+        if (this.signalsMongoClient != null) {
+            try { this.signalsMongoClient.close(); } catch (RuntimeException ignore) {}
+        }
         acksPending.clear();
-        pendingPubOps.clear();
         acceptedOps.clear();
     }
-
 }
-
-
