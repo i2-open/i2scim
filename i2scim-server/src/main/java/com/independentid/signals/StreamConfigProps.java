@@ -189,6 +189,9 @@ public class StreamConfigProps {
     @ConfigProperty(name = "scim.signals.rcv.status.check.interval", defaultValue = "30000")
     public int rcvStatusCheckInterval;
 
+    @ConfigProperty(name = "scim.signals.pub.idle.verify.interval", defaultValue = "300000")
+    public int pubIdleVerifyInterval;
+
     @ConfigProperty(name = "scim.signals.test", defaultValue = "false")
     boolean isTest;
 
@@ -214,6 +217,7 @@ public class StreamConfigProps {
             pushStream.unauthorizedRetryMax = pubUnauthorizedRetryMax;
             pushStream.unauthorizedRetryDelay = pubUnauthorizedRetryDelay;
             pushStream.statusCheckInterval = pubStatusCheckInterval;
+            pushStream.idleVerifyInterval = pubIdleVerifyInterval;
             if (pubIsUnsigned) {
                 pushStream.isUnencrypted = true;
             } else {

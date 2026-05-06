@@ -274,6 +274,7 @@ public class SsfHandler {
         this.pushStream.unauthorizedRetryMax = configProps.pubUnauthorizedRetryMax;
         this.pushStream.unauthorizedRetryDelay = configProps.pubUnauthorizedRetryDelay;
         this.pushStream.statusCheckInterval = configProps.pubStatusCheckInterval;
+        this.pushStream.idleVerifyInterval = configProps.pubIdleVerifyInterval;
         this.pushStream.enabled = true;
 
         resp.close();

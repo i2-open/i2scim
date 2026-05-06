@@ -39,8 +39,10 @@ import org.jose4j.jwt.MalformedClaimException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.independentid.set.SecurityEventToken;
 import java.io.IOException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -175,14 +177,27 @@ public class SignalsEventHandler implements IEventHandler {
             if (push.client == null) push.setSslContext(null);
             push.statusResolver = new StatusEndpointResolver(push.client);
             String key = "push:" + (push.streamId == null ? "default" : push.streamId);
+            Runnable idleVerifyRun = () -> runIdleVerify(push);
             push.state.addTransitionListener((oldS, newS) -> {
                 if (newS == StreamStatus.PAUSED) {
                     scheduler.schedulePausedRecheck(key, push::pausedRecheck,
                             Duration.ofMillis(push.statusCheckInterval));
+                    scheduler.cancelIdleVerify(key);
                 } else if (oldS == StreamStatus.PAUSED) {
                     scheduler.cancelPausedRecheck(key);
+                    if (newS == StreamStatus.ENABLED) {
+                        scheduler.scheduleIdleVerify(key, idleVerifyRun,
+                                Duration.ofMillis(push.idleVerifyInterval));
+                    }
+                } else if (newS == StreamStatus.DISABLED) {
+                    scheduler.cancelIdleVerify(key);
                 }
             });
+            // Initial schedule (state holder starts in ENABLED)
+            if (push.state.getStatus() == StreamStatus.ENABLED) {
+                scheduler.scheduleIdleVerify(key, idleVerifyRun,
+                        Duration.ofMillis(push.idleVerifyInterval));
+            }
         }
         PollStream poll = ssfClient.getPollStream();
         if (poll != null && poll.enabled) {
@@ -198,6 +213,17 @@ public class SignalsEventHandler implements IEventHandler {
                 }
             });
         }
+    }
+
+    private void runIdleVerify(PushStream push) {
+        if (push.state.getStatus() != StreamStatus.ENABLED) return;
+        Instant last = push.getLastSuccessfulPush();
+        if (last == null) return;
+        long idleMs = Duration.between(last, Instant.now()).toMillis();
+        if (idleMs < push.idleVerifyInterval) return;
+        SecurityEventToken verify = VerifyEventBuilder.build(push);
+        logger.info("Idle threshold reached on push stream; sending verify event jti={}", verify.getJti());
+        push.pushEvent(verify);
     }
 
     public boolean notEnabled() {

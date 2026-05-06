@@ -23,8 +23,10 @@ import java.net.URI;
 import java.security.Key;
 import java.security.PublicKey;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class PushStream {
     private final static Logger logger = LoggerFactory.getLogger(PushStream.class);
@@ -51,12 +53,16 @@ public class PushStream {
     public int unauthorizedRetryMax = 10;
     public int unauthorizedRetryDelay = 15000;
     public int statusCheckInterval = 30000;
+    public int idleVerifyInterval = 300000;
 
     @JsonIgnore
     public StatusEndpointResolver statusResolver;
 
     @JsonIgnore
-    private final java.util.concurrent.atomic.AtomicBoolean preflightDone = new java.util.concurrent.atomic.AtomicBoolean(false);
+    private final AtomicBoolean preflightDone = new AtomicBoolean(false);
+
+    @JsonIgnore
+    private final AtomicReference<Instant> lastSuccessfulPush = new AtomicReference<>(Instant.now());
 
     @JsonIgnore
     public CloseableHttpClient client;
@@ -173,6 +179,10 @@ public class PushStream {
                     classification = PushFailureClassifier.classify(code, reason, body, retryAfterHeader);
 
                     if (classification instanceof FailureClassification.Success) {
+                        this.lastSuccessfulPush.set(Instant.now());
+                        if (this.state.getStatus() != StreamStatus.ENABLED) {
+                            this.state.transitionTo(StreamStatus.ENABLED, null);
+                        }
                         return true;
                     }
                     logger.warn("Push response classified as " + classification.getClass().getSimpleName()
@@ -265,6 +275,10 @@ public class PushStream {
                 return false;
             }
         }
+    }
+
+    public Instant getLastSuccessfulPush() {
+        return this.lastSuccessfulPush.get();
     }
 
     URI receiverHost() {
