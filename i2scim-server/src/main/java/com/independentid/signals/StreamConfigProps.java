@@ -171,6 +171,18 @@ public class StreamConfigProps {
     @ConfigProperty(name = "scim.signals.pub.retry.maxInterval", defaultValue = "300000")
     public int pubRetryMaxInterval;
 
+    @ConfigProperty(name = "scim.signals.pub.unauthorized.retry.max", defaultValue = "10")
+    public int pubUnauthorizedRetryMax;
+
+    @ConfigProperty(name = "scim.signals.pub.unauthorized.retry.delay", defaultValue = "15000")
+    public int pubUnauthorizedRetryDelay;
+
+    @ConfigProperty(name = "scim.signals.rcv.unauthorized.retry.max", defaultValue = "10")
+    public int rcvUnauthorizedRetryMax;
+
+    @ConfigProperty(name = "scim.signals.rcv.unauthorized.retry.delay", defaultValue = "15000")
+    public int rcvUnauthorizedRetryDelay;
+
     @ConfigProperty(name = "scim.signals.test", defaultValue = "false")
     boolean isTest;
 
@@ -193,6 +205,8 @@ public class StreamConfigProps {
             pushStream.maxRetries = pubRetryMax;
             pushStream.initialDelay = pubRetryInterval;
             pushStream.maxDelay = pubRetryMaxInterval;
+            pushStream.unauthorizedRetryMax = pubUnauthorizedRetryMax;
+            pushStream.unauthorizedRetryDelay = pubUnauthorizedRetryDelay;
             if (pubIsUnsigned) {
                 pushStream.isUnencrypted = true;
             } else {
@@ -221,6 +235,8 @@ public class StreamConfigProps {
             pollStream.maxRetries = rcvRetryMax;
             pollStream.initialDelay = rcvRetryInterval;
             pollStream.maxDelay = rcvRetryMaxInterval;
+            pollStream.unauthorizedRetryMax = rcvUnauthorizedRetryMax;
+            pollStream.unauthorizedRetryDelay = rcvUnauthorizedRetryDelay;
 
             if (!unSignedMode) {
                 pollStream.receiverKey = getAudPrivateKey();

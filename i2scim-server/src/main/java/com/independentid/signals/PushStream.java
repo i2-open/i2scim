@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.security.Key;
 import java.security.PublicKey;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class PushStream {
@@ -45,6 +46,8 @@ public class PushStream {
     public int maxRetries = 10;
     public int initialDelay = 2000;
     public int maxDelay = 300000;
+    public int unauthorizedRetryMax = 10;
+    public int unauthorizedRetryDelay = 15000;
 
     @JsonIgnore
     public CloseableHttpClient client;
@@ -120,13 +123,21 @@ public class PushStream {
             logger.error("Event signing error: " + e.getMessage());
             return false;
         }
-        int attempt = 0;
-        long delay = this.initialDelay;
-
         if (this.client == null)
             setSslContext(null);
 
-        while (attempt <= this.maxRetries && !this.shuttingDown.get()) {
+        RetryStrategyConfig retryConfig = new RetryStrategyConfig(
+                this.maxRetries,
+                Duration.ofMillis(this.initialDelay),
+                Duration.ofMillis(this.maxDelay),
+                this.unauthorizedRetryMax,
+                Duration.ofMillis(this.unauthorizedRetryDelay)
+        );
+
+        int attempt = 0;
+
+        while (!this.shuttingDown.get()) {
+            FailureClassification classification;
             try {
                 if (attempt > 0)
                     logger.info("Pushing event to " + this.endpointUrl + " (Attempt " + (attempt + 1) + ")");
@@ -140,33 +151,16 @@ public class PushStream {
 
                 try (CloseableHttpResponse resp = client.execute(req)) {
                     int code = resp.getCode();
-                    if (code >= 200 && code < 300) {
+                    String reason = resp.getReasonPhrase();
+                    byte[] body = readBody(resp);
+                    String retryAfterHeader = headerValue(resp, "Retry-After");
+                    classification = PushFailureClassifier.classify(code, reason, body, retryAfterHeader);
+
+                    if (classification instanceof FailureClassification.Success) {
                         return true;
                     }
-
-                    if (code == 429 || code >= 500) {
-                        logger.warn("Retryable error response: " + code + " " + resp.getReasonPhrase());
-                        // Fall through to retry logic
-                    } else {
-                        // Fatal error
-                        String reason;
-                        if (code == 400) {
-                            logger.error("Received BAD request response.");
-                            HttpEntity respEntity = resp.getEntity();
-                            String body = "";
-                            if (respEntity != null) {
-                                byte[] respBytes = respEntity.getContent().readAllBytes();
-                                body = new String(respBytes);
-                                logger.error("\n" + body);
-                            }
-                            reason = code + " Bad Request: " + body;
-                        } else {
-                            logger.error("Received fatal error on event submission: " + code + " " + resp.getReasonPhrase());
-                            reason = code + " " + resp.getReasonPhrase();
-                        }
-                        this.state.transitionTo(StreamStatus.DISABLED, reason);
-                        return false;
-                    }
+                    logger.warn("Push response classified as " + classification.getClass().getSimpleName()
+                            + " (code=" + code + ")");
                 }
             } catch (IOException e) {
                 if (this.shuttingDown.get()) {
@@ -174,31 +168,54 @@ public class PushStream {
                     return false;
                 }
                 logger.warn("Communications error while pushing event (attempt " + (attempt + 1) + "): " + e.getMessage());
+                classification = PushFailureClassifier.classify(e);
             }
 
-            attempt++;
-            if (attempt > this.maxRetries) {
-                logger.error("Max retries reached. Event push failed.");
-                this.state.transitionTo(StreamStatus.DISABLED, "Max retries reached after " + this.maxRetries + " attempts");
-                break;
-            }
-
-            if (this.shuttingDown.get()) {
-                logger.info("Push stream shutting down, aborting retry");
-                return false;
-            }
-
-            try {
-                logger.info("Retrying in " + delay + "ms...");
-                Thread.sleep(delay);
-                delay = Math.min(delay * 2, maxDelay);
-            } catch (InterruptedException ie) {
-                logger.warn("Interrupted while waiting for retry");
-                Thread.currentThread().interrupt();
-                break;
+            RetryDecision decision = RetryStrategy.decide(classification, attempt, retryConfig);
+            switch (decision) {
+                case RetryDecision.Disable d -> {
+                    logger.error("Push stream DISABLED: " + d.reason());
+                    this.state.transitionTo(StreamStatus.DISABLED, d.reason());
+                    return false;
+                }
+                case RetryDecision.SleepThenRetry s -> {
+                    if (!sleep(s.delay().toMillis())) return false;
+                    attempt++;
+                }
+                case RetryDecision.RetryNoCap n -> {
+                    if (!sleep(n.delay().toMillis())) return false;
+                    attempt++;
+                }
             }
         }
         return false;
+    }
+
+    private boolean sleep(long ms) {
+        if (this.shuttingDown.get()) {
+            logger.info("Push stream shutting down, aborting retry");
+            return false;
+        }
+        try {
+            logger.info("Retrying in " + ms + "ms...");
+            Thread.sleep(ms);
+            return !this.shuttingDown.get();
+        } catch (InterruptedException ie) {
+            logger.warn("Interrupted while waiting for retry");
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    private static byte[] readBody(CloseableHttpResponse resp) throws IOException {
+        HttpEntity entity = resp.getEntity();
+        if (entity == null) return null;
+        return entity.getContent().readAllBytes();
+    }
+
+    private static String headerValue(CloseableHttpResponse resp, String name) {
+        var header = resp.getFirstHeader(name);
+        return header == null ? null : header.getValue();
     }
 
     public void Close() throws IOException {
