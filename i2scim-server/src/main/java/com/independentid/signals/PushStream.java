@@ -261,7 +261,7 @@ public class PushStream {
         if (host == null) return;
         Optional<URI> statusUrl = this.statusResolver.resolve(host, URI.create(this.endpointUrl));
         if (statusUrl.isEmpty()) return;
-        RemoteStatus remote = RemoteStatusProbe.probe(this.client, statusUrl.get(), this.authorization);
+        RemoteStatus remote = RemoteStatusProbe.probe(this.client, statusUrl.get(), this.streamId, this.authorization);
         switch (remote) {
             case ENABLED -> this.state.transitionTo(StreamStatus.ENABLED, null);
             case DISABLED -> this.state.transitionTo(StreamStatus.DISABLED,
@@ -282,7 +282,7 @@ public class PushStream {
         if (statusUrl.isEmpty()) {
             return false;
         }
-        RemoteStatus remote = RemoteStatusProbe.probe(this.client, statusUrl.get(), this.authorization);
+        RemoteStatus remote = RemoteStatusProbe.probe(this.client, statusUrl.get(), this.streamId, this.authorization);
         switch (remote) {
             case PAUSED -> {
                 this.state.transitionTo(StreamStatus.PAUSED,

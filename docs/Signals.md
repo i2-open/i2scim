@@ -259,6 +259,11 @@ The `/status` URL is discovered lazily:
    exponential backoff.
 3. If the well-known is reachable but does not declare a `status_endpoint`, T1 is permanently skipped for that stream.
 
+Each probe issues `GET <status_endpoint>?stream_id=<id>` per
+[SSF §7.1.2](https://openid.net/specs/openid-sharedsignals-framework-1_0.html#name-reading-a-streams-status). The
+`stream_id` is the local stream's id (the same id used during stream registration). If a stream has no id (e.g.
+incomplete configuration) the probe is skipped and the stream falls back to ordinary retry/backoff.
+
 Well-known failure alone never causes a stream to be disabled.
 
 ### Paused-recheck

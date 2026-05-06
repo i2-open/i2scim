@@ -84,6 +84,7 @@ class PushStreamStatusInterrogationTest {
 
     private PushStream newStream() {
         PushStream stream = new PushStream();
+        stream.streamId = "stream-1";
         stream.endpointUrl = "https://recv.example.com/events";
         stream.authorization = "NONE";
         stream.iss = "test-issuer";
