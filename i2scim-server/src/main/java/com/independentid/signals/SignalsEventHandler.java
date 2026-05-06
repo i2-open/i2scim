@@ -248,13 +248,23 @@ public class SignalsEventHandler implements IEventHandler {
             Operation op = mapper.MapSetToOperation(event, configMgr.getSchemaManager());
             if (logger.isDebugEnabled())
                 logger.debug("\tReceived SCIM Event:\n" + event.toPrettyString());
+            if (op == null) {
+                // Non-provisioning event (e.g. SSF verification) or unsubscribed event type — ack and skip.
+                if (logger.isDebugEnabled())
+                    logger.debug("Acking non-provisioning event jti={}", event.getJti());
+                acksPending.add(event.getJti());
+                return;
+            }
             try {
-                ScimResource txnResource = backendHandler.getTransactionRecord(event.getTxn());
-                if (txnResource != null) {
-                    // Even though we've seen this, we want to ack it so we don't get it again.
-                    acksPending.add(event.getJti());
-                    logger.warn("Duplicate transaction detected, ignoring.");
-                    return;
+                String tranId = event.getTxn();
+                if (tranId != null) {
+                    ScimResource txnResource = backendHandler.getTransactionRecord(tranId);
+                    if (txnResource != null) {
+                        // Even though we've seen this, we want to ack it so we don't get it again.
+                        acksPending.add(event.getJti());
+                        logger.warn("Duplicate transaction detected, ignoring.");
+                        return;
+                    }
                 }
             } catch (BackendException e) {
                 logger.error("Backend error fetching transaction: " + e.getMessage());
