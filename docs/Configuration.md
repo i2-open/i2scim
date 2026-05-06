@@ -93,3 +93,14 @@ These properties allow the SSF client to trust custom CA roots (e.g., for self-s
 **scim.signals.pub.retry.interval** - The initial retry interval in milliseconds (DEFAULT: 2000).
 
 **scim.signals.pub.retry.maxInterval** - The maximum retry interval in milliseconds when using backoff (DEFAULT: 300000).
+
+#### Pending-push durability (PRD-B)
+
+When the server cannot deliver a SET to a downstream receiver, the producer
+records the signed token to a durable queue and a per-stream worker re-sends
+it as the receiver recovers. The queue implementation depends on the persistence backend:
+
+- **Mongo provider** — pending events are stored in the `pendingPushes` collection in the same Mongo deployment that holds SCIM resources. Survives restarts and is shared across replicas.
+- **Memory provider** — pending events are stored as one `.set` file per token under `<scim.prov.memory.dir>/events/{pending,preregister}/<streamId>/<jti>.set`. Each file is a single-line JSON metadata header, a `\n` separator, then the encoded JWT payload. Writes go through tmp+rename, so a crash never leaves a partial `.set` visible to readers.
+
+> **Restart-loss note (memory provider):** the memory backend persists pending push events under `<scim.prov.memory.dir>/events/`, but **SCIM resource state itself** (under `<scim.prov.memory.dir>/scimdata.json` and rotating backups) is in-memory and only flushed on shutdown / interval. After a hard crash, recent SCIM resource changes may be lost while the matching outbound SET payloads remain in the queue. For deployments that need durable resource state, use the Mongo provider.

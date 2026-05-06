@@ -43,6 +43,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -88,6 +90,9 @@ public class SignalsEventHandler implements IEventHandler {
 
     @ConfigProperty(name = "scim.prov.mongo.dbname", defaultValue = "SCIM")
     String mongoDbName;
+
+    @ConfigProperty(name = "scim.prov.memory.dir", defaultValue = "./scimdata")
+    String memoryDir;
 
     SignalsEventReceiver receiverThread;
 
@@ -196,9 +201,14 @@ public class SignalsEventHandler implements IEventHandler {
             store.init();
             return store;
         }
-        logger.info("Using NoOpPendingPushStore (provider={}). Filesystem parity arrives in slice #74.",
-                providerClassName);
-        return new NoOpPendingPushStore();
+        // Memory provider — pending-push queue is durable on disk under <scim.prov.memory.dir>/events/.
+        // NOTE: SCIM resource state under the same memory.dir is NOT durable across crash/restart
+        // for the in-memory provider; only the signals queue survives. See docs/Configuration.md.
+        Path eventsRoot = Paths.get(memoryDir);
+        logger.info("Creating FilePendingPushStore (memory provider) under {}/events", eventsRoot.toAbsolutePath());
+        FilePendingPushStore store = new FilePendingPushStore(eventsRoot);
+        store.init();
+        return store;
     }
 
     private void startPushRetryWorker() {

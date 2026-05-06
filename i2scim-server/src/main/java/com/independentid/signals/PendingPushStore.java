@@ -5,9 +5,8 @@ import java.util.List;
 
 /**
  * SPI for durable storage of undelivered push events. Backends:
- * {@link MongoPendingPushStore} for Mongo-backed deployments, filesystem-backed
- * parity (slice #74) for memory deployments, and {@link NoOpPendingPushStore}
- * stub used while filesystem parity is pending.
+ * {@link MongoPendingPushStore} for Mongo-backed deployments and
+ * {@link FilePendingPushStore} for memory-backed deployments.
  *
  * <p>All operations are scoped by {@code streamId}. The {@code (streamId, jti)}
  * pair is the natural key — implementations MUST treat repeated enqueues of the
