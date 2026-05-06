@@ -218,6 +218,73 @@ class PushRetryWorkerTest {
     }
 
     @Test
+    void elapsedTimeCapDisablesStreamAndPreservesQueue() throws Exception {
+        // PRD-B slice #75: elapsed-time cap, not attempt count, drives DISABLE.
+        PushStream stream = newStream();
+        stream.maxRetries = 0;             // legacy attempt cap disabled
+        stream.initialDelay = 0;
+        stream.maxDelay = 0;
+        stream.pubRetryElapsedLimit = 60_000; // 60s elapsed budget for the test
+
+        CloseableHttpClient client = mock(CloseableHttpClient.class);
+        CloseableHttpResponse fail = mock(CloseableHttpResponse.class);
+        when(fail.getCode()).thenReturn(503);
+        when(fail.getReasonPhrase()).thenReturn("Service Unavailable");
+        when(client.execute(any(HttpPost.class))).thenReturn(fail);
+        stream.client = client;
+
+        InMemoryStore store = new InMemoryStore();
+        Instant queuedAt = Instant.parse("2026-05-06T12:00:00Z");
+        store.enqueue(PendingPushRecord.ofNew(STREAM_ID, "jti-1", "p1", PendingPushState.pending, queuedAt));
+        store.enqueue(PendingPushRecord.ofNew(STREAM_ID, "jti-2", "p2", PendingPushState.pending, queuedAt.plusSeconds(1)));
+
+        // Virtual clock 61s after queuedAt — elapsed 61s > 60s budget.
+        Clock past = Clock.fixed(queuedAt.plusSeconds(61), ZoneOffset.UTC);
+        CapturingSleeper sleeper = new CapturingSleeper();
+        PushRetryWorker worker = new PushRetryWorker(stream, store, sleeper, past, 10, 0);
+
+        worker.runDrainCycle();
+
+        assertThat(stream.state.getStatus()).isEqualTo(StreamStatus.DISABLED);
+        assertThat(stream.state.getErrorMsg()).contains("transport recovery exceeded");
+        // operations.md-style messaging: time-based, not attempt-based
+        assertThat(stream.state.getErrorMsg()).doesNotContain("attempts");
+        // Queue NOT drained: pending JTIs retained for re-enable
+        assertThat(store.count(STREAM_ID, PendingPushState.pending)).isEqualTo(2L);
+    }
+
+    @Test
+    void elapsedTimeCapNotYetReachedSleepsAndKeepsRetrying() throws Exception {
+        PushStream stream = newStream();
+        stream.maxRetries = 0;
+        stream.initialDelay = 100;
+        stream.maxDelay = 5000;
+        stream.pubRetryElapsedLimit = 60_000;
+
+        CloseableHttpClient client = mock(CloseableHttpClient.class);
+        CloseableHttpResponse fail = mock(CloseableHttpResponse.class);
+        when(fail.getCode()).thenReturn(503);
+        when(fail.getReasonPhrase()).thenReturn("Service Unavailable");
+        when(client.execute(any(HttpPost.class))).thenReturn(fail);
+        stream.client = client;
+
+        InMemoryStore store = new InMemoryStore();
+        Instant queuedAt = Instant.parse("2026-05-06T12:00:00Z");
+        store.enqueue(PendingPushRecord.ofNew(STREAM_ID, "jti-1", "p1", PendingPushState.pending, queuedAt));
+
+        // Only 5s elapsed — well under the 60s budget.
+        Clock recent = Clock.fixed(queuedAt.plusSeconds(5), ZoneOffset.UTC);
+        CapturingSleeper sleeper = new CapturingSleeper();
+        PushRetryWorker worker = new PushRetryWorker(stream, store, sleeper, recent, 10, 0);
+
+        worker.runDrainCycle();
+
+        assertThat(stream.state.getStatus()).isEqualTo(StreamStatus.ENABLED);
+        assertThat(store.count(STREAM_ID, PendingPushState.pending)).isEqualTo(1L);
+        assertThat(sleeper.sleeps).hasSize(1); // backoff sleep happened
+    }
+
+    @Test
     void recoveryAfterTransientFailure() throws Exception {
         PushStream stream = newStream();
         stream.maxRetries = 5;

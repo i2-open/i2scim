@@ -88,11 +88,13 @@ These properties allow the SSF client to trust custom CA roots (e.g., for self-s
 
 **scim.signals.rcv.retry.maxInterval** - The maximum retry interval in milliseconds when using backoff (DEFAULT: 300000).
 
-**scim.signals.pub.retry.max** - The maximum number of times to retry a push connection on error (DEFAULT: 10).
+**scim.signals.pub.retry.max** - **Deprecated** (PRD-B). The maximum number of times to retry a push connection on error (DEFAULT: 10). For the per-stream `PushRetryWorker` (PRD-B), this is now an *attempt-count overlay* on top of `scim.signals.pub.retry.elapsed.limit`: when set to `0`, the worker uses pure elapsed-time semantics (the operations.md `RETRY_LIMIT=6h` model). When `> 0`, retries stop once the cap is reached even if the elapsed budget has time left. The legacy `PushStream.pushEvent` (idle-verify and admin-driven sends) continues to honor this property unchanged.
 
 **scim.signals.pub.retry.interval** - The initial retry interval in milliseconds (DEFAULT: 2000).
 
 **scim.signals.pub.retry.maxInterval** - The maximum retry interval in milliseconds when using backoff (DEFAULT: 300000).
+
+**scim.signals.pub.retry.elapsed.limit** - PRD-B elapsed-time recovery budget for transport / 5xx push failures, in milliseconds (DEFAULT: 21600000 — 6h, matching operations.md `RETRY_LIMIT`). When `now - queuedAt >= elapsed.limit`, the per-stream `PushRetryWorker` transitions the stream to `DISABLED` with reason `"transport recovery exceeded 6h"` (or whatever value is configured). Pending JTIs are retained in the durable queue for operator-driven re-enable.
 
 #### Pending-push durability (PRD-B)
 

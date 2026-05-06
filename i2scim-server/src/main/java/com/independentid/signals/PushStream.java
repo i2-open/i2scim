@@ -47,9 +47,25 @@ public class PushStream {
     @JsonUnwrapped
     public StreamStateHolder state = new StreamStateHolder();
 
+    /**
+     * Legacy attempt-count cap (PRD-A {@code pubRetryMax}).
+     *
+     * <p>Used unmodified by {@link #pushEvent} (idle-verify + admin path).
+     * For {@link PushRetryWorker} (PRD-B), it acts as a deprecated overlay
+     * on top of {@link #pubRetryElapsedLimit}: when {@code > 0}, retries
+     * stop once the cap is reached even if the elapsed budget has time left.
+     * Set the {@code scim.signals.pub.retry.max=0} property to disable the
+     * overlay and use pure elapsed-time semantics.
+     *
+     * @deprecated for the worker path; use {@link #pubRetryElapsedLimit}.
+     * Still authoritative for {@link #pushEvent}.
+     */
+    @Deprecated
     public int maxRetries = 10;
     public int initialDelay = 2000;
     public int maxDelay = 300000;
+    /** PRD-B elapsed-time recovery budget (ms) for transport/5xx; default 6h. */
+    public long pubRetryElapsedLimit = 21_600_000L;
     public int unauthorizedRetryMax = 10;
     public int unauthorizedRetryDelay = 15000;
     public int statusCheckInterval = 30000;

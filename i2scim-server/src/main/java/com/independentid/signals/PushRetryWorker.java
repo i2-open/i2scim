@@ -11,8 +11,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Per-stream daemon that drains rows from {@link PendingPushStore} where
  * {@code state == pending}, in queued order, calling
- * {@link PushStream#attemptOnce(String, String)} for each. PRD-A's
- * {@link RetryStrategy} (M6) decides backoff vs. terminal disable; M2's
+ * {@link PushStream#attemptOnce(String, String)} for each. PRD-B's
+ * {@link ElapsedTimeRetryStrategy} (N4) decides backoff vs. terminal
+ * disable using elapsed-time caps from each row's {@code queuedAt}; M2's
  * {@link PushFailureClassifier} unchanged. On terminal failure the stream is
  * transitioned to DISABLED via the existing M1 holder and the queue is left
  * intact for operator-driven re-enable (slice #76 covers full DISABLED replay).
@@ -113,10 +114,11 @@ public final class PushRetryWorker implements Runnable {
         List<PendingPushRecord> batch = store.peekOldest(stream.streamId, PendingPushState.pending, batchSize);
         if (batch.isEmpty()) return false;
 
-        RetryStrategyConfig retryConfig = new RetryStrategyConfig(
-                stream.maxRetries,
+        ElapsedRetryConfig retryConfig = new ElapsedRetryConfig(
+                Duration.ofMillis(stream.pubRetryElapsedLimit),
                 Duration.ofMillis(stream.initialDelay),
                 Duration.ofMillis(stream.maxDelay),
+                stream.maxRetries, // PRD-A pubRetryMax legacy overlay (0 = disabled)
                 stream.unauthorizedRetryMax,
                 Duration.ofMillis(stream.unauthorizedRetryDelay)
         );
@@ -137,7 +139,8 @@ public final class PushRetryWorker implements Runnable {
             int newAttempt = record.attemptCount() + 1;
             store.markAttempted(record.streamId(), record.jti(), clock.instant(), f.errorMsg());
 
-            RetryDecision decision = RetryStrategy.decide(f.classification(), newAttempt, retryConfig);
+            RetryDecision decision = ElapsedTimeRetryStrategy.decide(
+                    f.classification(), newAttempt, record.queuedAt(), clock.instant(), retryConfig);
             switch (decision) {
                 case RetryDecision.Disable d -> {
                     logger.error("Push stream {} DISABLED by retry worker: {}",

@@ -171,6 +171,15 @@ public class StreamConfigProps {
     @ConfigProperty(name = "scim.signals.pub.retry.maxInterval", defaultValue = "300000")
     public int pubRetryMaxInterval;
 
+    /**
+     * PRD-B elapsed-time recovery budget (ms) for transport/5xx push failures.
+     * Default 21600000 (6h) per operations.md {@code RETRY_LIMIT}. Replaces
+     * {@link #pubRetryMax} as the primary cap for {@link PushRetryWorker};
+     * the legacy attempt-count cap remains as a deprecated overlay.
+     */
+    @ConfigProperty(name = "scim.signals.pub.retry.elapsed.limit", defaultValue = "21600000")
+    public long pubRetryElapsedLimit;
+
     @ConfigProperty(name = "scim.signals.pub.unauthorized.retry.max", defaultValue = "10")
     public int pubUnauthorizedRetryMax;
 
@@ -214,6 +223,7 @@ public class StreamConfigProps {
             pushStream.maxRetries = pubRetryMax;
             pushStream.initialDelay = pubRetryInterval;
             pushStream.maxDelay = pubRetryMaxInterval;
+            pushStream.pubRetryElapsedLimit = pubRetryElapsedLimit;
             pushStream.unauthorizedRetryMax = pubUnauthorizedRetryMax;
             pushStream.unauthorizedRetryDelay = pubUnauthorizedRetryDelay;
             pushStream.statusCheckInterval = pubStatusCheckInterval;
