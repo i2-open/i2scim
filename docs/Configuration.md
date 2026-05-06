@@ -96,6 +96,10 @@ These properties allow the SSF client to trust custom CA roots (e.g., for self-s
 
 **scim.signals.pub.retry.elapsed.limit** - PRD-B elapsed-time recovery budget for transport / 5xx push failures, in milliseconds (DEFAULT: 21600000 — 6h, matching operations.md `RETRY_LIMIT`). When `now - queuedAt >= elapsed.limit`, the per-stream `PushRetryWorker` transitions the stream to `DISABLED` with reason `"transport recovery exceeded 6h"` (or whatever value is configured). Pending JTIs are retained in the durable queue for operator-driven re-enable.
 
+#### Operator re-enable after DISABLED (PRD-B)
+
+A stream transitioned to `DISABLED` by the elapsed-time cap retains all pending JTIs in `pendingPushes` (Mongo) or `events/pending/<streamId>/` (memory). Re-enable is done through the existing PRD-A control surface — programmatically calling `pushStream.state.transitionTo(StreamStatus.ENABLED, null)` on the active `SsfHandler.getPushStream()`. The per-stream `PushRetryWorker` registers a transition listener that wakes the idle-sleeping worker thread on `DISABLED → ENABLED`, so the queue resumes draining (in `queuedAt` order) within milliseconds rather than after the next idle window. The first 2xx response is the operational marker that the stream is healthy again; if the receiver is still failing, the elapsed-time cap fires again and the stream is re-DISABLED. Pending JTIs are never deleted by a DISABLE — only by a successful 2xx delivery.
+
 #### Pending-push durability (PRD-B)
 
 When the server cannot deliver a SET to a downstream receiver, the producer

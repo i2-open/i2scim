@@ -14,9 +14,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * {@link PushStream#attemptOnce(String, String)} for each. PRD-B's
  * {@link ElapsedTimeRetryStrategy} (N4) decides backoff vs. terminal
  * disable using elapsed-time caps from each row's {@code queuedAt}; M2's
- * {@link PushFailureClassifier} unchanged. On terminal failure the stream is
- * transitioned to DISABLED via the existing M1 holder and the queue is left
- * intact for operator-driven re-enable (slice #76 covers full DISABLED replay).
+ * {@link PushFailureClassifier} unchanged.
+ *
+ * <p>On terminal failure the stream is transitioned to DISABLED via the
+ * existing M1 holder and the queue is left intact. PRD-B slice #76: an
+ * operator re-enable through the same M1 holder ({@code transitionTo(ENABLED,
+ * null)}) wakes the worker — a transition listener registered in {@link #start()}
+ * interrupts the idle-sleeping worker thread so the drain resumes promptly,
+ * not after the next {@code idleSleepMs} window expires.
  */
 public final class PushRetryWorker implements Runnable {
 
@@ -62,6 +67,15 @@ public final class PushRetryWorker implements Runnable {
         Thread t = new Thread(this, "push-retry-" + safeStreamId());
         t.setDaemon(true);
         this.thread = t;
+        // Wake the idle-sleeping worker on operator re-enable. The run() loop
+        // treats InterruptedException as a wake-up signal unless shutdown was
+        // requested, so re-entering the drain cycle is the natural response.
+        stream.state.addTransitionListener((oldS, newS) -> {
+            if (newS == StreamStatus.ENABLED && oldS != StreamStatus.ENABLED) {
+                Thread cur = this.thread;
+                if (cur != null) cur.interrupt();
+            }
+        });
         t.start();
     }
 
@@ -85,8 +99,16 @@ public final class PushRetryWorker implements Runnable {
                     sleeper.sleep(idleSleepMs);
                 }
             } catch (InterruptedException ie) {
-                Thread.currentThread().interrupt();
-                break;
+                // Wake-up signal vs. shutdown request: only break when the latter.
+                // Listeners on stream.state interrupt this thread to short-circuit
+                // the idle sleep when re-enable happens; the loop should resume
+                // immediately into the next drain cycle.
+                if (shutdown.get() || stream.isShuttingDown()) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+                // Otherwise: continue — interrupt status is intentionally cleared
+                // so the next sleeper.sleep doesn't immediately re-throw.
             } catch (RuntimeException re) {
                 logger.warn("PushRetryWorker drain cycle failed for stream {}: {}",
                         safeStreamId(), re.getMessage(), re);

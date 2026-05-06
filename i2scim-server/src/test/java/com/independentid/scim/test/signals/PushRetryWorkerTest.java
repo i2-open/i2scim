@@ -285,6 +285,145 @@ class PushRetryWorkerTest {
     }
 
     @Test
+    void operatorReEnableAfterDisableDrainsPendingInQueuedOrderAndKeepsStreamEnabled() throws Exception {
+        // PRD-B slice #76: when the elapsed-time cap fires the worker DISABLES the
+        // stream and retains pending JTIs. An operator re-enable through the
+        // existing PRD-A control surface (StreamStateHolder.transitionTo) must
+        // wake the worker, drain the queue in queuedAt order, and the first 2xx
+        // must NOT cause the stream to fall back to DISABLED.
+        PushStream stream = newStream();
+        stream.maxRetries = 0;
+        stream.initialDelay = 0;
+        stream.maxDelay = 0;
+        stream.pubRetryElapsedLimit = 60_000;
+
+        CloseableHttpClient client = mock(CloseableHttpClient.class);
+        CloseableHttpResponse fail = mock(CloseableHttpResponse.class);
+        when(fail.getCode()).thenReturn(503);
+        when(fail.getReasonPhrase()).thenReturn("Service Unavailable");
+        CloseableHttpResponse ok = mock(CloseableHttpResponse.class);
+        when(ok.getCode()).thenReturn(200);
+        when(ok.getReasonPhrase()).thenReturn("OK");
+        stream.client = client;
+
+        InMemoryStore store = new InMemoryStore();
+        Instant queuedAt = Instant.parse("2026-05-06T12:00:00Z");
+        // Out-of-order enqueue to verify peekOldest sorts by queuedAt during drain.
+        store.enqueue(PendingPushRecord.ofNew(STREAM_ID, "jti-c", "pc", PendingPushState.pending, queuedAt.plusSeconds(20)));
+        store.enqueue(PendingPushRecord.ofNew(STREAM_ID, "jti-a", "pa", PendingPushState.pending, queuedAt));
+        store.enqueue(PendingPushRecord.ofNew(STREAM_ID, "jti-b", "pb", PendingPushState.pending, queuedAt.plusSeconds(10)));
+
+        // Phase 1: clock is past the elapsed budget; flap returns 503 → DISABLE.
+        Clock past = Clock.fixed(queuedAt.plusSeconds(61), ZoneOffset.UTC);
+        when(client.execute(any(HttpPost.class))).thenReturn(fail);
+        CapturingSleeper sleeper = new CapturingSleeper();
+        PushRetryWorker worker = new PushRetryWorker(stream, store, sleeper, past, 10, 0);
+
+        worker.runDrainCycle();
+
+        assertThat(stream.state.getStatus()).isEqualTo(StreamStatus.DISABLED);
+        assertThat(stream.state.getErrorMsg()).contains("transport recovery exceeded");
+        assertThat(store.count(STREAM_ID, PendingPushState.pending))
+                .as("queue retained on DISABLE — slice #76 invariant")
+                .isEqualTo(3L);
+
+        // Phase 2: a runDrainCycle while DISABLED is a no-op (worker idle-sleeps
+        // in the run loop; here we exercise runDrainCycle directly).
+        boolean didWorkDisabled = worker.runDrainCycle();
+        assertThat(didWorkDisabled).isFalse();
+        assertThat(store.count(STREAM_ID, PendingPushState.pending)).isEqualTo(3L);
+
+        // Phase 3: operator re-enables via the existing PRD-A control surface.
+        // Receiver now returns 200 for every attempt.
+        stream.state.transitionTo(StreamStatus.ENABLED, null);
+        when(client.execute(any(HttpPost.class))).thenReturn(ok);
+
+        // Order observation: capture the JTI of each successful execute() so we
+        // can assert in-queued-order drain (jti-a, jti-b, jti-c).
+        List<String> deliveredOrder = new ArrayList<>();
+        when(client.execute(any(HttpPost.class))).thenAnswer(inv -> {
+            HttpPost post = inv.getArgument(0);
+            String body = new String(post.getEntity().getContent().readAllBytes());
+            deliveredOrder.add(body);
+            return ok;
+        });
+
+        boolean didWorkEnabled = worker.runDrainCycle();
+
+        assertThat(didWorkEnabled).isTrue();
+        assertThat(stream.state.getStatus())
+                .as("first 2xx after re-enable keeps the stream ENABLED")
+                .isEqualTo(StreamStatus.ENABLED);
+        assertThat(store.count(STREAM_ID, PendingPushState.pending))
+                .as("all pending JTIs drained after re-enable")
+                .isZero();
+        assertThat(deliveredOrder)
+                .as("drain followed queuedAt order")
+                .containsExactly("pa", "pb", "pc");
+    }
+
+    @Test
+    void operatorReEnableInterruptsIdleSleepingWorker() throws Exception {
+        // PRD-B slice #76: operator re-enable should "wake" the worker — it must
+        // not sit out a multi-second idle sleep before noticing the new state.
+        // The worker is configured with idleSleepMs=5_000; if wake-up is wired
+        // correctly via a transition listener that interrupts the worker thread,
+        // re-enable causes the queue to drain in well under that window.
+        PushStream stream = newStream();
+        stream.maxRetries = 0;
+        stream.initialDelay = 0;
+        stream.maxDelay = 0;
+        stream.pubRetryElapsedLimit = 60_000;
+        // Stream starts in DISABLED so the worker run loop immediately enters idle-sleep.
+        stream.state.transitionTo(StreamStatus.DISABLED, "test setup");
+
+        CloseableHttpClient client = mock(CloseableHttpClient.class);
+        CloseableHttpResponse ok = mock(CloseableHttpResponse.class);
+        when(ok.getCode()).thenReturn(200);
+        when(ok.getReasonPhrase()).thenReturn("OK");
+        when(client.execute(any(HttpPost.class))).thenReturn(ok);
+        stream.client = client;
+
+        InMemoryStore store = new InMemoryStore();
+        Instant t0 = Instant.parse("2026-05-06T12:00:00Z");
+        store.enqueue(PendingPushRecord.ofNew(STREAM_ID, "jti-1", "p1", PendingPushState.pending, t0));
+
+        // idleSleepMs=5_000: without a wake-up signal the worker would sleep for
+        // 5 seconds before reading the queue.
+        PushRetryWorker worker = new PushRetryWorker(stream, store,
+                PushRetryWorker.REAL_SLEEPER, FIXED, 10, 5_000L);
+        worker.start();
+
+        // Let the worker enter idle-sleep on the DISABLED stream.
+        Thread.sleep(150);
+        assertThat(store.count(STREAM_ID, PendingPushState.pending))
+                .as("nothing drained while DISABLED")
+                .isEqualTo(1L);
+
+        // Operator re-enable via existing PRD-A control surface.
+        long reEnableAt = System.currentTimeMillis();
+        stream.state.transitionTo(StreamStatus.ENABLED, null);
+
+        // Poll until drain completes; cap wait well under idleSleepMs to prove
+        // the wake-up was prompt rather than waiting out the idle window.
+        long deadline = System.currentTimeMillis() + 1_000L;
+        while (System.currentTimeMillis() < deadline
+                && store.count(STREAM_ID, PendingPushState.pending) > 0L) {
+            Thread.sleep(20);
+        }
+        long drainedAt = System.currentTimeMillis();
+        worker.shutdown();
+
+        assertThat(store.count(STREAM_ID, PendingPushState.pending))
+                .as("worker drained queue within 1s of re-enable (idleSleepMs=5_000)")
+                .isZero();
+        assertThat(drainedAt - reEnableAt)
+                .as("wake-up promptness — should be sub-second, far below the 5s idle window")
+                .isLessThan(1_000L);
+        assertThat(stream.state.getStatus()).isEqualTo(StreamStatus.ENABLED);
+    }
+
+    @Test
     void recoveryAfterTransientFailure() throws Exception {
         PushStream stream = newStream();
         stream.maxRetries = 5;

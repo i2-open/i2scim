@@ -84,7 +84,10 @@ public final class ElapsedTimeRetryStrategy {
         long h = d.toHours();
         long remainderMin = d.minusHours(h).toMinutes();
         if (remainderMin == 0 && h > 0) return h + "h";
-        if (h == 0) return d.toMinutes() + "m";
-        return h + "h" + remainderMin + "m";
+        if (h > 0) return h + "h" + remainderMin + "m";
+        long m = d.toMinutes();
+        if (m > 0) return m + "m";
+        // Sub-minute (chiefly test/debug budgets) — show seconds for fidelity.
+        return d.toSeconds() + "s";
     }
 }

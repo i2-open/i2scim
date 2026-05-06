@@ -33,6 +33,22 @@ class ElapsedTimeRetryStrategyTest {
     );
 
     @Test
+    void disableReasonFormatsSubMinuteBudgetsInSeconds() {
+        // Sub-minute elapsed budgets (chiefly test/debug configs) format as "Ns",
+        // not "0m" — preserves operations.md-style messaging fidelity.
+        ElapsedRetryConfig shortBudget = new ElapsedRetryConfig(
+                Duration.ofSeconds(2), defaults.transportInitialDelay(), defaults.transportMaxDelay(),
+                0, defaults.unauthorizedRetryMax(), defaults.unauthorizedDelay());
+        FailureClassification c = new FailureClassification.Server5xx(503, "Service Unavailable");
+        Instant now = T0.plusSeconds(3);
+
+        RetryDecision d = ElapsedTimeRetryStrategy.decide(c, 1, T0, now, shortBudget);
+
+        assertThat(d).isInstanceOf(RetryDecision.Disable.class);
+        assertThat(((RetryDecision.Disable) d).reason()).contains("transport recovery exceeded 2s");
+    }
+
+    @Test
     void transportFailureDisablesWhenElapsedLimitExceeded() {
         FailureClassification c = new FailureClassification.Server5xx(503, "Service Unavailable");
         Instant now = T0.plus(Duration.ofHours(6).plusSeconds(1));
