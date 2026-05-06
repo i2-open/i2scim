@@ -19,4 +19,6 @@ public sealed interface FailureClassification {
     record RateLimited429(int code, String reason, Optional<Duration> retryAfter) implements FailureClassification {}
 
     record OtherClient4xx(int code, String body) implements FailureClassification {}
+
+    record Rfc8935(Rfc8935Error error) implements FailureClassification {}
 }

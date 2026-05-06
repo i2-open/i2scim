@@ -176,6 +176,7 @@ public class SignalsEventHandler implements IEventHandler {
         if (push != null && push.enabled) {
             if (push.client == null) push.setSslContext(null);
             push.statusResolver = new StatusEndpointResolver(push.client);
+            push.issuerKeyReloader = configProps::getIssuerPrivateKey;
             String key = "push:" + (push.streamId == null ? "default" : push.streamId);
             Runnable idleVerifyRun = () -> runIdleVerify(push);
             push.state.addTransitionListener((oldS, newS) -> {

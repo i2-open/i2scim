@@ -26,6 +26,12 @@ public final class RetryStrategy {
                 Duration delay = r.retryAfter().orElseGet(() -> expBackoffDelay(attemptCount, config));
                 yield new RetryDecision.RetryNoCap(delay);
             }
+            case FailureClassification.Rfc8935 r -> {
+                Rfc8935Error err = r.error();
+                String suffix = err.jti().map(j -> "; jti=" + j).orElse("");
+                String desc = err.description() == null ? "" : ": " + err.description();
+                yield new RetryDecision.Disable("RFC8935 " + err.code() + desc + suffix);
+            }
         };
     }
 

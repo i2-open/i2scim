@@ -39,7 +39,7 @@ public class PushStream {
     public Key issuerKey;
     @JsonIgnore
     public PublicKey receiverKey;
-    boolean isUnencrypted;
+    public boolean isUnencrypted;
     public String iss;
     public String aud;
     public String issJwksUrl;
@@ -57,6 +57,9 @@ public class PushStream {
 
     @JsonIgnore
     public StatusEndpointResolver statusResolver;
+
+    @JsonIgnore
+    public java.util.function.Supplier<Key> issuerKeyReloader;
 
     @JsonIgnore
     private final AtomicBoolean preflightDone = new AtomicBoolean(false);
@@ -157,6 +160,7 @@ public class PushStream {
         );
 
         int attempt = 0;
+        boolean jwsRetryAttempted = false;
 
         while (!this.shuttingDown.get()) {
             FailureClassification classification;
@@ -195,6 +199,25 @@ public class PushStream {
                 }
                 logger.warn("Communications error while pushing event (attempt " + (attempt + 1) + "): " + e.getMessage());
                 classification = PushFailureClassifier.classify(e);
+            }
+
+            // RFC8935 §2.4 jws_signature_failed carve-out: reload PEM and retry once
+            if (classification instanceof FailureClassification.Rfc8935 rfcErr
+                    && Rfc8935Error.JWS_SIGNATURE_FAILED.equals(rfcErr.error().code())
+                    && !this.isUnencrypted
+                    && !jwsRetryAttempted
+                    && this.issuerKeyReloader != null) {
+                jwsRetryAttempted = true;
+                this.issuerKey = this.issuerKeyReloader.get();
+                try {
+                    signed = event.JWS(this.issuerKey);
+                    logger.info("Reloaded issuer PEM and re-signed SET; retrying once");
+                    continue;
+                } catch (JoseException | MalformedClaimException e) {
+                    this.state.transitionTo(StreamStatus.DISABLED,
+                            "Failed to re-sign after PEM reload: " + e.getMessage());
+                    return false;
+                }
             }
 
             // T1 — interrogate remote /status before backoff on transport/5xx
