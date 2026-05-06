@@ -3,8 +3,8 @@ package com.independentid.signals;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 
 public class StreamStateHolder {
@@ -15,7 +15,7 @@ public class StreamStateHolder {
     private String errorMsg;
 
     @JsonIgnore
-    private final List<BiConsumer<StreamStatus, StreamStatus>> listeners = new ArrayList<>();
+    private final List<BiConsumer<StreamStatus, StreamStatus>> listeners = new CopyOnWriteArrayList<>();
 
     public StreamStatus getStatus() {
         return status;
@@ -25,7 +25,7 @@ public class StreamStateHolder {
         return errorMsg;
     }
 
-    public void transitionTo(StreamStatus newStatus, String reason) {
+    public synchronized void transitionTo(StreamStatus newStatus, String reason) {
         StreamStatus oldStatus = this.status;
         this.status = newStatus;
         this.errorMsg = reason;

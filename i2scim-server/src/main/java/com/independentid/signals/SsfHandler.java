@@ -273,6 +273,7 @@ public class SsfHandler {
         this.pushStream.maxDelay = configProps.pubRetryMaxInterval;
         this.pushStream.unauthorizedRetryMax = configProps.pubUnauthorizedRetryMax;
         this.pushStream.unauthorizedRetryDelay = configProps.pubUnauthorizedRetryDelay;
+        this.pushStream.statusCheckInterval = configProps.pubStatusCheckInterval;
         this.pushStream.enabled = true;
 
         resp.close();
@@ -322,6 +323,7 @@ public class SsfHandler {
         this.pollStream.maxDelay = configProps.rcvRetryMaxInterval;
         this.pollStream.unauthorizedRetryMax = configProps.rcvUnauthorizedRetryMax;
         this.pollStream.unauthorizedRetryDelay = configProps.rcvUnauthorizedRetryDelay;
+        this.pollStream.statusCheckInterval = configProps.rcvStatusCheckInterval;
         this.pollStream.enabled = true;
         resp.close();
     }

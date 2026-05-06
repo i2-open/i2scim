@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -100,6 +101,8 @@ public class SignalsEventHandler implements IEventHandler {
 
     SignalsEventMapper mapper;
 
+    StreamMaintenanceScheduler scheduler;
+
     boolean ready = false;
 
     public SignalsEventHandler() {
@@ -156,11 +159,45 @@ public class SignalsEventHandler implements IEventHandler {
         // ensure that config,schema managers are initialized.
         Operation.initialize(configMgr);
 
+        this.scheduler = new StreamMaintenanceScheduler();
+        installStatusInterrogation();
+
         if (rcvEnabled) {
             logger.debug("Starting SET Polling Receiver...");
             this.receiverThread = new SignalsEventReceiver(configMgr, this, ssfClient);
         }
         ready = true;
+    }
+
+    private void installStatusInterrogation() {
+        PushStream push = ssfClient.getPushStream();
+        if (push != null && push.enabled) {
+            if (push.client == null) push.setSslContext(null);
+            push.statusResolver = new StatusEndpointResolver(push.client);
+            String key = "push:" + (push.streamId == null ? "default" : push.streamId);
+            push.state.addTransitionListener((oldS, newS) -> {
+                if (newS == StreamStatus.PAUSED) {
+                    scheduler.schedulePausedRecheck(key, push::pausedRecheck,
+                            Duration.ofMillis(push.statusCheckInterval));
+                } else if (oldS == StreamStatus.PAUSED) {
+                    scheduler.cancelPausedRecheck(key);
+                }
+            });
+        }
+        PollStream poll = ssfClient.getPollStream();
+        if (poll != null && poll.enabled) {
+            if (poll.client == null) poll.setSslContext(null);
+            poll.statusResolver = new StatusEndpointResolver(poll.client);
+            String key = "poll:" + (poll.streamId == null ? "default" : poll.streamId);
+            poll.state.addTransitionListener((oldS, newS) -> {
+                if (newS == StreamStatus.PAUSED) {
+                    scheduler.schedulePausedRecheck(key, poll::pausedRecheck,
+                            Duration.ofMillis(poll.statusCheckInterval));
+                } else if (oldS == StreamStatus.PAUSED) {
+                    scheduler.cancelPausedRecheck(key);
+                }
+            });
+        }
     }
 
     public boolean notEnabled() {
@@ -274,6 +311,9 @@ public class SignalsEventHandler implements IEventHandler {
             this.ssfClient.getPushStream().Close();
         } catch (IOException ignore) {
 
+        }
+        if (this.scheduler != null) {
+            this.scheduler.shutdown();
         }
         acksPending.clear();
         pendingPubOps.clear();

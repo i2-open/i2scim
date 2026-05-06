@@ -25,6 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.security.Key;
 import java.security.PublicKey;
 import java.time.Duration;
@@ -32,6 +33,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class PollStream {
     private final static Logger logger = LoggerFactory.getLogger(PollStream.class);
@@ -60,6 +62,13 @@ public class PollStream {
     public int maxDelay = 300000;
     public int unauthorizedRetryMax = 10;
     public int unauthorizedRetryDelay = 15000;
+    public int statusCheckInterval = 30000;
+
+    @JsonIgnore
+    public StatusEndpointResolver statusResolver;
+
+    @JsonIgnore
+    private final java.util.concurrent.atomic.AtomicBoolean preflightDone = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     @JsonIgnore
     public CloseableHttpClient client;
@@ -152,6 +161,14 @@ public class PollStream {
             setSslContext(null);
 
         boolean shutdownMode = (retries == 0);
+
+        // T2 — pre-flight status check before first poll after init/restart (skip in shutdown-mode)
+        if (!shutdownMode && preflightDone.compareAndSet(false, true)) {
+            if (probeRemoteAndTransitionIfNonEnabled("pre-flight")) {
+                return eventMap;
+            }
+        }
+
         RetryStrategyConfig retryConfig = new RetryStrategyConfig(
                 retries,
                 Duration.ofMillis(this.initialDelay),
@@ -234,6 +251,14 @@ public class PollStream {
                 return eventMap;
             }
 
+            // T1 — interrogate transmitter /status before backoff on transport/5xx
+            if (classification instanceof FailureClassification.Transport
+                    || classification instanceof FailureClassification.Server5xx) {
+                if (probeRemoteAndTransitionIfNonEnabled("on-failure")) {
+                    return eventMap;
+                }
+            }
+
             RetryDecision decision = RetryStrategy.decide(classification, attempt, retryConfig);
             switch (decision) {
                 case RetryDecision.Disable d -> {
@@ -252,6 +277,62 @@ public class PollStream {
             }
         }
         return eventMap;
+    }
+
+    public void pausedRecheck() {
+        if (this.state.getStatus() != StreamStatus.PAUSED || this.statusResolver == null) {
+            return;
+        }
+        URI host = transmitterHost();
+        if (host == null) return;
+        Optional<URI> statusUrl = this.statusResolver.resolve(host, URI.create(this.endpointUrl));
+        if (statusUrl.isEmpty()) return;
+        RemoteStatus remote = RemoteStatusProbe.probe(this.client, statusUrl.get(), this.authorization);
+        switch (remote) {
+            case ENABLED -> this.state.transitionTo(StreamStatus.ENABLED, null);
+            case DISABLED -> this.state.transitionTo(StreamStatus.DISABLED,
+                    "Transmitter /status reports disabled (paused-recheck)");
+            case PAUSED, UNKNOWN -> {}
+        }
+    }
+
+    boolean probeRemoteAndTransitionIfNonEnabled(String context) {
+        if (this.statusResolver == null) {
+            return false;
+        }
+        URI host = transmitterHost();
+        if (host == null) {
+            return false;
+        }
+        Optional<URI> statusUrl = this.statusResolver.resolve(host, URI.create(this.endpointUrl));
+        if (statusUrl.isEmpty()) {
+            return false;
+        }
+        RemoteStatus remote = RemoteStatusProbe.probe(this.client, statusUrl.get(), this.authorization);
+        switch (remote) {
+            case PAUSED -> {
+                this.state.transitionTo(StreamStatus.PAUSED,
+                        "Transmitter /status reports paused (" + context + ")");
+                return true;
+            }
+            case DISABLED -> {
+                this.state.transitionTo(StreamStatus.DISABLED,
+                        "Transmitter /status reports disabled (" + context + ")");
+                return true;
+            }
+            default -> {
+                return false;
+            }
+        }
+    }
+
+    URI transmitterHost() {
+        try {
+            URI endpoint = URI.create(this.endpointUrl);
+            return new URI(endpoint.getScheme(), endpoint.getAuthority(), null, null, null);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private boolean sleep(long ms) {

@@ -183,6 +183,12 @@ public class StreamConfigProps {
     @ConfigProperty(name = "scim.signals.rcv.unauthorized.retry.delay", defaultValue = "15000")
     public int rcvUnauthorizedRetryDelay;
 
+    @ConfigProperty(name = "scim.signals.pub.status.check.interval", defaultValue = "30000")
+    public int pubStatusCheckInterval;
+
+    @ConfigProperty(name = "scim.signals.rcv.status.check.interval", defaultValue = "30000")
+    public int rcvStatusCheckInterval;
+
     @ConfigProperty(name = "scim.signals.test", defaultValue = "false")
     boolean isTest;
 
@@ -207,6 +213,7 @@ public class StreamConfigProps {
             pushStream.maxDelay = pubRetryMaxInterval;
             pushStream.unauthorizedRetryMax = pubUnauthorizedRetryMax;
             pushStream.unauthorizedRetryDelay = pubUnauthorizedRetryDelay;
+            pushStream.statusCheckInterval = pubStatusCheckInterval;
             if (pubIsUnsigned) {
                 pushStream.isUnencrypted = true;
             } else {
@@ -237,6 +244,7 @@ public class StreamConfigProps {
             pollStream.maxDelay = rcvRetryMaxInterval;
             pollStream.unauthorizedRetryMax = rcvUnauthorizedRetryMax;
             pollStream.unauthorizedRetryDelay = rcvUnauthorizedRetryDelay;
+            pollStream.statusCheckInterval = rcvStatusCheckInterval;
 
             if (!unSignedMode) {
                 pollStream.receiverKey = getAudPrivateKey();
