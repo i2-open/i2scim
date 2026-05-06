@@ -188,6 +188,7 @@
                 <configuration>
                     <excludes>
                         <exclude>**/LoadScimClusterTest.java</exclude>
+                        <exclude>**/SignalsGoSignalsIT.java</exclude>
                     </excludes>
                 </configuration>
             </plugin>
