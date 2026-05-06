@@ -1,6 +1,7 @@
 package com.independentid.signals;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.independentid.set.SecurityEventToken;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
@@ -37,14 +38,16 @@ public class PushStream {
     public String iss;
     public String aud;
     public String issJwksUrl;
-    public boolean errorState = false;
+
+    @JsonUnwrapped
+    public StreamStateHolder state = new StreamStateHolder();
 
     public int maxRetries = 10;
     public int initialDelay = 2000;
     public int maxDelay = 300000;
 
     @JsonIgnore
-    CloseableHttpClient client;
+    public CloseableHttpClient client;
 
     public void setSslContext(javax.net.ssl.SSLContext sslContext) {
         if (sslContext != null) {
@@ -78,7 +81,7 @@ public class PushStream {
     }
 
     public boolean pushEvent(SecurityEventToken event) {
-        if (this.errorState || this.shuttingDown.get())
+        if (this.state.getStatus() != StreamStatus.ENABLED || this.shuttingDown.get())
             return false;
         if (this.aud != null)
             event.setAud(this.aud);
@@ -146,17 +149,22 @@ public class PushStream {
                         // Fall through to retry logic
                     } else {
                         // Fatal error
+                        String reason;
                         if (code == 400) {
                             logger.error("Received BAD request response.");
                             HttpEntity respEntity = resp.getEntity();
+                            String body = "";
                             if (respEntity != null) {
                                 byte[] respBytes = respEntity.getContent().readAllBytes();
-                                String msg = new String(respBytes);
-                                logger.error("\n" + msg);
+                                body = new String(respBytes);
+                                logger.error("\n" + body);
                             }
-                        } else
+                            reason = code + " Bad Request: " + body;
+                        } else {
                             logger.error("Received fatal error on event submission: " + code + " " + resp.getReasonPhrase());
-                        this.errorState = true;
+                            reason = code + " " + resp.getReasonPhrase();
+                        }
+                        this.state.transitionTo(StreamStatus.DISABLED, reason);
                         return false;
                     }
                 }
@@ -171,7 +179,7 @@ public class PushStream {
             attempt++;
             if (attempt > this.maxRetries) {
                 logger.error("Max retries reached. Event push failed.");
-                this.errorState = true;
+                this.state.transitionTo(StreamStatus.DISABLED, "Max retries reached after " + this.maxRetries + " attempts");
                 break;
             }
 

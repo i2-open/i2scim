@@ -100,8 +100,6 @@ public class SignalsEventHandler implements IEventHandler {
 
     SignalsEventMapper mapper;
 
-    static boolean isErrorState = false;
-
     boolean ready = false;
 
     public SignalsEventHandler() {
@@ -258,8 +256,8 @@ public class SignalsEventHandler implements IEventHandler {
     @Override
     public boolean isProducing() {
         if (ssfClient == null || ssfClient.getPushStream() == null)
-            return !isErrorState;
-        return !isErrorState && !ssfClient.getPushStream().errorState;
+            return true;
+        return ssfClient.getPushStream().state.getStatus() == StreamStatus.ENABLED;
     }
 
     @Override

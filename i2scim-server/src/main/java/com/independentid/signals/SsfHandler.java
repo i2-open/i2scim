@@ -77,8 +77,13 @@ public class SsfHandler {
         if (props.configFileExists()) {
             File configFile = props.getConfigFile();
             try {
-                FileInputStream configStream = new FileInputStream(configFile);
-                client = JsonUtil.getMapper().readValue(configStream, SsfHandler.class);
+                ObjectMapper mapper = JsonUtil.getMapper();
+                JsonNode root;
+                try (FileInputStream configStream = new FileInputStream(configFile)) {
+                    root = mapper.readTree(configStream);
+                }
+                root = SsfConfigJsonMigrator.migrate(root);
+                client = mapper.treeToValue(root, SsfHandler.class);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

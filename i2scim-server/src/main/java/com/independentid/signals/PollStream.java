@@ -1,6 +1,7 @@
 package com.independentid.signals;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -48,8 +49,10 @@ public class PollStream {
     int timeOutSecs = 3600; // 1 hour by default
     int maxEvents = 1000;
     boolean returnImmediately = false; // long polling
-    boolean errorState = false;
     public String issJwksUrl;
+
+    @JsonUnwrapped
+    public StreamStateHolder state = new StreamStateHolder();
 
     public int maxRetries = 10;
     public int initialDelay = 2000;
@@ -194,7 +197,7 @@ public class PollStream {
                                     logger.error("Error response: " + statusCode + " " + resp.getReasonPhrase());
                             }
                             logger.error("POLLING DISABLED.");
-                            this.errorState = true;
+                            this.state.transitionTo(StreamStatus.DISABLED, statusCode + " " + resp.getReasonPhrase());
                             return eventMap;
                         }
                     } else {
@@ -267,9 +270,10 @@ public class PollStream {
 
             attempt++;
             if (attempt > retries) {
-                if (retries > 0)
+                if (retries > 0) {
                     logger.error("Max retries reached. POLLING DISABLED.");
-                this.errorState = (retries > 0);
+                    this.state.transitionTo(StreamStatus.DISABLED, "Max retries reached after " + retries + " attempts");
+                }
                 break;
             }
 
