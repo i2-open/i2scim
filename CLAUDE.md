@@ -106,3 +106,14 @@ The pre-slice-6 modules (`i2scim-prov-memory`, `i2scim-prov-mongo`, `i2scim-sign
 | `scim.event.enable` | Enables async event publishing. |
 
 DECISIONS.md is a living log of upgrade decisions — consult it before changing build/runtime infra (Java version, base image, RESTEasy variant, module structure, etc.).
+
+## Claude Development work cycle
+
+1. Each new idea starts with the skil /grill-me in plan mode to work to a common understanding
+2. /to-prd to write a PRD and commit to Github
+3. /to-issues to create Github issues (slices)
+4. Create a new branch for the PRD. Each issue in the PRD will be part of a common PR
+5. Implement each issue using /tdd skill and commit to Github.
+6. Once all issues are implemented, complete QA cycle assessing whether all issues are complete in the PR
+7. Request HITL QA approval
+8. Merge PR
