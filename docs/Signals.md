@@ -112,6 +112,14 @@ was made to develop a Security Event Router called goSignals (soon to be release
 | scim.signals.rcv.iss.jwksJson                | The issuer public key in JWKS JSON format used to validate signed events<BR>Use either jwksurl or jwksjson                | NONE                 |
 | scim.signals.rcv.pem.path                    | The location of an PKCS8 PEM format private key which may be used to decrypt JWE encoded events                           | NONE                 |
 | scim.signals.rcv.pem.value                   | PKCS8 encoded private key value used to decrypt JWE encoded events                                                        | NONE                 |
+| <BR>**Operational Recovery**                 |
+| scim.signals.pub.unauthorized.retry.max      | Maximum 401 retries on a push stream before disabling the stream                                                          | 10                   |
+| scim.signals.pub.unauthorized.retry.delay    | Fixed delay (ms) between 401 retries on a push stream                                                                     | 15000                |
+| scim.signals.pub.status.check.interval       | Interval (ms) between transmitter `/status` re-checks while a push stream is `paused`                                     | 30000                |
+| scim.signals.pub.idle.verify.interval        | Interval (ms) of push-stream idleness after which a [SSF verification event](https://openid.net/specs/openid-sharedsignals-framework-1_0.html#name-verification-event) is emitted as a keepalive | 300000               |
+| scim.signals.rcv.unauthorized.retry.max      | Maximum 401 retries on a poll stream before disabling the stream                                                          | 10                   |
+| scim.signals.rcv.unauthorized.retry.delay    | Fixed delay (ms) between 401 retries on a poll stream                                                                     | 15000                |
+| scim.signals.rcv.status.check.interval       | Interval (ms) between transmitter `/status` re-checks while a poll stream is `paused`                                     | 30000                |
 
 ## Configuration Options
 
@@ -194,6 +202,98 @@ should use the same output push stream but only one node should be receiving eve
 In manual configuration mode, all stream parameters are configured using environment variables as described in the table
 above.
 
+## Operational Behavior
 
+i2scim mirrors the operational vocabulary defined by the goSignals project so that local stream behavior aligns with
+what an operator sees on the transmitter side. The vocabulary covers stream lifecycle, HTTP failure classification,
+remote `/status` interrogation, idle keepalive verification events, and RFC8935 §2.4 protocol-error handling.
 
+### Stream lifecycle (tri-state)
 
+Each `PushStream` and `PollStream` maintains a `status` of:
+
+| Status     | Meaning                                                                                                                                            | Persisted? |
+|------------|----------------------------------------------------------------------------------------------------------------------------------------------------|------------|
+| `enabled`  | Stream is healthy and producing/consuming events.                                                                                                  | yes        |
+| `paused`   | The remote peer reports the stream as paused (typically operator-driven on the goSignals side). i2scim auto-recovers when the remote re-enables.   | no         |
+| `disabled` | A terminal failure was observed (403, 4xx-other, exhausted retries, RFC8935 protocol error). Operator intervention is required.                    | yes        |
+
+`paused` is **never written to `ssfConfig.json`** — it is a runtime-only state derived from peer status. On restart,
+the stream re-enters `enabled` and a successful first push or poll re-derives the true state.
+
+A short structured `errorMsg` accompanies any `disabled` transition (for example
+`"403 Forbidden: stream revoked"` or `"RFC8935 invalid_audience: bad aud; jti=..."`).
+
+### HTTP failure classification
+
+Both push and poll responses are classified into a small set of categories. The push table includes RFC8935 §2.4
+detection on `400`; the poll table is otherwise identical.
+
+| Response                              | Action                                                                                                          |
+|---------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+| `2xx`                                 | Success.                                                                                                        |
+| Transport error / `5xx`               | Exponential backoff (`retry.interval` → `retry.maxInterval`), capped at `retry.max` attempts. T1 fires.         |
+| `401 Unauthorized`                    | Fixed-delay retry (`unauthorized.retry.delay`), capped at `unauthorized.retry.max`, then disable.               |
+| `403 Forbidden`                       | Immediate disable (the stream has been revoked or is unauthorized at the policy layer).                         |
+| `429 Too Many Requests`               | Honor `Retry-After`; no attempt cap.                                                                            |
+| `4xx` (other)                         | Immediate disable.                                                                                              |
+| `400 Bad Request` with RFC8935 body   | Parse the `err` field per RFC8935 §2.4. Disable with a structured `errorMsg`. See below for the JWS carve-out. |
+
+Once a stream is `disabled`, normal event flow stops until an operator re-enables it.
+
+### `/status` interrogation (T1 and T2)
+
+T1 ("reactive") and T2 ("pre-flight") use the SSF transmitter `/status` endpoint to discover whether the remote stream
+is `enabled`, `paused`, or `disabled` from the transmitter's perspective:
+
+- **T1** runs after a transport/5xx failure or any failure where the remote may have entered a non-`enabled` state. If
+  the remote reports `paused`, the local stream transitions to `paused` (and a paused-recheck task takes over).
+- **T2** runs before the first push or poll after init/restart. It cheaply verifies the remote is healthy without
+  triggering retry storms when the remote was paused before i2scim started.
+
+The `/status` URL is discovered lazily:
+
+1. Fetch the SSF [well-known configuration](https://openid.net/specs/openid-sharedsignals-framework-1_0.txt) and use
+   its declared `status_endpoint`.
+2. If the well-known is unreachable, fall back to a derived URL (path-segment replacement) **once**, then continue with
+   exponential backoff.
+3. If the well-known is reachable but does not declare a `status_endpoint`, T1 is permanently skipped for that stream.
+
+Well-known failure alone never causes a stream to be disabled.
+
+### Paused-recheck
+
+When a stream enters `paused`, a per-stream task polls the remote `/status` every
+`scim.signals.{pub|rcv}.status.check.interval` ms. When the remote reports `enabled`, the local stream automatically
+recovers and resumes producing/consuming events. No operator action is required to recover from `paused`.
+
+### Idle keepalive verification (push only)
+
+Push streams emit an SSF
+[verification event](https://openid.net/specs/openid-sharedsignals-framework-1_0.html#name-verification-event)
+when no event has been pushed for `scim.signals.pub.idle.verify.interval` ms. The verification event is signed with the
+issuer key (or unsigned if `pub.algNone.override=true`) and is delivered through the same push channel. It serves as a
+liveness check so a long-idle stream does not silently rot.
+
+The keepalive is **suppressed while the stream is `paused` or in active retry backoff**. After a restart the idle timer
+resets, so the first verification event will fire one full interval after restart even if the stream was idle
+beforehand.
+
+### RFC8935 §2.4 protocol errors
+
+When a push receives `400` with an RFC8935-shaped JSON body, the `err` field is matched against the documented codes
+(`authentication_failed`, `invalid_request`, `invalid_audience`, `invalid_issuer`, `invalid_key`,
+`jws_signature_failed`, `jwe_decryption_failed`). The stream is disabled with
+`errorMsg = "RFC8935 <code>: <description>; jti=<jti>"`.
+
+A single carve-out applies: `jws_signature_failed` triggers a one-time PEM reload of the issuer private key from
+`scim.signals.pub.pem.path` / `scim.signals.pub.pem.value` followed by a single retry of the SET. If the retry also
+fails, the stream is disabled. When `pub.algNone.override=true`, this carve-out does not apply (there is no key to
+reload) and the stream is disabled immediately.
+
+### `ssfConfig.json` migration
+
+`ssfConfig.json` files written by pre-PRD-A builds used a boolean `errorState` field. On load, the file is migrated
+in-place: `errorState=true` becomes `status=disabled` with `errorMsg="migrated from legacy errorState"`, and
+`errorState=false` becomes `status=enabled`. New builds only ever write `status` and `errorMsg`. Rolling back to a
+pre-PRD-A build will not understand the new shape.
