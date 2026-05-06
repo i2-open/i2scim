@@ -39,7 +39,10 @@ import org.jose4j.jwt.MalformedClaimException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.independentid.set.SecurityEventToken;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -100,7 +103,7 @@ public class SignalsEventHandler implements IEventHandler {
 
     SignalsEventMapper mapper;
 
-    static boolean isErrorState = false;
+    StreamMaintenanceScheduler scheduler;
 
     boolean ready = false;
 
@@ -158,11 +161,70 @@ public class SignalsEventHandler implements IEventHandler {
         // ensure that config,schema managers are initialized.
         Operation.initialize(configMgr);
 
+        this.scheduler = new StreamMaintenanceScheduler();
+        installStatusInterrogation();
+
         if (rcvEnabled) {
             logger.debug("Starting SET Polling Receiver...");
             this.receiverThread = new SignalsEventReceiver(configMgr, this, ssfClient);
         }
         ready = true;
+    }
+
+    private void installStatusInterrogation() {
+        PushStream push = ssfClient.getPushStream();
+        if (push != null && push.enabled) {
+            if (push.client == null) push.setSslContext(null);
+            push.statusResolver = new StatusEndpointResolver(push.client);
+            push.issuerKeyReloader = configProps::getIssuerPrivateKey;
+            String key = "push:" + (push.streamId == null ? "default" : push.streamId);
+            Runnable idleVerifyRun = () -> runIdleVerify(push);
+            push.state.addTransitionListener((oldS, newS) -> {
+                if (newS == StreamStatus.PAUSED) {
+                    scheduler.schedulePausedRecheck(key, push::pausedRecheck,
+                            Duration.ofMillis(push.statusCheckInterval));
+                    scheduler.cancelIdleVerify(key);
+                } else if (oldS == StreamStatus.PAUSED) {
+                    scheduler.cancelPausedRecheck(key);
+                    if (newS == StreamStatus.ENABLED) {
+                        scheduler.scheduleIdleVerify(key, idleVerifyRun,
+                                Duration.ofMillis(push.idleVerifyInterval));
+                    }
+                } else if (newS == StreamStatus.DISABLED) {
+                    scheduler.cancelIdleVerify(key);
+                }
+            });
+            // Initial schedule (state holder starts in ENABLED)
+            if (push.state.getStatus() == StreamStatus.ENABLED) {
+                scheduler.scheduleIdleVerify(key, idleVerifyRun,
+                        Duration.ofMillis(push.idleVerifyInterval));
+            }
+        }
+        PollStream poll = ssfClient.getPollStream();
+        if (poll != null && poll.enabled) {
+            if (poll.client == null) poll.setSslContext(null);
+            poll.statusResolver = new StatusEndpointResolver(poll.client);
+            String key = "poll:" + (poll.streamId == null ? "default" : poll.streamId);
+            poll.state.addTransitionListener((oldS, newS) -> {
+                if (newS == StreamStatus.PAUSED) {
+                    scheduler.schedulePausedRecheck(key, poll::pausedRecheck,
+                            Duration.ofMillis(poll.statusCheckInterval));
+                } else if (oldS == StreamStatus.PAUSED) {
+                    scheduler.cancelPausedRecheck(key);
+                }
+            });
+        }
+    }
+
+    private void runIdleVerify(PushStream push) {
+        if (push.state.getStatus() != StreamStatus.ENABLED) return;
+        Instant last = push.getLastSuccessfulPush();
+        if (last == null) return;
+        long idleMs = Duration.between(last, Instant.now()).toMillis();
+        if (idleMs < push.idleVerifyInterval) return;
+        SecurityEventToken verify = VerifyEventBuilder.build(push);
+        logger.info("Idle threshold reached on push stream; sending verify event jti={}", verify.getJti());
+        push.pushEvent(verify);
     }
 
     public boolean notEnabled() {
@@ -186,13 +248,23 @@ public class SignalsEventHandler implements IEventHandler {
             Operation op = mapper.MapSetToOperation(event, configMgr.getSchemaManager());
             if (logger.isDebugEnabled())
                 logger.debug("\tReceived SCIM Event:\n" + event.toPrettyString());
+            if (op == null) {
+                // Non-provisioning event (e.g. SSF verification) or unsubscribed event type — ack and skip.
+                if (logger.isDebugEnabled())
+                    logger.debug("Acking non-provisioning event jti={}", event.getJti());
+                acksPending.add(event.getJti());
+                return;
+            }
             try {
-                ScimResource txnResource = backendHandler.getTransactionRecord(event.getTxn());
-                if (txnResource != null) {
-                    // Even though we've seen this, we want to ack it so we don't get it again.
-                    acksPending.add(event.getJti());
-                    logger.warn("Duplicate transaction detected, ignoring.");
-                    return;
+                String tranId = event.getTxn();
+                if (tranId != null) {
+                    ScimResource txnResource = backendHandler.getTransactionRecord(tranId);
+                    if (txnResource != null) {
+                        // Even though we've seen this, we want to ack it so we don't get it again.
+                        acksPending.add(event.getJti());
+                        logger.warn("Duplicate transaction detected, ignoring.");
+                        return;
+                    }
                 }
             } catch (BackendException e) {
                 logger.error("Backend error fetching transaction: " + e.getMessage());
@@ -258,8 +330,8 @@ public class SignalsEventHandler implements IEventHandler {
     @Override
     public boolean isProducing() {
         if (ssfClient == null || ssfClient.getPushStream() == null)
-            return !isErrorState;
-        return !isErrorState && !ssfClient.getPushStream().errorState;
+            return true;
+        return ssfClient.getPushStream().state.getStatus() == StreamStatus.ENABLED;
     }
 
     @Override
@@ -276,6 +348,9 @@ public class SignalsEventHandler implements IEventHandler {
             this.ssfClient.getPushStream().Close();
         } catch (IOException ignore) {
 
+        }
+        if (this.scheduler != null) {
+            this.scheduler.shutdown();
         }
         acksPending.clear();
         pendingPubOps.clear();

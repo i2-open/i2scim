@@ -131,7 +131,9 @@ public class SecurityEventToken {
 
     @JsonSetter("txn")
     public String getTxn() throws MalformedClaimException {
-        return this.claims.get("txn").asText();
+        // Per RFC 8417 §2.2 "txn" is OPTIONAL — return null when absent (e.g. SSF verification events).
+        JsonNode txnNode = this.claims.get("txn");
+        return txnNode == null ? null : txnNode.asText();
     }
 
     @JsonSetter("toe")

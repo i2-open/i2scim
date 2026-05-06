@@ -171,6 +171,27 @@ public class StreamConfigProps {
     @ConfigProperty(name = "scim.signals.pub.retry.maxInterval", defaultValue = "300000")
     public int pubRetryMaxInterval;
 
+    @ConfigProperty(name = "scim.signals.pub.unauthorized.retry.max", defaultValue = "10")
+    public int pubUnauthorizedRetryMax;
+
+    @ConfigProperty(name = "scim.signals.pub.unauthorized.retry.delay", defaultValue = "15000")
+    public int pubUnauthorizedRetryDelay;
+
+    @ConfigProperty(name = "scim.signals.rcv.unauthorized.retry.max", defaultValue = "10")
+    public int rcvUnauthorizedRetryMax;
+
+    @ConfigProperty(name = "scim.signals.rcv.unauthorized.retry.delay", defaultValue = "15000")
+    public int rcvUnauthorizedRetryDelay;
+
+    @ConfigProperty(name = "scim.signals.pub.status.check.interval", defaultValue = "30000")
+    public int pubStatusCheckInterval;
+
+    @ConfigProperty(name = "scim.signals.rcv.status.check.interval", defaultValue = "30000")
+    public int rcvStatusCheckInterval;
+
+    @ConfigProperty(name = "scim.signals.pub.idle.verify.interval", defaultValue = "300000")
+    public int pubIdleVerifyInterval;
+
     @ConfigProperty(name = "scim.signals.test", defaultValue = "false")
     boolean isTest;
 
@@ -193,6 +214,10 @@ public class StreamConfigProps {
             pushStream.maxRetries = pubRetryMax;
             pushStream.initialDelay = pubRetryInterval;
             pushStream.maxDelay = pubRetryMaxInterval;
+            pushStream.unauthorizedRetryMax = pubUnauthorizedRetryMax;
+            pushStream.unauthorizedRetryDelay = pubUnauthorizedRetryDelay;
+            pushStream.statusCheckInterval = pubStatusCheckInterval;
+            pushStream.idleVerifyInterval = pubIdleVerifyInterval;
             if (pubIsUnsigned) {
                 pushStream.isUnencrypted = true;
             } else {
@@ -221,6 +246,9 @@ public class StreamConfigProps {
             pollStream.maxRetries = rcvRetryMax;
             pollStream.initialDelay = rcvRetryInterval;
             pollStream.maxDelay = rcvRetryMaxInterval;
+            pollStream.unauthorizedRetryMax = rcvUnauthorizedRetryMax;
+            pollStream.unauthorizedRetryDelay = rcvUnauthorizedRetryDelay;
+            pollStream.statusCheckInterval = rcvStatusCheckInterval;
 
             if (!unSignedMode) {
                 pollStream.receiverKey = getAudPrivateKey();

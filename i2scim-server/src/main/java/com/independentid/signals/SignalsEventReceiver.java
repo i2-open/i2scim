@@ -18,6 +18,7 @@ package com.independentid.signals;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.op.Operation;
 import com.independentid.set.SecurityEventToken;
+import com.independentid.signals.StreamStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +81,7 @@ public class SignalsEventReceiver implements Runnable {
             Thread.interrupted(); // Clear the interrupt status
         }
 
-        while (!closeRequest.get() && !this.ssfClient.getPollStream().errorState) {
+        while (!closeRequest.get() && this.ssfClient.getPollStream().state.getStatus() == StreamStatus.ENABLED) {
             if (eventHandler.ready) {
                 try {
                     Map<String, SecurityEventToken> events = this.ssfClient.getPollStream().pollEvents(SignalsEventHandler.acksPending, false);
