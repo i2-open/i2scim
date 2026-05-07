@@ -96,8 +96,6 @@ public class SignalsEventHandler implements IEventHandler {
 
     SignalsEventReceiver receiverThread;
 
-    protected static final List<String> acksPending = new CopyOnWriteArrayList<>();
-
     protected static final List<Operation> acceptedOps = new CopyOnWriteArrayList<>();
 
     protected static final FifoCache<Operation> sendErrorOps = new FifoCache<>(1024);
@@ -121,6 +119,7 @@ public class SignalsEventHandler implements IEventHandler {
     StreamMaintenanceScheduler scheduler;
 
     PendingPushStore pendingPushStore;
+    PendingAckStore pendingAckStore;
     MongoClient signalsMongoClient; // only set when scim.prov.providerClass=Mongo
     PushRetryWorker pushRetryWorker;
 
@@ -180,9 +179,11 @@ public class SignalsEventHandler implements IEventHandler {
         Operation.initialize(configMgr);
 
         this.pendingPushStore = createPendingPushStore();
+        this.pendingAckStore = createPendingAckStore();
 
         this.scheduler = new StreamMaintenanceScheduler();
         installStatusInterrogation();
+        wireAckStoreToPollStream();
 
         startPushRetryWorker();
 
@@ -209,6 +210,36 @@ public class SignalsEventHandler implements IEventHandler {
         FilePendingPushStore store = new FilePendingPushStore(eventsRoot);
         store.init();
         return store;
+    }
+
+    /**
+     * PRD-B slice #78: poll-side ack durability. Mirrors
+     * {@link #createPendingPushStore} — Mongo when the SCIM backend is Mongo,
+     * filesystem under {@code <scim.prov.memory.dir>/events/acks/} otherwise.
+     * Reuses the same {@link MongoClient} as the push store when Mongo.
+     */
+    private PendingAckStore createPendingAckStore() {
+        if (MONGO_PROVIDER_FQCN.equals(providerClassName)) {
+            // signalsMongoClient was set by createPendingPushStore() above.
+            if (this.signalsMongoClient == null) {
+                this.signalsMongoClient = MongoClients.create(mongoUri);
+            }
+            MongoPendingAckStore store = new MongoPendingAckStore(signalsMongoClient, mongoDbName);
+            store.init();
+            return store;
+        }
+        Path eventsRoot = Paths.get(memoryDir);
+        logger.info("Creating FilePendingAckStore (memory provider) under {}/events/acks", eventsRoot.toAbsolutePath());
+        FilePendingAckStore store = new FilePendingAckStore(eventsRoot);
+        store.init();
+        return store;
+    }
+
+    private void wireAckStoreToPollStream() {
+        if (ssfClient == null) return;
+        PollStream poll = ssfClient.getPollStream();
+        if (poll == null) return;
+        poll.ackStore = this.pendingAckStore;
     }
 
     private void startPushRetryWorker() {
@@ -292,7 +323,7 @@ public class SignalsEventHandler implements IEventHandler {
             if (op == null) {
                 if (logger.isDebugEnabled())
                     logger.debug("Acking non-provisioning event jti={}", event.getJti());
-                acksPending.add(event.getJti());
+                recordAck(this.pendingAckStore, ssfClient.getPollStream(), event.getJti());
                 return;
             }
             try {
@@ -300,7 +331,7 @@ public class SignalsEventHandler implements IEventHandler {
                 if (tranId != null) {
                     ScimResource txnResource = backendHandler.getTransactionRecord(tranId);
                     if (txnResource != null) {
-                        acksPending.add(event.getJti());
+                        recordAck(this.pendingAckStore, ssfClient.getPollStream(), event.getJti());
                         logger.warn("Duplicate transaction detected, ignoring.");
                         return;
                     }
@@ -309,13 +340,13 @@ public class SignalsEventHandler implements IEventHandler {
                 logger.error("Backend error fetching transaction: " + e.getMessage());
                 return;
             } catch (MalformedClaimException e) {
-                acksPending.add(event.getJti());
+                recordAck(this.pendingAckStore, ssfClient.getPollStream(), event.getJti());
                 logger.error("Invalid txn value. Ignoring event");
                 return;
             }
             acceptedOps.add(op);
             pool.addJobAndWait(op);
-            acksPending.add(event.getJti());
+            recordAck(this.pendingAckStore, ssfClient.getPollStream(), event.getJti());
         }
     }
 
@@ -379,6 +410,23 @@ public class SignalsEventHandler implements IEventHandler {
         }
     }
 
+    /**
+     * PRD-B slice #78: write a poll-side ack into the durable {@link PendingAckStore}
+     * under the receiving stream's id. No-op if either the store or the stream's id
+     * is unavailable (e.g., pre-registration window) — receivers fall back to
+     * delivering acks on the next poll once the store is wired and the stream id is
+     * known.
+     */
+    static void recordAck(PendingAckStore store, PollStream poll, String jti) {
+        if (store == null || poll == null || poll.streamId == null) return;
+        try {
+            store.enqueue(poll.streamId, jti, Instant.now());
+        } catch (RuntimeException re) {
+            logger.error("Failed to enqueue pending ack (streamId={}, jti={}): {}",
+                    poll.streamId, jti, re.getMessage(), re);
+        }
+    }
+
     private static String signForStorage(PushStream push, SecurityEventToken token) {
         if (push.aud != null) token.setAud(push.aud);
         token.setIssuer(push.iss);
@@ -417,7 +465,6 @@ public class SignalsEventHandler implements IEventHandler {
         if (this.signalsMongoClient != null) {
             try { this.signalsMongoClient.close(); } catch (RuntimeException ignore) {}
         }
-        acksPending.clear();
         acceptedOps.clear();
     }
 }

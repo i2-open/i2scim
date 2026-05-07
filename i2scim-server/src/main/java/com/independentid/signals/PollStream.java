@@ -68,6 +68,9 @@ public class PollStream {
     public StatusEndpointResolver statusResolver;
 
     @JsonIgnore
+    public PendingAckStore ackStore;
+
+    @JsonIgnore
     private final java.util.concurrent.atomic.AtomicBoolean preflightDone = new java.util.concurrent.atomic.AtomicBoolean(false);
 
     @JsonIgnore
@@ -108,6 +111,27 @@ public class PollStream {
 
     public Map<String, SecurityEventToken> pollEvents(List<String> acknowledgements, boolean ackOnly) {
         return pollEvents(acknowledgements, ackOnly, this.maxRetries);
+    }
+
+    /**
+     * PRD-B slice #78: convenience entry point. Sources pending acks from the
+     * configured {@link PendingAckStore} (durable store; survives restart) and
+     * delegates to {@link #pollEvents(List, boolean, int)}. Used by the
+     * receiver loop and shutdown path.
+     */
+    public Map<String, SecurityEventToken> pollEvents(boolean ackOnly) {
+        return pollEvents(ackOnly, this.maxRetries);
+    }
+
+    public Map<String, SecurityEventToken> pollEvents(boolean ackOnly, int retries) {
+        return pollEvents(readPendingAcks(), ackOnly, retries);
+    }
+
+    private List<String> readPendingAcks() {
+        if (this.ackStore == null || this.streamId == null) return List.of();
+        return this.ackStore.peekAll(this.streamId).stream()
+                .map(PendingAckRecord::jti)
+                .toList();
     }
 
     public Map<String, SecurityEventToken> pollEvents(List<String> acknowledgements, boolean ackOnly, int retries) {
@@ -205,8 +229,10 @@ public class PollStream {
                     if (classification instanceof FailureClassification.Success) {
                         if (statusCode == HttpStatus.SC_OK && !acknowledgements.isEmpty()) {
                             logger.info("Updating acknowledgments");
-                            for (String item : acknowledgements) {
-                                SignalsEventHandler.acksPending.remove(item);
+                            if (this.ackStore != null && this.streamId != null) {
+                                for (String item : acknowledgements) {
+                                    this.ackStore.delete(this.streamId, item);
+                                }
                             }
                         }
                         if (body != null) {

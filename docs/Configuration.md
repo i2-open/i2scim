@@ -110,3 +110,12 @@ it as the receiver recovers. The queue implementation depends on the persistence
 - **Memory provider** — pending events are stored as one `.set` file per token under `<scim.prov.memory.dir>/events/{pending,preregister}/<streamId>/<jti>.set`. Each file is a single-line JSON metadata header, a `\n` separator, then the encoded JWT payload. Writes go through tmp+rename, so a crash never leaves a partial `.set` visible to readers.
 
 > **Restart-loss note (memory provider):** the memory backend persists pending push events under `<scim.prov.memory.dir>/events/`, but **SCIM resource state itself** (under `<scim.prov.memory.dir>/scimdata.json` and rotating backups) is in-memory and only flushed on shutdown / interval. After a hard crash, recent SCIM resource changes may be lost while the matching outbound SET payloads remain in the queue. For deployments that need durable resource state, use the Mongo provider.
+
+#### Poll-side ack durability (PRD-B)
+
+When the receiver applies an inbound SET locally, the SET's JTI is recorded to a durable ack queue before the producer-side acknowledgement is delivered to the SSF transmitter. This means a restart between "event applied locally" and "ack delivered to remote" replays the ack on the next poll rather than allowing the remote to re-deliver an event we have already processed.
+
+- **Mongo provider** — acks are stored in the `pendingAcks` collection (per-stream index on `streamId`); the `_id` is `<streamId>:<jti>` so repeated enqueues are upserts. Rows are deleted only after the transmitter responds 2xx to the next poll/ack call.
+- **Memory provider** — acks are stored as one `.ack` file under `<scim.prov.memory.dir>/events/acks/<streamId>/<jti>.ack` (URL-encoded). Each file is a single-line JSON `{"v":1,"streamId":...,"jti":...,"appliedAt":...}`. Writes are atomic tmp+rename, so a crash never exposes a partial `.ack`.
+
+The shutdown sequence calls `pollEvents(ackOnly=true, retries=0)` once if the durable store has any pending acks; transient remote unavailability during shutdown does NOT flip stream state (PRD-A user story 22). Whatever does not deliver during shutdown is re-attempted on the next start, again from the durable store.

@@ -18,6 +18,7 @@ package com.independentid.signals;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.op.Operation;
 import com.independentid.set.SecurityEventToken;
+import com.independentid.signals.PollStream;
 import com.independentid.signals.StreamStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,7 +85,7 @@ public class SignalsEventReceiver implements Runnable {
         while (!closeRequest.get() && this.ssfClient.getPollStream().state.getStatus() == StreamStatus.ENABLED) {
             if (eventHandler.ready) {
                 try {
-                    Map<String, SecurityEventToken> events = this.ssfClient.getPollStream().pollEvents(SignalsEventHandler.acksPending, false);
+                    Map<String, SecurityEventToken> events = this.ssfClient.getPollStream().pollEvents(false);
 
                     for (SecurityEventToken event : events.values()) {
                         eventHandler.consume(event);
@@ -144,10 +145,17 @@ public class SignalsEventReceiver implements Runnable {
             logger.info("Polling receiver shut down successfully");
         }
 
-        // Now ack any processed events....
-        if (!SignalsEventHandler.acksPending.isEmpty()) {
+        // Now ack any processed events. PRD-B slice #78: source pending acks from the
+        // durable store on the PollStream, so a shutdown that races with apply→ack
+        // does not lose acks even if this final shutdown-mode call fails (next start
+        // will re-deliver them). PRD-A user story 22: retries=0 short-circuits the
+        // poll loop so transient remote unavailability during shutdown does not flip
+        // stream state.
+        PollStream poll = this.ssfClient.getPollStream();
+        if (poll.ackStore != null && poll.streamId != null
+                && poll.ackStore.count(poll.streamId) > 0) {
             try {
-                this.ssfClient.getPollStream().pollEvents(SignalsEventHandler.acksPending, true, 0);
+                poll.pollEvents(true, 0);
             } catch (Exception e) {
                 logger.warn("Error acknowledging pending events during shutdown: " + e.getMessage());
             }
