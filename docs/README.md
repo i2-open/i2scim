@@ -22,6 +22,63 @@ adapted to act as a gateway to internal proprietary identity APIs by implementin
 
 ## Recent Updates
 
+# Release 0.10.1
+
+This release makes i2scim's Signals client behave the way operators of
+[goSignals](https://github.com/i2-open/i2goSignals/blob/master/docs/operations.md)
+expect, and ensures pending events and acks survive a restart.
+
+* **Streams now report a clear lifecycle state**
+    * Streams are `enabled`, `paused`, or `disabled` instead of a single
+      error flag. `paused` self-recovers; `disabled` means an operator
+      needs to look. Existing `ssfConfig.json` files upgrade automatically.
+    * HTTP failures are handled by code: 401 retries briefly, 403 stops
+      immediately, 429 honors `Retry-After` and never auto-disables, 5xx
+      and network errors back off and retry.
+    * On push or poll failure, i2scim asks the remote's `/status` endpoint
+      whether it has paused itself — distinguishing a remote outage from
+      a remote that's deliberately quiet.
+    * A keepalive event is sent on idle push streams, so a broken path is
+      caught before real events pile up.
+    * Protocol errors from the receiver (RFC 8935 §2.4) are recorded with
+      the specific error code and JTI in `errorMsg`. A signature failure
+      automatically reloads the issuer PEM and retries once.
+    * New config: `scim.signals.pub.unauthorized.retry.{max,delay}`,
+      `scim.signals.pub.status.check.interval`,
+      `scim.signals.pub.idle.verify.interval`, plus `rcv.*` equivalents.
+
+* **Pending events and acks survive restart**
+    * Failed push events are persisted — to MongoDB on the Mongo backend,
+      to `<scim.prov.memory.dir>/events/` on the memory backend. Restarts
+      no longer lose them, and a `disabled` stream keeps its queue for
+      automatic replay when re-enabled.
+    * SCIM operations no longer wait on push outcome. A slow receiver
+      can no longer slow down the SCIM API.
+    * Retry budgets are now wall-clock based (default 6 hours) instead
+      of attempt counts.
+    * Poll-side acks are persisted too, so a restart between "applied
+      locally" and "ack delivered" doesn't cause re-delivery.
+    * The issuer PEM file is watched for changes — out-of-band key
+      rotations are picked up automatically.
+    * Events generated before stream registration completes are buffered
+      and replayed once registration succeeds. A persistent failure
+      raises clear warnings.
+    * Disk and queue usage is monitored with configurable
+      warn / critical / fatal thresholds.
+    * New config: `scim.signals.pub.retry.elapsed.limit`,
+      `scim.signals.pub.pem.watch`,
+      `scim.signals.pub.storage.{warn,crit,fatal}.pct`,
+      `scim.signals.pub.preregister.warn.minutes`.
+
+* **Security and fixes**
+    * Patched CVE-2026-39852 and CVE-2026-41417; refreshed dependencies.
+    * JWKS load failures at boot are now non-fatal — a temporarily
+      unreachable JWKS no longer blocks startup.
+    * `/status` probes append the `stream_id` query parameter per
+      SSF §7.1.2.
+    * Fixed NPE on receipt of inbound verify events.
+    * Quieted noisy CycloneDX and retry-worker shutdown warnings.
+
 # Release 0.10.0
 
 This release collapses the build from ten Maven modules into three (`i2scim-core`, `i2scim-client`, `i2scim-server`) and hardens the deployment image.
