@@ -27,6 +27,8 @@ import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.set.SecurityEventToken;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Priority;
@@ -36,26 +38,28 @@ import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jose4j.jwt.MalformedClaimException;
+import org.jose4j.lang.JoseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.independentid.set.SecurityEventToken;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-//@ApplicationScoped
 @Startup
 @Singleton
 @Priority(5)
 @Named("SignalsEventHandler")
 public class SignalsEventHandler implements IEventHandler {
     private final static Logger logger = LoggerFactory.getLogger(SignalsEventHandler.class);
+
+    public static final String MONGO_PROVIDER_FQCN = "com.independentid.scim.backend.mongo.MongoProvider";
 
     @ConfigProperty(name = "scim.signals.enable", defaultValue = "false")
     boolean enabled;
@@ -78,10 +82,22 @@ public class SignalsEventHandler implements IEventHandler {
     @ConfigProperty(name = "scim.signals.test", defaultValue = "false")
     boolean isTest;
 
-    SignalsEventReceiver receiverThread;
+    @ConfigProperty(name = "scim.prov.providerClass", defaultValue = "com.independentid.scim.backend.memory.MemoryProvider")
+    String providerClassName;
 
-    protected static final List<String> acksPending = new CopyOnWriteArrayList<>();
-    protected static final List<Operation> pendingPubOps = new CopyOnWriteArrayList<>();
+    @ConfigProperty(name = "scim.prov.mongo.uri", defaultValue = "mongodb://localhost:27017")
+    String mongoUri;
+
+    @ConfigProperty(name = "scim.prov.mongo.dbname", defaultValue = "SCIM")
+    String mongoDbName;
+
+    @ConfigProperty(name = "scim.prov.memory.dir", defaultValue = "./scimdata")
+    String memoryDir;
+
+    @ConfigProperty(name = "scim.signals.pub.pem.watch", defaultValue = "true")
+    boolean pemWatchEnabled;
+
+    SignalsEventReceiver receiverThread;
 
     protected static final List<Operation> acceptedOps = new CopyOnWriteArrayList<>();
 
@@ -104,6 +120,12 @@ public class SignalsEventHandler implements IEventHandler {
     SignalsEventMapper mapper;
 
     StreamMaintenanceScheduler scheduler;
+
+    PendingPushStore pendingPushStore;
+    PendingAckStore pendingAckStore;
+    MongoClient signalsMongoClient; // only set when scim.prov.providerClass=Mongo
+    PushRetryWorker pushRetryWorker;
+    PemReloadWatcher pemWatcher;
 
     boolean ready = false;
 
@@ -146,9 +168,9 @@ public class SignalsEventHandler implements IEventHandler {
 
         try {
             if (isTest)
-                Thread.sleep(100); // give some time for server to settle
+                Thread.sleep(100);
             else
-                Thread.sleep(5000); // wait for server to settle
+                Thread.sleep(5000);
         } catch (InterruptedException ignore) {
         }
         SchemaManager mgr = configMgr.getSchemaManager();
@@ -158,17 +180,151 @@ public class SignalsEventHandler implements IEventHandler {
 
         logger.info("Signals Event Handler STARTING....");
 
-        // ensure that config,schema managers are initialized.
         Operation.initialize(configMgr);
+
+        this.pendingPushStore = createPendingPushStore();
+        this.pendingAckStore = createPendingAckStore();
 
         this.scheduler = new StreamMaintenanceScheduler();
         installStatusInterrogation();
+        wireAckStoreToPollStream();
+        installPemWatcher();
+        installJwksKeyRefresh();
+
+        startPushRetryWorker();
 
         if (rcvEnabled) {
             logger.debug("Starting SET Polling Receiver...");
             this.receiverThread = new SignalsEventReceiver(configMgr, this, ssfClient);
         }
         ready = true;
+    }
+
+    private PendingPushStore createPendingPushStore() {
+        if (MONGO_PROVIDER_FQCN.equals(providerClassName)) {
+            logger.info("Creating MongoPendingPushStore (uri={}, db={})", mongoUri, mongoDbName);
+            this.signalsMongoClient = MongoClients.create(mongoUri);
+            MongoPendingPushStore store = new MongoPendingPushStore(signalsMongoClient, mongoDbName);
+            store.init();
+            return store;
+        }
+        // Memory provider — pending-push queue is durable on disk under <scim.prov.memory.dir>/events/.
+        // NOTE: SCIM resource state under the same memory.dir is NOT durable across crash/restart
+        // for the in-memory provider; only the signals queue survives. See docs/Configuration.md.
+        Path eventsRoot = Paths.get(memoryDir);
+        logger.info("Creating FilePendingPushStore (memory provider) under {}/events", eventsRoot.toAbsolutePath());
+        FilePendingPushStore store = new FilePendingPushStore(eventsRoot);
+        store.init();
+        return store;
+    }
+
+    /**
+     * PRD-B slice #78: poll-side ack durability. Mirrors
+     * {@link #createPendingPushStore} — Mongo when the SCIM backend is Mongo,
+     * filesystem under {@code <scim.prov.memory.dir>/events/acks/} otherwise.
+     * Reuses the same {@link MongoClient} as the push store when Mongo.
+     */
+    private PendingAckStore createPendingAckStore() {
+        if (MONGO_PROVIDER_FQCN.equals(providerClassName)) {
+            // signalsMongoClient was set by createPendingPushStore() above.
+            if (this.signalsMongoClient == null) {
+                this.signalsMongoClient = MongoClients.create(mongoUri);
+            }
+            MongoPendingAckStore store = new MongoPendingAckStore(signalsMongoClient, mongoDbName);
+            store.init();
+            return store;
+        }
+        Path eventsRoot = Paths.get(memoryDir);
+        logger.info("Creating FilePendingAckStore (memory provider) under {}/events/acks", eventsRoot.toAbsolutePath());
+        FilePendingAckStore store = new FilePendingAckStore(eventsRoot);
+        store.init();
+        return store;
+    }
+
+    /**
+     * Schedules a periodic JWKS reload for any public key that
+     * {@link SsfHandler#Open} could not resolve at boot ({@code
+     * pollStream.issuerKey} when {@code rcvIssJwksUrl} is set, and
+     * {@code pushStream.receiverKey} when {@code pubAudJwksUrl} is set).
+     * The task self-cancels once every expected key is loaded so a remote
+     * SSF JWKS endpoint that comes online late no longer needs a SCIM restart.
+     * Cadence is {@code scim.signals.jwks.refresh.interval} (default 60s).
+     */
+    private void installJwksKeyRefresh() {
+        if (ssfClient == null) return;
+        PollStream poll = ssfClient.getPollStream();
+        PushStream push = ssfClient.getPushStream();
+
+        boolean wantsPollKey = poll != null && poll.enabled
+                && !"NONE".equals(configProps.rcvIssJwksUrl)
+                && poll.issuerKey == null;
+        boolean wantsPushKey = push != null && push.enabled
+                && !"NONE".equals(configProps.pubAudJwksUrl)
+                && push.receiverKey == null;
+
+        if (!wantsPollKey && !wantsPushKey) return;
+
+        String key = "jwks-refresh";
+        long intervalMs = Math.max(1000L, configProps.jwksRefreshInterval);
+        logger.warn("JWKS key(s) missing at boot (poll-issuer={}, push-receiver={}); scheduling refresh every {}ms",
+                wantsPollKey, wantsPushKey, intervalMs);
+
+        scheduler.scheduleJwksRefresh(key, () -> {
+            boolean stillMissing = false;
+            if (poll != null && poll.enabled
+                    && !"NONE".equals(configProps.rcvIssJwksUrl)
+                    && poll.issuerKey == null) {
+                java.security.PublicKey reloaded = configProps.getIssuerPublicKey();
+                if (reloaded != null) {
+                    poll.issuerKey = reloaded;
+                    logger.info("JWKS refresh loaded poll issuer key (kid={})", configProps.rcvIss);
+                } else {
+                    stillMissing = true;
+                }
+            }
+            if (push != null && push.enabled
+                    && !"NONE".equals(configProps.pubAudJwksUrl)
+                    && push.receiverKey == null) {
+                java.security.PublicKey reloaded = configProps.getAudPublicKey();
+                if (reloaded != null) {
+                    push.receiverKey = reloaded;
+                    logger.info("JWKS refresh loaded push receiver key (kid={})", configProps.pubAud);
+                } else {
+                    stillMissing = true;
+                }
+            }
+            if (!stillMissing) {
+                logger.info("JWKS refresh: all expected keys loaded; cancelling refresh task");
+                scheduler.cancelJwksRefresh(key);
+            }
+        }, Duration.ofMillis(intervalMs));
+    }
+
+    private void installPemWatcher() {
+        if (!pubEnabled || ssfClient == null) return;
+        PushStream push = ssfClient.getPushStream();
+        if (push == null) return;
+        this.pemWatcher = PemReloadWatcher.maybeInstall(
+                configProps.pubPemPath,
+                configProps.pubPemValue,
+                pemWatchEnabled,
+                push,
+                configProps::getIssuerPrivateKey);
+    }
+
+    private void wireAckStoreToPollStream() {
+        if (ssfClient == null) return;
+        PollStream poll = ssfClient.getPollStream();
+        if (poll == null) return;
+        poll.ackStore = this.pendingAckStore;
+    }
+
+    private void startPushRetryWorker() {
+        if (!pubEnabled || ssfClient == null) return;
+        PushStream pushStream = ssfClient.getPushStream();
+        if (pushStream == null || !pushStream.enabled) return;
+        this.pushRetryWorker = new PushRetryWorker(pushStream, pendingPushStore);
+        this.pushRetryWorker.start();
     }
 
     private void installStatusInterrogation() {
@@ -194,7 +350,6 @@ public class SignalsEventHandler implements IEventHandler {
                     scheduler.cancelIdleVerify(key);
                 }
             });
-            // Initial schedule (state holder starts in ENABLED)
             if (push.state.getStatus() == StreamStatus.ENABLED) {
                 scheduler.scheduleIdleVerify(key, idleVerifyRun,
                         Duration.ofMillis(push.idleVerifyInterval));
@@ -231,13 +386,7 @@ public class SignalsEventHandler implements IEventHandler {
         return !enabled || !eventsEnabled;
     }
 
-    /*
-    consume is called by SignalsEventReceiver for each event it receives. The event is mapped to an operation for processing.
-     */
     public void consume(Object txn) {
-
-        // This won't get called if rcvEnabled is false (because SignalsEventReceiver is not started)
-
         if (txn == null) {
             logger.warn("Ignoring invalid replication message.");
             return;
@@ -249,10 +398,9 @@ public class SignalsEventHandler implements IEventHandler {
             if (logger.isDebugEnabled())
                 logger.debug("\tReceived SCIM Event:\n" + event.toPrettyString());
             if (op == null) {
-                // Non-provisioning event (e.g. SSF verification) or unsubscribed event type — ack and skip.
                 if (logger.isDebugEnabled())
                     logger.debug("Acking non-provisioning event jti={}", event.getJti());
-                acksPending.add(event.getJti());
+                recordAck(this.pendingAckStore, ssfClient.getPollStream(), event.getJti());
                 return;
             }
             try {
@@ -260,8 +408,7 @@ public class SignalsEventHandler implements IEventHandler {
                 if (tranId != null) {
                     ScimResource txnResource = backendHandler.getTransactionRecord(tranId);
                     if (txnResource != null) {
-                        // Even though we've seen this, we want to ack it so we don't get it again.
-                        acksPending.add(event.getJti());
+                        recordAck(this.pendingAckStore, ssfClient.getPollStream(), event.getJti());
                         logger.warn("Duplicate transaction detected, ignoring.");
                         return;
                     }
@@ -270,61 +417,103 @@ public class SignalsEventHandler implements IEventHandler {
                 logger.error("Backend error fetching transaction: " + e.getMessage());
                 return;
             } catch (MalformedClaimException e) {
-                // We want to ack the event so we don't get it again.
-                acksPending.add(event.getJti());
+                recordAck(this.pendingAckStore, ssfClient.getPollStream(), event.getJti());
                 logger.error("Invalid txn value. Ignoring event");
                 return;
             }
             acceptedOps.add(op);
             pool.addJobAndWait(op);
-            acksPending.add(event.getJti());
-
+            recordAck(this.pendingAckStore, ssfClient.getPollStream(), event.getJti());
         }
     }
-
 
     public FifoCache<Operation> getSendErrorOps() { return sendErrorOps; }
 
     public int getSendErrorCnt() { return sendErrorOps.size(); }
 
-    private synchronized void produce(final Operation op) {
-        if (pubEnabled) {
-            RequestCtx ctx = op.getRequestCtx();
-            if (ctx != null && ctx.isReplicaOp()) {
-                if (logger.isDebugEnabled())
-                    logger.debug("Ignoring internal event: " + op);
-                return; // This is a replication op and should not be re-replicated!
-            }
-            if (logger.isDebugEnabled())
-                logger.debug("Processing event: " + op);
+    /**
+     * PRD-B slice #73: single inline {@link PushStream#attemptOnce} per SET; on
+     * any non-Success outcome the SET is enqueued to {@link PendingPushStore}
+     * and the worker drives retry. The producer thread MUST NOT block on push
+     * health, throw, or drop events — those invariants are the whole point of
+     * the durability slice.
+     */
+    @Override
+    public void publish(Operation op) {
+        if (!pubEnabled || ssfClient == null) return;
+        RequestCtx ctx = op.getRequestCtx();
+        if (ctx != null && ctx.isReplicaOp()) return;
+        PushStream push = ssfClient.getPushStream();
+        if (push == null) return;
 
-            List<SecurityEventToken> events = mapper.MapOperationToSet(op);
-            if (events != null && !events.isEmpty()) {
-                for (SecurityEventToken token : events) {
-                    if (!ssfClient.getPushStream().pushEvent(token))
-                        sendErrorOps.add(op);
-                }
-                return;
-            }
-            sendErrorOps.add(op);
+        List<SecurityEventToken> events = mapper.MapOperationToSet(op);
+        if (events == null || events.isEmpty()) return;
+
+        for (SecurityEventToken token : events) {
+            attemptInlineAndEnqueueOnFailure(push, pendingPushStore, token, op);
         }
     }
 
     /**
-     * This method takes an operation and produces a stream.
-     * @param op The {@link Operation} to be published
+     * Visible for testing. Performs one {@link PushStream#attemptOnce} and, on
+     * any non-Success result, signs the SET with the stream's current issuer
+     * key (which {@code attemptOnce} may have just reloaded) and enqueues it
+     * for the retry worker.
      */
-    @Override
-    public void publish(Operation op) {
-        // Ignore search and get requests
-        pendingPubOps.add(op);
-        processBuffer();
+    static void attemptInlineAndEnqueueOnFailure(PushStream push,
+                                                 PendingPushStore store,
+                                                 SecurityEventToken token,
+                                                 Operation originatingOp) {
+        AttemptResult result = push.attemptOnce(token);
+        if (result instanceof AttemptResult.Success) return;
 
+        String signed = signForStorage(push, token);
+        if (signed == null) {
+            sendErrorOps.add(originatingOp);
+            return;
+        }
+        try {
+            store.enqueue(PendingPushRecord.ofNew(
+                    push.streamId,
+                    token.getJti(),
+                    signed,
+                    PendingPushState.pending,
+                    Instant.now()
+            ));
+        } catch (RuntimeException re) {
+            logger.error("Failed to enqueue pending push (streamId={}, jti={}): {}",
+                    push.streamId, token.getJti(), re.getMessage(), re);
+            sendErrorOps.add(originatingOp);
+        }
     }
 
-    private synchronized void processBuffer() {
-        while (!pendingPubOps.isEmpty() && isProducing())
-            produce(pendingPubOps.remove(0));
+    /**
+     * PRD-B slice #78: write a poll-side ack into the durable {@link PendingAckStore}
+     * under the receiving stream's id. No-op if either the store or the stream's id
+     * is unavailable (e.g., pre-registration window) — receivers fall back to
+     * delivering acks on the next poll once the store is wired and the stream id is
+     * known.
+     */
+    static void recordAck(PendingAckStore store, PollStream poll, String jti) {
+        if (store == null || poll == null || poll.streamId == null) return;
+        try {
+            store.enqueue(poll.streamId, jti, Instant.now());
+        } catch (RuntimeException re) {
+            logger.error("Failed to enqueue pending ack (streamId={}, jti={}): {}",
+                    poll.streamId, jti, re.getMessage(), re);
+        }
+    }
+
+    private static String signForStorage(PushStream push, SecurityEventToken token) {
+        if (push.aud != null) token.setAud(push.aud);
+        token.setIssuer(push.iss);
+        try {
+            return token.JWS(push.issuerKey);
+        } catch (JoseException | MalformedClaimException e) {
+            logger.error("Cannot sign SET for storage (streamId={}, jti={}): {}",
+                    push.streamId, token.getJti(), e.getMessage());
+            return null;
+        }
     }
 
     @Override
@@ -337,26 +526,23 @@ public class SignalsEventHandler implements IEventHandler {
     @Override
     @PreDestroy
     public void shutdown() {
-        //repEmitter.complete();
         if (notEnabled())
             return;
-        this.receiverThread.shutdown();
-
-        processBuffer(); //Ensure all trans sent!
+        if (this.receiverThread != null) this.receiverThread.shutdown();
+        if (this.pushRetryWorker != null) this.pushRetryWorker.shutdown();
+        if (this.pemWatcher != null) this.pemWatcher.close();
 
         try {
-            this.ssfClient.getPushStream().Close();
+            if (this.ssfClient != null && this.ssfClient.getPushStream() != null)
+                this.ssfClient.getPushStream().Close();
         } catch (IOException ignore) {
-
         }
         if (this.scheduler != null) {
             this.scheduler.shutdown();
         }
-        acksPending.clear();
-        pendingPubOps.clear();
+        if (this.signalsMongoClient != null) {
+            try { this.signalsMongoClient.close(); } catch (RuntimeException ignore) {}
+        }
         acceptedOps.clear();
     }
-
 }
-
-

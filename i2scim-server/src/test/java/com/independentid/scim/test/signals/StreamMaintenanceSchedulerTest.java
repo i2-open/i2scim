@@ -91,4 +91,30 @@ class StreamMaintenanceSchedulerTest {
 
         assertThat(counter.get()).isEqualTo(countAtShutdown);
     }
+
+    @Test
+    void jwksRefreshRunsAndCancelStops() throws Exception {
+        AtomicInteger ran = new AtomicInteger();
+        scheduler.scheduleJwksRefresh("poll:s1", ran::incrementAndGet, Duration.ofMillis(50));
+        Thread.sleep(180);
+        scheduler.cancelJwksRefresh("poll:s1");
+        int countAtCancel = ran.get();
+        Thread.sleep(200);
+
+        assertThat(countAtCancel).isGreaterThanOrEqualTo(2);
+        assertThat(ran.get()).isCloseTo(countAtCancel, org.assertj.core.data.Offset.offset(1));
+    }
+
+    @Test
+    void shutdownAlsoStopsJwksRefresh() throws Exception {
+        AtomicInteger counter = new AtomicInteger();
+        scheduler.scheduleJwksRefresh("poll:s1", counter::incrementAndGet, Duration.ofMillis(50));
+        Thread.sleep(120);
+
+        scheduler.shutdown();
+        int countAtShutdown = counter.get();
+        Thread.sleep(200);
+
+        assertThat(counter.get()).isEqualTo(countAtShutdown);
+    }
 }

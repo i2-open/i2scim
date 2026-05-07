@@ -47,9 +47,25 @@ public class PushStream {
     @JsonUnwrapped
     public StreamStateHolder state = new StreamStateHolder();
 
+    /**
+     * Legacy attempt-count cap (PRD-A {@code pubRetryMax}).
+     *
+     * <p>Used unmodified by {@link #pushEvent} (idle-verify + admin path).
+     * For {@link PushRetryWorker} (PRD-B), it acts as a deprecated overlay
+     * on top of {@link #pubRetryElapsedLimit}: when {@code > 0}, retries
+     * stop once the cap is reached even if the elapsed budget has time left.
+     * Set the {@code scim.signals.pub.retry.max=0} property to disable the
+     * overlay and use pure elapsed-time semantics.
+     *
+     * @deprecated for the worker path; use {@link #pubRetryElapsedLimit}.
+     * Still authoritative for {@link #pushEvent}.
+     */
+    @Deprecated
     public int maxRetries = 10;
     public int initialDelay = 2000;
     public int maxDelay = 300000;
+    /** PRD-B elapsed-time recovery budget (ms) for transport/5xx; default 6h. */
+    public long pubRetryElapsedLimit = 21_600_000L;
     public int unauthorizedRetryMax = 10;
     public int unauthorizedRetryDelay = 15000;
     public int statusCheckInterval = 30000;
@@ -101,56 +117,138 @@ public class PushStream {
                 "RetryMaxInterval:\t" + maxDelay + "\n";
     }
 
-    public boolean pushEvent(SecurityEventToken event) {
-        if (this.state.getStatus() != StreamStatus.ENABLED || this.shuttingDown.get())
-            return false;
-        if (this.aud != null)
-            event.setAud(this.aud);
-        event.setIssuer(this.iss);
-
-        if (this.endpointUrl.equals("NONE")) {
-            logger.error("Push endpoint is not yet set. Waiting...");
-            int i = 0;
-            while (this.endpointUrl.equals("NONE") && !this.shuttingDown.get()) {
-                i++;
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    logger.warn("Interrupted while waiting for push endpoint configuration");
-                    Thread.currentThread().interrupt();
-                    return false;
-                }
-                if (i == 30) {
-                    logger.error("Continuing to wait for push endpoint configuration...");
-                    i = 0;
-                }
-            }
-            if (this.shuttingDown.get()) {
-                logger.info("Push stream shutting down, aborting event push");
-                return false;
-            }
-            logger.info("SET Push endpoint set to: " + this.endpointUrl);
+    /**
+     * Single network attempt for a SET. Signs the token, runs the optional
+     * pre-flight /status probe, POSTs once, classifies the response. On a
+     * RFC8935 {@code jws_signature_failed} response (encrypted streams only)
+     * reloads the issuer PEM and retries the POST once inline; this matches
+     * the carve-out in the existing retry loop. Does NOT call
+     * {@link RetryStrategy} or sleep — callers (producer + retry worker) drive
+     * the retry/disable decision based on the returned {@link AttemptResult}.
+     */
+    public AttemptResult attemptOnce(SecurityEventToken event) {
+        if (this.shuttingDown.get()) {
+            return new AttemptResult.StreamNotEnabled(this.state.getStatus(), "shutting down");
         }
+        StreamStatus status = this.state.getStatus();
+        if (status != StreamStatus.ENABLED) {
+            return new AttemptResult.StreamNotEnabled(status, this.state.getErrorMsg());
+        }
+        if (this.endpointUrl == null || this.endpointUrl.equals("NONE")) {
+            return new AttemptResult.StreamNotEnabled(status, "endpoint not configured");
+        }
+
+        if (this.aud != null) event.setAud(this.aud);
+        event.setIssuer(this.iss);
 
         String signed;
         try {
-            signed = event.JWS(issuerKey);
-            logger.info("Signed token:\n" + signed);
-
+            signed = event.JWS(this.issuerKey);
         } catch (JoseException | MalformedClaimException e) {
-            logger.error("Event signing error: " + e.getMessage());
-            return false;
+            return new AttemptResult.Failure(
+                    PushFailureClassifier.classify(new IOException("signing failed", e)),
+                    "signing failed: " + e.getMessage()
+            );
         }
-        if (this.client == null)
-            setSslContext(null);
 
-        // T2 — pre-flight status check before first send after init/restart
+        if (this.client == null) setSslContext(null);
+
         if (preflightDone.compareAndSet(false, true)) {
             if (probeRemoteAndTransitionIfNonEnabled("pre-flight")) {
-                return false;
+                return new AttemptResult.StreamNotEnabled(this.state.getStatus(), this.state.getErrorMsg());
             }
         }
 
+        AttemptResult r = postOnce(signed);
+        if (r instanceof AttemptResult.Failure f
+                && f.classification() instanceof FailureClassification.Rfc8935 rfcErr
+                && Rfc8935Error.JWS_SIGNATURE_FAILED.equals(rfcErr.error().code())
+                && !this.isUnencrypted
+                && this.issuerKeyReloader != null) {
+            this.issuerKey = this.issuerKeyReloader.get();
+            try {
+                signed = event.JWS(this.issuerKey);
+                logger.info("Reloaded issuer PEM and re-signed SET; retrying once");
+            } catch (JoseException | MalformedClaimException e) {
+                this.state.transitionTo(StreamStatus.DISABLED,
+                        "Failed to re-sign after PEM reload: " + e.getMessage());
+                return new AttemptResult.StreamNotEnabled(StreamStatus.DISABLED, this.state.getErrorMsg());
+            }
+            r = postOnce(signed);
+        }
+        return r;
+    }
+
+    /**
+     * Single network attempt for a SET that has already been signed (the worker
+     * path: the payload was signed at enqueue time and stored). No pre-flight,
+     * no JWS-retry, no signing — just POST + classify.
+     */
+    public AttemptResult attemptOnce(String jti, String signedPayload) {
+        if (this.shuttingDown.get()) {
+            return new AttemptResult.StreamNotEnabled(this.state.getStatus(), "shutting down");
+        }
+        StreamStatus status = this.state.getStatus();
+        if (status != StreamStatus.ENABLED) {
+            return new AttemptResult.StreamNotEnabled(status, this.state.getErrorMsg());
+        }
+        if (this.endpointUrl == null || this.endpointUrl.equals("NONE")) {
+            return new AttemptResult.StreamNotEnabled(status, "endpoint not configured");
+        }
+        if (this.client == null) setSslContext(null);
+        return postOnce(signedPayload);
+    }
+
+    private AttemptResult postOnce(String signedPayload) {
+        FailureClassification classification;
+        String errorMsg;
+        try {
+            StringEntity bodyEntity = new StringEntity(signedPayload, ContentType.create("application/secevent+jwt"));
+            HttpPost req = new HttpPost(this.endpointUrl);
+            req.setEntity(bodyEntity);
+            if (!this.authorization.equals("NONE")) {
+                req.setHeader("Authorization", this.authorization);
+            }
+            try (CloseableHttpResponse resp = this.client.execute(req)) {
+                int code = resp.getCode();
+                String reason = resp.getReasonPhrase();
+                byte[] body = readBody(resp);
+                String retryAfterHeader = headerValue(resp, "Retry-After");
+                classification = PushFailureClassifier.classify(code, reason, body, retryAfterHeader);
+
+                if (classification instanceof FailureClassification.Success) {
+                    this.lastSuccessfulPush.set(Instant.now());
+                    if (this.state.getStatus() != StreamStatus.ENABLED) {
+                        this.state.transitionTo(StreamStatus.ENABLED, null);
+                    }
+                    return new AttemptResult.Success();
+                }
+                errorMsg = code + " " + reason;
+            }
+        } catch (IOException e) {
+            if (this.shuttingDown.get()) {
+                logger.info("Push stream shutting down, aborting event push");
+                return new AttemptResult.StreamNotEnabled(this.state.getStatus(), "shutting down");
+            }
+            classification = PushFailureClassifier.classify(e);
+            errorMsg = "transport: " + e.getMessage();
+        }
+
+        if (classification instanceof FailureClassification.Transport
+                || classification instanceof FailureClassification.Server5xx) {
+            if (probeRemoteAndTransitionIfNonEnabled("on-failure")) {
+                return new AttemptResult.StreamNotEnabled(this.state.getStatus(), this.state.getErrorMsg());
+            }
+        }
+        return new AttemptResult.Failure(classification, errorMsg);
+    }
+
+    /**
+     * Idle-verify and admin-driven send: full retry loop using
+     * {@link RetryStrategy}. Producer hot-path uses {@link #attemptOnce} once
+     * and enqueues to {@link PendingPushStore} on failure (PRD-B slice #73).
+     */
+    public boolean pushEvent(SecurityEventToken event) {
         RetryStrategyConfig retryConfig = new RetryStrategyConfig(
                 this.maxRetries,
                 Duration.ofMillis(this.initialDelay),
@@ -158,77 +256,19 @@ public class PushStream {
                 this.unauthorizedRetryMax,
                 Duration.ofMillis(this.unauthorizedRetryDelay)
         );
-
         int attempt = 0;
-        boolean jwsRetryAttempted = false;
-
         while (!this.shuttingDown.get()) {
-            FailureClassification classification;
-            try {
-                if (attempt > 0)
-                    logger.info("Pushing event to " + this.endpointUrl + " (Attempt " + (attempt + 1) + ")");
-
-                StringEntity bodyEntity = new StringEntity(signed, ContentType.create("application/secevent+jwt"));
-                HttpPost req = new HttpPost(this.endpointUrl);
-                req.setEntity(bodyEntity);
-                if (!this.authorization.equals("NONE")) {
-                    req.setHeader("Authorization", this.authorization);
-                }
-
-                try (CloseableHttpResponse resp = client.execute(req)) {
-                    int code = resp.getCode();
-                    String reason = resp.getReasonPhrase();
-                    byte[] body = readBody(resp);
-                    String retryAfterHeader = headerValue(resp, "Retry-After");
-                    classification = PushFailureClassifier.classify(code, reason, body, retryAfterHeader);
-
-                    if (classification instanceof FailureClassification.Success) {
-                        this.lastSuccessfulPush.set(Instant.now());
-                        if (this.state.getStatus() != StreamStatus.ENABLED) {
-                            this.state.transitionTo(StreamStatus.ENABLED, null);
-                        }
-                        return true;
-                    }
-                    logger.warn("Push response classified as " + classification.getClass().getSimpleName()
-                            + " (code=" + code + ")");
-                }
-            } catch (IOException e) {
-                if (this.shuttingDown.get()) {
-                    logger.info("Push stream shutting down, aborting event push");
-                    return false;
-                }
-                logger.warn("Communications error while pushing event (attempt " + (attempt + 1) + "): " + e.getMessage());
-                classification = PushFailureClassifier.classify(e);
+            AttemptResult r = attemptOnce(event);
+            if (r instanceof AttemptResult.Success) {
+                return true;
             }
-
-            // RFC8935 §2.4 jws_signature_failed carve-out: reload PEM and retry once
-            if (classification instanceof FailureClassification.Rfc8935 rfcErr
-                    && Rfc8935Error.JWS_SIGNATURE_FAILED.equals(rfcErr.error().code())
-                    && !this.isUnencrypted
-                    && !jwsRetryAttempted
-                    && this.issuerKeyReloader != null) {
-                jwsRetryAttempted = true;
-                this.issuerKey = this.issuerKeyReloader.get();
-                try {
-                    signed = event.JWS(this.issuerKey);
-                    logger.info("Reloaded issuer PEM and re-signed SET; retrying once");
-                    continue;
-                } catch (JoseException | MalformedClaimException e) {
-                    this.state.transitionTo(StreamStatus.DISABLED,
-                            "Failed to re-sign after PEM reload: " + e.getMessage());
-                    return false;
-                }
+            if (r instanceof AttemptResult.StreamNotEnabled) {
+                return false;
             }
-
-            // T1 — interrogate remote /status before backoff on transport/5xx
-            if (classification instanceof FailureClassification.Transport
-                    || classification instanceof FailureClassification.Server5xx) {
-                if (probeRemoteAndTransitionIfNonEnabled("on-failure")) {
-                    return false;
-                }
-            }
-
-            RetryDecision decision = RetryStrategy.decide(classification, attempt, retryConfig);
+            AttemptResult.Failure f = (AttemptResult.Failure) r;
+            logger.warn("Push response classified as " + f.classification().getClass().getSimpleName()
+                    + " (" + f.errorMsg() + ")");
+            RetryDecision decision = RetryStrategy.decide(f.classification(), attempt, retryConfig);
             switch (decision) {
                 case RetryDecision.Disable d -> {
                     logger.error("Push stream DISABLED: " + d.reason());
@@ -338,6 +378,10 @@ public class PushStream {
     private static String headerValue(CloseableHttpResponse resp, String name) {
         var header = resp.getFirstHeader(name);
         return header == null ? null : header.getValue();
+    }
+
+    public boolean isShuttingDown() {
+        return shuttingDown.get();
     }
 
     public void Close() throws IOException {
