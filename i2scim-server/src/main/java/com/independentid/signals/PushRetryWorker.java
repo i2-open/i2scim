@@ -110,6 +110,16 @@ public final class PushRetryWorker implements Runnable {
                 // Otherwise: continue — interrupt status is intentionally cleared
                 // so the next sleeper.sleep doesn't immediately re-throw.
             } catch (RuntimeException re) {
+                if (isInterruptCause(re)) {
+                    // Mongo (and other I/O) wrap InterruptedException as a RuntimeException
+                    // (e.g. MongoInterruptedException). Treat the same as a direct
+                    // InterruptedException: on shutdown break out, otherwise wake up.
+                    if (shutdown.get() || stream.isShuttingDown()) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                    continue;
+                }
                 logger.warn("PushRetryWorker drain cycle failed for stream {}: {}",
                         safeStreamId(), re.getMessage(), re);
                 try {
@@ -179,5 +189,12 @@ public final class PushRetryWorker implements Runnable {
 
     private String safeStreamId() {
         return stream.streamId == null ? "<unset>" : stream.streamId;
+    }
+
+    private static boolean isInterruptCause(Throwable t) {
+        for (Throwable c = t; c != null; c = c.getCause()) {
+            if (c instanceof InterruptedException) return true;
+        }
+        return false;
     }
 }
