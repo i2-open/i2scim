@@ -18,6 +18,7 @@ public final class StreamMaintenanceScheduler {
     private final ScheduledExecutorService executor;
     private final Map<String, ScheduledFuture<?>> pausedTasks = new ConcurrentHashMap<>();
     private final Map<String, ScheduledFuture<?>> idleTasks = new ConcurrentHashMap<>();
+    private final Map<String, ScheduledFuture<?>> jwksRefreshTasks = new ConcurrentHashMap<>();
 
     public StreamMaintenanceScheduler() {
         this(Executors.newSingleThreadScheduledExecutor(r -> {
@@ -47,11 +48,27 @@ public final class StreamMaintenanceScheduler {
         cancelTask(idleTasks, streamKey);
     }
 
+    /**
+     * Periodically retries a JWKS public-key fetch that failed (or returned no
+     * matching kid) at boot. The task is responsible for self-cancelling via
+     * {@link #cancelJwksRefresh(String)} once the keys it needs are loaded.
+     * See {@link SignalsEventHandler}'s installation of this task.
+     */
+    public void scheduleJwksRefresh(String streamKey, Runnable task, Duration interval) {
+        replaceTask(jwksRefreshTasks, streamKey, task, interval);
+    }
+
+    public void cancelJwksRefresh(String streamKey) {
+        cancelTask(jwksRefreshTasks, streamKey);
+    }
+
     public void shutdown() {
         pausedTasks.values().forEach(f -> f.cancel(false));
         pausedTasks.clear();
         idleTasks.values().forEach(f -> f.cancel(false));
         idleTasks.clear();
+        jwksRefreshTasks.values().forEach(f -> f.cancel(false));
+        jwksRefreshTasks.clear();
         executor.shutdownNow();
         try {
             executor.awaitTermination(5, TimeUnit.SECONDS);

@@ -201,6 +201,16 @@ public class StreamConfigProps {
     @ConfigProperty(name = "scim.signals.pub.idle.verify.interval", defaultValue = "300000")
     public int pubIdleVerifyInterval;
 
+    /**
+     * Cadence (ms) at which {@link SignalsEventHandler} re-attempts a missing
+     * JWKS public-key load. Active only when the relevant JWKS URL is set and
+     * the corresponding {@link PollStream#issuerKey} or
+     * {@link PushStream#receiverKey} is still null after boot. Default 60s.
+     * Self-cancels once the expected key is loaded.
+     */
+    @ConfigProperty(name = "scim.signals.jwks.refresh.interval", defaultValue = "60000")
+    public int jwksRefreshInterval;
+
     @ConfigProperty(name = "scim.signals.test", defaultValue = "false")
     boolean isTest;
 
@@ -319,7 +329,16 @@ public class StreamConfigProps {
         }
     }
 
-    private PublicKey loadJwksPublicKey(String url, String jwksJson, String kid) {
+    /**
+     * Loads a JWKS public key by {@code kid} from either an HTTP endpoint or
+     * inline JSON. Boot-path graceful contract (see PRD #64): every failure
+     * mode — unreachable endpoint, JSON without a {@code keys} member, parse
+     * error, or no matching {@code kid} — logs a warning and returns
+     * {@code null} rather than throwing. Callers must tolerate a null return;
+     * {@link SignalsEventHandler} schedules a periodic re-attempt so a remote
+     * JWKS that comes online later heals without a JVM restart.
+     */
+    PublicKey loadJwksPublicKey(String url, String jwksJson, String kid) {
         if (!url.equals("NONE")) {
             HttpsJwks httpJkws = new HttpsJwks(url);
             SSLContext sslContext = getSslContext();
@@ -333,18 +352,18 @@ public class StreamConfigProps {
 
                 for (JsonWebKey key : keys) {
                     if (key.getKeyId().equalsIgnoreCase(kid)) {
-
-                        logger.info("Public key matched" + kid);
+                        logger.info("Public key matched " + kid);
                         return (PublicKey) key.getKey();
                     }
                 }
-                String msg = "No public key was located from: " + url;
-                logger.error(msg);
-                throw new RuntimeException("No public key was located from: " + url);
+                logger.warn("JWKS at {} returned {} key(s) but none matched kid '{}'; key remains unloaded",
+                        url, keys.size(), kid);
+                return null;
 
             } catch (JoseException | IOException e) {
-                logger.error("Error loading public key from: " + url, e);
-                throw new RuntimeException(e);
+                logger.warn("Could not load JWKS from {} (kid '{}'): {}; key remains unloaded",
+                        url, kid, e.getMessage());
+                return null;
             }
         } else {
             if (!jwksJson.equals("NONE")) {
@@ -358,9 +377,11 @@ public class StreamConfigProps {
                             return (PublicKey) key.getKey();
                         }
                     }
+                    logger.warn("Inline JWKS contained {} key(s) but none matched kid '{}'; key remains unloaded",
+                            keys.size(), kid);
                 } catch (JoseException e) {
-                    logger.error("Error parsing public key for " + kid, e);
-                    throw new RuntimeException(e);
+                    logger.warn("Could not parse inline JWKS for kid '{}': {}; key remains unloaded",
+                            kid, e.getMessage());
                 }
             }
         }

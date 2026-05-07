@@ -189,6 +189,7 @@ public class SignalsEventHandler implements IEventHandler {
         installStatusInterrogation();
         wireAckStoreToPollStream();
         installPemWatcher();
+        installJwksKeyRefresh();
 
         startPushRetryWorker();
 
@@ -238,6 +239,65 @@ public class SignalsEventHandler implements IEventHandler {
         FilePendingAckStore store = new FilePendingAckStore(eventsRoot);
         store.init();
         return store;
+    }
+
+    /**
+     * Schedules a periodic JWKS reload for any public key that
+     * {@link SsfHandler#Open} could not resolve at boot ({@code
+     * pollStream.issuerKey} when {@code rcvIssJwksUrl} is set, and
+     * {@code pushStream.receiverKey} when {@code pubAudJwksUrl} is set).
+     * The task self-cancels once every expected key is loaded so a remote
+     * SSF JWKS endpoint that comes online late no longer needs a SCIM restart.
+     * Cadence is {@code scim.signals.jwks.refresh.interval} (default 60s).
+     */
+    private void installJwksKeyRefresh() {
+        if (ssfClient == null) return;
+        PollStream poll = ssfClient.getPollStream();
+        PushStream push = ssfClient.getPushStream();
+
+        boolean wantsPollKey = poll != null && poll.enabled
+                && !"NONE".equals(configProps.rcvIssJwksUrl)
+                && poll.issuerKey == null;
+        boolean wantsPushKey = push != null && push.enabled
+                && !"NONE".equals(configProps.pubAudJwksUrl)
+                && push.receiverKey == null;
+
+        if (!wantsPollKey && !wantsPushKey) return;
+
+        String key = "jwks-refresh";
+        long intervalMs = Math.max(1000L, configProps.jwksRefreshInterval);
+        logger.warn("JWKS key(s) missing at boot (poll-issuer={}, push-receiver={}); scheduling refresh every {}ms",
+                wantsPollKey, wantsPushKey, intervalMs);
+
+        scheduler.scheduleJwksRefresh(key, () -> {
+            boolean stillMissing = false;
+            if (poll != null && poll.enabled
+                    && !"NONE".equals(configProps.rcvIssJwksUrl)
+                    && poll.issuerKey == null) {
+                java.security.PublicKey reloaded = configProps.getIssuerPublicKey();
+                if (reloaded != null) {
+                    poll.issuerKey = reloaded;
+                    logger.info("JWKS refresh loaded poll issuer key (kid={})", configProps.rcvIss);
+                } else {
+                    stillMissing = true;
+                }
+            }
+            if (push != null && push.enabled
+                    && !"NONE".equals(configProps.pubAudJwksUrl)
+                    && push.receiverKey == null) {
+                java.security.PublicKey reloaded = configProps.getAudPublicKey();
+                if (reloaded != null) {
+                    push.receiverKey = reloaded;
+                    logger.info("JWKS refresh loaded push receiver key (kid={})", configProps.pubAud);
+                } else {
+                    stillMissing = true;
+                }
+            }
+            if (!stillMissing) {
+                logger.info("JWKS refresh: all expected keys loaded; cancelling refresh task");
+                scheduler.cancelJwksRefresh(key);
+            }
+        }, Duration.ofMillis(intervalMs));
     }
 
     private void installPemWatcher() {
