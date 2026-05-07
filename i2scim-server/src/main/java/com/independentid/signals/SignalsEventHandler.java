@@ -94,6 +94,9 @@ public class SignalsEventHandler implements IEventHandler {
     @ConfigProperty(name = "scim.prov.memory.dir", defaultValue = "./scimdata")
     String memoryDir;
 
+    @ConfigProperty(name = "scim.signals.pub.pem.watch", defaultValue = "true")
+    boolean pemWatchEnabled;
+
     SignalsEventReceiver receiverThread;
 
     protected static final List<Operation> acceptedOps = new CopyOnWriteArrayList<>();
@@ -122,6 +125,7 @@ public class SignalsEventHandler implements IEventHandler {
     PendingAckStore pendingAckStore;
     MongoClient signalsMongoClient; // only set when scim.prov.providerClass=Mongo
     PushRetryWorker pushRetryWorker;
+    PemReloadWatcher pemWatcher;
 
     boolean ready = false;
 
@@ -184,6 +188,7 @@ public class SignalsEventHandler implements IEventHandler {
         this.scheduler = new StreamMaintenanceScheduler();
         installStatusInterrogation();
         wireAckStoreToPollStream();
+        installPemWatcher();
 
         startPushRetryWorker();
 
@@ -233,6 +238,18 @@ public class SignalsEventHandler implements IEventHandler {
         FilePendingAckStore store = new FilePendingAckStore(eventsRoot);
         store.init();
         return store;
+    }
+
+    private void installPemWatcher() {
+        if (!pubEnabled || ssfClient == null) return;
+        PushStream push = ssfClient.getPushStream();
+        if (push == null) return;
+        this.pemWatcher = PemReloadWatcher.maybeInstall(
+                configProps.pubPemPath,
+                configProps.pubPemValue,
+                pemWatchEnabled,
+                push,
+                configProps::getIssuerPrivateKey);
     }
 
     private void wireAckStoreToPollStream() {
@@ -453,6 +470,7 @@ public class SignalsEventHandler implements IEventHandler {
             return;
         if (this.receiverThread != null) this.receiverThread.shutdown();
         if (this.pushRetryWorker != null) this.pushRetryWorker.shutdown();
+        if (this.pemWatcher != null) this.pemWatcher.close();
 
         try {
             if (this.ssfClient != null && this.ssfClient.getPushStream() != null)
