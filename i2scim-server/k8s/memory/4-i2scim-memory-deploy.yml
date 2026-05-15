@@ -6,7 +6,7 @@ metadata:
     prometheus.io/port: "8080"
     prometheus.io/scheme: http
     prometheus.io/scrape: "true"
-    prometheus.io/path: /metrics
+    prometheus.io/path: /q/metrics
   labels:
     app.kubernetes.io/name: i2scim-mem
     app.kubernetes.io/version: 0.7.0-Alpha
@@ -20,7 +20,7 @@ metadata:
     prometheus.io/port: "8080"
     prometheus.io/scheme: http
     prometheus.io/scrape: "true"
-    prometheus.io/path: /metrics
+    prometheus.io/path: /q/metrics
   labels:
     app.kubernetes.io/name: i2scim-mem
     app.kubernetes.io/version: 0.7.0-Alpha
@@ -56,7 +56,7 @@ metadata:
     prometheus.io/port: "8080"
     prometheus.io/scheme: http
     prometheus.io/scrape: "true"
-    prometheus.io/path: /metrics
+    prometheus.io/path: /q/metrics
   labels:
     app.kubernetes.io/name: i2scim-mem
     app.kubernetes.io/version: 0.7.0-Alpha
@@ -74,7 +74,7 @@ spec:
         prometheus.io/port: "8080"
         prometheus.io/scheme: http
         prometheus.io/scrape: "true"
-        prometheus.io/path: /metrics
+        prometheus.io/path: /q/metrics
       labels:
         app.kubernetes.io/name: i2scim-mem
         app.kubernetes.io/version: 0.7.0-Alpha

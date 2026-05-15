@@ -235,16 +235,19 @@ public class ScimHealthTest {
 
     @Test
     public void d_metricsCheckJwt() throws Exception {
-        URL rUrl = new URL(baseUrl, "/metrics");
+        // Endpoint moved from /metrics to /q/metrics (issue #84) so the dev
+        // Prometheus scrape can reach it without going through the SCIM auth
+        // filter. The JWT header is left in to prove that supplying one
+        // doesn't break the endpoint — `/q/metrics` is anonymous either way.
+        URL rUrl = new URL(baseUrl, "/q/metrics");
         HttpGet get = new HttpGet(rUrl.toString());
         get.addHeader(HttpHeaders.AUTHORIZATION, bearer);
-        get.addHeader(HttpHeaders.ACCEPT, "text/plain");
+        get.addHeader(HttpHeaders.ACCEPT, "text/plain;version=0.0.4");
         ClassicHttpResponse resp = TestUtils.executeRequest(get);
         HttpEntity entity = resp.getEntity();
 
         String body = EntityUtils.toString(entity);
-        System.out.println("METRICS BODY:\n" + body);
-        logger.info("/metrics\n" + body);
+        logger.info("/q/metrics\n" + body);
 
         assertThat(resp.getCode())
                 .as("Check metrics response received ok")
