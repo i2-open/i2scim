@@ -20,7 +20,7 @@
 
     <groupId>com.independentid</groupId>
     <artifactId>i2scim-root</artifactId>
-    <version>0.10.1</version>
+    <version>0.10.2</version>
     <packaging>pom</packaging>
     <name>i2scim-root</name>
     <description>i2scim.io SCIM v2 Server on Quarkus - Root Project</description>
