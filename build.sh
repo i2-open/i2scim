@@ -70,6 +70,11 @@ common_args=(
   -t "independentid/i2scim-universal:${tag}"
 )
 
+# When pushing a non-latest tag, also tag/push :latest in the same build.
+if [[ ${push} -eq 1 && "${tag}" != "latest" ]]; then
+  common_args+=(-t "independentid/i2scim-universal:latest")
+fi
+
 if [[ ${push} -eq 1 ]]; then
   docker buildx build --platform linux/amd64,linux/arm64 --push "${common_args[@]}" .
 else
