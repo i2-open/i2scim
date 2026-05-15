@@ -9,7 +9,7 @@ metadata:
     app.quarkus.io/vcs-url: https://github.com/independentid/i2scim.git
     app.quarkus.io/build-timestamp: 2021-06-29 - 17:36:09 +0000
     prometheus.io/scrape: "true"
-    prometheus.io/path: /metrics
+    prometheus.io/path: /q/metrics
   labels:
     app.kubernetes.io/name: i2scim-mongo
     app.kubernetes.io/version: 0.6.1
@@ -26,7 +26,7 @@ metadata:
     app.quarkus.io/vcs-url: https://github.com/independentid/i2scim.git
     app.quarkus.io/build-timestamp: 2021-06-29 - 17:36:09 +0000
     prometheus.io/scrape: "true"
-    prometheus.io/path: /metrics
+    prometheus.io/path: /q/metrics
   labels:
     app.kubernetes.io/name: i2scim-mongo
     app.kubernetes.io/version: 0.6.1
@@ -62,7 +62,7 @@ metadata:
     prometheus.io/port: "8080"
     prometheus.io/scheme: http
     prometheus.io/scrape: "true"
-    prometheus.io/path: /metrics
+    prometheus.io/path: /q/metrics
   labels:
     app.kubernetes.io/name: i2scim-mongo
     app.kubernetes.io/version: 0.6.1
@@ -81,7 +81,7 @@ spec:
         prometheus.io/port: "8080"
         prometheus.io/scheme: http
         prometheus.io/scrape: "true"
-        prometheus.io/path: /metrics
+        prometheus.io/path: /q/metrics
       labels:
         app.kubernetes.io/name: i2scim-mongo
         app.kubernetes.io/version: 0.6.1

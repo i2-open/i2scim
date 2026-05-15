@@ -52,7 +52,7 @@ For a fault-tolerant deployment, run an external MongoDB replica set or sharded 
 
 ## Health and observability
 
-The image exposes the standard Quarkus health endpoints (`/q/health/live`, `/q/health/ready`) and a Prometheus-format metrics endpoint at `/metrics` (configured via `quarkus.micrometer.export.prometheus.path`). Both deployment files set the standard `prometheus.io/*` annotations for scrape discovery.
+The image exposes the standard Quarkus health endpoints (`/q/health/live`, `/q/health/ready`) and a Prometheus-format metrics endpoint at `/q/metrics` on port 8080 (configured via `quarkus.micrometer.export.prometheus.path`). The endpoint is anonymous (it sits under Quarkus's non-application root, outside the SCIM auth filter) so dev/cluster Prometheus instances can scrape it without credentials. Prometheus selects the 0.0.4 text format with `Accept: text/plain;version=0.0.4`; the default Accept negotiation returns OpenMetrics 1.0.0, which Prometheus also handles. Both deployment files set the standard `prometheus.io/*` annotations for scrape discovery — point the scrape path at `/q/metrics`.
 
 ## See also
 

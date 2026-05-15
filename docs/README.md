@@ -22,6 +22,33 @@ adapted to act as a gateway to internal proprietary identity APIs by implementin
 
 ## Recent Updates
 
+# Release 0.10.2
+
+This release wires i2scim into the i2goSignals observability stack
+(Loki + Prometheus) so dev operators get unified logs and metrics for
+SCIM peers alongside goSignals services. JSON logging is env-gated; the
+prod default (text format on stdout) is unchanged.
+
+* **Env-gated JSON console logging** — Set `QUARKUS_LOG_CONSOLE_JSON=true`
+  to emit JSON records whose keys match the i2goSignals Loki schema:
+  `time`, `level`, `msg`, `component`, plus the static fields `service`
+  (`"i2scim"`) and `version`. Default off; prod stdout stays text.
+* **Per-container identity** — `NODE_ID` and `CLUSTER_NAME` env vars are
+  appended to every JSON record so `{node_id="..."}` and
+  `{cluster_name="..."}` Loki/LogQL queries select individual peers.
+  Unset → `"unknown"` sentinel (SmallRye Config rejects an empty
+  `additional-field.value`).
+* **Prometheus metrics at `/q/metrics`** — The Micrometer endpoint moves
+  from `/metrics` to `/q/metrics` so it sits under Quarkus's
+  non-application root and is reachable anonymously (matching the
+  `/q/health` posture). Use `Accept: text/plain;version=0.0.4` for the
+  legacy Prometheus text format; the default Accept negotiation returns
+  OpenMetrics 1.0.0. K8s manifests updated to point
+  `prometheus.io/path` at the new path.
+* **Startup banner** — The server logs `i2scim server v<version>` on
+  startup so the version is visible in the unified log stream without
+  needing to inspect the image tag.
+
 # Release 0.10.1
 
 This release makes i2scim's Signals client behave the way operators of
