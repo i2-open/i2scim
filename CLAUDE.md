@@ -117,3 +117,17 @@ DECISIONS.md is a living log of upgrade decisions — consult it before changing
 6. Once all issues are implemented, complete QA cycle assessing whether all issues are complete in the PR
 7. Request HITL QA approval
 8. Merge PR
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues at `i2-open/i2scim` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Canonical Matt Pocock vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
