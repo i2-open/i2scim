@@ -21,9 +21,10 @@ resolve to that string via `${quarkus.mongodb.connection-string:mongodb://localh
 so the tests connect to the container automatically. The container runs without access
 control, and `TestUtils.resetMongoDb()` connects unauthenticated.
 
-**The only prerequisite is a running Docker daemon.** This is what CI uses
-(`.github/workflows/build-and-attest.yml` runs the Mongo tests on `ubuntu-latest`,
-which ships with Docker).
+**The only prerequisite is a running Docker daemon.** This is what CI uses:
+`.github/workflows/build-and-attest.yml` runs the entire `i2scim-server` test
+suite on `ubuntu-latest` (which ships with Docker), so the Mongo tests — along
+with everything else — run on every push and pull request.
 
 ### Running locally
 
