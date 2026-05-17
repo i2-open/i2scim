@@ -806,6 +806,43 @@ public class RiscEventMapperTest {
     }
 
     @Test
+    public void zc_memoryProviderCapturesPutPatchPreImage() {
+        logger.info("ZC. MemoryProvider.put()/patch() capture the pre-image on RequestCtx");
+        try {
+            CreateOp createOp = createUserOp(loadTestUser());
+            String id = createOp.getResourceId();
+
+            // PUT replaces the resource — the pre-image must be the prior state.
+            RequestCtx readCtx = new RequestCtx("Users", id, null, schemaManager);
+            ObjectNode body = (ObjectNode) createOp.getTransactionResource().toJsonNode(readCtx);
+            body.put("title", "Changed Title");
+            ScimResource replacement = new ScimResource(schemaManager, body, "Users");
+            RequestCtx putCtx = new RequestCtx("Users", id, null, schemaManager);
+            ScimResponse putResp = provider.put(putCtx, replacement);
+            assertThat(putResp.getStatus()).as("PUT succeeded").isLessThan(300);
+            assertThat(putCtx.getPreImageResource())
+                    .as("Pre-image captured by MemoryProvider.put()").isNotNull();
+            assertThat(putCtx.getPreImageResource().getId())
+                    .as("PUT pre-image is the prior User").isEqualTo(id);
+
+            // PATCH mutates the resource — the pre-image must be the prior state.
+            Attribute titleAttr = schemaManager.findAttribute("User:title", null);
+            JsonPatchRequest jpr = new JsonPatchRequest();
+            jpr.addOperation(new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE, "title",
+                    new StringValue(titleAttr, "Patched Title")));
+            RequestCtx patchCtx = new RequestCtx("Users", id, null, schemaManager);
+            ScimResponse patchResp = provider.patch(patchCtx, jpr);
+            assertThat(patchResp.getStatus()).as("PATCH succeeded").isLessThan(300);
+            assertThat(patchCtx.getPreImageResource())
+                    .as("Pre-image captured by MemoryProvider.patch()").isNotNull();
+            assertThat(patchCtx.getPreImageResource().getId())
+                    .as("PATCH pre-image is the prior User").isEqualTo(id);
+        } catch (Exception e) {
+            fail("Error in memory put/patch pre-image test: " + e.getMessage(), e);
+        }
+    }
+
+    @Test
     public void f_memoryProviderCapturesPreImage() {
         logger.info("F. MemoryProvider.delete() captures the pre-image on RequestCtx");
         try {
