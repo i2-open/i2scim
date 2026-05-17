@@ -79,6 +79,12 @@ public class SignalsEventHandler implements IEventHandler {
     @ConfigProperty(name = "scim.signals.rcv.types", defaultValue = "*")
     Optional<List<String>> rcvTypes;
 
+    @ConfigProperty(name = "scim.signals.risc.enable", defaultValue = "false")
+    boolean riscEnabled;
+
+    @ConfigProperty(name = "scim.signals.risc.types", defaultValue = "*")
+    Optional<List<String>> riscTypes;
+
     @ConfigProperty(name = "scim.signals.test", defaultValue = "false")
     boolean isTest;
 
@@ -118,6 +124,8 @@ public class SignalsEventHandler implements IEventHandler {
     SsfHandler ssfClient;
 
     SignalsEventMapper mapper;
+
+    RiscEventMapper riscMapper;
 
     StreamMaintenanceScheduler scheduler;
 
@@ -165,6 +173,14 @@ public class SignalsEventHandler implements IEventHandler {
         }
 
         this.mapper = new SignalsEventMapper(pubCfgTypes, rcvCfgTypes, InjectionManager.getInstance().getGenerator());
+
+        List<String> riscCfgTypes = riscTypes.orElseGet(() -> {
+            List<String> all = new ArrayList<>();
+            all.add("*");
+            return all;
+        });
+        this.riscMapper = new RiscEventMapper(
+                new RiscConfig(riscEnabled, riscCfgTypes), InjectionManager.getInstance().getGenerator());
 
         try {
             if (isTest)
@@ -446,8 +462,12 @@ public class SignalsEventHandler implements IEventHandler {
         PushStream push = ssfClient.getPushStream();
         if (push == null) return;
 
-        List<SecurityEventToken> events = mapper.MapOperationToSet(op);
-        if (events == null || events.isEmpty()) return;
+        List<SecurityEventToken> events = new ArrayList<>();
+        List<SecurityEventToken> scimEvents = mapper.MapOperationToSet(op);
+        if (scimEvents != null) events.addAll(scimEvents);
+        // RISC events derived from the same operation ride the same push stream.
+        if (riscMapper != null) events.addAll(riscMapper.mapToRiscEvents(op));
+        if (events.isEmpty()) return;
 
         for (SecurityEventToken token : events) {
             attemptInlineAndEnqueueOnFailure(push, pendingPushStore, token, op);

@@ -54,6 +54,9 @@ public class SignalsEventHandlerTest {
     @Test
     public void a_TestHello() {
         utils.resetMemDirectory();
+        // Baseline the mock's JVM-static counters — other test classes (e.g.
+        // RiscEventHandlerTest) push to the same mock within this JVM.
+        MockSignalsServer.reset();
 
         try (CloseableHttpClient client = HttpClients.createDefault()) {
             HttpGet get = new HttpGet("http://localhost:8081/signals/hello");

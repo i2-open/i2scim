@@ -627,6 +627,9 @@ public class MemoryProvider implements IScimProvider {
 
         if (res == null)
             return new ScimResponse(ScimResponse.ST_NOTFOUND, null, null);
+        // Retain the removed resource as the pre-image so event derivation (e.g. RISC
+        // Account Purged) has subject material — ADR-0001. No extra backend read.
+        ctx.setPreImageResource(res);
         deIndexResource(res);
         String type = ctx.getResourceContainer();
         this.containerMaps.get(type).remove(ctx.getPathId());

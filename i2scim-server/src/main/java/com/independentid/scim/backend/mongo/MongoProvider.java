@@ -531,6 +531,15 @@ public class MongoProvider implements IScimProvider {
 
 		//col.remove(res, WriteConcern.ACKNOWLEDGED);
 
+		// Retain the removed resource as the pre-image so event derivation (e.g. RISC
+		// Account Purged) has subject material — ADR-0001. Best-effort: a mapping
+		// failure must not fail the delete, which has already succeeded.
+		try {
+			ctx.setPreImageResource(mapUtil.mapScimResource(res, type));
+		} catch (ScimException | BackendException e) {
+			logger.warn("Could not map pre-image for deleted resource " + id + ": " + e.getMessage());
+		}
+
 		// return success
 		return new ScimResponse(ScimResponse.ST_NOCONTENT, null, null);
 	}

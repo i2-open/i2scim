@@ -137,6 +137,14 @@ public class RequestCtx {
     private boolean isReplicaOp = false;
 
     /**
+     * Snapshot of the resource as it existed <em>before</em> the operation. Populated by the
+     * backend provider during {@code patch}/{@code put}/{@code delete} from the resource it
+     * already loads — no extra backend round-trip — and read by the event-derivation path
+     * (e.g. RISC mapping). See {@code docs/adr/0001-pre-image-on-requestctx-for-event-derivation.md}.
+     */
+    private com.independentid.scim.resource.ScimResource preImageResource = null;
+
+    /**
      * Used to create a request context that exists within a single SCIM Bulk operation
      * @param bulkReqOp     A parsed JSON structure representing a single SCIM bulk operation
      * @param schemaManager A pointer to the server ConfigMgr object (for schema)
@@ -921,6 +929,22 @@ public class RequestCtx {
 
     public boolean isReplicaOp() {
         return this.isReplicaOp;
+    }
+
+    /**
+     * @return the pre-operation snapshot of the resource, or {@code null} if none was captured.
+     */
+    public com.independentid.scim.resource.ScimResource getPreImageResource() {
+        return this.preImageResource;
+    }
+
+    /**
+     * Stores the pre-operation snapshot of the resource. Called by backend providers from the
+     * resource already loaded for the operation; consumed by the event-derivation path.
+     * @param preImageResource the resource as it existed before the operation.
+     */
+    public void setPreImageResource(com.independentid.scim.resource.ScimResource preImageResource) {
+        this.preImageResource = preImageResource;
     }
 
     static Instant parseHttpDate(String httpdate) {

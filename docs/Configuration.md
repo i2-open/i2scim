@@ -98,6 +98,14 @@ These properties allow the SSF client to trust custom CA roots (e.g., for self-s
 
 **scim.signals.pub.pem.watch** - PRD-B slice #79. When `true` (default), an out-of-band rotation of `scim.signals.pub.pem.path` is detected proactively via `java.nio.file.WatchService` (with a 5s mtime-poll fallback) and the cached issuer key on the active `PushStream` is refreshed before the next push. Set to `false` to disable the watcher and rely solely on the reactive `jws_signature_failed` reload path. Has no effect when `scim.signals.pub.pem.value` is set (env-value mode requires a restart to roll the key anyway).
 
+#### RISC events (PRD #86)
+
+i2scim can additionally derive **OpenID RISC** events (OpenID RISC Profile 1.0) from SCIM `User` state changes and emit them as their own Security Event Tokens on the existing SET push stream. RISC emission is opt-in and additive to — and gated by — `scim.signals.enable` / `scim.signals.pub.enable`; it does not bypass them. Each RISC event is delivered as its own SET with a distinct `jti`, sharing the `txn` and `toe` of the SCIM events derived from the same operation so a receiver can correlate them. RISC events are emitted only for `User` resources.
+
+**scim.signals.risc.enable** - Master switch for RISC event emission (DEFAULT: `false`). When `false`, upgrading i2scim never changes what existing receivers receive.
+
+**scim.signals.risc.types** - Comma-separated list of RISC event types to emit, by short name: `account-purged`, `account-disabled`, `account-enabled`, `identifier-changed`. A single `*` (the DEFAULT) emits all supported types.
+
 #### Operator re-enable after DISABLED (PRD-B)
 
 A stream transitioned to `DISABLED` by the elapsed-time cap retains all pending JTIs in `pendingPushes` (Mongo) or `events/pending/<streamId>/` (memory). Re-enable is done through the existing PRD-A control surface — programmatically calling `pushStream.state.transitionTo(StreamStatus.ENABLED, null)` on the active `SsfHandler.getPushStream()`. The per-stream `PushRetryWorker` registers a transition listener that wakes the idle-sleeping worker thread on `DISABLED → ENABLED`, so the queue resumes draining (in `queuedAt` order) within milliseconds rather than after the next idle window. The first 2xx response is the operational marker that the stream is healthy again; if the receiver is still failing, the elapsed-time cap fires again and the stream is re-DISABLED. Pending JTIs are never deleted by a DISABLE — only by a successful 2xx delivery.
