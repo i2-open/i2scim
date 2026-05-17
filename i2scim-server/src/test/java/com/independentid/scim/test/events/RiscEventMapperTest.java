@@ -25,6 +25,7 @@ import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.set.SecurityEventToken;
+import com.independentid.set.SubjectIdentifier;
 import com.independentid.signals.RiscConfig;
 import com.independentid.signals.RiscEventMapper;
 import com.independentid.signals.RiscEventTypes;
@@ -672,6 +673,135 @@ public class RiscEventMapperTest {
                     .isEqualTo(scimEvent.getToe());
         } catch (Exception e) {
             fail("Error in identifier subject/payload test: " + e.getMessage(), e);
+        }
+    }
+
+    /** A RiscConfig emitting all types with the given subject format. */
+    private RiscConfig configWithSubjectFormat(String format) {
+        return new RiscConfig(true, List.of("*"), RiscConfig.DEFAULT_IDENTIFIER_ATTRS, true, format);
+    }
+
+    @Test
+    public void x_emailSubjectFormatOnAccountEvent() {
+        logger.info("X. email subject format — Account Purged subject carries the primary email");
+        try {
+            String id = createUser(testUserFile1); // bjensen primary email bjensen@example.com
+            DeleteOp delOp = deleteResource("Users", id);
+            assertThat(delOp.isError()).as("User delete succeeded").isFalse();
+
+            RiscEventMapper mapper = newMapper(configWithSubjectFormat("email"));
+            List<SecurityEventToken> events = mapper.mapToRiscEvents(delOp);
+
+            assertThat(events).as("One RISC event for a User delete").hasSize(1);
+            SubjectIdentifier subject = events.get(0).getSubjectIdentifier();
+            assertThat(subject.format).as("email subject format").isEqualTo("email");
+            assertThat(subject.email)
+                    .as("Subject carries the primary email").isEqualTo("bjensen@example.com");
+        } catch (Exception e) {
+            fail("Error in email-subject-format test: " + e.getMessage(), e);
+        }
+    }
+
+    @Test
+    public void y_usernameSubjectFormatOnAccountEvent() {
+        logger.info("Y. username subject format — account event subject carries userName");
+        try {
+            ObjectNode user = loadTestUser();
+            String userName = user.get("userName").asText();
+            CreateOp op = createUserOp(user); // bjensen active=true → Account Enabled
+
+            RiscEventMapper mapper = newMapper(configWithSubjectFormat("username"));
+            List<SecurityEventToken> events = mapper.mapToRiscEvents(op);
+
+            assertThat(events).as("One RISC event for a User create").hasSize(1);
+            SubjectIdentifier subject = events.get(0).getSubjectIdentifier();
+            assertThat(subject.format).as("username subject format").isEqualTo("username");
+            assertThat(subject.username)
+                    .as("Subject carries the userName").isEqualTo(userName);
+        } catch (Exception e) {
+            fail("Error in username-subject-format test: " + e.getMessage(), e);
+        }
+    }
+
+    @Test
+    public void z_phoneSubjectFormatOnAccountEvent() {
+        logger.info("Z. phone subject format — account event subject carries the primary phone");
+        try {
+            ObjectNode user = loadTestUser();
+            // bjensen's sample phoneNumbers has two entries and no primary flag;
+            // give it a single entry so it has an unambiguous primary value.
+            user.set("phoneNumbers",
+                    JsonUtil.getJsonTree("[{\"value\":\"555-0100\",\"type\":\"work\"}]"));
+            CreateOp op = createUserOp(user);
+
+            RiscEventMapper mapper = newMapper(configWithSubjectFormat("phone"));
+            List<SecurityEventToken> events = mapper.mapToRiscEvents(op);
+
+            assertThat(events).as("One RISC event for a User create").hasSize(1);
+            SubjectIdentifier subject = events.get(0).getSubjectIdentifier();
+            assertThat(subject.format).as("phone subject format").isEqualTo("phone");
+            assertThat(subject.phoneNumber)
+                    .as("Subject carries the primary phone number").isEqualTo("555-0100");
+        } catch (Exception e) {
+            fail("Error in phone-subject-format test: " + e.getMessage(), e);
+        }
+    }
+
+    @Test
+    public void za_identifierChangedCarriesPriorValueUnderEmailFormat() {
+        logger.info("ZA. email format — Identifier Changed subject carries the prior email");
+        try {
+            CreateOp createOp = createUserOp(loadTestUser()); // primary email bjensen@example.com
+            String id = createOp.getResourceId();
+            RequestCtx readCtx = new RequestCtx("Users", id, null, schemaManager);
+            ObjectNode body = (ObjectNode) createOp.getTransactionResource().toJsonNode(readCtx);
+            String newName = "renamed-" + java.util.UUID.randomUUID() + "@example.com";
+            body.put("userName", newName);
+
+            PutOp op = putResource(id, body);
+            assertThat(op.isError()).as("Put succeeded").isFalse();
+
+            RiscEventMapper mapper = newMapper(configWithSubjectFormat("email"));
+            List<SecurityEventToken> events = mapper.mapToRiscEvents(op);
+
+            assertThat(events).as("One RISC event for the userName change").hasSize(1);
+            SecurityEventToken event = events.get(0);
+            SubjectIdentifier subject = event.getSubjectIdentifier();
+            assertThat(subject.format).as("email subject format").isEqualTo("email");
+            assertThat(subject.email)
+                    .as("Subject carries the prior (pre-image) email")
+                    .isEqualTo("bjensen@example.com");
+            assertThat(event.GetEvent(RiscEventTypes.IDENTIFIER_CHANGED).get("new-value").asText())
+                    .as("Payload carries the new identifier value").isEqualTo(newName);
+        } catch (Exception e) {
+            fail("Error in email-format identifier-changed test: " + e.getMessage(), e);
+        }
+    }
+
+    @Test
+    public void zb_subjectFormatFallsBackToScimWhenUnsatisfiable() {
+        logger.info("ZB. email format but no email — subject falls back to scim, event still emitted");
+        try {
+            ObjectNode user = loadTestUser();
+            user.remove("emails"); // no email — the email subject format cannot be satisfied
+            String id = createUserOp(user).getResourceId();
+            DeleteOp delOp = deleteResource("Users", id);
+            assertThat(delOp.isError()).as("User delete succeeded").isFalse();
+
+            RiscEventMapper mapper = newMapper(configWithSubjectFormat("email"));
+            List<SecurityEventToken> events = mapper.mapToRiscEvents(delOp);
+
+            assertThat(events).as("Event still emitted despite the unsatisfiable format").hasSize(1);
+            SecurityEventToken event = events.get(0);
+            assertThat(event.GetEvent(RiscEventTypes.ACCOUNT_PURGED))
+                    .as("SET carries the Account Purged event").isNotNull();
+            SubjectIdentifier subject = event.getSubjectIdentifier();
+            assertThat(subject.format)
+                    .as("Falls back to the scim subject format").isEqualTo("scim");
+            assertThat(subject.id)
+                    .as("Fallback scim subject carries the stable id").isEqualTo(id);
+        } catch (Exception e) {
+            fail("Error in subject-format fallback test: " + e.getMessage(), e);
         }
     }
 

@@ -110,11 +110,13 @@ i2scim can additionally derive **OpenID RISC** events (OpenID RISC Profile 1.0) 
 
 **scim.signals.risc.identifier.addRemoveIsChange** - When `true` (the DEFAULT), a pure add or removal of an identifier value (one side absent) counts as an Identifier Changed event. When `false`, only a value-to-value change emits.
 
+**scim.signals.risc.subject.format** - The subject identifier format carried by all RISC events: one of `scim` (the DEFAULT), `email`, `username`, or `phone`. With `scim` the subject is the stable `id`/`uri` of the `User`. With `email`/`username`/`phone` the subject carries the primary value of the corresponding `User` attribute (`emails`, `userName`, `phoneNumbers`); for Identifier Changed this is the *prior* (pre-image) value, with the new value still conveyed in the payload. When the configured format cannot be satisfied for a given `User` (e.g. `email` format but the `User` has no email), the event falls back to the `scim` subject so it is still emitted.
+
 RISC events are derived as follows:
 
 - **account-purged** — a `User` DELETE.
 - **account-enabled** / **account-disabled** — a change to a `User`'s `active` attribute (an absent `active` is treated as enabled). A CREATE always emits, reflecting the resulting state. A PATCH that `add`s/`replace`s `active` (including a path-less `value` object) emits the new value — even when unchanged — and a PATCH that `remove`s `active` emits `account-enabled`. A PUT emits only when `active` actually changes versus the prior state.
-- **identifier-changed** — a change to the primary value of a configured identifier attribute (`scim.signals.risc.identifier.attrs`) on a `User` PUT or PATCH; CREATE and DELETE never emit it. Each changed identifier attribute yields its own SET. With the default `scim` subject format the SET carries the stable `id`/`uri` subject and conveys the new identifier value in the event payload as `new-value`.
+- **identifier-changed** — a change to the primary value of a configured identifier attribute (`scim.signals.risc.identifier.attrs`) on a `User` PUT or PATCH; CREATE and DELETE never emit it. Each changed identifier attribute yields its own SET. With the default `scim` subject format the SET carries the stable `id`/`uri` subject and conveys the new identifier value in the event payload as `new-value`. Under a non-`scim` `scim.signals.risc.subject.format` the subject instead carries the prior identifier value and the payload still conveys the new value.
 
 #### Operator re-enable after DISABLED (PRD-B)
 

@@ -228,11 +228,43 @@ public class RiscEventMapper {
     /** Builds a bare RISC SET — subject, distinct jti, and the operation's shared txn/toe. */
     private SecurityEventToken newEvent(Operation op, ScimResource subject) {
         SecurityEventToken event = new SecurityEventToken();
-        event.SetSubjectIdentifier(new SubjectIdentifier(subject));
+        event.SetSubjectIdentifier(buildSubject(subject));
         String txn = op.getRequestCtx().getTranId();
         if (txn != null) event.setTxn(txn);
         event.setJti(idGen.getNewIdentifier());
         event.setToe(NumericDate.fromMilliseconds(op.getStats().getFinishDate().getTime()));
         return event;
+    }
+
+    /**
+     * Builds the RISC subject identifier in the configured
+     * {@code scim.signals.risc.subject.format}. A non-{@code scim} format
+     * carries the primary value of the matching {@code User} attribute (for
+     * Identifier Changed this resource is the pre-image, so that value is the
+     * prior identifier). Falls back to the stable {@code scim} subject when the
+     * configured format cannot be satisfied for the resource.
+     */
+    private SubjectIdentifier buildSubject(ScimResource res) {
+        String format = config.getSubjectFormat();
+        if (!"scim".equals(format)) {
+            String value = IdentifierExtractor.primaryValue(res, attrForFormat(format));
+            SubjectIdentifier sid = SubjectIdentifier.forFormat(format, value);
+            if (sid != null) return sid;
+        }
+        return new SubjectIdentifier(res);
+    }
+
+    /** @return the {@code User} attribute backing a subject format, or {@code null} for {@code scim}. */
+    private static String attrForFormat(String format) {
+        switch (format == null ? "" : format) {
+            case "email":
+                return "emails";
+            case "username":
+                return "userName";
+            case "phone":
+                return "phoneNumbers";
+            default:
+                return null;
+        }
     }
 }
