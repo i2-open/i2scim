@@ -74,13 +74,18 @@ public final class PemReloadWatcher implements AutoCloseable {
     }
 
     private void startPollLoop() {
-        this.thread = new Thread(this::pollLoop, "pem-reload-watcher-poll");
+        // Capture the baseline mtime on the calling thread, before start()
+        // returns. If the poll thread sampled it instead, a rotation landing in
+        // the gap between start() and the thread's first sample would be folded
+        // into the baseline and never reported.
+        long baseline = currentMtime();
+        this.thread = new Thread(() -> pollLoop(baseline), "pem-reload-watcher-poll");
         this.thread.setDaemon(true);
         this.thread.start();
     }
 
-    private void pollLoop() {
-        long lastMtime = currentMtime();
+    private void pollLoop(long startMtime) {
+        long lastMtime = startMtime;
         while (!closed.get()) {
             try {
                 Thread.sleep(pollInterval.toMillis());
