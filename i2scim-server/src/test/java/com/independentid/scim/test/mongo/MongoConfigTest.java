@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.text.ParseException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -161,9 +162,12 @@ public class MongoConfigTest {
                     .as("Check date is before now")
                     .isBefore(Instant.now());
 
+            // The persisted sync date carries only whole-second precision, so
+            // compare against the second in which the test started — otherwise a
+            // sync occurring in that same second sorts spuriously before startTime.
             assertThat(cnfRes.getLastSyncDate().toInstant())
                     .as("Check sync date is after start time of test.")
-                    .isAfter(startTime);
+                    .isAfterOrEqualTo(startTime.truncatedTo(ChronoUnit.SECONDS));
 
         } catch (ScimException | IOException | ParseException e) {
             logger.error("Error while loading persistant state config resource", e);

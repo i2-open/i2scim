@@ -27,7 +27,19 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Run test suite
+        # Runs the whole reactor's tests (~421 in i2scim-server; core and client
+        # carry none). The suite needs only a Docker daemon, which ubuntu-latest
+        # supplies: MongoProvider tests use an ephemeral mongo:8.0 from Quarkus
+        # Dev Services, and MongoPending*StoreTest / SignalsDurabilityTest start
+        # their own mongo:8.0 via Testcontainers. No MongoDB on localhost, no OPA
+        # server and no Kafka broker are required. Two classes stay excluded in
+        # i2scim-server/pom.xml -- LoadScimClusterTest (needs a K8s cluster) and
+        # SignalsGoSignalsIT (needs a live goSignals server).
+        run: mvn -B test
+
       - name: Build and Package with Maven
+        # Tests already ran in the previous step; -DskipTests just assembles jars.
         run: mvn -B package -DskipTests
 
       - name: Capture build metadata

@@ -148,10 +148,9 @@ public class TestUtils {
         } catch (InstantiationException e) {
             logger.error("Error initializing keypair: "+e.getMessage(),e);
         }
-        try {
-            Thread.sleep(12000); // give the container time to start
-        } catch (InterruptedException ignore) {
-        }
+        // No explicit wait for the backing store: Quarkus Dev Services blocks
+        // application boot until the MongoDB container is ready, so by the time
+        // this bean is constructed the database is already accepting connections.
     }
 
     /**
