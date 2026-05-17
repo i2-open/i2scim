@@ -27,6 +27,15 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Run MongoDB-backed tests
+        # The Mongo provider tests run against an ephemeral mongo:8.0 container
+        # started by Quarkus Dev Services; MongoPending*StoreTest and
+        # SignalsDurabilityTest start their own mongo:8.0 via Testcontainers.
+        # Either way the ubuntu-latest runner supplies the Docker daemon. The
+        # -Dtest filter scopes the run to these classes; core and client modules
+        # match nothing, so surefire.failIfNoSpecifiedTests=false keeps them green.
+        run: mvn -B test -Dtest='Mongo*,RiscMongoPreImageTest,SignalsDurabilityTest' -Dsurefire.failIfNoSpecifiedTests=false
+
       - name: Build and Package with Maven
         run: mvn -B package -DskipTests
 

@@ -61,7 +61,7 @@ class SignalsDurabilityTest {
 
     @BeforeAll
     static void startInfra() {
-        mongo = new MongoDBContainer(DockerImageName.parse("mongo:7.0"));
+        mongo = new MongoDBContainer(DockerImageName.parse("mongo:8.0"));
         mongo.start();
         mongoClient = MongoClients.create(mongo.getReplicaSetUrl());
         store = new MongoPendingPushStore(mongoClient, DB_NAME);

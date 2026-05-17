@@ -29,7 +29,7 @@ class MongoPendingAckStoreTest {
 
     @BeforeAll
     static void start() {
-        mongo = new MongoDBContainer(DockerImageName.parse("mongo:7.0"));
+        mongo = new MongoDBContainer(DockerImageName.parse("mongo:8.0"));
         mongo.start();
         client = MongoClients.create(mongo.getReplicaSetUrl());
         store = new MongoPendingAckStore(client, DB_NAME);
