@@ -2,14 +2,21 @@ package com.independentid.signals;
 
 import com.independentid.scim.backend.IIdentifierGenerator;
 import com.independentid.scim.op.Operation;
+import com.independentid.scim.op.PatchOp;
+import com.independentid.scim.protocol.JsonPatchOp;
+import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.resource.BooleanValue;
 import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.resource.Value;
+import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.set.SecurityEventToken;
 import com.independentid.set.SubjectIdentifier;
 import org.jose4j.jwt.NumericDate;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -44,6 +51,28 @@ public class RiscEventMapper {
             if (isUser(preImage) && config.emits(RiscEventTypes.shortName(RiscEventTypes.ACCOUNT_PURGED))) {
                 events.add(buildAccountEvent(op, preImage, RiscEventTypes.ACCOUNT_PURGED));
             }
+        } else if ("ADD".equals(op.getScimType())) {
+            ScimResource postImage = op.getTransactionResource();
+            if (isUser(postImage)) {
+                addActiveEvent(events, op, postImage, activeEventType(isActive(postImage)));
+            }
+        } else if ("PUT".equals(op.getScimType())) {
+            ScimResource preImage = ctx.getPreImageResource();
+            if (isUser(preImage)) {
+                boolean before = isActive(preImage);
+                boolean after = isActive(op.getTransactionResource());
+                if (before != after) {
+                    addActiveEvent(events, op, preImage, activeEventType(after));
+                }
+            }
+        } else if ("PAT".equals(op.getScimType()) && op instanceof PatchOp) {
+            ScimResource preImage = ctx.getPreImageResource();
+            if (isUser(preImage)) {
+                Boolean signal = activeSignalFromPatch((PatchOp) op);
+                if (signal != null) {
+                    addActiveEvent(events, op, preImage, activeEventType(signal));
+                }
+            }
         }
         return events;
     }
@@ -51,6 +80,77 @@ public class RiscEventMapper {
     /** RISC events are emitted only for {@code User} resources. */
     private boolean isUser(ScimResource res) {
         return res != null && "User".equals(res.getResourceType());
+    }
+
+    /** @return the RISC event-type URI for the given {@code active} state. */
+    private String activeEventType(boolean active) {
+        return active ? RiscEventTypes.ACCOUNT_ENABLED : RiscEventTypes.ACCOUNT_DISABLED;
+    }
+
+    /** Reads a User's {@code active} state; an absent {@code active} is treated as enabled. */
+    private boolean isActive(ScimResource res) {
+        if (res == null) return true;
+        try {
+            Value v = res.getValue("active");
+            if (v instanceof BooleanValue) {
+                Boolean b = ((BooleanValue) v).getRawValue();
+                return b == null || b;
+            }
+        } catch (SchemaException e) {
+            // active is undefined for this resource — treat as enabled
+        }
+        return true;
+    }
+
+    /**
+     * Inspects a JSON Patch request for operations that set the {@code active}
+     * attribute. The last such operation wins.
+     * @return the resulting {@code active} state, or {@code null} if no patch
+     *         operation touched {@code active}.
+     */
+    private Boolean activeSignalFromPatch(PatchOp op) {
+        Boolean signal = null;
+        JsonPatchRequest req = op.getPatchRequest();
+        if (req == null) return null;
+        for (Iterator<JsonPatchOp> it = req.iterator(); it.hasNext(); ) {
+            Boolean s = activeFromPatchOp(it.next());
+            if (s != null) signal = s;
+        }
+        return signal;
+    }
+
+    /** @return the {@code active} state implied by one patch op, or {@code null} if it does not touch {@code active}. */
+    private Boolean activeFromPatchOp(JsonPatchOp patchOp) {
+        boolean targetsActive = "active".equalsIgnoreCase(attrName(patchOp.path));
+        if (JsonPatchOp.OP_ACTION_REMOVE.equals(patchOp.op)) {
+            // Removing active reverts it to the schema default — enabled.
+            return targetsActive ? Boolean.TRUE : null;
+        }
+        // add or replace: the new value is taken directly as the signal.
+        if (targetsActive) {
+            return patchOp.jsonValue != null && patchOp.jsonValue.asBoolean();
+        }
+        // A path-less value object may carry active among other attributes.
+        if (patchOp.path == null && patchOp.jsonValue != null
+                && patchOp.jsonValue.isObject() && patchOp.jsonValue.has("active")) {
+            return patchOp.jsonValue.get("active").asBoolean();
+        }
+        return null;
+    }
+
+    /** @return the bare attribute name from a patch path (strips any schema URN prefix). */
+    private String attrName(String path) {
+        if (path == null) return null;
+        int colon = path.lastIndexOf(':');
+        return colon < 0 ? path : path.substring(colon + 1);
+    }
+
+    /** Adds the given account-state RISC event when its type is configured for emission. */
+    private void addActiveEvent(List<SecurityEventToken> events, Operation op,
+                                ScimResource subject, String eventTypeUri) {
+        if (config.emits(RiscEventTypes.shortName(eventTypeUri))) {
+            events.add(buildAccountEvent(op, subject, eventTypeUri));
+        }
     }
 
     /** Builds a RISC account-level SET sharing the operation's txn and toe. */

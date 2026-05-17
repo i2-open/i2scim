@@ -106,6 +106,11 @@ i2scim can additionally derive **OpenID RISC** events (OpenID RISC Profile 1.0) 
 
 **scim.signals.risc.types** - Comma-separated list of RISC event types to emit, by short name: `account-purged`, `account-disabled`, `account-enabled`, `identifier-changed`. A single `*` (the DEFAULT) emits all supported types.
 
+RISC events are derived as follows:
+
+- **account-purged** — a `User` DELETE.
+- **account-enabled** / **account-disabled** — a change to a `User`'s `active` attribute (an absent `active` is treated as enabled). A CREATE always emits, reflecting the resulting state. A PATCH that `add`s/`replace`s `active` (including a path-less `value` object) emits the new value — even when unchanged — and a PATCH that `remove`s `active` emits `account-enabled`. A PUT emits only when `active` actually changes versus the prior state.
+
 #### Operator re-enable after DISABLED (PRD-B)
 
 A stream transitioned to `DISABLED` by the elapsed-time cap retains all pending JTIs in `pendingPushes` (Mongo) or `events/pending/<streamId>/` (memory). Re-enable is done through the existing PRD-A control surface — programmatically calling `pushStream.state.transitionTo(StreamStatus.ENABLED, null)` on the active `SsfHandler.getPushStream()`. The per-stream `PushRetryWorker` registers a transition listener that wakes the idle-sleeping worker thread on `DISABLED → ENABLED`, so the queue resumes draining (in `queuedAt` order) within milliseconds rather than after the next idle window. The first 2xx response is the operational marker that the stream is healthy again; if the receiver is still failing, the elapsed-time cap fires again and the stream is re-DISABLED. Pending JTIs are never deleted by a DISABLE — only by a successful 2xx delivery.

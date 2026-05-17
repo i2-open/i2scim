@@ -472,7 +472,15 @@ public class MongoProvider implements IScimProvider {
 		if (origRes.checkModPreConditionFail(ctx))
 			return new ScimResponse(new PreconditionFailException(
 					"Predcondition does not match"));
-		origRes.replaceResAttributes(replaceResource, ctx);  
+		// Snapshot the pre-image before replaceResAttributes mutates origRes, so
+		// event derivation (e.g. RISC Account Enabled/Disabled) can diff against
+		// the prior state — ADR-0001. Best-effort: a copy failure must not fail the PUT.
+		try {
+			ctx.setPreImageResource(origRes.copy(null));
+		} catch (ScimException | ParseException e) {
+			logger.warn("Could not capture pre-image for PUT " + ctx.getPath() + ": " + e.getMessage());
+		}
+		origRes.replaceResAttributes(replaceResource, ctx);
 		return this.putResource(origRes, ctx);
 	}
 
@@ -484,6 +492,13 @@ public class MongoProvider implements IScimProvider {
 		if (mres.checkModPreConditionFail(ctx))
 			return new ScimResponse(new PreconditionFailException(
 					"Predcondition does not match"));
+		// Snapshot the pre-image before modifyResource mutates mres — ADR-0001.
+		// Best-effort: a copy failure must not fail the PATCH.
+		try {
+			ctx.setPreImageResource(mres.copy(null));
+		} catch (ScimException | ParseException e) {
+			logger.warn("Could not capture pre-image for PATCH " + ctx.getPath() + ": " + e.getMessage());
+		}
 		mres.modifyResource(req, ctx);
 		// Modify resource will update the meta.revision
 		return this.putResource(mres, ctx);

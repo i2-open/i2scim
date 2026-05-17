@@ -4,9 +4,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.backend.mongo.MongoProvider;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.InjectionManager;
+import com.independentid.scim.protocol.JsonPatchOp;
+import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.resource.StringValue;
+import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import com.independentid.scim.test.misc.TestUtils;
@@ -69,5 +73,49 @@ public class RiscMongoPreImageTest {
                 .as("Pre-image captured by MongoProvider.delete()").isNotNull();
         assertThat(preImage.getResourceType())
                 .as("Pre-image is the deleted User").isEqualTo("User");
+    }
+
+    @Test
+    public void mongoPutAndPatchCapturePreImage() throws Exception {
+        logger.info("========== MongoProvider put/patch pre-image capture (RISC) ==========");
+        testUtils.resetProvider(true);
+        MongoProvider mp = (MongoProvider) InjectionManager.getInstance().getProvider();
+        assertThat(mp).isNotNull();
+        assertThat(mp.ready()).isTrue();
+
+        InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
+        assertThat(userStream).isNotNull();
+        ScimResource user = new ScimResource(smgr, JsonUtil.getJsonTree(userStream), "Users");
+        user.setId(null);
+        RequestCtx createCtx = new RequestCtx("/Users", null, null, smgr);
+        ScimResponse createResp = mp.create(createCtx, user);
+        assertThat(createResp.getStatus())
+                .as("User created").isEqualTo(ScimResponse.ST_CREATED);
+        String userUrl = createResp.getLocation();
+
+        // PUT replaces the resource — the pre-image must be the prior state.
+        InputStream replaceStream = ConfigMgr.findClassLoaderResource(testUserFile1);
+        ScimResource replacement = new ScimResource(smgr, JsonUtil.getJsonTree(replaceStream), "Users");
+        replacement.setId(null);
+        RequestCtx putCtx = new RequestCtx(userUrl, null, null, smgr);
+        ScimResponse putResp = mp.put(putCtx, replacement);
+        assertThat(putResp.getStatus()).as("PUT succeeded").isLessThan(300);
+        assertThat(putCtx.getPreImageResource())
+                .as("Pre-image captured by MongoProvider.put()").isNotNull();
+        assertThat(putCtx.getPreImageResource().getResourceType())
+                .as("PUT pre-image is a User").isEqualTo("User");
+
+        // PATCH mutates the resource — the pre-image must be the prior state.
+        Attribute titleAttr = smgr.findAttribute("User:title", null);
+        JsonPatchRequest jpr = new JsonPatchRequest();
+        jpr.addOperation(new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE, "title",
+                new StringValue(titleAttr, "Changed Title")));
+        RequestCtx patchCtx = new RequestCtx(userUrl, null, null, smgr);
+        ScimResponse patchResp = mp.patch(patchCtx, jpr);
+        assertThat(patchResp.getStatus()).as("PATCH succeeded").isLessThan(300);
+        assertThat(patchCtx.getPreImageResource())
+                .as("Pre-image captured by MongoProvider.patch()").isNotNull();
+        assertThat(patchCtx.getPreImageResource().getResourceType())
+                .as("PATCH pre-image is a User").isEqualTo("User");
     }
 }
