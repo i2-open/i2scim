@@ -85,6 +85,12 @@ public class SignalsEventHandler implements IEventHandler {
     @ConfigProperty(name = "scim.signals.risc.types", defaultValue = "*")
     Optional<List<String>> riscTypes;
 
+    @ConfigProperty(name = "scim.signals.risc.identifier.attrs", defaultValue = "userName,emails")
+    Optional<List<String>> riscIdentifierAttrs;
+
+    @ConfigProperty(name = "scim.signals.risc.identifier.addRemoveIsChange", defaultValue = "true")
+    boolean riscIdentifierAddRemoveIsChange;
+
     @ConfigProperty(name = "scim.signals.test", defaultValue = "false")
     boolean isTest;
 
@@ -179,8 +185,10 @@ public class SignalsEventHandler implements IEventHandler {
             all.add("*");
             return all;
         });
+        List<String> riscIdAttrs = riscIdentifierAttrs.orElse(RiscConfig.DEFAULT_IDENTIFIER_ATTRS);
         this.riscMapper = new RiscEventMapper(
-                new RiscConfig(riscEnabled, riscCfgTypes), InjectionManager.getInstance().getGenerator());
+                new RiscConfig(riscEnabled, riscCfgTypes, riscIdAttrs, riscIdentifierAddRemoveIsChange),
+                InjectionManager.getInstance().getGenerator());
 
         try {
             if (isTest)

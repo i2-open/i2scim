@@ -1,6 +1,8 @@
 package com.independentid.signals;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.backend.IIdentifierGenerator;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.Operation;
 import com.independentid.scim.op.PatchOp;
 import com.independentid.scim.protocol.JsonPatchOp;
@@ -15,9 +17,11 @@ import com.independentid.set.SecurityEventToken;
 import com.independentid.set.SubjectIdentifier;
 import org.jose4j.jwt.NumericDate;
 
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Derives OpenID RISC {@link SecurityEventToken}s from a completed SCIM
@@ -59,18 +63,25 @@ public class RiscEventMapper {
         } else if ("PUT".equals(op.getScimType())) {
             ScimResource preImage = ctx.getPreImageResource();
             if (isUser(preImage)) {
+                ScimResource postImage = op.getTransactionResource();
                 boolean before = isActive(preImage);
-                boolean after = isActive(op.getTransactionResource());
+                boolean after = isActive(postImage);
                 if (before != after) {
                     addActiveEvent(events, op, preImage, activeEventType(after));
                 }
+                addIdentifierEvents(events, op, preImage, postImage);
             }
         } else if ("PAT".equals(op.getScimType()) && op instanceof PatchOp) {
             ScimResource preImage = ctx.getPreImageResource();
             if (isUser(preImage)) {
-                Boolean signal = activeSignalFromPatch((PatchOp) op);
+                PatchOp pop = (PatchOp) op;
+                Boolean signal = activeSignalFromPatch(pop);
                 if (signal != null) {
                     addActiveEvent(events, op, preImage, activeEventType(signal));
+                }
+                ScimResource postImage = applyPatch(preImage, pop, ctx);
+                if (postImage != null) {
+                    addIdentifierEvents(events, op, preImage, postImage);
                 }
             }
         }
@@ -138,6 +149,23 @@ public class RiscEventMapper {
         return null;
     }
 
+    /**
+     * Derives a PATCH post-image by applying the patch to a copy of the
+     * pre-image — a pure, in-memory transformation (no backend I/O).
+     * @return the post-image, or {@code null} if it cannot be derived.
+     */
+    private ScimResource applyPatch(ScimResource preImage, PatchOp op, RequestCtx ctx) {
+        JsonPatchRequest req = op.getPatchRequest();
+        if (req == null) return null;
+        try {
+            ScimResource postImage = preImage.copy(null);
+            postImage.modifyResource(req, ctx);
+            return postImage;
+        } catch (ScimException | ParseException e) {
+            return null;
+        }
+    }
+
     /** @return the bare attribute name from a patch path (strips any schema URN prefix). */
     private String attrName(String path) {
         if (path == null) return null;
@@ -155,14 +183,56 @@ public class RiscEventMapper {
 
     /** Builds a RISC account-level SET sharing the operation's txn and toe. */
     private SecurityEventToken buildAccountEvent(Operation op, ScimResource subject, String eventTypeUri) {
+        SecurityEventToken event = newEvent(op, subject);
+        // Account events omit the optional RISC "reason" attribute.
+        event.AddEventPayload(eventTypeUri, JsonUtil.getMapper().createObjectNode());
+        return event;
+    }
+
+    /**
+     * Emits an Identifier Changed SET for each configured identifier attribute
+     * whose primary value differs between the pre- and post-image.
+     */
+    private void addIdentifierEvents(List<SecurityEventToken> events, Operation op,
+                                     ScimResource preImage, ScimResource postImage) {
+        if (!config.emits(RiscEventTypes.shortName(RiscEventTypes.IDENTIFIER_CHANGED))) return;
+        for (String attr : config.getIdentifierAttrs()) {
+            String before = IdentifierExtractor.primaryValue(preImage, attr);
+            String after = IdentifierExtractor.primaryValue(postImage, attr);
+            if (isIdentifierChange(before, after)) {
+                events.add(buildIdentifierEvent(op, preImage, after));
+            }
+        }
+    }
+
+    /**
+     * @return true when {@code before}→{@code after} is an identifier change.
+     *         A pure add or removal (one side {@code null}) counts only when
+     *         {@code addRemoveIsChange} is configured.
+     */
+    private boolean isIdentifierChange(String before, String after) {
+        if (Objects.equals(before, after)) return false;
+        if (before == null || after == null) return config.isAddRemoveChange();
+        return true;
+    }
+
+    /** Builds a RISC Identifier Changed SET carrying the new value in {@code new-value}. */
+    private SecurityEventToken buildIdentifierEvent(Operation op, ScimResource subject, String newValue) {
+        SecurityEventToken event = newEvent(op, subject);
+        ObjectNode payload = JsonUtil.getMapper().createObjectNode();
+        if (newValue != null) payload.put("new-value", newValue);
+        event.AddEventPayload(RiscEventTypes.IDENTIFIER_CHANGED, payload);
+        return event;
+    }
+
+    /** Builds a bare RISC SET — subject, distinct jti, and the operation's shared txn/toe. */
+    private SecurityEventToken newEvent(Operation op, ScimResource subject) {
         SecurityEventToken event = new SecurityEventToken();
         event.SetSubjectIdentifier(new SubjectIdentifier(subject));
         String txn = op.getRequestCtx().getTranId();
         if (txn != null) event.setTxn(txn);
         event.setJti(idGen.getNewIdentifier());
         event.setToe(NumericDate.fromMilliseconds(op.getStats().getFinishDate().getTime()));
-        // Account events omit the optional RISC "reason" attribute.
-        event.AddEventPayload(eventTypeUri, JsonUtil.getMapper().createObjectNode());
         return event;
     }
 }

@@ -12,6 +12,7 @@ import com.independentid.scim.protocol.JsonPatchOp;
 import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.resource.BooleanValue;
+import com.independentid.scim.resource.StringValue;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
@@ -170,6 +171,66 @@ public class RiscEventHandlerTest {
                     .isEqualTo(scimPatch.getTxn());
         } catch (Exception e) {
             fail("Error in RISC Account Disabled end-to-end test: " + e.getMessage(), e);
+        }
+    }
+
+    @Test
+    public void identifierChangedPushedEndToEnd() {
+        logger.info("=== RISC Identifier Changed end-to-end push ===");
+        try {
+            utils.resetMemDirectory();
+            Operation.initialize(configMgr);
+            MockSignalsServer.reset();
+
+            // Create a User with a unique userName.
+            InputStream userStream = ConfigMgr.findClassLoaderResource(testUserFile1);
+            assertThat(userStream).isNotNull();
+            ObjectNode node = (ObjectNode) JsonUtil.getJsonTree(userStream);
+            node.remove("id");
+            node.remove("externalId");
+            node.put("userName", "risc-idchg-" + java.util.UUID.randomUUID() + "@example.com");
+            RequestCtx createCtx = new RequestCtx("Users", null, null, schemaManager);
+            CreateOp createOp = new CreateOp(node, createCtx, null, 0);
+            poolManager.addJobAndWait(createOp);
+            assertThat(createOp.isError()).as("User create succeeded").isFalse();
+            String id = createOp.getResourceId();
+
+            // ...then change its login identifier with a PATCH of userName.
+            Attribute userNameAttr = schemaManager.findAttribute("User:userName", null);
+            String newName = "risc-renamed-" + java.util.UUID.randomUUID() + "@example.com";
+            JsonPatchRequest jpr = new JsonPatchRequest();
+            jpr.addOperation(new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE, "userName",
+                    new StringValue(userNameAttr, newName)));
+            RequestCtx patchCtx = new RequestCtx("Users", id, null, schemaManager);
+            PatchOp patchOp = new PatchOp(jpr.toJsonNode(), patchCtx, null, 0);
+            poolManager.addJobAndWait(patchOp);
+            assertThat(patchOp.isError()).as("User patch succeeded").isFalse();
+
+            // Event publication is async — wait for the Identifier Changed SET.
+            SecurityEventToken changed = null;
+            for (int i = 0; i < 15 && changed == null; i++) {
+                changed = findReceivedEvent(RiscEventTypes.IDENTIFIER_CHANGED);
+                if (changed == null) Thread.sleep(1000);
+            }
+            assertThat(changed)
+                    .as("Identifier Changed SET pushed to the receiver").isNotNull();
+            assertThat(changed.GetEvents().size())
+                    .as("One event per SET").isEqualTo(1);
+            assertThat(changed.GetEvent(RiscEventTypes.IDENTIFIER_CHANGED).get("new-value").asText())
+                    .as("Payload carries the new identifier value").isEqualTo(newName);
+
+            SecurityEventToken scimPatch = findReceivedEvent(EventTypes.PROV_PATCH_FULL);
+            assertThat(scimPatch)
+                    .as("SCIM patch SET also pushed to the receiver").isNotNull();
+            assertThat(scimPatch.getJti())
+                    .as("RISC and SCIM SETs are distinct").isNotEqualTo(changed.getJti());
+
+            assertThat(changed.getTxn())
+                    .as("RISC SET shares txn with the SCIM patch event")
+                    .isNotNull()
+                    .isEqualTo(scimPatch.getTxn());
+        } catch (Exception e) {
+            fail("Error in RISC Identifier Changed end-to-end test: " + e.getMessage(), e);
         }
     }
 }

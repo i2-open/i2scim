@@ -18,6 +18,7 @@ import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.BooleanValue;
 import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.resource.StringValue;
 import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
@@ -486,6 +487,191 @@ public class RiscEventMapperTest {
                     .as("No RISC event for a non-User create").isEmpty();
         } catch (Exception e) {
             fail("Error in non-User create test: " + e.getMessage(), e);
+        }
+    }
+
+    @Test
+    public void q_identifierChangedOnPutUserName() {
+        logger.info("Q. Identifier Changed on PUT changing userName");
+        try {
+            CreateOp createOp = createUserOp(loadTestUser());
+            String id = createOp.getResourceId();
+            RequestCtx readCtx = new RequestCtx("Users", id, null, schemaManager);
+            ObjectNode body = (ObjectNode) createOp.getTransactionResource().toJsonNode(readCtx);
+            body.put("userName", "renamed-" + java.util.UUID.randomUUID() + "@example.com");
+
+            PutOp op = putResource(id, body);
+            assertThat(op.isError()).as("Put succeeded").isFalse();
+
+            RiscEventMapper mapper = newMapper(new RiscConfig(true, List.of("*")));
+            List<SecurityEventToken> events = mapper.mapToRiscEvents(op);
+
+            assertThat(events).as("One RISC event for the userName change").hasSize(1);
+            assertThat(events.get(0).GetEvent(RiscEventTypes.IDENTIFIER_CHANGED))
+                    .as("PUT changing userName → Identifier Changed").isNotNull();
+        } catch (Exception e) {
+            fail("Error in put-userName test: " + e.getMessage(), e);
+        }
+    }
+
+    @Test
+    public void r_identifierChangedOnPatchUserName() {
+        logger.info("R. Identifier Changed on PATCH replacing userName");
+        try {
+            String id = createUser(testUserFile1);
+            Attribute unAttr = schemaManager.findAttribute("User:userName", null);
+            JsonPatchRequest jpr = new JsonPatchRequest();
+            String newName = "patched-" + java.util.UUID.randomUUID() + "@example.com";
+            jpr.addOperation(new JsonPatchOp(JsonPatchOp.OP_ACTION_REPLACE, "userName",
+                    new StringValue(unAttr, newName)));
+
+            PatchOp op = patchResource(id, jpr);
+            assertThat(op.isError()).as("Patch succeeded").isFalse();
+
+            RiscEventMapper mapper = newMapper(new RiscConfig(true, List.of("*")));
+            List<SecurityEventToken> events = mapper.mapToRiscEvents(op);
+
+            assertThat(events).as("One RISC event for the userName change").hasSize(1);
+            assertThat(events.get(0).GetEvent(RiscEventTypes.IDENTIFIER_CHANGED))
+                    .as("PATCH replacing userName → Identifier Changed").isNotNull();
+        } catch (Exception e) {
+            fail("Error in patch-userName test: " + e.getMessage(), e);
+        }
+    }
+
+    @Test
+    public void s_identifierChangedOnPatchPrimaryEmail() {
+        logger.info("S. Identifier Changed on PATCH changing the primary email");
+        try {
+            String id = createUser(testUserFile1); // bjensen primary email bjensen@example.com
+            String newEmail = "newprimary-" + java.util.UUID.randomUUID() + "@example.com";
+            String patchJson = "{\"schemas\":[\"urn:ietf:params:scim:api:messages:2.0:PatchOp\"],"
+                    + "\"Operations\":[{\"op\":\"add\",\"path\":\"emails\","
+                    + "\"value\":{\"value\":\"" + newEmail + "\",\"type\":\"work\",\"primary\":true}}]}";
+            PatchOp op = patchResourceRaw(id, JsonUtil.getJsonTree(patchJson));
+            assertThat(op.isError()).as("Patch succeeded").isFalse();
+
+            RiscEventMapper mapper = newMapper(new RiscConfig(true, List.of("*")));
+            List<SecurityEventToken> events = mapper.mapToRiscEvents(op);
+
+            assertThat(events).as("One RISC event for the primary-email change").hasSize(1);
+            assertThat(events.get(0).GetEvent(RiscEventTypes.IDENTIFIER_CHANGED))
+                    .as("PATCH changing the primary email → Identifier Changed").isNotNull();
+        } catch (Exception e) {
+            fail("Error in patch-primary-email test: " + e.getMessage(), e);
+        }
+    }
+
+    /** A PATCH that removes the whole {@code emails} attribute. */
+    private PatchOp removeEmailsPatch(String id) throws ScimException, IOException {
+        String patchJson = "{\"schemas\":[\"urn:ietf:params:scim:api:messages:2.0:PatchOp\"],"
+                + "\"Operations\":[{\"op\":\"remove\",\"path\":\"emails\"}]}";
+        return patchResourceRaw(id, JsonUtil.getJsonTree(patchJson));
+    }
+
+    @Test
+    public void t_identifierAttrSetHonored() {
+        logger.info("T. Only configured identifier attributes drive Identifier Changed");
+        try {
+            String id = createUser(testUserFile1);
+            String newEmail = "newprimary-" + java.util.UUID.randomUUID() + "@example.com";
+            String patchJson = "{\"schemas\":[\"urn:ietf:params:scim:api:messages:2.0:PatchOp\"],"
+                    + "\"Operations\":[{\"op\":\"add\",\"path\":\"emails\","
+                    + "\"value\":{\"value\":\"" + newEmail + "\",\"type\":\"work\",\"primary\":true}}]}";
+            PatchOp op = patchResourceRaw(id, JsonUtil.getJsonTree(patchJson));
+            assertThat(op.isError()).as("Patch succeeded").isFalse();
+
+            // emails is not in the configured identifier set — only userName is.
+            RiscEventMapper mapper = newMapper(
+                    new RiscConfig(true, List.of("*"), List.of("userName"), true));
+            assertThat(mapper.mapToRiscEvents(op))
+                    .as("Email change ignored when emails is not a configured identifier").isEmpty();
+        } catch (Exception e) {
+            fail("Error in identifier-attr-set test: " + e.getMessage(), e);
+        }
+    }
+
+    @Test
+    public void u_pureRemovalEmitsWhenAddRemoveIsChange() {
+        logger.info("U. Pure removal of an identifier emits when addRemoveIsChange=true");
+        try {
+            String id = createUser(testUserFile1);
+            PatchOp op = removeEmailsPatch(id);
+            assertThat(op.isError()).as("Patch succeeded").isFalse();
+
+            RiscEventMapper mapper = newMapper(
+                    new RiscConfig(true, List.of("*"), List.of("userName", "emails"), true));
+            List<SecurityEventToken> events = mapper.mapToRiscEvents(op);
+
+            assertThat(events).as("One RISC event for the email removal").hasSize(1);
+            assertThat(events.get(0).GetEvent(RiscEventTypes.IDENTIFIER_CHANGED))
+                    .as("Pure removal → Identifier Changed when addRemoveIsChange=true").isNotNull();
+        } catch (Exception e) {
+            fail("Error in pure-removal-true test: " + e.getMessage(), e);
+        }
+    }
+
+    @Test
+    public void v_pureRemovalSuppressedWhenNotAddRemoveChange() {
+        logger.info("V. Pure removal of an identifier is suppressed when addRemoveIsChange=false");
+        try {
+            String id = createUser(testUserFile1);
+            PatchOp op = removeEmailsPatch(id);
+            assertThat(op.isError()).as("Patch succeeded").isFalse();
+
+            RiscEventMapper mapper = newMapper(
+                    new RiscConfig(true, List.of("*"), List.of("userName", "emails"), false));
+            assertThat(mapper.mapToRiscEvents(op))
+                    .as("No Identifier Changed for a pure removal when addRemoveIsChange=false").isEmpty();
+        } catch (Exception e) {
+            fail("Error in pure-removal-false test: " + e.getMessage(), e);
+        }
+    }
+
+    @Test
+    public void w_identifierEventSubjectPayloadTxnToe() {
+        logger.info("W. Identifier Changed SET — scim subject, new-value payload, shared txn/toe");
+        try {
+            CreateOp createOp = createUserOp(loadTestUser());
+            String id = createOp.getResourceId();
+            RequestCtx readCtx = new RequestCtx("Users", id, null, schemaManager);
+            ObjectNode body = (ObjectNode) createOp.getTransactionResource().toJsonNode(readCtx);
+            String newName = "renamed-" + java.util.UUID.randomUUID() + "@example.com";
+            body.put("userName", newName);
+
+            PutOp op = putResource(id, body);
+            assertThat(op.isError()).as("Put succeeded").isFalse();
+
+            SignalsEventMapper scimMapper = new SignalsEventMapper(
+                    new ArrayList<>(), new ArrayList<>(), InjectionManager.getInstance().getGenerator());
+            List<SecurityEventToken> scimEvents = scimMapper.MapOperationToSet(op);
+            assertThat(scimEvents).as("SCIM put event present").isNotEmpty();
+            SecurityEventToken scimEvent = scimEvents.get(0);
+
+            RiscEventMapper mapper = newMapper(new RiscConfig(true, List.of("*")));
+            List<SecurityEventToken> events = mapper.mapToRiscEvents(op);
+            assertThat(events).as("One RISC event").hasSize(1);
+            SecurityEventToken event = events.get(0);
+
+            assertThat(event.getSubjectIdentifier().format)
+                    .as("scim subject format").isEqualTo("scim");
+            assertThat(event.getSubjectIdentifier().id)
+                    .as("Subject carries the stable id").isEqualTo(id);
+            assertThat(event.getSubjectIdentifier().uri)
+                    .as("Subject carries the stable uri").isEqualTo("/Users/" + id);
+            assertThat(event.GetEvent(RiscEventTypes.IDENTIFIER_CHANGED).get("new-value").asText())
+                    .as("Payload carries the new identifier value").isEqualTo(newName);
+
+            assertThat(event.getJti())
+                    .as("RISC SET has its own jti").isNotEqualTo(scimEvent.getJti());
+            assertThat(event.getTxn())
+                    .as("RISC SET shares the SCIM event's txn")
+                    .isNotNull().isEqualTo(scimEvent.getTxn());
+            assertThat(event.getToe())
+                    .as("RISC SET shares the SCIM event's toe")
+                    .isEqualTo(scimEvent.getToe());
+        } catch (Exception e) {
+            fail("Error in identifier subject/payload test: " + e.getMessage(), e);
         }
     }
 

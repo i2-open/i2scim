@@ -106,10 +106,15 @@ i2scim can additionally derive **OpenID RISC** events (OpenID RISC Profile 1.0) 
 
 **scim.signals.risc.types** - Comma-separated list of RISC event types to emit, by short name: `account-purged`, `account-disabled`, `account-enabled`, `identifier-changed`. A single `*` (the DEFAULT) emits all supported types.
 
+**scim.signals.risc.identifier.attrs** - Comma-separated list of `User` attributes whose primary value is treated as a login identifier for `identifier-changed` derivation (DEFAULT: `userName,emails`). A singular attribute (e.g. `userName`) uses its scalar value; a multi-valued attribute (e.g. `emails`, `phoneNumbers`) uses the `value` of the entry flagged `primary`, treating a lone value as primary when no `primary` flag is set.
+
+**scim.signals.risc.identifier.addRemoveIsChange** - When `true` (the DEFAULT), a pure add or removal of an identifier value (one side absent) counts as an Identifier Changed event. When `false`, only a value-to-value change emits.
+
 RISC events are derived as follows:
 
 - **account-purged** — a `User` DELETE.
 - **account-enabled** / **account-disabled** — a change to a `User`'s `active` attribute (an absent `active` is treated as enabled). A CREATE always emits, reflecting the resulting state. A PATCH that `add`s/`replace`s `active` (including a path-less `value` object) emits the new value — even when unchanged — and a PATCH that `remove`s `active` emits `account-enabled`. A PUT emits only when `active` actually changes versus the prior state.
+- **identifier-changed** — a change to the primary value of a configured identifier attribute (`scim.signals.risc.identifier.attrs`) on a `User` PUT or PATCH; CREATE and DELETE never emit it. Each changed identifier attribute yields its own SET. With the default `scim` subject format the SET carries the stable `id`/`uri` subject and conveys the new identifier value in the event payload as `new-value`.
 
 #### Operator re-enable after DISABLED (PRD-B)
 
