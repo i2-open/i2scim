@@ -516,6 +516,10 @@ public class MemoryProvider implements IScimProvider {
             return new ScimResponse(new PreconditionFailException(
                     "Predcondition does not match"));
 
+        // Retain the unmodified resource as the pre-image so event derivation
+        // (e.g. RISC Account Enabled/Disabled) can diff against it — ADR-0001.
+        // origRes is not mutated here; the copy below is.
+        ctx.setPreImageResource(origRes);
         ScimResource temp;
         try {
             temp = origRes.copy(null);
@@ -541,6 +545,10 @@ public class MemoryProvider implements IScimProvider {
         if (origRes.checkModPreConditionFail(ctx))
             return new ScimResponse(new PreconditionFailException(
                     "Predcondition does not match"));
+        // Retain the unmodified resource as the pre-image so event derivation
+        // (e.g. RISC Account Enabled/Disabled) can diff against it — ADR-0001.
+        // origRes is not mutated here; the copy below is.
+        ctx.setPreImageResource(origRes);
         ScimResource temp;
         try {
             temp = origRes.copy(null);
@@ -627,6 +635,9 @@ public class MemoryProvider implements IScimProvider {
 
         if (res == null)
             return new ScimResponse(ScimResponse.ST_NOTFOUND, null, null);
+        // Retain the removed resource as the pre-image so event derivation (e.g. RISC
+        // Account Purged) has subject material — ADR-0001. No extra backend read.
+        ctx.setPreImageResource(res);
         deIndexResource(res);
         String type = ctx.getResourceContainer();
         this.containerMaps.get(type).remove(ctx.getPathId());

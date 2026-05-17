@@ -98,6 +98,26 @@ These properties allow the SSF client to trust custom CA roots (e.g., for self-s
 
 **scim.signals.pub.pem.watch** - PRD-B slice #79. When `true` (default), an out-of-band rotation of `scim.signals.pub.pem.path` is detected proactively via `java.nio.file.WatchService` (with a 5s mtime-poll fallback) and the cached issuer key on the active `PushStream` is refreshed before the next push. Set to `false` to disable the watcher and rely solely on the reactive `jws_signature_failed` reload path. Has no effect when `scim.signals.pub.pem.value` is set (env-value mode requires a restart to roll the key anyway).
 
+#### RISC events (PRD #86)
+
+i2scim can additionally derive **OpenID RISC** events (OpenID RISC Profile 1.0) from SCIM `User` state changes and emit them as their own Security Event Tokens on the existing SET push stream. RISC emission is opt-in and additive to — and gated by — `scim.signals.enable` / `scim.signals.pub.enable`; it does not bypass them. Each RISC event is delivered as its own SET with a distinct `jti`, sharing the `txn` and `toe` of the SCIM events derived from the same operation so a receiver can correlate them. RISC events are emitted only for `User` resources.
+
+**scim.signals.risc.enable** - Master switch for RISC event emission (DEFAULT: `false`). When `false`, upgrading i2scim never changes what existing receivers receive.
+
+**scim.signals.risc.types** - Comma-separated list of RISC event types to emit, by short name: `account-purged`, `account-disabled`, `account-enabled`, `identifier-changed`. A single `*` (the DEFAULT) emits all supported types.
+
+**scim.signals.risc.identifier.attrs** - Comma-separated list of `User` attributes whose primary value is treated as a login identifier for `identifier-changed` derivation (DEFAULT: `userName,emails`). A singular attribute (e.g. `userName`) uses its scalar value; a multi-valued attribute (e.g. `emails`, `phoneNumbers`) uses the `value` of the entry flagged `primary`, treating a lone value as primary when no `primary` flag is set.
+
+**scim.signals.risc.identifier.addRemoveIsChange** - When `true` (the DEFAULT), a pure add or removal of an identifier value (one side absent) counts as an Identifier Changed event. When `false`, only a value-to-value change emits.
+
+**scim.signals.risc.subject.format** - The subject identifier format carried by all RISC events: one of `scim` (the DEFAULT), `email`, `username`, or `phone`. With `scim` the subject is the stable `id`/`uri` of the `User`. With `email`/`username`/`phone` the subject carries the primary value of the corresponding `User` attribute (`emails`, `userName`, `phoneNumbers`); for Identifier Changed this is the *prior* (pre-image) value, with the new value still conveyed in the payload. When the configured format cannot be satisfied for a given `User` (e.g. `email` format but the `User` has no email), the event falls back to the `scim` subject so it is still emitted.
+
+RISC events are derived as follows:
+
+- **account-purged** — a `User` DELETE.
+- **account-enabled** / **account-disabled** — a change to a `User`'s `active` attribute (an absent `active` is treated as enabled). A CREATE always emits, reflecting the resulting state. A PATCH that `add`s/`replace`s `active` (including a path-less `value` object) emits the new value — even when unchanged — and a PATCH that `remove`s `active` emits `account-enabled`. A PUT emits only when `active` actually changes versus the prior state.
+- **identifier-changed** — a change to the primary value of a configured identifier attribute (`scim.signals.risc.identifier.attrs`) on a `User` PUT or PATCH; CREATE and DELETE never emit it. Each changed identifier attribute yields its own SET. With the default `scim` subject format the SET carries the stable `id`/`uri` subject and conveys the new identifier value in the event payload as `new-value`. Under a non-`scim` `scim.signals.risc.subject.format` the subject instead carries the prior identifier value and the payload still conveys the new value.
+
 #### Operator re-enable after DISABLED (PRD-B)
 
 A stream transitioned to `DISABLED` by the elapsed-time cap retains all pending JTIs in `pendingPushes` (Mongo) or `events/pending/<streamId>/` (memory). Re-enable is done through the existing PRD-A control surface — programmatically calling `pushStream.state.transitionTo(StreamStatus.ENABLED, null)` on the active `SsfHandler.getPushStream()`. The per-stream `PushRetryWorker` registers a transition listener that wakes the idle-sleeping worker thread on `DISABLED → ENABLED`, so the queue resumes draining (in `queuedAt` order) within milliseconds rather than after the next idle window. The first 2xx response is the operational marker that the stream is healthy again; if the receiver is still failing, the elapsed-time cap fires again and the stream is re-DISABLED. Pending JTIs are never deleted by a DISABLE — only by a successful 2xx delivery.

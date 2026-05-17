@@ -472,7 +472,15 @@ public class MongoProvider implements IScimProvider {
 		if (origRes.checkModPreConditionFail(ctx))
 			return new ScimResponse(new PreconditionFailException(
 					"Predcondition does not match"));
-		origRes.replaceResAttributes(replaceResource, ctx);  
+		// Snapshot the pre-image before replaceResAttributes mutates origRes, so
+		// event derivation (e.g. RISC Account Enabled/Disabled) can diff against
+		// the prior state — ADR-0001. Best-effort: a copy failure must not fail the PUT.
+		try {
+			ctx.setPreImageResource(origRes.copy(null));
+		} catch (ScimException | ParseException e) {
+			logger.warn("Could not capture pre-image for PUT " + ctx.getPath() + ": " + e.getMessage());
+		}
+		origRes.replaceResAttributes(replaceResource, ctx);
 		return this.putResource(origRes, ctx);
 	}
 
@@ -484,6 +492,13 @@ public class MongoProvider implements IScimProvider {
 		if (mres.checkModPreConditionFail(ctx))
 			return new ScimResponse(new PreconditionFailException(
 					"Predcondition does not match"));
+		// Snapshot the pre-image before modifyResource mutates mres — ADR-0001.
+		// Best-effort: a copy failure must not fail the PATCH.
+		try {
+			ctx.setPreImageResource(mres.copy(null));
+		} catch (ScimException | ParseException e) {
+			logger.warn("Could not capture pre-image for PATCH " + ctx.getPath() + ": " + e.getMessage());
+		}
 		mres.modifyResource(req, ctx);
 		// Modify resource will update the meta.revision
 		return this.putResource(mres, ctx);
@@ -530,6 +545,15 @@ public class MongoProvider implements IScimProvider {
 		}
 
 		//col.remove(res, WriteConcern.ACKNOWLEDGED);
+
+		// Retain the removed resource as the pre-image so event derivation (e.g. RISC
+		// Account Purged) has subject material — ADR-0001. Best-effort: a mapping
+		// failure must not fail the delete, which has already succeeded.
+		try {
+			ctx.setPreImageResource(mapUtil.mapScimResource(res, type));
+		} catch (ScimException | BackendException e) {
+			logger.warn("Could not map pre-image for deleted resource " + id + ": " + e.getMessage());
+		}
 
 		// return success
 		return new ScimResponse(ScimResponse.ST_NOCONTENT, null, null);

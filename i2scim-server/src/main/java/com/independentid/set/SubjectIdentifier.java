@@ -30,7 +30,8 @@ public class SubjectIdentifier {
 
     @JsonProperty("id")
     public String id;  // OpaqueIdentifier
-    @JsonProperty("phoneNumber")
+    // Serialized as "phone_number" (RFC 9493 phone_number format), matching toJsonNode().
+    @JsonProperty("phone_number")
     public String phoneNumber;
     @JsonProperty("url")
     public String url;  // DecentralizedId
@@ -67,6 +68,35 @@ public class SubjectIdentifier {
         SubjectIdentifier sid = new SubjectIdentifier();
         sid.format = format;
         return sid;
+    }
+
+    /**
+     * Builds a subject identifier in one of the RISC-configurable formats
+     * ({@code email}, {@code username}, {@code phone}). Slice 4 (#90).
+     *
+     * @param format the subject format.
+     * @param value  the identifier value to carry.
+     * @return the subject identifier, or {@code null} when the format is not one
+     *         of the supported value-bearing formats or {@code value} is null —
+     *         allowing the caller to fall back to a {@code scim} subject.
+     */
+    public static SubjectIdentifier forFormat(String format, String value) {
+        if (value == null) return null;
+        SubjectIdentifier sid = new SubjectIdentifier();
+        sid.format = format;
+        switch (format == null ? "" : format) {
+            case "email":
+                sid.email = value;
+                return sid;
+            case "username":
+                sid.username = value;
+                return sid;
+            case "phone":
+                sid.phoneNumber = value;
+                return sid;
+            default:
+                return null;
+        }
     }
 
     @JsonSetter("format")

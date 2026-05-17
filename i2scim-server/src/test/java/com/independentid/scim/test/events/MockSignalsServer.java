@@ -73,6 +73,9 @@ public class MockSignalsServer {
     static int miscErrs = 0;
     static Map<String, SecurityEventToken> pollEvents = new HashMap<>();
     static Map<String, SecurityEventToken> ackEvents = new HashMap<>();
+    // Non-draining record of every SET received via push — survives poll drain so
+    // tests can inspect what was pushed regardless of receiver timing.
+    static final List<SecurityEventToken> allReceived = new ArrayList<>();
     static int ackedCnt = 0;
     static int sent = 0;
 
@@ -298,6 +301,7 @@ public class MockSignalsServer {
             SecurityEventToken token = new SecurityEventToken(eventString, publicKey, null);
             logger.info("Received event:\n" + token.toPrettyString());
             pollEvents.put(token.getJti(), token);
+            allReceived.add(token);
             received++;
             return Response.accepted().build();
         } catch (InvalidJwtException | JoseException e) {
@@ -426,6 +430,23 @@ public class MockSignalsServer {
 
     public static int getPendingPollCnt() {
         return pollEvents.size();
+    }
+
+    /**
+     * Clears all accumulated counters and event stores. The counters are JVM-static
+     * and survive Quarkus restarts between test profiles, so any test that asserts on
+     * exact counts must call this at its start to baseline itself against other
+     * tests that push to this mock.
+     */
+    public static void reset() {
+        received = 0;
+        jwtErrs = 0;
+        miscErrs = 0;
+        ackedCnt = 0;
+        sent = 0;
+        pollEvents.clear();
+        ackEvents.clear();
+        allReceived.clear();
     }
 
     public static void addPollEvents(List<SecurityEventToken> events) {
