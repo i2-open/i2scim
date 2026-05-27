@@ -19,6 +19,7 @@ import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
 import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +50,9 @@ public class SsfHandler {
     CloseableHttpClient client;
     @JsonIgnore
     javax.net.ssl.SSLContext sslContext;
+
+    @ConfigProperty(name = "quarkus.application.version")
+    String version;
 
     public String serverUrl;
     public String iat;
@@ -341,7 +345,7 @@ public class SsfHandler {
         try {
             gen = JsonUtil.getGenerator(stringWriter, true);
             gen.writeStartObject();
-            gen.writeStringField("description", "i2scim.io v0.10.2");
+            gen.writeStringField("description", "i2scim.io " + version);
             gen.writeArrayFieldStart("scopes");
             gen.writeString("admin");
             gen.writeString("stream");
