@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class PushStream {
@@ -82,6 +83,15 @@ public class PushStream {
 
     @JsonIgnore
     private final AtomicReference<Instant> lastSuccessfulPush = new AtomicReference<>(Instant.now());
+
+    @JsonIgnore
+    private final AtomicLong pushSuccessCount = new AtomicLong();
+    @JsonIgnore
+    private final AtomicLong pushFailureCount = new AtomicLong();
+    @JsonIgnore
+    private final AtomicReference<String> lastPushFailureMessage = new AtomicReference<>();
+    @JsonIgnore
+    private final AtomicReference<Instant> lastPushFailureAt = new AtomicReference<>();
 
     @JsonIgnore
     public CloseableHttpClient client;
@@ -159,7 +169,7 @@ public class PushStream {
             }
         }
 
-        AttemptResult r = postOnce(signed);
+        AttemptResult r = postOnce(event.getJti(), signed);
         if (r instanceof AttemptResult.Failure f
                 && f.classification() instanceof FailureClassification.Rfc8935 rfcErr
                 && Rfc8935Error.JWS_SIGNATURE_FAILED.equals(rfcErr.error().code())
@@ -174,7 +184,7 @@ public class PushStream {
                         "Failed to re-sign after PEM reload: " + e.getMessage());
                 return new AttemptResult.StreamNotEnabled(StreamStatus.DISABLED, this.state.getErrorMsg());
             }
-            r = postOnce(signed);
+            r = postOnce(event.getJti(), signed);
         }
         return r;
     }
@@ -196,10 +206,10 @@ public class PushStream {
             return new AttemptResult.StreamNotEnabled(status, "endpoint not configured");
         }
         if (this.client == null) setSslContext(null);
-        return postOnce(signedPayload);
+        return postOnce(jti, signedPayload);
     }
 
-    private AttemptResult postOnce(String signedPayload) {
+    private AttemptResult postOnce(String jti, String signedPayload) {
         FailureClassification classification;
         String errorMsg;
         try {
@@ -218,12 +228,19 @@ public class PushStream {
 
                 if (classification instanceof FailureClassification.Success) {
                     this.lastSuccessfulPush.set(Instant.now());
+                    this.pushSuccessCount.incrementAndGet();
+                    logger.debug("Pushed SET jti={} stream={} -> {} {}", jti, safeStreamId(),
+                            this.endpointUrl, code);
                     if (this.state.getStatus() != StreamStatus.ENABLED) {
                         this.state.transitionTo(StreamStatus.ENABLED, null);
                     }
                     return new AttemptResult.Success();
                 }
                 errorMsg = code + " " + reason;
+                recordFailure(errorMsg);
+                logger.warn("Push of SET jti={} stream={} to {} (auth={}) failed: {} {} [{}]",
+                        jti, safeStreamId(), this.endpointUrl, maskAuth(this.authorization),
+                        code, reason, classification.getClass().getSimpleName());
             }
         } catch (IOException e) {
             if (this.shuttingDown.get()) {
@@ -232,6 +249,10 @@ public class PushStream {
             }
             classification = PushFailureClassifier.classify(e);
             errorMsg = "transport: " + e.getMessage();
+            recordFailure(errorMsg);
+            logger.warn("Push of SET jti={} stream={} to {} (auth={}) transport error: [{}] {}",
+                    jti, safeStreamId(), this.endpointUrl, maskAuth(this.authorization),
+                    e.getClass().getSimpleName(), e.getMessage());
         }
 
         if (classification instanceof FailureClassification.Transport
@@ -241,6 +262,42 @@ public class PushStream {
             }
         }
         return new AttemptResult.Failure(classification, errorMsg);
+    }
+
+    private void recordFailure(String msg) {
+        this.pushFailureCount.incrementAndGet();
+        this.lastPushFailureMessage.set(msg);
+        this.lastPushFailureAt.set(Instant.now());
+    }
+
+    public long getPushSuccessCount() { return pushSuccessCount.get(); }
+    public long getPushFailureCount() { return pushFailureCount.get(); }
+    public String getLastPushFailureMessage() { return lastPushFailureMessage.get(); }
+    public Instant getLastPushFailureAt() { return lastPushFailureAt.get(); }
+
+    /**
+     * Mask an Authorization header so a slice can appear in logs without
+     * leaking the credential. Returns {@code "<none>"} for {@code "NONE"},
+     * {@code "<empty>"} for null/blank, otherwise the scheme (first token)
+     * followed by the first 8 characters of the credential, followed by
+     * {@code "…"}. E.g. {@code "Bearer eyJhbGci…"}.
+     */
+    public static String maskAuth(String header) {
+        if (header == null || header.isEmpty()) return "<empty>";
+        if ("NONE".equals(header)) return "<none>";
+        int sp = header.indexOf(' ');
+        if (sp <= 0 || sp == header.length() - 1) {
+            String prefix = header.length() <= 8 ? header : header.substring(0, 8);
+            return prefix + "…";
+        }
+        String scheme = header.substring(0, sp);
+        String cred = header.substring(sp + 1);
+        String prefix = cred.length() <= 8 ? cred : cred.substring(0, 8);
+        return scheme + " " + prefix + "…";
+    }
+
+    private String safeStreamId() {
+        return streamId == null ? "<unset>" : streamId;
     }
 
     /**

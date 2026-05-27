@@ -262,6 +262,7 @@ public class SsfHandler {
 
         StreamConfig pushResp = JsonUtil.getMapper().readValue(body.getContent(), StreamConfig.class);
         this.pushStream.streamId = pushResp.Id;
+        this.pushStream.state.setLabel("push:" + pushResp.Id);
         this.pushStream.endpointUrl = pushResp.Delivery.EndpointUrl;
         this.pushStream.authorization = pushResp.Delivery.AuthorizationHeader;
         this.pushStream.iss = configProps.pubIssuer;
@@ -314,6 +315,7 @@ public class SsfHandler {
 
         StreamConfig pollResp = JsonUtil.getMapper().readValue(body.getContent(), StreamConfig.class);
         this.pollStream.streamId = pollResp.Id;
+        this.pollStream.state.setLabel("poll:" + pollResp.Id);
         this.pollStream.endpointUrl = pollResp.Delivery.EndpointUrl;
         this.pollStream.authorization = pollResp.Delivery.AuthorizationHeader;
         this.pollStream.iss = configProps.rcvIss;

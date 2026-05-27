@@ -161,10 +161,14 @@ public final class PushRetryWorker implements Runnable {
 
             AttemptResult result = stream.attemptOnce(record.jti(), record.payload());
             if (result instanceof AttemptResult.Success) {
+                logger.info("Drained queued SET jti={} stream={} after {} prior attempts",
+                        record.jti(), safeStreamId(), record.attemptCount());
                 store.delete(record.streamId(), record.jti());
                 continue;
             }
-            if (result instanceof AttemptResult.StreamNotEnabled) {
+            if (result instanceof AttemptResult.StreamNotEnabled n) {
+                logger.warn("Drain paused for jti={} stream={} streamStatus={} reason={}",
+                        record.jti(), safeStreamId(), n.status(), n.reason());
                 return true; // outer loop sleeps until state recovers
             }
             AttemptResult.Failure f = (AttemptResult.Failure) result;
@@ -175,13 +179,25 @@ public final class PushRetryWorker implements Runnable {
                     f.classification(), newAttempt, record.queuedAt(), clock.instant(), retryConfig);
             switch (decision) {
                 case RetryDecision.Disable d -> {
-                    logger.error("Push stream {} DISABLED by retry worker: {}",
-                            safeStreamId(), d.reason());
+                    logger.error("Push stream {} DISABLED by retry worker after jti={} attempt {}: {}",
+                            safeStreamId(), record.jti(), newAttempt, d.reason());
                     stream.state.transitionTo(StreamStatus.DISABLED, d.reason());
                     return true;
                 }
-                case RetryDecision.SleepThenRetry s -> sleeper.sleep(s.delay().toMillis());
-                case RetryDecision.RetryNoCap n -> sleeper.sleep(n.delay().toMillis());
+                case RetryDecision.SleepThenRetry s -> {
+                    logger.warn("Drain attempt {} failed jti={} stream={} classification={} msg={} — retrying in {}ms",
+                            newAttempt, record.jti(), safeStreamId(),
+                            f.classification().getClass().getSimpleName(), f.errorMsg(),
+                            s.delay().toMillis());
+                    sleeper.sleep(s.delay().toMillis());
+                }
+                case RetryDecision.RetryNoCap n -> {
+                    logger.warn("Drain attempt {} failed jti={} stream={} classification={} msg={} — retrying (no-cap) in {}ms",
+                            newAttempt, record.jti(), safeStreamId(),
+                            f.classification().getClass().getSimpleName(), f.errorMsg(),
+                            n.delay().toMillis());
+                    sleeper.sleep(n.delay().toMillis());
+                }
             }
         }
         return true;

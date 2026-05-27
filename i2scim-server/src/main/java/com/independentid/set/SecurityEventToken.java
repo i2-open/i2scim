@@ -121,7 +121,8 @@ public class SecurityEventToken {
 
     @JsonSetter("jti")
     public String getJti() {
-        return this.claims.get("jti").asText();
+        JsonNode jtiNode = this.claims.get("jti");
+        return jtiNode == null ? null : jtiNode.asText();
     }
 
     @JsonSetter("txn")
