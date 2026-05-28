@@ -52,6 +52,7 @@ public class ScimDevOpsTestProfile implements QuarkusTestProfile {
         ));
 
         TestUtils.configTestEndpointsMap(cmap);
+        TestUtils.enableMongoDevServices(cmap);
         cmap.put("scim.prov.mongo.dbname", "opsTestSCIM");
 
         return cmap;

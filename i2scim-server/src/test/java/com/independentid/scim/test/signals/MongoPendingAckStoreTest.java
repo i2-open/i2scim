@@ -9,8 +9,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.utility.DockerImageName;
 
 import java.time.Instant;
 import java.util.List;
@@ -23,15 +21,12 @@ class MongoPendingAckStoreTest {
     private static final String STREAM_A = "stream-a";
     private static final String STREAM_B = "stream-b";
 
-    private static MongoDBContainer mongo;
     private static MongoClient client;
     private static MongoPendingAckStore store;
 
     @BeforeAll
     static void start() {
-        mongo = new MongoDBContainer(DockerImageName.parse("mongo:8.0"));
-        mongo.start();
-        client = MongoClients.create(mongo.getReplicaSetUrl());
+        client = MongoClients.create(SharedMongoContainer.replicaSetUrl());
         store = new MongoPendingAckStore(client, DB_NAME);
         store.init();
     }
@@ -39,7 +34,6 @@ class MongoPendingAckStoreTest {
     @AfterAll
     static void stop() {
         if (client != null) client.close();
-        if (mongo != null) mongo.stop();
     }
 
     @BeforeEach
@@ -111,7 +105,7 @@ class MongoPendingAckStoreTest {
         }
 
         // Simulate a restart by opening a fresh client + store against the same Mongo.
-        try (MongoClient reopenedClient = MongoClients.create(mongo.getReplicaSetUrl())) {
+        try (MongoClient reopenedClient = MongoClients.create(SharedMongoContainer.replicaSetUrl())) {
             MongoPendingAckStore reopened = new MongoPendingAckStore(reopenedClient, DB_NAME);
             reopened.init();
             assertThat(reopened.count(STREAM_A)).isEqualTo(25L);

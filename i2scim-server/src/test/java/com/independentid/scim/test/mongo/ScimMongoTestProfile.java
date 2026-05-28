@@ -42,6 +42,7 @@ public class ScimMongoTestProfile implements QuarkusTestProfile {
         ));
         // cmap.put("scim.prov.mongo.uri","mongodb://localhost:27117");
         TestUtils.configTestEndpointsMap(cmap);
+        TestUtils.enableMongoDevServices(cmap);
         return cmap;
     }
 

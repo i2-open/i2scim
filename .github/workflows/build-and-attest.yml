@@ -30,12 +30,21 @@ jobs:
       - name: Run test suite
         # Runs the whole reactor's tests (~421 in i2scim-server; core and client
         # carry none). The suite needs only a Docker daemon, which ubuntu-latest
-        # supplies: MongoProvider tests use an ephemeral mongo:8.0 from Quarkus
-        # Dev Services, and MongoPending*StoreTest / SignalsDurabilityTest start
-        # their own mongo:8.0 via Testcontainers. No MongoDB on localhost, no OPA
-        # server and no Kafka broker are required. Two classes stay excluded in
-        # i2scim-server/pom.xml -- LoadScimClusterTest (needs a K8s cluster) and
-        # SignalsGoSignalsIT (needs a live goSignals server).
+        # supplies: the four MongoProvider-backed test profiles use an ephemeral
+        # mongo:8.0 from Quarkus Dev Services, and the signals durability/store tests
+        # share a single mongo:8.0 via Testcontainers. Dev Services is OFF by default
+        # so the many MemoryProvider-backed tests don't each launch an unused mongo
+        # container -- both mechanisms use the same mongo:8.0 tag, so the runner pulls
+        # ONE mongo image. No MongoDB on localhost, no OPA server and no Kafka broker
+        # are required. Two classes stay excluded in i2scim-server/pom.xml --
+        # LoadScimClusterTest (needs a K8s cluster) and SignalsGoSignalsIT (needs a
+        # live goSignals server).
+        env:
+          # The runner is ephemeral and destroyed after the job, so the ryuk reaper
+          # buys nothing here -- skip it to avoid starting a reaper container per fork.
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+          # Skip the one-time Docker-environment probe Testcontainers runs at startup.
+          TESTCONTAINERS_CHECKS_DISABLE: "true"
         run: mvn -B test
 
       - name: Build and Package with Maven

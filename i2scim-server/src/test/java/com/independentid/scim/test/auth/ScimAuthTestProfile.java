@@ -58,6 +58,7 @@ public class ScimAuthTestProfile implements QuarkusTestProfile {
         ));
 
         TestUtils.configTestEndpointsMap(cmap);
+        TestUtils.enableMongoDevServices(cmap);
         return cmap;
 
 
