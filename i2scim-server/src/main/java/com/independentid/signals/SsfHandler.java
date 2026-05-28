@@ -19,6 +19,7 @@ import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactory;
 import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,6 +60,24 @@ public class SsfHandler {
     public boolean initialized = false;
 
     protected SsfHandler() {
+    }
+
+    /**
+     * Look up the running application version at the point of use.
+     * SsfHandler is constructed outside CDI (Jackson {@code treeToValue} on
+     * a persisted config file, or plain {@code new}), so a {@code @ConfigProperty}
+     * field would be left null. {@link ConfigProvider} resolves against the
+     * same MicroProfile Config sources Quarkus populates, including the
+     * project version that the build wires into {@code quarkus.application.version}.
+     */
+    private static String applicationVersion() {
+        try {
+            return ConfigProvider.getConfig()
+                    .getOptionalValue("quarkus.application.version", String.class)
+                    .orElse("unknown");
+        } catch (RuntimeException re) {
+            return "unknown";
+        }
     }
 
     public String toString() {
@@ -262,6 +281,7 @@ public class SsfHandler {
 
         StreamConfig pushResp = JsonUtil.getMapper().readValue(body.getContent(), StreamConfig.class);
         this.pushStream.streamId = pushResp.Id;
+        this.pushStream.state.setLabel("push:" + pushResp.Id);
         this.pushStream.endpointUrl = pushResp.Delivery.EndpointUrl;
         this.pushStream.authorization = pushResp.Delivery.AuthorizationHeader;
         this.pushStream.iss = configProps.pubIssuer;
@@ -314,6 +334,7 @@ public class SsfHandler {
 
         StreamConfig pollResp = JsonUtil.getMapper().readValue(body.getContent(), StreamConfig.class);
         this.pollStream.streamId = pollResp.Id;
+        this.pollStream.state.setLabel("poll:" + pollResp.Id);
         this.pollStream.endpointUrl = pollResp.Delivery.EndpointUrl;
         this.pollStream.authorization = pollResp.Delivery.AuthorizationHeader;
         this.pollStream.iss = configProps.rcvIss;
@@ -339,7 +360,7 @@ public class SsfHandler {
         try {
             gen = JsonUtil.getGenerator(stringWriter, true);
             gen.writeStartObject();
-            gen.writeStringField("description", "i2scim.io v0.10.2");
+            gen.writeStringField("description", "i2scim.io " + applicationVersion());
             gen.writeArrayFieldStart("scopes");
             gen.writeString("admin");
             gen.writeString("stream");

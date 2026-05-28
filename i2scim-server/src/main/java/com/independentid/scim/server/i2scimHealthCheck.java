@@ -23,7 +23,9 @@ import com.independentid.scim.core.PoolManager;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.PersistStateResource;
 import com.independentid.scim.schema.SchemaManager;
+import com.independentid.signals.SignalsEventHandler;
 import jakarta.annotation.Resource;
+import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
@@ -55,6 +57,9 @@ public class i2scimHealthCheck implements org.eclipse.microprofile.health.Health
 
     @Inject
     SchemaManager schemaManager;
+
+    @Inject
+    Instance<SignalsEventHandler> signalsHandlerInstance;
 
     BackendHandler handler = BackendHandler.getInstance();
 
@@ -100,8 +105,40 @@ public class i2scimHealthCheck implements org.eclipse.microprofile.health.Health
                 .withData("scim.security.authen.jwt", configMgr.isAuthJwt())
                 .withData("scim.security.authen.basic", configMgr.isAuthBasic());
 
+        responseBuilder = addPushMetrics(responseBuilder);
+
         return responseBuilder.up().build();
 
 
+    }
+
+    private HealthCheckResponseBuilder addPushMetrics(HealthCheckResponseBuilder b) {
+        SignalsEventHandler signals;
+        try {
+            if (signalsHandlerInstance == null || signalsHandlerInstance.isUnsatisfied()) return b;
+            signals = signalsHandlerInstance.get();
+        } catch (RuntimeException re) {
+            return b;
+        }
+        SignalsEventHandler.PushMetrics m = signals.getPushMetrics();
+        if (m == null) return b;
+        b = b.withData("scim.signals.push.streamId", m.streamId() == null ? "<unset>" : m.streamId())
+                .withData("scim.signals.push.status", m.status() == null ? "<unset>" : m.status().name())
+                .withData("scim.signals.push.successCount", m.successCount())
+                .withData("scim.signals.push.failureCount", m.failureCount())
+                .withData("scim.signals.push.sendErrorCnt", signals.getSendErrorCnt());
+        if (m.stateErrorMsg() != null) {
+            b = b.withData("scim.signals.push.stateErrorMsg", m.stateErrorMsg());
+        }
+        if (m.lastFailureMessage() != null) {
+            b = b.withData("scim.signals.push.lastFailureMessage", m.lastFailureMessage());
+        }
+        if (m.lastFailureAt() != null) {
+            b = b.withData("scim.signals.push.lastFailureAt", m.lastFailureAt().toString());
+        }
+        if (m.lastSuccessAt() != null) {
+            b = b.withData("scim.signals.push.lastSuccessAt", m.lastSuccessAt().toString());
+        }
+        return b;
     }
 }

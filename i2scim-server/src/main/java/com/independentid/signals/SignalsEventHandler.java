@@ -422,13 +422,13 @@ public class SignalsEventHandler implements IEventHandler {
 
         if (txn instanceof SecurityEventToken) {
             SecurityEventToken event = (SecurityEventToken) txn;
+            String jti = event.getJti();
             Operation op = mapper.MapSetToOperation(event, configMgr.getSchemaManager());
             if (logger.isDebugEnabled())
                 logger.debug("\tReceived SCIM Event:\n" + event.toPrettyString());
             if (op == null) {
-                if (logger.isDebugEnabled())
-                    logger.debug("Acking non-provisioning event jti={}", event.getJti());
-                recordAck(this.pendingAckStore, ssfClient.getPollStream(), event.getJti());
+                logger.info("Received non-provisioning SET jti={} — acking only", jti);
+                recordAck(this.pendingAckStore, ssfClient.getPollStream(), jti);
                 return;
             }
             try {
@@ -436,28 +436,63 @@ public class SignalsEventHandler implements IEventHandler {
                 if (tranId != null) {
                     ScimResource txnResource = backendHandler.getTransactionRecord(tranId);
                     if (txnResource != null) {
-                        recordAck(this.pendingAckStore, ssfClient.getPollStream(), event.getJti());
-                        logger.warn("Duplicate transaction detected, ignoring.");
+                        recordAck(this.pendingAckStore, ssfClient.getPollStream(), jti);
+                        logger.warn("Duplicate transaction detected jti={} txn={} — acking, not re-applying",
+                                jti, tranId);
                         return;
                     }
                 }
             } catch (BackendException e) {
-                logger.error("Backend error fetching transaction: " + e.getMessage());
+                logger.error("Backend error fetching transaction (jti={}): {}", jti, e.getMessage());
                 return;
             } catch (MalformedClaimException e) {
-                recordAck(this.pendingAckStore, ssfClient.getPollStream(), event.getJti());
-                logger.error("Invalid txn value. Ignoring event");
+                recordAck(this.pendingAckStore, ssfClient.getPollStream(), jti);
+                logger.error("Invalid txn value jti={} — acking and ignoring event", jti);
                 return;
             }
+            logger.info("Applying received SET jti={} op={}", jti, op.getClass().getSimpleName());
             acceptedOps.add(op);
             pool.addJobAndWait(op);
-            recordAck(this.pendingAckStore, ssfClient.getPollStream(), event.getJti());
+            recordAck(this.pendingAckStore, ssfClient.getPollStream(), jti);
         }
     }
 
     public FifoCache<Operation> getSendErrorOps() { return sendErrorOps; }
 
     public int getSendErrorCnt() { return sendErrorOps.size(); }
+
+    /**
+     * Lightweight push-stream metrics for health/devops surfaces. Returns
+     * {@code null} when signals are disabled or the push stream is not
+     * configured — callers should null-check rather than render zero values
+     * for a non-existent stream.
+     */
+    public PushMetrics getPushMetrics() {
+        if (!enabled || ssfClient == null) return null;
+        PushStream push = ssfClient.getPushStream();
+        if (push == null) return null;
+        return new PushMetrics(
+                push.streamId,
+                push.state.getStatus(),
+                push.state.getErrorMsg(),
+                push.getPushSuccessCount(),
+                push.getPushFailureCount(),
+                push.getLastPushFailureMessage(),
+                push.getLastPushFailureAt(),
+                push.getLastSuccessfulPush()
+        );
+    }
+
+    public record PushMetrics(
+            String streamId,
+            StreamStatus status,
+            String stateErrorMsg,
+            long successCount,
+            long failureCount,
+            String lastFailureMessage,
+            Instant lastFailureAt,
+            Instant lastSuccessAt
+    ) {}
 
     /**
      * PRD-B slice #73: single inline {@link PushStream#attemptOnce} per SET; on
@@ -496,8 +531,24 @@ public class SignalsEventHandler implements IEventHandler {
                                                  PendingPushStore store,
                                                  SecurityEventToken token,
                                                  Operation originatingOp) {
+        String jti = token.getJti();
         AttemptResult result = push.attemptOnce(token);
-        if (result instanceof AttemptResult.Success) return;
+        if (result instanceof AttemptResult.Success) {
+            logger.debug("Inline push of SET succeeded jti={} streamId={}", jti, push.streamId);
+            return;
+        }
+
+        // Per-event WARN so the operator sees the failure once at the producer seam.
+        // PushStream.postOnce already logged the HTTP/transport detail; this line ties
+        // the failure to the originating SCIM op and notes the enqueue-for-retry path.
+        if (result instanceof AttemptResult.Failure f) {
+            logger.warn("Inline push of SET failed jti={} streamId={} classification={} msg={} — enqueueing for retry",
+                    jti, push.streamId,
+                    f.classification().getClass().getSimpleName(), f.errorMsg());
+        } else if (result instanceof AttemptResult.StreamNotEnabled n) {
+            logger.warn("Inline push of SET skipped jti={} streamId={} streamStatus={} reason={} — enqueueing for retry",
+                    jti, push.streamId, n.status(), n.reason());
+        }
 
         String signed = signForStorage(push, token);
         if (signed == null) {
@@ -507,14 +558,14 @@ public class SignalsEventHandler implements IEventHandler {
         try {
             store.enqueue(PendingPushRecord.ofNew(
                     push.streamId,
-                    token.getJti(),
+                    jti,
                     signed,
                     PendingPushState.pending,
                     Instant.now()
             ));
         } catch (RuntimeException re) {
             logger.error("Failed to enqueue pending push (streamId={}, jti={}): {}",
-                    push.streamId, token.getJti(), re.getMessage(), re);
+                    push.streamId, jti, re.getMessage(), re);
             sendErrorOps.add(originatingOp);
         }
     }
