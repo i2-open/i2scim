@@ -208,6 +208,19 @@ public class TestUtils {
 
     }
 
+    /**
+     * Enables Quarkus MongoDB Dev Services (pinned to mongo:8.0) for the calling test profile.
+     * Dev Services is disabled by default in application.properties so the many MemoryProvider-backed
+     * tests don't each launch an unused mongo container; only MongoProvider-backed profiles call this.
+     * The image is pinned to mongo:8.0 to match the Testcontainers-based signals tests, so a full
+     * suite run pulls a single mongo image. Setting it here (in addition to application.properties)
+     * keeps the override robust against each profile's custom getConfigProfile() name.
+     */
+    public static void enableMongoDevServices(Map<String,String> map) {
+        map.put("quarkus.mongodb.devservices.enabled","true");
+        map.put("quarkus.mongodb.devservices.image-name","mongo:8.0");
+    }
+
     public static CloseableHttpResponse executeGet(URL baseUrl, String req) throws MalformedURLException {
         //if (req.startsWith("/"))
         req = mapPathToReqUrl(baseUrl, req);

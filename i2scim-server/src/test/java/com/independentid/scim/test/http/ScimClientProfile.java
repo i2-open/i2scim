@@ -17,6 +17,7 @@
 package com.independentid.scim.test.http;
 
 import com.independentid.scim.backend.mongo.MongoProvider;
+import com.independentid.scim.test.misc.TestUtils;
 import io.quarkus.test.junit.QuarkusTestProfile;
 
 import java.util.HashMap;
@@ -46,6 +47,7 @@ public class ScimClientProfile implements QuarkusTestProfile {
                 "scim.event.enable","false",
                 "scim.root.dir","."  //enables local debug testing
         ));
+        TestUtils.enableMongoDevServices(cmap);
         return cmap;
     }
 

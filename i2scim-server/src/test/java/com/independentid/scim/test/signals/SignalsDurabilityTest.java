@@ -15,8 +15,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.MongoDBContainer;
-import org.testcontainers.utility.DockerImageName;
 
 import java.io.OutputStream;
 import java.lang.reflect.Method;
@@ -48,7 +46,6 @@ class SignalsDurabilityTest {
     private static final String DB_NAME = "i2scimSlice73IT";
     private static final String STREAM_ID = "it-stream";
 
-    private static MongoDBContainer mongo;
     private static MongoClient mongoClient;
     private static MongoPendingPushStore store;
 
@@ -61,9 +58,7 @@ class SignalsDurabilityTest {
 
     @BeforeAll
     static void startInfra() {
-        mongo = new MongoDBContainer(DockerImageName.parse("mongo:8.0"));
-        mongo.start();
-        mongoClient = MongoClients.create(mongo.getReplicaSetUrl());
+        mongoClient = MongoClients.create(SharedMongoContainer.replicaSetUrl());
         store = new MongoPendingPushStore(mongoClient, DB_NAME);
         store.init();
     }
@@ -71,7 +66,6 @@ class SignalsDurabilityTest {
     @AfterAll
     static void stopInfra() {
         if (mongoClient != null) mongoClient.close();
-        if (mongo != null) mongo.stop();
     }
 
     @BeforeEach

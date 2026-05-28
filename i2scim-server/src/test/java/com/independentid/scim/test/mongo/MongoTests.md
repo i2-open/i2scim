@@ -6,13 +6,21 @@ install is required**.
 
 ### How it works
 
-These tests use the `ScimMongoTestProfile` profile. In the `test` profile,
-`application.properties` enables [Quarkus Dev Services for MongoDB](https://quarkus.io/guides/mongodb#dev-services):
+These tests use the `ScimMongoTestProfile` profile. Quarkus Dev Services for MongoDB is
+**off by default** in `application.properties` — otherwise, because `quarkus-mongodb-client`
+is always on the classpath, every QuarkusTest (including the many MemoryProvider-backed ones)
+would launch a throwaway mongo container, and Dev Services could even start in production:
 
 ```
-%test.quarkus.mongodb.devservices.enabled=true
-%test.quarkus.mongodb.devservices.image-name=mongo:8.0
+quarkus.mongodb.devservices.enabled=false
+quarkus.mongodb.devservices.image-name=mongo:8.0
 ```
+
+Only the four MongoProvider-backed test profiles re-enable Dev Services, via
+`TestUtils.enableMongoDevServices()` (called from `ScimMongoTestProfile`,
+`ScimDevOpsTestProfile`, `ScimAuthTestProfile`, and `ScimClientProfile`). The image is pinned
+to `mongo:8.0` — the same tag the Testcontainers-based signals tests share via
+`SharedMongoContainer` — so a full suite run pulls a single mongo image.
 
 On test startup Quarkus pulls and starts the pinned `mongo:8.0` container, then exposes
 its connection string as `quarkus.mongodb.connection-string`. Both
