@@ -9,8 +9,8 @@
 #
 # i2scim tests start mongo two ways, and both label everything they create with
 # `org.testcontainers=true`:
-#   * Testcontainers  -- the signals durability/store tests (one shared mongo:8.0).
-#   * Quarkus MongoDB Dev Services -- the MongoProvider-backed tests (mongo:8.0).
+#   * Testcontainers  -- the signals durability/store tests (one shared mongo:8.2).
+#   * Quarkus MongoDB Dev Services -- the MongoProvider-backed tests (mongo:8.2).
 # The Testcontainers ryuk reaper normally removes them on JVM exit. This script is a
 # safety net for runs that were killed (kill -9, IDE "stop", CI timeout) before ryuk
 # fired, leaving a mongo or ryuk container behind.

@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 i2scim is a Quarkus-based implementation of the IETF SCIM v2 protocol (RFC 7643/7644). The defining design choice is that **resource types and schema are not hard-coded** — they are loaded at startup from JSON files (`scimSchema.json`, `resourceTypes.json`, `acis.json`) supplied via path, classpath, or K8s ConfigMap. Most code operates on a generic JSON-document model rather than typed resources.
 
-Java 25 / Quarkus 3.34.3 / Jakarta EE 11. Group: `com.independentid`, version: `0.10.0`.
+Java 25 / Quarkus 3.39.5 / Jakarta EE 11. Group: `com.independentid`, version: `0.10.0`.
 
 ## Build
 

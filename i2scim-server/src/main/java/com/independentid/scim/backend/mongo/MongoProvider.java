@@ -41,6 +41,7 @@ import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,7 +93,8 @@ public class MongoProvider implements IScimProvider {
 	@Inject
 	MongoIdGenerator generator;
 
-	@ConfigProperty(name = "scim.prov.mongo.uri", defaultValue="mongodb://localhost:27017")
+	// Resolved lazily in init() rather than injected: the bean can be created during static init,
+	// before Quarkus Dev Services has published the runtime connection string (Quarkus 3.39+).
 	String dbUrl;
 
 	//@Value("${scim.mongodb.dbname: SCIM}")
@@ -117,6 +119,10 @@ public class MongoProvider implements IScimProvider {
 
 	//Note: We don't want auto start. Normally Backendhandler invokes this.
 	public synchronized void init() {
+		if (dbUrl == null)
+			dbUrl = ConfigProvider.getConfig()
+					.getOptionalValue("scim.prov.mongo.uri", String.class)
+					.orElse("mongodb://localhost:27017");
 
 		if (!dbUrl.contains("@") && !dbUser.equals("UNDEFINED")) {
 			logger.info("Connecting to Mongo using admin user: "+dbUser);

@@ -208,7 +208,7 @@ In this release:
 
 ## Building and Running
 
-i2scim is a three-module Maven project (`i2scim-core`, `i2scim-client`, `i2scim-server`) on Java 25 and Quarkus 3.34.x.
+i2scim is a three-module Maven project (`i2scim-core`, `i2scim-client`, `i2scim-server`) on Java 25 and Quarkus 3.39.x.
 
 ```bash
 # Build everything (skips tests by default):
