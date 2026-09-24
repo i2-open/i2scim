@@ -50,6 +50,9 @@
     </scm>
 
     <properties>
+        <!-- Build plugins are not managed by the Quarkus BOM, so their versions are pinned
+             here (and inline below) at the latest final releases. cyclonedx stays on 2.9.x
+             until #80; jandex-maven-plugin tracks the Jandex version Quarkus bundles. -->
         <compiler-plugin.version>3.16.0</compiler-plugin.version>
         <maven.compiler.release>25</maven.compiler.release>
         <maven.compiler.source>25</maven.compiler.source>
@@ -72,40 +75,27 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Explicit pins below are only for libraries the Quarkus BOM does not manage.
+                 Everything else (servlet-api, jose4j, httpclient5/httpcore5, rest-assured,
+                 commons-lang3/-codec, mockito, testcontainers, netty) takes the BOM version;
+                 do not re-pin without a comment giving the reason (DECISIONS.md, #100). -->
             <dependency>
-                <groupId>jakarta.servlet</groupId>
-                <artifactId>jakarta.servlet-api</artifactId>
-                <version>6.1.0</version>
-            </dependency>
-            <dependency>
+                <!-- Not managed by the Quarkus BOM; 4.0.1 is the latest final release. -->
                 <groupId>jakarta.ejb</groupId>
                 <artifactId>jakarta.ejb-api</artifactId>
                 <version>4.0.1</version>
             </dependency>
             <dependency>
-                <groupId>org.bitbucket.b_c</groupId>
-                <artifactId>jose4j</artifactId>
-                <version>0.9.7</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.httpcomponents.client5</groupId>
-                <artifactId>httpclient5</artifactId>
-                <version>5.6.4</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.httpcomponents.core5</groupId>
-                <artifactId>httpcore5</artifactId>
-                <version>5.4.4</version>
-            </dependency>
-            <dependency>
-                <groupId>io.rest-assured</groupId>
-                <artifactId>rest-assured</artifactId>
-                <version>6.0.1</version>
-            </dependency>
-            <dependency>
+                <!-- Not managed by the Quarkus BOM; 3.27.7 is the latest final release. -->
                 <groupId>org.assertj</groupId>
                 <artifactId>assertj-core</artifactId>
                 <version>3.27.7</version>
+            </dependency>
+            <dependency>
+                <!-- Not managed by the Quarkus BOM; 1.2 is the latest final release. -->
+                <groupId>org.bitbucket.cowwoc</groupId>
+                <artifactId>diff-match-patch</artifactId>
+                <version>1.2</version>
             </dependency>
             <dependency>
                 <groupId>com.independentid</groupId>

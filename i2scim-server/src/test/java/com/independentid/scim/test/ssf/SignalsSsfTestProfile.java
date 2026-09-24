@@ -45,7 +45,7 @@ public class SignalsSsfTestProfile implements QuarkusTestProfile {
         ));
 
         map.putAll(Map.of(
-                "quarkus.http.auth.permission.permit1.paths=", "/*",
+                "quarkus.http.auth.permission.permit1.paths", "/*",
                 "quarkus.http.auth.permission.permit1.policy", "permit",
                 "quarkus.http.auth.permission.permit1.methods", "GET,POST,HEAD,DELETE,PATCH"
         ));

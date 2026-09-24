@@ -45,16 +45,16 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: "true"
           # Skip the one-time Docker-environment probe Testcontainers runs at startup.
           TESTCONTAINERS_CHECKS_DISABLE: "true"
-        run: mvn -B test
+        run: ./mvnw -B test
 
       - name: Build and Package with Maven
         # Tests already ran in the previous step; -DskipTests just assembles jars.
-        run: mvn -B package -DskipTests
+        run: ./mvnw -B package -DskipTests
 
       - name: Capture build metadata
         id: meta-vars
         run: |
-          version=$(mvn -N -q help:evaluate -Dexpression=project.version -DforceStdout)
+          version=$(./mvnw -N -q help:evaluate -Dexpression=project.version -DforceStdout)
           {
             echo "version=${version}"
             echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"

@@ -47,7 +47,7 @@ echo "  i2scim build — tag=${tag} push=${push} skipTests=${skip_tests}"
 echo "*************************************************"
 
 # Maven build (root-level install — fixed in slice 6 to no longer require -N + per-module install)
-mvn -f "${I2SCIM_ROOT}/pom.xml" clean install -DskipTests=${skip_tests}
+"${I2SCIM_ROOT}/mvnw" -f "${I2SCIM_ROOT}/pom.xml" clean install -DskipTests=${skip_tests}
 
 if [[ ${build_only} -eq 1 ]]; then
   echo "Build only requested — skipping docker."
@@ -56,7 +56,7 @@ fi
 
 GIT_COMMIT=$(git -C "${I2SCIM_ROOT}" rev-parse HEAD)
 BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-VERSION=$(mvn -q -f "${I2SCIM_ROOT}/pom.xml" help:evaluate -Dexpression=project.version -DforceStdout)
+VERSION=$("${I2SCIM_ROOT}/mvnw" -q -f "${I2SCIM_ROOT}/pom.xml" help:evaluate -Dexpression=project.version -DforceStdout)
 
 cd "${I2SCIM_ROOT}/i2scim-server"
 

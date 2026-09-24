@@ -16,11 +16,12 @@
 
 package com.independentid.scim.test.signals;
 
+import com.independentid.scim.test.misc.TestUtils;
 import org.testcontainers.mongodb.MongoDBContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * A single {@code mongo:8.2} Testcontainers instance shared by all signals
+ * A single {@link TestUtils#MONGO_TEST_IMAGE} Testcontainers instance shared by all signals
  * durability/store tests ({@code MongoPendingAckStoreTest}, {@code MongoPendingPushStoreTest},
  * {@code SignalsDurabilityTest}).
  *
@@ -30,13 +31,13 @@ import org.testcontainers.utility.DockerImageName;
  * which is the dominant cost of these tests. Each test class uses a distinct database name so
  * they don't collide on the shared server.
  *
- * <p>The image tag matches {@code quarkus.mongodb.devservices.image-name} (mongo:8.2) so a full
+ * <p>The image tag matches {@code quarkus.mongodb.devservices.image-name} ({@link TestUtils#MONGO_TEST_IMAGE}) so a full
  * suite run pulls a single mongo image rather than two.
  */
 final class SharedMongoContainer {
 
     static final MongoDBContainer INSTANCE =
-            new MongoDBContainer(DockerImageName.parse("mongo:8.2"));
+            new MongoDBContainer(DockerImageName.parse(TestUtils.MONGO_TEST_IMAGE));
 
     static {
         // Deliberately never stopped here — ryuk reaps it when the test JVM exits.
