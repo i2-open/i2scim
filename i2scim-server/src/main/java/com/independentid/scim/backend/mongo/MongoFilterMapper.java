@@ -47,18 +47,18 @@ public class MongoFilterMapper {
     static String mapCoreFieldName(String aname) {
         if (aname.equalsIgnoreCase(ScimParams.ATTR_EXTID))
             return ScimParams.ATTR_EXTID;
-        if (aname.equalsIgnoreCase("schemas"))
-            return "schemas";
-        if (aname.equalsIgnoreCase("meta"))
-            return "meta";
+        if (aname.equalsIgnoreCase(ScimParams.ATTR_SCHEMAS))
+            return ScimParams.ATTR_SCHEMAS;
+        if (aname.equalsIgnoreCase(ScimParams.ATTR_META))
+            return ScimParams.ATTR_META;
         int dot = aname.indexOf('.');
-        if (dot > 0 && aname.substring(0, dot).equalsIgnoreCase("meta")) {
+        if (dot > 0 && aname.substring(0, dot).equalsIgnoreCase(ScimParams.ATTR_META)) {
             String sub = aname.substring(dot + 1);
             for (String field : META_FIELDS) {
                 if (sub.equalsIgnoreCase(field))
-                    return "meta." + field;
+                    return ScimParams.ATTR_META + "." + field;
             }
-            return "meta." + sub;
+            return ScimParams.ATTR_META + "." + sub;
         }
         return aname;
     }
