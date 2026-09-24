@@ -193,7 +193,7 @@
       ]
     },
     {
-      "name": "externalid",
+      "name": "externalId",
       "type": "string",
       "multiValued": false,
       "description": "An externally referenceable identifier usable by clients.",

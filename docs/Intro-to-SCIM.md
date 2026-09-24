@@ -68,7 +68,7 @@ SCIM defines the following core attributes that are present in every SCIM Resour
   the main JSON document, and other values are "extension" schemas used to attach additional attributes (e.g. such
   as application data) not found in the core or standardized schemas.
 * `meta` - Contains metadata about the resource such as `version`, `lastModified`, `resourceType`, and `location`.
-* `externalid` - an identifier used by an external client to uniquely reference the resource (optional).
+* `externalId` - an identifier used by an external client to uniquely reference the resource (optional).
 
 An important aspect of SCIM is that all resource URIs a permanent - not subject to change. By using a globally unique
 identifier, external references (e.g. such as to Users within Groups) are not subject to link breakages. This provides SCIM services with
