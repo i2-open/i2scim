@@ -20,7 +20,7 @@
     <parent>
         <groupId>com.independentid</groupId>
         <artifactId>i2scim-root</artifactId>
-        <version>0.10.3</version>
+        <version>0.10.2</version>
     </parent>
 
     <artifactId>i2scim-server</artifactId>
@@ -102,12 +102,10 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.20.0</version>
         </dependency>
         <dependency>
             <groupId>commons-codec</groupId>
             <artifactId>commons-codec</artifactId>
-            <version>1.22.0</version>
         </dependency>
 
         <dependency>
@@ -132,20 +130,17 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>mongodb</artifactId>
-            <version>1.21.4</version>
+            <artifactId>testcontainers-mongodb</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.bitbucket.cowwoc</groupId>
             <artifactId>diff-match-patch</artifactId>
-            <version>1.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>5.23.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

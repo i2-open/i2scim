@@ -13,16 +13,16 @@ would launch a throwaway mongo container, and Dev Services could even start in p
 
 ```
 quarkus.mongodb.devservices.enabled=false
-quarkus.mongodb.devservices.image-name=mongo:8.0
+quarkus.mongodb.devservices.image-name=mongo:8.2
 ```
 
 Only the four MongoProvider-backed test profiles re-enable Dev Services, via
 `TestUtils.enableMongoDevServices()` (called from `ScimMongoTestProfile`,
 `ScimDevOpsTestProfile`, `ScimAuthTestProfile`, and `ScimClientProfile`). The image is pinned
-to `mongo:8.0` — the same tag the Testcontainers-based signals tests share via
+to `mongo:8.2` — the same tag the Testcontainers-based signals tests share via
 `SharedMongoContainer` — so a full suite run pulls a single mongo image.
 
-On test startup Quarkus pulls and starts the pinned `mongo:8.0` container, then exposes
+On test startup Quarkus pulls and starts the pinned `mongo:8.2` container, then exposes
 its connection string as `quarkus.mongodb.connection-string`. Both
 `scim.prov.mongo.uri` (in `application.properties`) and `TestUtils.DEF_TEST_MONGO_URI`
 resolve to that string via `${quarkus.mongodb.connection-string:mongodb://localhost:27017}`,

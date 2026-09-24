@@ -78,6 +78,14 @@ public class TestUtils {
     public static final String ENV_TEST_OPA_URL = "TEST_OPA_URL";
     public static final String DEF_TEST_OPA_URL = "http://localhost:8181/v1/data/i2scim";
 
+    /**
+     * The single mongo image tag used by tests: Dev Services ({@link #enableMongoDevServices(Map)})
+     * and the Testcontainers signals tests (SharedMongoContainer). Keep in step with
+     * {@code quarkus.mongodb.devservices.image-name} in application.properties. mongo:8.0 does not
+     * start on Linux kernel 6.19+ (SERVER-121912).
+     */
+    public static final String MONGO_TEST_IMAGE = "mongo:8.2";
+
     public static final String DEF_TEST_MONGO_URI = "${quarkus.mongodb.connection-string:mongodb://localhost:27017}";
 
     // Not supported because each profile sets its own DB name
@@ -209,16 +217,16 @@ public class TestUtils {
     }
 
     /**
-     * Enables Quarkus MongoDB Dev Services (pinned to mongo:8.0) for the calling test profile.
+     * Enables Quarkus MongoDB Dev Services (pinned to {@link #MONGO_TEST_IMAGE}) for the calling test profile.
      * Dev Services is disabled by default in application.properties so the many MemoryProvider-backed
      * tests don't each launch an unused mongo container; only MongoProvider-backed profiles call this.
-     * The image is pinned to mongo:8.0 to match the Testcontainers-based signals tests, so a full
+     * The image is pinned to {@link #MONGO_TEST_IMAGE} to match the Testcontainers-based signals tests, so a full
      * suite run pulls a single mongo image. Setting it here (in addition to application.properties)
      * keeps the override robust against each profile's custom getConfigProfile() name.
      */
     public static void enableMongoDevServices(Map<String,String> map) {
         map.put("quarkus.mongodb.devservices.enabled","true");
-        map.put("quarkus.mongodb.devservices.image-name","mongo:8.0");
+        map.put("quarkus.mongodb.devservices.image-name", MONGO_TEST_IMAGE);
     }
 
     public static CloseableHttpResponse executeGet(URL baseUrl, String req) throws MalformedURLException {

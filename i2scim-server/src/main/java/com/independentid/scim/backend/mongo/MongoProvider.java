@@ -41,7 +41,8 @@ import jakarta.inject.Singleton;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -71,6 +72,10 @@ public class MongoProvider implements IScimProvider {
 	public final static String PARAM_MONGO_DBNAME = "scim.prov.mongo.dbname";
 	public final static String DEFAULT_MONGO_DBNAME = "SCIM";
 
+	public final static String PARAM_MONGO_USERNAME = "scim.prov.mongo.username";
+	public final static String PARAM_MONGO_PASSWORD = "scim.prov.mongo.password";
+	private final static String UNDEFINED = "UNDEFINED";
+
 	public final static String PARAM_MONGO_INDEXES = "scim.prov.mongo.indexes";
 	public final static String DEFAULT_MONGO_INDEXES = "User:userName,User:emails.value,Group:displayName";
 
@@ -92,22 +97,20 @@ public class MongoProvider implements IScimProvider {
 	@Inject
 	MongoIdGenerator generator;
 
-	@ConfigProperty(name = "scim.prov.mongo.uri", defaultValue="mongodb://localhost:27017")
+	// The scim.prov.mongo.* values and max results are resolved from runtime config in init()
+	// rather than via @ConfigProperty field injection. Under Quarkus 3.39 this bean can be
+	// instantiated during static init (see DECISIONS.md, 2026-09-24), when injected values would
+	// be the static-init defaults rather than the runtime values (e.g. the Dev Services URI).
 	String dbUrl;
 
-	//@Value("${scim.mongodb.dbname: SCIM}")
-	@ConfigProperty(name = "scim.prov.mongo.dbname", defaultValue="SCIM")
 	String scimDbName;
 
-	@ConfigProperty(name = "scim.prov.mongo.username",defaultValue = "UNDEFINED")
 	String dbUser;
 
-	@ConfigProperty(name = "scim.prov.mongo.password",defaultValue = "UNDEFINED")
 	String dbPwd;
 
-	@ConfigProperty(name = ConfigMgr.SCIM_QUERY_MAX_RESULTSIZE, defaultValue= ConfigMgr.SCIM_QUERY_MAX_RESULTS_DEFAULT)
-	protected int maxResults;
-	
+	protected int maxResults = Integer.parseInt(ConfigMgr.SCIM_QUERY_MAX_RESULTS_DEFAULT);
+
 	//@Value("${scim.mongodb.indexes: User:userName,User:emails.value,Group:displayName}")
 
 	private MongoDatabase scimDb = null;
@@ -117,8 +120,18 @@ public class MongoProvider implements IScimProvider {
 
 	//Note: We don't want auto start. Normally Backendhandler invokes this.
 	public synchronized void init() {
+		Config config = ConfigProvider.getConfig();
+		// Only resolve the URI once: on re-init dbUrl already holds the credential-rewritten
+		// URL built below, and re-reading config would discard the embedded user info.
+		if (dbUrl == null)
+			dbUrl = config.getOptionalValue(PARAM_MONGO_URI, String.class).orElse(DEFAULT_MONGO_URI);
+		scimDbName = config.getOptionalValue(PARAM_MONGO_DBNAME, String.class).orElse(DEFAULT_MONGO_DBNAME);
+		dbUser = config.getOptionalValue(PARAM_MONGO_USERNAME, String.class).orElse(UNDEFINED);
+		dbPwd = config.getOptionalValue(PARAM_MONGO_PASSWORD, String.class).orElse(UNDEFINED);
+		maxResults = config.getOptionalValue(ConfigMgr.SCIM_QUERY_MAX_RESULTSIZE, Integer.class)
+				.orElse(Integer.parseInt(ConfigMgr.SCIM_QUERY_MAX_RESULTS_DEFAULT));
 
-		if (!dbUrl.contains("@") && !dbUser.equals("UNDEFINED")) {
+		if (!dbUrl.contains("@") && !dbUser.equals(UNDEFINED)) {
 			logger.info("Connecting to Mongo using admin user: "+dbUser);
 			try {
 				String userInfo = dbUser+":"+dbPwd;
@@ -141,7 +154,7 @@ public class MongoProvider implements IScimProvider {
 		logger.info("======Initializing SCIM MongoDB Provider======");
 		logger.info("\tConnecting to database: "+this.scimDbName);
 
-		// Connect to the instance define by injected dbUrl value
+		// Connect to the instance defined by the runtime-resolved (and possibly credential-rewritten) dbUrl
 		if (mclient == null)
 			mclient = MongoClients.create(this.dbUrl);
 

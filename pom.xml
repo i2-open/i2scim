@@ -20,7 +20,7 @@
 
     <groupId>com.independentid</groupId>
     <artifactId>i2scim-root</artifactId>
-    <version>0.10.3</version>
+    <version>0.10.2</version>
     <packaging>pom</packaging>
     <name>i2scim-root</name>
     <description>i2scim.io SCIM v2 Server on Quarkus - Root Project</description>
@@ -50,7 +50,10 @@
     </scm>
 
     <properties>
-        <compiler-plugin.version>3.15.0</compiler-plugin.version>
+        <!-- Build plugins are not managed by the Quarkus BOM, so their versions are pinned
+             here (and inline below) at the latest final releases. cyclonedx stays on 2.9.x
+             until #80; jandex-maven-plugin tracks the Jandex version Quarkus bundles. -->
+        <compiler-plugin.version>3.16.0</compiler-plugin.version>
         <maven.compiler.release>25</maven.compiler.release>
         <maven.compiler.source>25</maven.compiler.source>
         <maven.compiler.target>25</maven.compiler.target>
@@ -58,24 +61,13 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.34.7</quarkus.platform.version>
-        <netty.version>4.1.133.Final</netty.version>
+        <quarkus.platform.version>3.39.5</quarkus.platform.version>
         <skipITs>true</skipITs>
-        <surefire-plugin.version>3.5.5</surefire-plugin.version>
+        <surefire-plugin.version>3.6.0</surefire-plugin.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <!-- Pin netty ahead of quarkus-bom to address CVE-2026-41417 (start-line
-                 injection in DefaultHttpRequest.setUri). Quarkus 3.34.7 still ships
-                 4.1.132.Final; first-declared BOM wins. -->
-            <dependency>
-                <groupId>io.netty</groupId>
-                <artifactId>netty-bom</artifactId>
-                <version>${netty.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
             <dependency>
                 <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>${quarkus.platform.artifact-id}</artifactId>
@@ -83,40 +75,27 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <!-- Explicit pins below are only for libraries the Quarkus BOM does not manage.
+                 Everything else (servlet-api, jose4j, httpclient5/httpcore5, rest-assured,
+                 commons-lang3/-codec, mockito, testcontainers, netty) takes the BOM version;
+                 do not re-pin without a comment giving the reason (DECISIONS.md, #100). -->
             <dependency>
-                <groupId>jakarta.servlet</groupId>
-                <artifactId>jakarta.servlet-api</artifactId>
-                <version>6.1.0</version>
-            </dependency>
-            <dependency>
+                <!-- Not managed by the Quarkus BOM; 4.0.1 is the latest final release. -->
                 <groupId>jakarta.ejb</groupId>
                 <artifactId>jakarta.ejb-api</artifactId>
                 <version>4.0.1</version>
             </dependency>
             <dependency>
-                <groupId>org.bitbucket.b_c</groupId>
-                <artifactId>jose4j</artifactId>
-                <version>0.9.6</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.httpcomponents.client5</groupId>
-                <artifactId>httpclient5</artifactId>
-                <version>5.6.3</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.httpcomponents.core5</groupId>
-                <artifactId>httpcore5</artifactId>
-                <version>5.4.3</version>
-            </dependency>
-            <dependency>
-                <groupId>io.rest-assured</groupId>
-                <artifactId>rest-assured</artifactId>
-                <version>6.0.0</version>
-            </dependency>
-            <dependency>
+                <!-- Not managed by the Quarkus BOM; 3.27.7 is the latest final release. -->
                 <groupId>org.assertj</groupId>
                 <artifactId>assertj-core</artifactId>
                 <version>3.27.7</version>
+            </dependency>
+            <dependency>
+                <!-- Not managed by the Quarkus BOM; 1.2 is the latest final release. -->
+                <groupId>org.bitbucket.cowwoc</groupId>
+                <artifactId>diff-match-patch</artifactId>
+                <version>1.2</version>
             </dependency>
             <dependency>
                 <groupId>com.independentid</groupId>
@@ -156,7 +135,7 @@
             <plugin>
                 <groupId>org.cyclonedx</groupId>
                 <artifactId>cyclonedx-maven-plugin</artifactId>
-                <version>2.9.1</version>
+                <version>2.9.3</version>
                 <configuration>
                     <skipNotDeployed>false</skipNotDeployed>
                 </configuration>
@@ -172,7 +151,7 @@
             <plugin>
                 <groupId>io.smallrye</groupId>
                 <artifactId>jandex-maven-plugin</artifactId>
-                <version>3.2.7</version>
+                <version>3.6.0</version>
                 <executions>
                     <execution>
                         <id>make-index</id>

@@ -20,14 +20,48 @@ import com.independentid.scim.backend.BackendException;
 import com.independentid.scim.core.err.BadFilterException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.*;
+import com.independentid.scim.resource.Meta;
 import com.independentid.scim.schema.Attribute;
 import com.mongodb.client.model.Filters;
 import org.bson.conversions.Bson;
 import org.bson.types.Decimal128;
 import org.bson.types.ObjectId;
 
+import java.util.List;
+
 
 public class MongoFilterMapper {
+
+    private static final List<String> META_FIELDS = List.of(
+            Meta.META_CREATED, Meta.META_LAST_MODIFIED, Meta.META_RESOURCE_TYPE,
+            Meta.META_LOCATION, Meta.META_VERSION, Meta.META_REVISIONS, Meta.META_ACIS);
+
+    /**
+     * Maps a SCIM common attribute path (externalId, schemas, meta and meta sub-attributes) to the field name under
+     * which {@link MongoMapUtil} stores it. Matching is case-insensitive (RFC7643 Sec 2.1) so that neither the filter's
+     * casing nor the casing in a previously persisted schema (e.g. "externalid") changes the Mongo field queried.
+     * Non-common paths are returned unchanged.
+     * @param aname The attribute path as derived from the filter attribute
+     * @return The canonical stored field name for common attributes, otherwise aname
+     */
+    static String mapCoreFieldName(String aname) {
+        if (aname.equalsIgnoreCase(ScimParams.ATTR_EXTID))
+            return ScimParams.ATTR_EXTID;
+        if (aname.equalsIgnoreCase(ScimParams.ATTR_SCHEMAS))
+            return ScimParams.ATTR_SCHEMAS;
+        if (aname.equalsIgnoreCase(ScimParams.ATTR_META))
+            return ScimParams.ATTR_META;
+        int dot = aname.indexOf('.');
+        if (dot > 0 && aname.substring(0, dot).equalsIgnoreCase(ScimParams.ATTR_META)) {
+            String sub = aname.substring(dot + 1);
+            for (String field : META_FIELDS) {
+                if (sub.equalsIgnoreCase(field))
+                    return ScimParams.ATTR_META + "." + field;
+            }
+            return ScimParams.ATTR_META + "." + sub;
+        }
+        return aname;
+    }
 
     public static Bson mapFilter(Filter filter, boolean negate, boolean isValPath)
             throws ScimException, BackendException {
@@ -162,6 +196,8 @@ public class MongoFilterMapper {
             aname = aname.replace("$ref","href");
         if (aname.equalsIgnoreCase("id"))
             aname = "_id";
+        else if (!isValPath && !filter.isExtensionAttribute())
+            aname = mapCoreFieldName(aname);
 
         if (filter.isExtensionAttribute()) {
             // In order for the mongo query to work, the extensionId object has to be added to the path.

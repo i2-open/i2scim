@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 i2scim is a Quarkus-based implementation of the IETF SCIM v2 protocol (RFC 7643/7644). The defining design choice is that **resource types and schema are not hard-coded** — they are loaded at startup from JSON files (`scimSchema.json`, `resourceTypes.json`, `acis.json`) supplied via path, classpath, or K8s ConfigMap. Most code operates on a generic JSON-document model rather than typed resources.
 
-Java 25 / Quarkus 3.34.3 / Jakarta EE 11. Group: `com.independentid`, version: `0.10.0`.
+Java 25 / Quarkus 3.39.5 / Jakarta EE 11. Group: `com.independentid`, version: `0.10.2`. Build with the Maven wrapper (`./mvnw`, Maven 3.9.16) — Quarkus 3.39 requires Maven ≥ 3.9.6; plain `mvn` below assumes a new-enough system Maven.
 
 ## Build
 
@@ -39,7 +39,7 @@ mvn -pl i2scim-server test -Dtest=MemoryProviderTest#testCreateUser
 ```
 
 Test prerequisites:
-- **MongoDB** on `localhost:27017` with admin user `admin`/`t0p-Secret`. Override via `TEST_MONGO_URI`, `TEST_MONGO_USER`, `TEST_MONGO_SECRET`. Some tests use Quarkus mongodb devservices and Testcontainers (`org.testcontainers:mongodb`) and need a running Docker daemon.
+- **MongoDB** on `localhost:27017` with admin user `admin`/`t0p-Secret`. Override via `TEST_MONGO_URI`, `TEST_MONGO_USER`, `TEST_MONGO_SECRET`. Some tests use Quarkus mongodb devservices and Testcontainers 2.x (`org.testcontainers:testcontainers-mongodb`, image `mongo:8.2` via `TestUtils.MONGO_TEST_IMAGE`) and need a running Docker daemon.
 - **OPA** (optional, for `opa/*` tests) — start via `opa/run-opa.sh`; defaults to `http://localhost:8181/v1/data/i2scim`. Override via `TEST_OPA_URL`.
 - **Surefire `argLine`** in the root POM is required: `--add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/javax.net.ssl=ALL-UNNAMED --enable-native-access=ALL-UNNAMED`. If you write your own runner, replicate these or SSL-context introspection in the signals code will throw `InaccessibleObjectException` on Java 25.
 - **`LoadScimClusterTest` is excluded** from the standard build because it stalls trying to reach a non-existent K8s cluster (see DECISIONS.md, 2026-04-15). The exclusion lives in `i2scim-server/pom.xml` surefire config.
