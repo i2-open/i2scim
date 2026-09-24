@@ -9,6 +9,8 @@
 
 set -euo pipefail
 
+DEFAULT_REPO="independentid/i2scim-universal"
+
 usage() {
   cat <<EOF
 Usage: $0 [options]
@@ -16,7 +18,8 @@ Usage: $0 [options]
 Options:
   -t, --test        run maven tests (default skips them)
   -p, --push        multi-arch buildx + push to docker.io
-      --tag TAG     image tag (default: latest)
+      --tag TAG     image tag (default: the version from pom.xml)
+      --repo REPO   image repository (default: ${DEFAULT_REPO})
   -b, --build       maven build only — skip docker step (back-compat no-op for the
                     docker step; mvn install is the build now)
   -h, --help        show this help
@@ -26,7 +29,8 @@ EOF
 I2SCIM_ROOT=$(cd "$(dirname "$0")" && pwd)
 
 skip_tests=true
-tag="latest"
+tag=""
+repo="${DEFAULT_REPO}"
 push=0
 build_only=0
 
@@ -36,14 +40,23 @@ while [[ $# -gt 0 ]]; do
     -p|--push)   push=1 ;;
     -b|--build)  build_only=1 ;;
     --tag)       tag="$2"; shift ;;
+    --repo)      repo="$2"; shift ;;
     -h|--help)   usage; exit 0 ;;
     *)           usage; exit 1 ;;
   esac
   shift
 done
 
+# Resolve the pom version once; it's the default image tag and the VERSION build-arg.
+VERSION=$("${I2SCIM_ROOT}/mvnw" -q -f "${I2SCIM_ROOT}/pom.xml" help:evaluate -Dexpression=project.version -DforceStdout)
+
+# Default the image tag to the pom version unless overridden by --tag.
+if [[ -z "${tag}" ]]; then
+  tag="${VERSION}"
+fi
+
 echo "*************************************************"
-echo "  i2scim build — tag=${tag} push=${push} skipTests=${skip_tests}"
+echo "  i2scim build — repo=${repo} tag=${tag} push=${push} skipTests=${skip_tests}"
 echo "*************************************************"
 
 # Maven build (root-level install — fixed in slice 6 to no longer require -N + per-module install)
@@ -56,7 +69,6 @@ fi
 
 GIT_COMMIT=$(git -C "${I2SCIM_ROOT}" rev-parse HEAD)
 BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-VERSION=$("${I2SCIM_ROOT}/mvnw" -q -f "${I2SCIM_ROOT}/pom.xml" help:evaluate -Dexpression=project.version -DforceStdout)
 
 cd "${I2SCIM_ROOT}/i2scim-server"
 
@@ -67,12 +79,12 @@ common_args=(
   --build-arg GIT_COMMIT="${GIT_COMMIT}"
   --build-arg BUILD_DATE="${BUILD_DATE}"
   --build-arg VERSION="${VERSION}"
-  -t "independentid/i2scim-universal:${tag}"
+  -t "${repo}:${tag}"
 )
 
-# When pushing a non-latest tag, also tag/push :latest in the same build.
-if [[ ${push} -eq 1 && "${tag}" != "latest" ]]; then
-  common_args+=(-t "independentid/i2scim-universal:latest")
+# Always carry :latest alongside the version tag (for both local --load and --push).
+if [[ "${tag}" != "latest" ]]; then
+  common_args+=(-t "${repo}:latest")
 fi
 
 if [[ ${push} -eq 1 ]]; then
