@@ -27,11 +27,21 @@ built for `linux/amd64` and `linux/arm64`.
 
 ### Release 0.10.4
 
-A version-only rebuild of 0.10.2 — no functional changes. See the 0.10.2 notes below.
+A maintenance release: a platform upgrade and a schema fix. The `0.10.2` and `0.10.3` images on
+Docker Hub were interim builds, so deploy `0.10.4`. It also includes everything in 0.10.2 below.
 
-* The image `independentid/i2scim-universal:0.10.4` (also `latest`) now carries a version
-  label that matches its tag.
-* The `0.10.2` and `0.10.3` images on Docker Hub were interim builds. Deploy `0.10.4` instead.
+* **Schema fix: `externalId`** ([#99](https://github.com/i2-open/i2scim/issues/99))
+  * The common schema now spells the attribute `externalId` (RFC 7643). It was previously
+    `externalid`.
+  * On the MongoDB backend, filters match `externalId` and other core attributes (`schemas`,
+    `meta.*`) regardless of case.
+  * Existing data and older saved schemas keep working, with no migration needed.
+* **Platform upgrade** ([#100](https://github.com/i2-open/i2scim/issues/100))
+  * Upgraded to Quarkus 3.39.5, with dependencies refreshed and aligned to the Quarkus BOM.
+  * Fixed a MongoDB backend startup failure under the new Quarkus version.
+  * The Docker Compose files use `mongo:8.2`, because `mongo:8.0` fails on recent Linux kernels.
+  * Building from source requires Maven 3.9.6 or later. Use the included `./mvnw`.
+* The image's version label now matches its tag.
 
 ### Release 0.10.2
 
@@ -54,13 +64,6 @@ A version-only rebuild of 0.10.2 — no functional changes. See the 0.10.2 notes
 * **Easier event-delivery troubleshooting**
   * Failed pushes are logged as warnings, and stream state changes are logged.
   * Per-stream success and failure counts appear on the readiness health endpoint.
-* **Fixes**
-  * `externalId` and other core attributes (`schemas`, `meta.*`) now match case-insensitively
-    in filters on the MongoDB backend. No data migration is needed.
-* **Platform**
-  * Quarkus 3.39.5 with refreshed dependencies.
-  * Building from source requires Maven 3.9.6 or later. Use the included `./mvnw`.
-  * The Docker Compose files use `mongo:8.2`, because `mongo:8.0` fails on recent Linux kernels.
 
 ### Release 0.10.1
 
