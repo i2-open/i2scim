@@ -22,166 +22,133 @@ adapted to act as a gateway to internal proprietary identity APIs by implementin
 
 ## Recent Updates
 
-# Release 0.10.2
+The published image is `independentid/i2scim-universal:<version>` (also tagged `latest`),
+built for `linux/amd64` and `linux/arm64`.
 
-This release wires i2scim into the i2goSignals observability stack
-(Loki + Prometheus) so dev operators get unified logs and metrics for
-SCIM peers alongside goSignals services. JSON logging is env-gated; the
-prod default (text format on stdout) is unchanged.
+### Release 0.10.4
 
-* **Env-gated JSON console logging** — Set `QUARKUS_LOG_CONSOLE_JSON=true`
-  to emit JSON records whose keys match the i2goSignals Loki schema:
-  `time`, `level`, `msg`, `component`, plus the static fields `service`
-  (`"i2scim"`) and `version`. Default off; prod stdout stays text.
-* **Per-container identity** — `NODE_ID` and `CLUSTER_NAME` env vars are
-  appended to every JSON record so `{node_id="..."}` and
-  `{cluster_name="..."}` Loki/LogQL queries select individual peers.
-  Unset → `"unknown"` sentinel (SmallRye Config rejects an empty
-  `additional-field.value`).
-* **Prometheus metrics at `/q/metrics`** — The Micrometer endpoint moves
-  from `/metrics` to `/q/metrics` so it sits under Quarkus's
-  non-application root and is reachable anonymously (matching the
-  `/q/health` posture). Use `Accept: text/plain;version=0.0.4` for the
-  legacy Prometheus text format; the default Accept negotiation returns
-  OpenMetrics 1.0.0. K8s manifests updated to point
-  `prometheus.io/path` at the new path.
-* **Startup banner** — The server logs `i2scim server v<version>` on
-  startup so the version is visible in the unified log stream without
-  needing to inspect the image tag.
+A version-only rebuild of 0.10.2 — no functional changes. See the 0.10.2 notes below.
 
-# Release 0.10.1
+* The image `independentid/i2scim-universal:0.10.4` (also `latest`) now carries a version
+  label that matches its tag.
+* The `0.10.2` and `0.10.3` images on Docker Hub were interim builds. Deploy `0.10.4` instead.
 
-This release makes i2scim's Signals client behave the way operators of
-[goSignals](https://github.com/i2-open/i2goSignals/blob/master/docs/operations.md)
-expect, and ensures pending events and acks survive a restart.
+### Release 0.10.2
 
-* **Streams now report a clear lifecycle state**
-    * Streams are `enabled`, `paused`, or `disabled` instead of a single
-      error flag. `paused` self-recovers; `disabled` means an operator
-      needs to look. Existing `ssfConfig.json` files upgrade automatically.
-    * HTTP failures are handled by code: 401 retries briefly, 403 stops
-      immediately, 429 honors `Retry-After` and never auto-disables, 5xx
-      and network errors back off and retry.
-    * On push or poll failure, i2scim asks the remote's `/status` endpoint
-      whether it has paused itself — distinguishing a remote outage from
-      a remote that's deliberately quiet.
-    * A keepalive event is sent on idle push streams, so a broken path is
-      caught before real events pile up.
-    * Protocol errors from the receiver (RFC 8935 §2.4) are recorded with
-      the specific error code and JTI in `errorMsg`. A signature failure
-      automatically reloads the issuer PEM and retries once.
-    * New config: `scim.signals.pub.unauthorized.retry.{max,delay}`,
-      `scim.signals.pub.status.check.interval`,
-      `scim.signals.pub.idle.verify.interval`, plus `rcv.*` equivalents.
+* **New: RISC account events (opt-in)** — i2scim can emit
+  OpenID RISC security events alongside
+  its SCIM events:
+  * *Account Purged* when a User is deleted.
+  * *Account Enabled / Disabled* when `active` changes.
+  * *Identifier Changed* when `userName` or `emails` change.
+  * Enable with `scim.signals.risc.enable=true`. Tune with `scim.signals.risc.types`,
+    `scim.signals.risc.identifier.attrs` and `scim.signals.risc.subject.format`
+    (`scim`, `email`, `username` or `phone`). See [Configuration](Configuration.md).
+* **Observability**
+  * **Action required:** Prometheus metrics moved from `/metrics` to `/q/metrics`, and the
+    endpoint is now anonymous. Update your scrape config or `prometheus.io/path` annotation.
+    The bundled K8s manifests are already updated.
+  * Optional JSON console logging (`QUARKUS_LOG_CONSOLE_JSON=true`). Set `NODE_ID` and
+    `CLUSTER_NAME` to label each instance. Default output is unchanged (text).
+  * The server logs its version at startup and reports it when registering with an SSF server.
+* **Easier event-delivery troubleshooting**
+  * Failed pushes are logged as warnings, and stream state changes are logged.
+  * Per-stream success and failure counts appear on the readiness health endpoint.
+* **Fixes**
+  * `externalId` and other core attributes (`schemas`, `meta.*`) now match case-insensitively
+    in filters on the MongoDB backend. No data migration is needed.
+* **Platform**
+  * Quarkus 3.39.5 with refreshed dependencies.
+  * Building from source requires Maven 3.9.6 or later. Use the included `./mvnw`.
+  * The Docker Compose files use `mongo:8.2`, because `mongo:8.0` fails on recent Linux kernels.
 
-* **Pending events and acks survive restart**
-    * Failed push events are persisted — to MongoDB on the Mongo backend,
-      to `<scim.prov.memory.dir>/events/` on the memory backend. Restarts
-      no longer lose them, and a `disabled` stream keeps its queue for
-      automatic replay when re-enabled.
-    * SCIM operations no longer wait on push outcome. A slow receiver
-      can no longer slow down the SCIM API.
-    * Retry budgets are now wall-clock based (default 6 hours) instead
-      of attempt counts.
-    * Poll-side acks are persisted too, so a restart between "applied
-      locally" and "ack delivered" doesn't cause re-delivery.
-    * The issuer PEM file is watched for changes — out-of-band key
-      rotations are picked up automatically.
-    * Events generated before stream registration completes are buffered
-      and replayed once registration succeeds. A persistent failure
-      raises clear warnings.
-    * Disk and queue usage is monitored with configurable
-      warn / critical / fatal thresholds.
-    * New config: `scim.signals.pub.retry.elapsed.limit`,
-      `scim.signals.pub.pem.watch`,
-      `scim.signals.pub.storage.{warn,crit,fatal}.pct`,
-      `scim.signals.pub.preregister.warn.minutes`.
+### Release 0.10.1
 
+Makes event streams (Shared Signals) more reliable and easier to operate, matching the behaviour
+of [goSignals](https://github.com/i2-open/i2goSignals/blob/master/docs/operations.md).
+
+* **Clear stream states**
+  * Streams report `enabled`, `paused` (recovers on its own) or `disabled` (needs an operator).
+  * Existing `ssfConfig.json` files upgrade automatically.
+* **Smarter retries**
+  * Retry behaviour depends on the HTTP response. For example, `403` stops, and `429` honours
+    `Retry-After`.
+  * i2scim checks the receiver's `/status` endpoint to tell an outage from a deliberate pause.
+  * Keepalives on idle streams detect broken paths early.
+* **No lost events**
+  * Pending events and acknowledgements survive restarts. They are kept in MongoDB or on disk,
+    depending on the backend.
+  * A slow receiver no longer slows the SCIM API.
+  * Retries are bounded by time (default 6 hours).
+* **Operations**
+  * Key file changes are picked up automatically.
+  * Disk and queue usage raise warnings at configurable thresholds.
+  * New settings are under `scim.signals.pub.*` and `scim.signals.rcv.*`.
 * **Security and fixes**
-    * Patched CVE-2026-39852 and CVE-2026-41417; refreshed dependencies.
-    * JWKS load failures at boot are now non-fatal — a temporarily
-      unreachable JWKS no longer blocks startup.
-    * `/status` probes append the `stream_id` query parameter per
-      SSF §7.1.2.
-    * Fixed NPE on receipt of inbound verify events.
-    * Quieted noisy CycloneDX and retry-worker shutdown warnings.
+  * Patched CVE-2026-39852 and CVE-2026-41417.
+  * An unreachable JWKS endpoint no longer blocks startup.
 
-# Release 0.10.0
+### Release 0.10.0
 
-This release collapses the build from ten Maven modules into three (`i2scim-core`, `i2scim-client`, `i2scim-server`) and hardens the deployment image.
+* **One image for all backends** — `independentid/i2scim-universal` replaces `i2scim-mem` and
+  `i2scim-mongo`. Choose the backend at runtime with `scim.prov.providerClass`.
+* **Supply-chain hardening** — Images include OCI labels, an embedded SBOM and build provenance,
+  and are multi-arch (amd64/arm64).
+* The build is simplified to three Maven modules. Maven Central publishing is dormant (see
+  [publishing.md](publishing.md) and [DECISIONS.md](../DECISIONS.md)).
 
-* **Three-module structure** — Provider, signals, packaging, and tests are now part of `i2scim-server`. Root `mvn install` works without the prior `-N` workaround. See [DECISIONS.md](../DECISIONS.md), 2026-05-04 entry.
-* **Single Docker image** — `independentid/i2scim-universal:<tag>` is the only published image. Backend selection is runtime via `scim.prov.providerClass`. The previous per-backend images (`i2scim-mem`, `i2scim-mongo`) are no longer built.
-* **Supply-chain hardening** — Image carries OCI labels (`org.opencontainers.image.*`), an embedded CycloneDX SBOM at `/sbom/i2scim.cdx.json`, and SLSA build provenance. `build.sh -p` produces multi-arch (linux/amd64, linux/arm64) attested builds.
-* **Maven Central publishing dormant** — Release plugins removed; `i2scim-server` sets `maven.deploy.skip=true`. To restore, follow [docs/publishing.md](publishing.md).
-* **Canonical SCIM schemas** in `i2scim-core` — `scimSchema.json`, `scimCommonSchema.json`, `scimFixedSchema.json`, `resourceTypes.json` are loaded from the core JAR's classpath instead of duplicated in each module.
+### Release 0.9.1
 
-# Release 0.9.1
+* Security update: patched CVE-2025-27820 (Apache HttpClient).
 
-* Updated org.apache.httpcomponents.client5.httpclient5 to 5.4.3 to address CVE-2025-27820
+### Release 0.9.0
 
-# Release 0.9.0
+* SPIFFE-compatible TLS for SSF connections.
+* Trust certificates can be loaded from a file or an environment variable
+  (`scim.signals.ssf.trust.certs.path` / `scim.signals.ssf.trust.certs.value`).
+* Upgraded to Java 25 and Quarkus 3.34.3 (RESTEasy Reactive).
+* Fixed an intermittent error when polling for events.
 
-This release introduces several enhancements and bug fixes, including support for RESTEasy Reactive and improved test stability.
+### Release 0.8.1
 
-*   **New Features**:
-  * TLS enhancements to support SPIFFE compatibility for SSF communications
-  * Ability to load CA and trust certificates from environment variables
-    * `scim.signals.ssf.trust.certs.path` and `scim.signals.ssf.trust.certs.value` configuration properties.
-*   **Updates**: Updated to Quarkus 3.34.3 and Java 25.  Updated dependencies to latest compatible versions.
-*   **RESTEasy Reactive Support**: Standardized on RESTEasy Reactive for improved performance and reduced resource consumption.
-*   **Test Stability**: Resolved `ConcurrentModificationException` in `PollStream.pollEvents` by using `CopyOnWriteArrayList` for tracking acknowledgments and pending operations in `SignalsEventHandler`, and reduced initialization sleep during tests to prevent stalls.
+* Custom CA trust roots for SSF servers (for example, self-signed or SPIFFE cluster certificates).
+* Upgraded to Quarkus 3.30.8.
 
-# Release 0.8.1
+### Release 0.8.0
 
-This release adds support for specifying CA trust certificate roots for the SSF (Shared Signals Framework) server via environment variables and updates the project to Quarkus 3.30.8.
+* Supports the latest [SCIM Events draft](https://www.ietf.org/archive/id/draft-ietf-scim-events-16.html),
+  with updated event URIs and asynchronous event processing.
+* More robust push/poll connections to SSF servers (for example, i2goSignals).
+* Upgraded to Java 21 on a hardened Eclipse Temurin image.
 
-*   **SSF CA Trust Support**: Added `scim.signals.ssf.trust.certs.path` and `scim.signals.ssf.trust.certs.value` configuration properties. This enables secure HTTPS connections to SSF servers using self-signed or SPIFFE cluster certificates for discovery, JWKS retrieval, and event streams.
-*   **Quarkus Update**: Upgraded the project to Quarkus platform version `3.30.8` and resolved compatibility issues for Java 17/21.
-*   **Bug Fixes**: Resolved `InaccessibleObjectException` failures in `i2scim-signals` tests by adding necessary JVM `--add-opens` exports for SSL context introspection.
+### Release 0.7.0
 
-# Release 0.8.0
+* **New: security events** — Support for the
+  [SCIM Events](https://datatracker.ietf.org/doc/draft-ietf-scim-events/) draft and
+  [OpenID Shared Signals Framework (SSF) draft 02](https://openid.net/specs/openid-sharedsignals-framework-1_0-02.html).
+  See the [Signals documentation](Signals.md).
+* A single distribution where the backend store is chosen by environment settings.
+* Improved Docker Compose support. Upgraded to Quarkus 3.1.1.
 
-I2 SCIM has been updated to support the latest[ SCIM Events draft](https://www.ietf.org/archive/id/draft-ietf-scim-events-16.html) which includes:
-* Updated Event URIs
-* Support for Asynchronous Event Processing
+### Release 0.6.1
 
-Other bug fixes include:
-* Improved connection handling when pushing or polling for events with an SSF server (e.g. i2gosignals).
-* Updated to Java 21 and Eclipse Temurin hardened image
+* Documentation and CVE fixes.
+* All i2scim modules are available in Maven.
 
-# Release 0.7.0
+### Release 0.6.0-Alpha
 
-* *New* Support for Security Events. For more information see the [Signals documentation](Signals.md).
-    * Support for [SCIM-Events](https://datatracker.ietf.org/doc/draft-ietf-scim-events/) draft
-    * Initial implementation
-      of [OpenID Shared Signals Framework SSF draft 02.](https://openid.net/specs/openid-sharedsignals-framework-1_0-02.html)
-* Updated to recent Quarkus Platform (3.1.1.Final)
-* Combined universal distribution allowing selection of backend store by environment settings
-* Improved Docker compose compatibility
+* **New:** externalised access policy using Open Policy Agent. See
+  [i2scim Access Control With OPA](OPA_AccessControl.md).
 
-# Release 0.6.1
+### Release 0.5.0-Alpha
 
-* Fixes for Javadocs and related CVE
-* Amended testing code for JWT signing keys
-* All i2scim modules available in maven
+First public preview. Deployable on K8S with a MongoDB or in-memory backend.
 
-# Release 0.6.0-Alpha
-
-* *New* Support for Open Policy Agent adding externalized access policy for i2scim.
-  See [i2scim Access Control With OPA](OPA_AccessControl.md).
-
-# Release 0.5.0-Alpha
-
-* *Initial Public Release* of i2scim. First public "alpha" release of i2scim for preview purposes. Server can be deployed using K8S using a mongo database or built-in memory based provider.
-
-In this release:
-* Basic SCIM Protocol functionality except for Bulk requests per RFC7644
-* Configurable resource types and schema and support for RFC7643
-* Support for HTTP Conditionals as per RFC7232
-* Access control system evolved from LDAP access control models (see AccessControl.md)
-* Basic and JWT based authentication via the Quarkus SmallRye JWT module
-* Quarkus platform docker modules
+* Core SCIM protocol (RFC 7644), except Bulk requests.
+* Configurable resource types and schema (RFC 7643).
+* HTTP conditional requests (RFC 7232).
+* LDAP-style access control (see [AccessControl.md](AccessControl.md)).
+* Basic and JWT authentication.
 
 ## What is i2scim useful for?
 **i2scim** is a K8S deployable service that supports scenarios such as:
