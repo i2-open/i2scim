@@ -61,11 +61,15 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Attest Maven Artifacts
+        # PR builds publish nothing, and fork PRs never receive an OIDC token
+        # (id-token: write is withheld), so attestation would fail there.
+        if: github.event_name != 'pull_request'
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: "**/target/*.jar"
 
       - name: Attest SBOM
+        if: github.event_name != 'pull_request'
         uses: actions/attest-sbom@v2
         with:
           subject-path: "**/target/*.jar"
