@@ -30,8 +30,10 @@ built for `linux/amd64` and `linux/arm64`.
 A security and hardening release. There is no `0.10.5`: that tag was already taken on Docker Hub.
 
 * **Security:** upgraded to Quarkus 3.40.1, which fixes two jackson-databind denial-of-service
-  vulnerabilities (CVE-2026-91776, CVE-2026-91777). The image's Chainguard JRE base is pinned by
-  digest ([#112](https://github.com/i2-open/i2scim/issues/112)).
+  vulnerabilities (CVE-2026-91776, CVE-2026-91777) present in 0.10.4 and earlier. The bundled
+  jackson-databind moves from 2.22.2 to the patched 2.21.7; the lower version number is expected.
+  The image's Chainguard JRE base is pinned by digest
+  ([#112](https://github.com/i2-open/i2scim/issues/112)).
 * **Check your clients before upgrading:**
   * Creating or updating a resource that breaks a uniqueness rule returns `409 Conflict`, not
     `400` ([#111](https://github.com/i2-open/i2scim/issues/111)).
