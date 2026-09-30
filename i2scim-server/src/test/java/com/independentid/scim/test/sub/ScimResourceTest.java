@@ -454,7 +454,7 @@ public class ScimResourceTest {
 
 			assertThat(rec)
 					.as("JsonNode of user1 has revisions")
-					.contains("date\":\""+Meta.ScimDateFormat.format(curDate));
+					.contains("date\":\""+Meta.formatDate(curDate));
 		} catch (BackendException e) {
 			fail("Received erroneous duplicate transaction exception: "+e.getMessage(),e);
 		}

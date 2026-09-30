@@ -40,9 +40,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.text.DateFormat;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 
 /**
@@ -76,7 +79,45 @@ public class Meta extends ComplexValue implements ScimSerializer {
 
 
 
-    public final static DateFormat ScimDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+    /** The canonical SCIM dateTime pattern emitted by this server (UTC, second precision). */
+    public final static String SCIM_DATE_PATTERN = "yyyy-MM-dd'T'HH:mm:ss'Z'";
+
+    /* DateTimeFormatter is immutable and thread-safe (a shared SimpleDateFormat is not - issue #110). */
+    private final static DateTimeFormatter SCIM_DATE_FORMATTER =
+            DateTimeFormatter.ofPattern(SCIM_DATE_PATTERN).withZone(ZoneOffset.UTC);
+
+    /**
+     * Formats a date in the canonical SCIM form (e.g. {@code 2010-01-23T04:56:22Z}), in UTC. Thread-safe.
+     * @param date the date to format
+     * @return the formatted date
+     */
+    public static String formatDate(Date date) {
+        return SCIM_DATE_FORMATTER.format(date.toInstant());
+    }
+
+    /**
+     * Parses a SCIM dateTime value. The canonical form ({@code yyyy-MM-dd'T'HH:mm:ss'Z'}, UTC) is tried first; any other
+     * RFC 3339 / xsd:dateTime form with an offset (e.g. fractional seconds, {@code +05:00}) is also accepted.
+     * Thread-safe.
+     * @param value the text to parse
+     * @return the parsed date
+     * @throws ParseException if the value is not a valid dateTime
+     */
+    public static Date parseDate(String value) throws ParseException {
+        if (value == null)
+            throw new ParseException("Null dateTime value", 0);
+        try {
+            return Date.from(LocalDateTime.parse(value, SCIM_DATE_FORMATTER).toInstant(ZoneOffset.UTC));
+        } catch (DateTimeParseException e) {
+            try {
+                return Date.from(OffsetDateTime.parse(value).toInstant());
+            } catch (DateTimeParseException e2) {
+                ParseException pe = new ParseException("Invalid dateTime value: " + value, e2.getErrorIndex());
+                pe.initCause(e2);
+                throw pe;
+            }
+        }
+    }
 
 	public Meta() {
 		this.created = new Date();
@@ -106,7 +147,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
     }
 
     public String getCreated() {
-    	return ScimDateFormat.format(this.created);
+    	return formatDate(this.created);
     }
     
 	public Date getCreatedDate() {
@@ -122,7 +163,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 	}
 	
 	public String getLastModified() {
-		return ScimDateFormat.format(this.lastModified);
+		return formatDate(this.lastModified);
 	}
 
 	public void setLastModifiedDate(Date lastModified) {
@@ -338,7 +379,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 		if (item != null && !item.asText().equals("")) {
 			try {
 				// exammple valid time 2010-01-23T04:56:22Z
-				this.created = ScimDateFormat.parse(item.asText());
+				this.created = parseDate(item.asText());
 			} catch (ParseException e) {
 				System.out.println("Bad create date found: "+item.asText());
 				e.printStackTrace();
@@ -349,7 +390,7 @@ public class Meta extends ComplexValue implements ScimSerializer {
 
 		if (item != null) {
 			try {
-				this.lastModified = ScimDateFormat.parse(item.asText());
+				this.lastModified = parseDate(item.asText());
 			} catch (ParseException e) {
 				System.out.println("Bad lastModified date found: "+item.asText());
 			}

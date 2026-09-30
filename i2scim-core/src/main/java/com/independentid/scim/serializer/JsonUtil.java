@@ -26,6 +26,8 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.independentid.scim.resource.Meta;
 
 import java.io.*;
+import java.text.SimpleDateFormat;
+import java.util.TimeZone;
 
 public class JsonUtil {
 
@@ -35,7 +37,10 @@ public class JsonUtil {
 	
 	static {
         mapper = new ObjectMapper();
-        mapper.setDateFormat(Meta.ScimDateFormat);
+        // Jackson clones a custom DateFormat per use, so this instance is never shared across threads.
+        SimpleDateFormat dateFormat = new SimpleDateFormat(Meta.SCIM_DATE_PATTERN);
+        dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+        mapper.setDateFormat(dateFormat);
         mapper.configure(SerializationFeature.INDENT_OUTPUT, true);
         mapper.setSerializationInclusion(Include.NON_EMPTY);
 

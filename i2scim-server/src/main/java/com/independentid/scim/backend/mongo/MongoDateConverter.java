@@ -28,7 +28,7 @@ public class MongoDateConverter implements Converter<Long> {
 	@Override
 	public void convert(Long value, StrictJsonWriter writer) {
 		//Instant ins = new Date(value).toInstant();
-		String sdate = Meta.ScimDateFormat.format(new Date(value));
+		String sdate = Meta.formatDate(new Date(value));
 		writer.writeString(sdate);
 		
 	}

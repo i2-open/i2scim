@@ -25,8 +25,6 @@ import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.text.ParseException;
-import java.time.OffsetDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -241,13 +239,9 @@ public class AttributeFilter extends Filter {
     private Date parseDate(String value) throws BadFilterException {
         String dval = unquote(value);
         try {
-            return Meta.ScimDateFormat.parse(dval);
+            return Meta.parseDate(dval);
         } catch (ParseException e) {
-            try {
-                return Date.from(OffsetDateTime.parse(dval).toInstant());
-            } catch (DateTimeParseException e2) {
-                throw invalidValue(value, "dateTime");
-            }
+            throw invalidValue(value, "dateTime");
         }
     }
 

@@ -132,7 +132,7 @@ public class PasswordToken {
             val = (String) claims.get("fails");
             this.failCnt = Integer.parseInt(val);
             val = (String) claims.get("lastMatch");
-            this.lastSuccess = Meta.ScimDateFormat.parse(val);
+            this.lastSuccess = Meta.parseDate(val);
             factory = SecretKeyFactory.getInstance(alg);
         } catch (NoSuchAlgorithmException e) {
             logger.error("No such algorithm error for existing password value: " + e.getMessage(), e);
@@ -189,7 +189,7 @@ public class PasswordToken {
         claims.setClaim("salt", encoder.encodeToString(salt));
         claims.setClaim("alg", alg);
         claims.setClaim("fails", "" + failCnt);
-        claims.setClaim("lastMatch", Meta.ScimDateFormat.format(lastSuccess));
+        claims.setClaim("lastMatch", Meta.formatDate(lastSuccess));
         claims.setClaim("iter",""+iter);
         claims.setClaim("hash",encoder.encodeToString(hash));
         claims.setIssuedAtToNow();
