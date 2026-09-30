@@ -284,7 +284,7 @@ public class ScimLoadSampleTest {
                 post.setEntity(reqEntity);
                 CloseableHttpResponse resp = client.execute(post);
 
-                if (resp.getCode() == ScimResponse.ST_BAD_REQUEST) {
+                if (resp.getCode() == ScimResponse.ST_CONFLICT) {
                     //logger.error("BAD REQUEST for record number: "+i);
                     //logger.error("Request entity:\n"+record);
                     HttpEntity bentity = resp.getEntity();

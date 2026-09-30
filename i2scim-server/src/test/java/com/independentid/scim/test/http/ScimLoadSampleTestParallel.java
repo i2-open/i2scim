@@ -209,7 +209,7 @@ public class ScimLoadSampleTestParallel {
             post.setEntity(reqEntity);
             CloseableHttpResponse resp = client.execute(post);
 
-            if (resp.getCode() == ScimResponse.ST_BAD_REQUEST) {
+            if (resp.getCode() == ScimResponse.ST_CONFLICT) {
 
                 //logger.error("Request entity:\n" + record);
                 HttpEntity bentity = resp.getEntity();

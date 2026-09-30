@@ -288,7 +288,6 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
                             setError(new InvalidSyntaxException(det == null ?
                                     "The request body structure was invalid." : det));
                             return;
-                        // TODO: invalidPath implemented in i2scim server
                         case ScimResponse.ERR_TYPE_PATH:
                             setError(new ScimException(det == null ?
                                     "The attribute supplied was undefined, malformed, or invalid." : det, ScimResponse.ERR_TYPE_PATH));
@@ -324,7 +323,23 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
                 setError(new NotFoundException("Server responded with " + resp.getReasonPhrase()));
                 return;
             case HttpStatus.SC_CONFLICT:
-                setError(new ConflictException("Server responded with " + resp.getReasonPhrase()));
+                // RFC 7644 §3.3: uniqueness violations are 409 with scimType "uniqueness"; preserve the SCIM error type.
+                HttpEntity cEntity = resp.getEntity();
+                String cType = null, cDetail = null;
+                if (cEntity != null) {
+                    String cBody = EntityUtils.toString(cEntity);
+                    if (cBody != null && !cBody.isBlank()) {
+                        JsonNode cNode = JsonUtil.getJsonTree(cBody);
+                        if (cNode.hasNonNull("scimType"))
+                            cType = cNode.get("scimType").asText();
+                        if (cNode.hasNonNull("detail"))
+                            cDetail = cNode.get("detail").asText();
+                    }
+                }
+                if (cDetail == null)
+                    cDetail = ScimResponse.ERR_TYPE_UNIQUENESS.equals(cType) ?
+                            "One or more unique attribute values in use." : "Server responded with " + resp.getReasonPhrase();
+                setError(new ConflictException(cDetail, cType));
                 return;
             case HttpStatus.SC_PRECONDITION_FAILED:
                 setError(new PreconditionFailException("Server responded with " + resp.getReasonPhrase()));

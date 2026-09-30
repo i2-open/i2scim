@@ -338,7 +338,7 @@ public class MemoryProvider implements IScimProvider {
         if (res.getId() == null)
             res.setId(generator.getNewIdentifier());
         if (checkUniqueConflict(res))
-            return new ScimResponse(ScimResponse.ST_BAD_REQUEST, null, ScimResponse.ERR_TYPE_UNIQUENESS);
+            return new ScimResponse(ScimResponse.ST_CONFLICT, null, ScimResponse.ERR_TYPE_UNIQUENESS);
 
         Meta meta = res.getMeta();
         if (meta == null) {
@@ -366,7 +366,7 @@ public class MemoryProvider implements IScimProvider {
             meta.setResourceType(type.getName());
 
         if (checkUniqueConflict(res))
-            return new ScimResponse(ScimResponse.ST_BAD_REQUEST, "Attribute with uniqueness conflict detected.", ScimResponse.ERR_TYPE_UNIQUENESS);
+            return new ScimResponse(ScimResponse.ST_CONFLICT, "Attribute with uniqueness conflict detected.", ScimResponse.ERR_TYPE_UNIQUENESS);
         storeResource(res);
 
         ctx.setEncodeExtensions(false);
@@ -605,7 +605,7 @@ public class MemoryProvider implements IScimProvider {
         if (checkUniqueConflict(modRes)) {
             // As the transaction failed, restore the index on the original resource
             indexResource(origRes);
-            return new ScimResponse(ScimResponse.ST_BAD_REQUEST, null, ScimResponse.ERR_TYPE_UNIQUENESS);
+            return new ScimResponse(ScimResponse.ST_CONFLICT, null, ScimResponse.ERR_TYPE_UNIQUENESS);
         }
 
         try {

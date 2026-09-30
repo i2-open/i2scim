@@ -154,8 +154,8 @@ public class MongoProviderTest {
             resp = mp.create(ctx, user1);
 
             assertThat(resp.getStatus())
-                    .as("Confirm error 400 occurred (uniqueness)")
-                    .isEqualTo(ScimResponse.ST_BAD_REQUEST);
+                    .as("Confirm error 409 occurred (uniqueness)")
+                    .isEqualTo(ScimResponse.ST_CONFLICT);
             body = getResponseBody(resp, ctx);
             assertThat(body)
                     .as("Is a uniqueness error")
@@ -402,6 +402,38 @@ public class MongoProviderTest {
         } catch (IOException | ParseException | ScimException | BackendException e) {
             org.assertj.core.api.Assertions.fail("Exception occured making GET request for bjensen", e);
         }
+    }
+
+    /**
+     * RFC 7644 §3.3: a PUT or PATCH that introduces a uniqueness conflict returns 409 with scimType uniqueness, and
+     * the stored resource is left unchanged (issue #111).
+     */
+    @Test
+    public void fa_uniquenessConflictOnUpdateIs409() throws Exception {
+        logger.info("\tF-a. PUT/PATCH introducing a duplicate userName is 409 uniqueness");
+
+        RequestCtx ctx = new RequestCtx(user2url, null, null, smgr);
+        ScimResponse resp = mp.get(ctx);
+        ScimResource res = new ScimResource(smgr, JsonUtil.getJsonTree(getResponseBody(resp, ctx)), "Users");
+        Attribute userName = res.getAttribute("userName", null);
+        res.addValue(new StringValue(userName, "bjensen@example.com"));
+
+        ctx = new RequestCtx(user2url, null, null, smgr);
+        resp = mp.put(ctx, res);
+        assertThat(resp.getStatus()).as("PUT uniqueness conflict").isEqualTo(ScimResponse.ST_CONFLICT);
+        assertThat(getResponseBody(resp, ctx)).contains(ScimResponse.ERR_TYPE_UNIQUENESS);
+
+        String body = "{\"schemas\":[\"" + ScimParams.SCHEMA_API_PatchOp + "\"],\"Operations\":"
+                + "[{\"op\":\"replace\",\"path\":\"userName\",\"value\":\"bjensen@example.com\"}]}";
+        ctx = new RequestCtx(user2url, null, null, smgr);
+        resp = mp.patch(ctx, new JsonPatchRequest(JsonUtil.getJsonTree(body), ctx));
+        assertThat(resp.getStatus()).as("PATCH uniqueness conflict").isEqualTo(ScimResponse.ST_CONFLICT);
+        assertThat(getResponseBody(resp, ctx)).contains(ScimResponse.ERR_TYPE_UNIQUENESS);
+
+        ctx = new RequestCtx(user2url, null, null, smgr);
+        assertThat(getResponseBody(mp.get(ctx), ctx))
+                .as("stored resource unchanged")
+                .contains("jsmith@example.com");
     }
 
     private String memberObj(String ref) {

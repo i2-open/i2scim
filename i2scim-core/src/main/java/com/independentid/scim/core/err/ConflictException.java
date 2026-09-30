@@ -46,6 +46,17 @@ public class ConflictException extends ScimException {
 		this.status = 409;
 	}
 
+	/**
+	 * ConflictException - Used to return HTTP Status 409 with a SCIM error type, e.g.
+	 * {@code uniqueness} (RFC 7644 §3.3 / §3.12).
+	 * @param message Explanation text returned in the SCIM "detail" error message.
+	 * @param scimType The SCIM error type (e.g. {@link com.independentid.scim.protocol.ScimResponse#ERR_TYPE_UNIQUENESS}).
+	 */
+	public ConflictException(String message, String scimType) {
+		super(message, scimType);
+		this.status = 409;
+	}
+
 	public ConflictException(Throwable cause) {
 		super(cause);
 		this.scimType = null;

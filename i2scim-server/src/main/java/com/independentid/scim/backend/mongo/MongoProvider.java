@@ -245,8 +245,8 @@ public class MongoProvider implements IScimProvider {
 			return new ScimResponse(ScimResponse.ST_BAD_REQUEST,e.getLocalizedMessage(),ScimResponse.ERR_TYPE_BADVAL);
 		} catch (MongoWriteException e) {
 			
-			if (e.getCode() == 11000)
-				return new ScimResponse(ScimResponse.ST_BAD_REQUEST,e.getLocalizedMessage(),ScimResponse.ERR_TYPE_UNIQUENESS);
+			if (e.getCode() == DUPLICATE_KEY_CODE)
+				return uniquenessConflict(e);
 			return handleUnexpectedException(e);
 		}
 		ctx.setEncodeExtensions(false);
@@ -256,6 +256,14 @@ public class MongoProvider implements IScimProvider {
 		resp.setETag(res.getMeta().getVersion());
 
 		return resp;
+	}
+
+	/** MongoDB duplicate-key error code, raised when a write violates a unique index. */
+	private static final int DUPLICATE_KEY_CODE = 11000;
+
+	/** RFC 7644 §3.3: a write that violates a unique attribute returns 409 Conflict with scimType uniqueness. */
+	private ScimResponse uniquenessConflict(MongoWriteException e) {
+		return new ScimResponse(ScimResponse.ST_CONFLICT, e.getLocalizedMessage(), ScimResponse.ERR_TYPE_UNIQUENESS);
 	}
 
 	private ScimResponse handleUnexpectedException(Exception e) {
@@ -310,6 +318,10 @@ public class MongoProvider implements IScimProvider {
 		
 		} catch (IllegalArgumentException e) {
 			return new ScimResponse(new InternalException("Mongo PUT exception: "+e.getLocalizedMessage(), e));
+		} catch (MongoWriteException e) {
+			if (e.getCode() == DUPLICATE_KEY_CODE)
+				return uniquenessConflict(e);
+			return handleUnexpectedException(e);
 		}
 		
 		// meta.setVersion(etag);
