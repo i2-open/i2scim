@@ -194,16 +194,19 @@ public class Operation extends RecursiveAction {
                 ServletInputStream input = getRequest().getInputStream();
                 if (input == null) {
                     logger.info("Missing body for SCIM Create request received");
-                    setCompletionError(new InvalidSyntaxException(
+                    setInvalidRequest(new InvalidSyntaxException(
                             "Request body missing or empty."));
                     return;
                 }
                 node = JsonUtil.getJsonTree(input);
                 input.close();
             } catch (IOException e) {
-                setCompletionError(new InvalidSyntaxException(
+                setInvalidRequest(new InvalidSyntaxException(
                         "Unable to parse request body (JSON format body expected)."));
+                return;
             }
+            if (node == null || node.isMissingNode())
+                setInvalidRequest(new InvalidSyntaxException("Request body missing or empty."));
         }
     }
 
@@ -411,6 +414,17 @@ public class Operation extends RecursiveAction {
     public void setCompletionError(Exception e) {
         this.err = e;
         this.opState = OpState.fatal;
+    }
+
+    /**
+     * Records a client-input error detected while parsing or validating the request. Unlike
+     * {@link #setCompletionError(Exception)}, the operation state becomes {@link OpState#invalid} so that
+     * pre-operation guards stop any further parsing of the request.
+     * @param e The SCIM error describing the invalid request (normally a 400 class error).
+     */
+    protected void setInvalidRequest(ScimException e) {
+        this.err = e;
+        this.opState = OpState.invalid;
     }
 
     public Exception getCompletionException() {
