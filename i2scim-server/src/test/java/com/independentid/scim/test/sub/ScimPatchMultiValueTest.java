@@ -23,7 +23,10 @@ import com.independentid.scim.core.err.NoTargetException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.resource.MultiValue;
 import com.independentid.scim.resource.ScimResource;
+import com.independentid.scim.schema.Attribute;
+import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.test.junit.QuarkusTest;
@@ -312,5 +315,29 @@ public class ScimPatchMultiValueTest {
                 .satisfies(e -> assertThat(((ScimException) e).getStatus()).isEqualTo(400));
         assertThat(subValues(json(res).get("emails"), "value"))
                 .containsExactlyInAnyOrder("bjensen@example.com", "babs@jensen.org");
+    }
+
+    private static Attribute simpleMultiValued(String type) throws Exception {
+        return new Attribute(JsonUtil.getJsonTree("{\"name\":\"tags\",\"type\":\"" + type
+                + "\",\"multiValued\":true,\"required\":false,\"caseExact\":false,\"mutability\":\"readWrite\","
+                + "\"returned\":\"default\",\"uniqueness\":\"none\"}"));
+    }
+
+    @Test
+    public void simpleTypeMultiValuedAttributeAcceptsArrayOfPlainValues() throws Exception {
+        MultiValue strings = new MultiValue(simpleMultiValued("string"), JsonUtil.getJsonTree("[\"red\",\"green\"]"), null);
+        assertThat(strings.size()).isEqualTo(2);
+        assertThat(strings.toJsonNode(null, "tags").get("tags").toString()).contains("red", "green");
+
+        MultiValue ints = new MultiValue(simpleMultiValued("integer"), JsonUtil.getJsonTree("[1,2,3]"), null);
+        assertThat(ints.size()).isEqualTo(3);
+    }
+
+    @Test
+    public void simpleTypeMultiValuedAttributeRejectsMistypedItem() throws Exception {
+        assertThatThrownBy(() -> new MultiValue(simpleMultiValued("integer"), JsonUtil.getJsonTree("[1,\"two\"]"), null))
+                .isInstanceOf(SchemaException.class);
+        assertThatThrownBy(() -> new MultiValue(simpleMultiValued("string"), JsonUtil.getJsonTree("[\"a\",{\"b\":1}]"), null))
+                .isInstanceOf(SchemaException.class);
     }
 }
