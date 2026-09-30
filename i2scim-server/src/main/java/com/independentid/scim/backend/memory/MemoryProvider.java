@@ -562,7 +562,45 @@ public class MemoryProvider implements IScimProvider {
         return processModifyScimResponse(ctx, origRes, temp);
     }
 
+    /**
+     * Applies a modification (PUT or PATCH) by swapping the indexed original resource for the modified copy. Any
+     * runtime failure part-way through leaves the store and every index exactly as they were before the request: the
+     * original resource is restored and the failure is re-thrown for the operation to report.
+     */
     private ScimResponse processModifyScimResponse(RequestCtx ctx, ScimResource origRes, ScimResource modRes) {
+        try {
+            return applyModification(ctx, origRes, modRes);
+        } catch (RuntimeException e) {
+            restoreOriginal(origRes, modRes, e);
+            throw e;
+        }
+    }
+
+    /**
+     * Rolls back a failed modification: removes whatever was indexed for either version of the resource, then
+     * re-indexes and re-stores the original.
+     */
+    private void restoreOriginal(ScimResource origRes, ScimResource modRes, RuntimeException failure) {
+        logger.error("Modification of " + origRes.getId() + " failed; restoring the original resource: " + failure, failure);
+        try {
+            IndexResourceType index = containerIndexes.get(origRes.getContainer());
+            if (index != null) {
+                // Both versions share the same id, so clear every trace of either before re-adding the original.
+                index.deIndexResourceBestEffort(modRes);
+                index.deIndexResourceBestEffort(origRes);
+                index.indexResource(origRes);
+            }
+            this.mainMap.put(origRes.getId(), origRes);
+            Map<String, ScimResource> cmap = this.containerMaps.get(origRes.getContainer());
+            if (cmap != null)
+                cmap.put(origRes.getId(), origRes);
+        } catch (RuntimeException restoreFailure) {
+            logger.error("Unable to restore index for " + origRes.getId() + ": " + restoreFailure, restoreFailure);
+            failure.addSuppressed(restoreFailure);
+        }
+    }
+
+    private ScimResponse applyModification(RequestCtx ctx, ScimResource origRes, ScimResource modRes) {
         deIndexResource(origRes);  // first remove old version.
         if (checkUniqueConflict(modRes)) {
             // As the transaction failed, restore the index on the original resource

@@ -240,9 +240,32 @@ public class IndexResourceType {
     }
 
     public void deIndexResource(ScimResource res) {
-        for (Attribute attr: res.getAttributesPresent())
-            if (isAttributeIndexed(attr))
+        // Walk the indexed attributes (not just the resource's top-level attributes) so that sub-attribute indexes
+        // such as emails.value are cleaned up as well, mirroring indexResource.
+        for (Attribute attr: presAttrs)
+            if (res.getValue(attr) != null)
                 deleteId(attr,res);
+    }
+
+    /**
+     * Removes the resource from every index, continuing past a failure on any single attribute so that as much as
+     * possible is removed. Used to roll back a partially applied (de)indexing after a failed modification.
+     * @param res The resource to be removed from the index
+     * @return The first failure encountered, or null if every attribute was removed cleanly.
+     */
+    public RuntimeException deIndexResourceBestEffort(ScimResource res) {
+        RuntimeException first = null;
+        for (Attribute attr: presAttrs) {
+            if (res.getValue(attr) == null)
+                continue;
+            try {
+                deleteId(attr, res);
+            } catch (RuntimeException e) {
+                if (first == null)
+                    first = e;
+            }
+        }
+        return first;
     }
 
     private void addExactHash(Map<Integer,ValResMap> index,Value val, String id) {
