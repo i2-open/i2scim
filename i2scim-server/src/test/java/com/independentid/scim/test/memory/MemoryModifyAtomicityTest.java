@@ -103,8 +103,9 @@ public class MemoryModifyAtomicityTest {
     }
 
     /**
-     * Replaces the Users index with a spy (sharing the real index maps) whose first matching call runs {@code before}
-     * and then throws, simulating a runtime failure such as the #105 ClassCastException during index comparison.
+     * Replaces the Users index with a spy (sharing the real index maps) configured by {@code stubber}, typically so
+     * that its first matching call throws (see {@link #failOnce}), simulating a runtime failure such as the #105
+     * ClassCastException during index comparison.
      */
     private void injectFailure(Consumer<IndexResourceType> stubber) {
         IndexResourceType spy = Mockito.spy(realIndex);
