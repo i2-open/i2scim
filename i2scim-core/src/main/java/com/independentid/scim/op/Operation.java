@@ -251,6 +251,14 @@ public class Operation extends RecursiveAction {
         return this.ctx.getBulkId();
     }
 
+    /**
+     * @return The HTTP method of this operation when it is part of a SCIM Bulk request, otherwise null.
+     */
+    public String getBulkMethod() {
+        if (this.ctx == null) return null;
+        return this.ctx.getBulkMethod();
+    }
+
 
     /**
      * @return The HttpServletResponse object

@@ -179,7 +179,7 @@ public class RequestCtx {
                         "Unsupported bulk method specified: " + this.bulkMethod);
         }
 
-        item = bulkReqOp.get(BulkOps.PARAM_BULKID);
+        item = BulkOps.getBulkIdNode(bulkReqOp);
         this.bulkId = (item == null) ? null : item.asText();
 
         item = bulkReqOp.get(BulkOps.PARAM_VERSION);

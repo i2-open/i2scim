@@ -79,6 +79,19 @@ public class ScimException extends Exception {
 	}
 	
 	public void serialize(JsonGenerator gen,HttpServletResponse resp) throws IOException {
+		writeError(gen);
+		if (resp != null)
+			resp.setStatus(this.status);
+		gen.close();
+	}
+
+	/**
+	 * Writes this exception as a SCIM Error JSON object (RFC 7644 Section 3.12) without setting any HTTP status or
+	 * closing the generator, so that it can be embedded in a larger response (e.g. a Bulk operation result).
+	 * @param gen The JsonGenerator to write to.
+	 * @throws IOException if the error could not be written.
+	 */
+	public void writeError(JsonGenerator gen) throws IOException {
 		gen.writeStartObject();
 		gen.writeArrayFieldStart("schemas");
 		gen.writeString(ScimResponse.SCHEMA_ERROR);
@@ -91,8 +104,6 @@ public class ScimException extends Exception {
 			gen.writeStringField("detail",this.getLocalizedMessage());
 		gen.writeNumberField("status", this.status);
 		gen.writeEndObject();
-		resp.setStatus(this.status);
-		gen.close();
 	}
 
 }

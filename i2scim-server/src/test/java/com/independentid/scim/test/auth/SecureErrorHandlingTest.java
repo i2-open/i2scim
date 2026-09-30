@@ -16,16 +16,21 @@
 
 package com.independentid.scim.test.auth;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.test.misc.AbstractErrorHandlingTest;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import org.apache.hc.client5.http.classic.methods.HttpUriRequestBase;
 import org.apache.hc.core5.http.HttpHeaders;
+import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Runs the issue #107 error-handling regression tests ({@link AbstractErrorHandlingTest}) with
@@ -43,5 +48,23 @@ public class SecureErrorHandlingTest extends AbstractErrorHandlingTest {
         String cred = cmgr.getRootUser() + ":" + cmgr.getRootPassword();
         request.addHeader(HttpHeaders.AUTHORIZATION,
                 "Basic " + Base64.getEncoder().encodeToString(cred.getBytes(StandardCharsets.UTF_8)));
+    }
+
+    /**
+     * Bulk sub-operations are not yet evaluated against ACIs (their request contexts are not populated by the
+     * security filter), so with security enabled they must fail closed with a per-operation 403 rather than an
+     * internal error, while malformed operations still report their own 400.
+     */
+    @Override
+    @Test
+    public void e_bulkIsolatesMalformedOperations() throws Exception {
+        String body = BULK_REQUEST_START + "\"Operations\":["
+                + bulkCreateUser("secGood1", "bulkSecGood1") + ","
+                + BULK_BAD_DATA + "]}";
+
+        JsonNode ops = assertBulkResponse(body);
+        assertThat(ops.size()).as("one result per operation").isEqualTo(2);
+        assertBulkOpError(ops.get(0), "POST", "secGood1", ScimResponse.ST_FORBIDDEN);
+        assertBulkOpError(ops.get(1), "POST", "badData");
     }
 }

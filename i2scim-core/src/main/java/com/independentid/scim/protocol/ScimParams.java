@@ -38,7 +38,7 @@ public class ScimParams {
 	public final static String SCHEMA_API_ListResponse = "urn:ietf:params:scim:api:messages:2.0:ListResponse";
 	public final static String SCHEMA_API_SearchRequest = "urn:ietf:params:scim:api:messages:2.0:SearchRequest";
 	public final static String SCHEMA_API_PatchOp = "urn:ietf:params:scim:api:messages:2.0:PatchOp";
-	public final static String SCHEMA_API_BulkRequest = "urn:ietf:params:scim:api:messages:2.0:BulkOps";
+	public final static String SCHEMA_API_BulkRequest = "urn:ietf:params:scim:api:messages:2.0:BulkRequest";
 	public final static String SCHEMA_API_BulkResponse = "urn:ietf:params:scim:api:messages:2.0:BulkResponse";
 	public final static String SCHEMA_API_Error = "urn:ietf:params:scim:api:messages:2.0:Error";
 

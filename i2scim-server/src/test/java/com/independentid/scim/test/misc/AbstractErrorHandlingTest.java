@@ -118,6 +118,105 @@ public abstract class AbstractErrorHandlingTest {
         assertScimError(get, ScimResponse.ST_BAD_REQUEST, ScimResponse.ERR_TYPE_BADVAL);
     }
 
+    protected static final String BULK_REQUEST_START = "{\"schemas\":[\"urn:ietf:params:scim:api:messages:2.0:BulkRequest\"],";
+
+    protected static String bulkCreateUser(String bulkId, String userName) {
+        return "{\"method\":\"POST\",\"path\":\"/Users\",\"bulkId\":\"" + bulkId + "\",\"data\":{"
+                + "\"schemas\":[\"urn:ietf:params:scim:schemas:core:2.0:User\"],\"userName\":\"" + userName + "\"}}";
+    }
+
+    // A PATCH whose operation type is not a valid SCIM PATCH op.
+    private static final String BULK_BAD_PATCH = "{\"method\":\"PATCH\",\"path\":\"/Users/doesNotMatter\",\"data\":{"
+            + "\"schemas\":[\"urn:ietf:params:scim:api:messages:2.0:PatchOp\"],"
+            + "\"Operations\":[{\"op\":\"frobnicate\",\"path\":\"userName\",\"value\":\"x\"}]}}";
+
+    // A create whose data value is a JSON string rather than a resource object.
+    protected static final String BULK_BAD_DATA = "{\"method\":\"POST\",\"path\":\"/Users\",\"bulkId\":\"badData\","
+            + "\"data\":\"notAResource\"}";
+
+    // A create carrying a binary attribute value that is not valid base64.
+    private static final String BULK_BAD_BINARY = "{\"method\":\"POST\",\"path\":\"/Users\",\"bulkId\":\"badBinary\","
+            + "\"data\":{\"schemas\":[\"urn:ietf:params:scim:schemas:core:2.0:User\"],\"userName\":\"bulkBinary\","
+            + "\"x509Certificates\":[{\"value\":\"%%% not base64 %%%\"}]}}";
+
+    // An operation without a method.
+    private static final String BULK_NO_METHOD = "{\"path\":\"/Users\",\"bulkId\":\"noMethod\"}";
+
+    @Test
+    public void e_bulkIsolatesMalformedOperations() throws Exception {
+        String body = BULK_REQUEST_START + "\"Operations\":["
+                + bulkCreateUser("good1", "bulkGood1") + ","
+                + BULK_BAD_PATCH + ","
+                + BULK_BAD_DATA + ","
+                + BULK_BAD_BINARY + ","
+                + BULK_NO_METHOD + ","
+                + bulkCreateUser("good2", "bulkGood2") + "]}";
+
+        JsonNode ops = assertBulkResponse(body);
+        assertThat(ops.size()).as("one result per operation").isEqualTo(6);
+
+        assertBulkOpSuccess(ops.get(0), "POST", "good1", 201);
+        assertBulkOpError(ops.get(1), "PATCH", null);
+        assertBulkOpError(ops.get(2), "POST", "badData");
+        assertBulkOpError(ops.get(3), "POST", "badBinary");
+        assertBulkOpError(ops.get(4), null, "noMethod");
+        assertBulkOpSuccess(ops.get(5), "POST", "good2", 201);
+    }
+
+    @Test
+    public void e_bulkStopsAtFailOnErrors() throws Exception {
+        String body = BULK_REQUEST_START + "\"failOnErrors\":1,\"Operations\":["
+                + BULK_BAD_DATA + ","
+                + bulkCreateUser("good3", "bulkGood3") + "]}";
+
+        JsonNode ops = assertBulkResponse(body);
+        assertThat(ops.size()).as("processing stops once failOnErrors is reached").isEqualTo(1);
+        assertBulkOpError(ops.get(0), "POST", "badData");
+    }
+
+    /**
+     * Posts a bulk request and asserts a 200 BulkResponse.
+     * @return the BulkResponse Operations array
+     */
+    protected JsonNode assertBulkResponse(String body) throws Exception {
+        HttpPost post = new HttpPost(TestUtils.mapPathToReqUrl(baseUrl, ScimParams.PATH_BULK));
+        post.setEntity(new StringEntity(body, ContentType.APPLICATION_JSON));
+        authorize(post);
+        ClassicHttpResponse resp = TestUtils.executeRequest(post);
+        String respBody = resp.getEntity() == null ? "" : EntityUtils.toString(resp.getEntity());
+        logger.info("POST /Bulk -> " + resp.getCode() + "\n" + respBody);
+
+        assertThat(resp.getCode()).as("Bulk HTTP status").isEqualTo(ScimResponse.ST_OK);
+        JsonNode bulkResp = JsonUtil.getJsonTree(respBody);
+        assertThat(bulkResp.path(ScimParams.ATTR_SCHEMAS).toString()).contains(ScimParams.SCHEMA_API_BulkResponse);
+        JsonNode ops = bulkResp.path("Operations");
+        assertThat(ops.isArray()).as("Operations array present").isTrue();
+        return ops;
+    }
+
+    private static void assertBulkOpCommon(JsonNode op, String method, String bulkId) {
+        if (method != null)
+            assertThat(op.path("method").asText()).as("bulk op method").isEqualTo(method);
+        if (bulkId != null)
+            assertThat(op.path("bulkId").asText()).as("bulk op bulkId").isEqualTo(bulkId);
+    }
+
+    private static void assertBulkOpSuccess(JsonNode op, String method, String bulkId, int status) {
+        assertBulkOpCommon(op, method, bulkId);
+        assertThat(op.path("status").asText()).as("bulk op status for " + bulkId).isEqualTo(String.valueOf(status));
+        assertThat(op.path("location").asText()).as("bulk op location for " + bulkId).isNotEmpty();
+    }
+
+    protected static void assertBulkOpError(JsonNode op, String method, String bulkId) {
+        assertBulkOpError(op, method, bulkId, ScimResponse.ST_BAD_REQUEST);
+    }
+
+    protected static void assertBulkOpError(JsonNode op, String method, String bulkId, int status) {
+        assertBulkOpCommon(op, method, bulkId);
+        assertThat(op.path("status").asText()).as("bulk op status for " + op).isEqualTo(String.valueOf(status));
+        assertScimErrorBody(op.path("response"), status, null);
+    }
+
     /**
      * Executes the request and asserts that the response carries the expected HTTP status and a SCIM Error body with
      * the matching status and (when not null) scimType.
