@@ -974,16 +974,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
                         Value nval;
                         try {
                             nval = ValueUtil.parseJson(this, sattr, op.jsonValue, null);
-                            // Members are hashed by content: take the member out before changing it.
-                            mval.removeValue(cval);
-                            if (nval instanceof BooleanValue) {
-                                BooleanValue bval = (BooleanValue) nval;
-                                if (bval.getRawValue() && sattr.getName().equals("primary"))
-                                    mval.resetPrimary();
-                            }
-
-                            cval.addValue(sattr, nval);
-                            mval.addValue(cval);
+                            replaceMember(mval, cval, () -> cval.addValue(sattr, nval));
                         } catch (SchemaException | ParseException e) {
                             throw new InvalidValueException("JSON parsing error parsing value parameter.", e);
                         }
@@ -1007,9 +998,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
                         if (!(nval instanceof ComplexValue))
                             throw new InvalidValueException("Expecting a JSON object value for " + op.path);
                         ComplexValue cval = (ComplexValue) targetValue;
-                        mval.removeValue(cval);
-                        cval.mergeValues((ComplexValue) nval);
-                        mval.addValue(cval);
+                        replaceMember(mval, cval, () -> cval.mergeValues((ComplexValue) nval));
                     } catch (SchemaException | ParseException e) {
                         throw new InvalidValueException("JSON parsing error parsing value parameter.", e);
                     }
@@ -1017,6 +1006,9 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
                 }
                 throw new InvalidValueException("The value supplied is not compatible with the add path: " + op.path);
             case JsonPatchOp.OP_ACTION_REMOVE:
+                // RFC 7644 §3.5.2.2: removing from an attribute that has no values is a no-op.
+                if (mval == null)
+                    return;
                 if (targetValue == null && path.hasVpathSubAttr())
                     throw new NoTargetException("Unable to to match a record value");
                 if (targetValue == null) {
@@ -1027,10 +1019,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
                 if (path.hasVpathSubAttr()) {
                     if (targetValue instanceof ComplexValue) {
                         ComplexValue cval = (ComplexValue) targetValue;
-                        // Members are hashed by content: take the member out before changing it.
-                        mval.removeValue(cval);
-                        cval.removeValue(path.getSubAttribute());
-                        mval.addValue(cval);
+                        replaceMember(mval, cval, () -> cval.removeValue(path.getSubAttribute()));
                         return;
                     }
                     // There was a sub attribute specified, but the parent does not support sub-attributes.
@@ -1058,13 +1047,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
                         } catch (SchemaException | ParseException e) {
                             throw new InvalidValueException("JSON parsing error parsing value parameter.", e);
                         }
-                        // Members are hashed by content: take the member out before changing it.
-                        mval.removeValue(cval);
-                        if (nval instanceof BooleanValue && ((BooleanValue) nval).getRawValue()
-                                && sattr.getName().equalsIgnoreCase("primary"))
-                            mval.resetPrimary();
-                        cval.addValue(sattr, nval);
-                        mval.addValue(cval);
+                        replaceMember(mval, cval, () -> cval.addValue(sattr, nval));
                         return;
                     }
 
@@ -1098,6 +1081,22 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
             default:
                 throw new InvalidValueException("The operation requested (" + op.op + ") is not supported");
         }
+    }
+
+    /**
+     * Mutates a member of a multi-valued attribute in place. Members are hashed by content, so the member is taken
+     * out before it is changed and re-added afterwards. If the change leaves the member with {@code primary: true},
+     * primary is cleared on every other member (RFC 7643 §2.4).
+     * @param mval     The multi-valued attribute holding the member.
+     * @param cval     The member to change.
+     * @param mutation The change to apply to the member.
+     */
+    private static void replaceMember(MultiValue mval, ComplexValue cval, Runnable mutation) {
+        mval.removeValue(cval);
+        mutation.run();
+        if (cval.isPrimary())
+            mval.resetPrimary();
+        mval.addValue(cval);
     }
 
     private void performResourcePatch(JsonPatchOp op, RequestCtx ctx) throws ScimException {

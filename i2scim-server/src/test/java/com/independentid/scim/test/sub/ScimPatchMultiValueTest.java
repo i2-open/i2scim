@@ -23,6 +23,7 @@ import com.independentid.scim.core.err.NoTargetException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.JsonPatchRequest;
 import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.resource.MultiValue;
 import com.independentid.scim.resource.ScimResource;
 import com.independentid.scim.schema.Attribute;
@@ -257,6 +258,7 @@ public class ScimPatchMultiValueTest {
 
         // remove of an absent value is a no-op (RFC 7644 §3.5.2.2)
         patch(res, "[{\"op\":\"remove\",\"path\":\"emails[type eq \\\"work\\\"]\"}]");
+        patch(res, "[{\"op\":\"remove\",\"path\":\"emails[type eq \\\"work\\\"].value\"}]");
         assertThatThrownBy(() -> patch(res, "[{\"op\":\"replace\",\"path\":\"emails[type eq \\\"work\\\"]\",\"value\":{\"value\":\"z@example.com\"}}]"))
                 .isInstanceOf(NoTargetException.class);
         assertThatThrownBy(() -> patch(res, "[{\"op\":\"replace\",\"path\":\"emails[type eq \\\"work\\\"].value\",\"value\":\"z@example.com\"}]"))
@@ -339,5 +341,39 @@ public class ScimPatchMultiValueTest {
                 .isInstanceOf(SchemaException.class);
         assertThatThrownBy(() -> new MultiValue(simpleMultiValued("string"), JsonUtil.getJsonTree("[\"a\",{\"b\":1}]"), null))
                 .isInstanceOf(SchemaException.class);
+    }
+
+    @Test
+    public void simpleTypeMultiValuedAttributeFlattensLegacyNestedArray() throws Exception {
+        // Tolerate data persisted before issue #109, when an array add could nest an array inside the stored array.
+        MultiValue strings = new MultiValue(simpleMultiValued("string"), JsonUtil.getJsonTree("[[\"red\"],\"green\"]"), null);
+        assertThat(strings.size()).isEqualTo(2);
+        assertThat(strings.toJsonNode(null, "tags").get("tags").toString()).contains("red", "green");
+    }
+
+    @Test
+    public void mistypedMultiValuedItemIsInvalidValue() throws Exception {
+        assertThatThrownBy(() -> new MultiValue(simpleMultiValued("string"), JsonUtil.getJsonTree("[\"a\",{\"b\":1}]"), null))
+                .isInstanceOf(SchemaException.class)
+                .satisfies(e -> assertThat(((ScimException) e).getScimType()).isEqualTo(ScimResponse.ERR_TYPE_BADVAL));
+
+        ScimResource res = bjensen();
+        assertThatThrownBy(() -> patch(res, "[{\"op\":\"add\",\"value\":{\"emails\":[\"x\"]}}]"))
+                .isInstanceOf(InvalidValueException.class);
+    }
+
+    @Test
+    public void addingPrimarySubAttributeOrMergeClearsOtherPrimaries() throws Exception {
+        ScimResource res = bjensen();
+
+        patch(res, "[{\"op\":\"add\",\"path\":\"emails[type eq \\\"home\\\"].primary\",\"value\":true}]");
+        JsonNode emails = json(res).get("emails");
+        assertThat(emails.size()).isEqualTo(2);
+        assertThat(primaries(emails)).containsExactly("babs@jensen.org");
+
+        patch(res, "[{\"op\":\"add\",\"path\":\"emails[type eq \\\"work\\\"]\",\"value\":{\"primary\":true}}]");
+        emails = json(res).get("emails");
+        assertThat(emails.size()).isEqualTo(2);
+        assertThat(primaries(emails)).containsExactly("bjensen@example.com");
     }
 }

@@ -26,6 +26,7 @@ import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.IBulkIdResolver;
 import com.independentid.scim.protocol.Filter;
 import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.schema.SchemaManager;
@@ -130,24 +131,26 @@ public class MultiValue extends Value {
             throws SchemaException, ParseException {
         if (node == null)
             return;  //Create an empty attribute.
-        if (node.isArray())
+        if (node.isArray()) {
+            boolean complex = Attribute.TYPE_Complex.equalsIgnoreCase(attr.getType());
             for (JsonNode item : node) {
-                // RFC 7643 §2.4: complex multi-valued attributes hold objects; simple-type multi-valued attributes
-                // hold plain values. A member of the wrong JSON shape is rejected rather than silently dropped.
-                if (item.isContainerNode() && !Attribute.TYPE_Complex.equalsIgnoreCase(attr.getType()))
-                    throw new SchemaException("Unexpected JSON " + item.getNodeType() + " value in multi-valued attribute "
-                            + attr.getName());
-                if (!item.isContainerNode() && Attribute.TYPE_Complex.equalsIgnoreCase(attr.getType()))
-                    throw new SchemaException("Expecting JSON objects in complex multi-valued attribute " + attr.getName()
-                            + " but found " + item.getNodeType());
                 if (item.isArray()) {
                     // Tolerate data persisted before issue #109, when an array add could nest an array inside the
                     // stored array: flatten it rather than failing to load the resource.
                     parseJson(item);
                     continue;
                 }
+                // RFC 7643 §2.4: complex multi-valued attributes hold objects; simple-type multi-valued attributes
+                // hold plain values. A member of the wrong JSON shape is rejected rather than silently dropped.
+                if (item.isContainerNode() && !complex)
+                    throw new SchemaException("Unexpected JSON " + item.getNodeType() + " value in multi-valued attribute "
+                            + attr.getName(), ScimResponse.ERR_TYPE_BADVAL, null);
+                if (!item.isContainerNode() && complex)
+                    throw new SchemaException("Expecting JSON objects in complex multi-valued attribute " + attr.getName()
+                            + " but found " + item.getNodeType(), ScimResponse.ERR_TYPE_BADVAL, null);
                 parseJsonObject(item);
             }
+        }
         else
             parseJsonObject(node);
     }
