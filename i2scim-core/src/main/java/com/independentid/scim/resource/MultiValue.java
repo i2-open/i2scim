@@ -137,6 +137,9 @@ public class MultiValue extends Value {
                 if (item.isContainerNode() && !Attribute.TYPE_Complex.equalsIgnoreCase(attr.getType()))
                     throw new SchemaException("Unexpected JSON " + item.getNodeType() + " value in multi-valued attribute "
                             + attr.getName());
+                if (!item.isContainerNode() && Attribute.TYPE_Complex.equalsIgnoreCase(attr.getType()))
+                    throw new SchemaException("Expecting JSON objects in complex multi-valued attribute " + attr.getName()
+                            + " but found " + item.getNodeType());
                 if (item.isArray()) {
                     // Tolerate data persisted before issue #109, when an array add could nest an array inside the
                     // stored array: flatten it rather than failing to load the resource.

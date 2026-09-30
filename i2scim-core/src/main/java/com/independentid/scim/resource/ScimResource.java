@@ -926,6 +926,10 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
         ScimResource target = this;
         Attribute targetAttr = path.getTargetAttribute();
         MultiValue mval = (MultiValue) target.getValue(targetAttr);
+        // A complex multi-valued attribute takes a JSON object or an array of objects, never a bare value.
+        if (op.jsonValue != null && op.jsonValue.isValueNode() && !path.hasVpathSubAttr()
+                && Attribute.TYPE_Complex.equalsIgnoreCase(targetAttr.getType()))
+            throw new InvalidValueException("Expecting a JSON object or array value for " + op.path);
         Value targetValue = null;
         if (path.getTargetValueFilter() != null && mval != null)
             targetValue = mval.getMatchValue(path.getTargetValueFilter());
