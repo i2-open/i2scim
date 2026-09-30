@@ -378,12 +378,12 @@ public class Operation extends RecursiveAction {
         } else {
             // This should not happen?
             logger.error("Unexpected error in result was not of type ScimException: " + this.err.getMessage(), this.err);
-            doErrorResp(this.err, this.err.getMessage(), gen);
+            doErrorResp(gen);
         }
     }
 
 
-    private void doErrorResp(Exception ex, String scimErrMsg, JsonGenerator gen) {
+    private void doErrorResp(JsonGenerator gen) {
         try {
             ScimResponse sresp = new ScimResponse(ScimResponse.ST_INTERNAL, "Internal error processing request.", null);
             sresp.serialize(gen, null, false);
