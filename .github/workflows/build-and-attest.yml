@@ -60,6 +60,19 @@ jobs:
             echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           } >> "$GITHUB_OUTPUT"
 
+      - name: Check release tag matches pom version
+        # A release publishes the Docker image, so the tag, the jars and the image's
+        # VERSION label must agree. Bump the pom before publishing the release.
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          VERSION: ${{ steps.meta-vars.outputs.version }}
+        run: |
+          if [ "${TAG#v}" != "${VERSION}" ]; then
+            echo "::error::Release tag ${TAG} does not match pom version ${VERSION}"
+            exit 1
+          fi
+
       - name: Attest Maven Artifacts
         # PR builds publish nothing, and fork PRs never receive an OIDC token
         # (id-token: write is withheld), so attestation would fail there.
@@ -76,7 +89,8 @@ jobs:
           sbom-path: "target/bom.json"
 
       - name: Log in to the Container registry
-        if: github.event_name != 'pull_request'
+        # The image is published only from a GitHub release, never on push to master.
+        if: github.event_name == 'release'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -102,7 +116,7 @@ jobs:
           context: i2scim-server
           file: i2scim-server/src/main/docker/Dockerfile.jvm
           platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name == 'release' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           provenance: mode=max
@@ -113,7 +127,7 @@ jobs:
             BUILD_DATE=${{ steps.meta-vars.outputs.build_date }}
 
       - name: Attest Docker Image
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'release'
         uses: actions/attest-build-provenance@v2
         with:
           subject-name: ghcr.io/${{ github.repository }}
