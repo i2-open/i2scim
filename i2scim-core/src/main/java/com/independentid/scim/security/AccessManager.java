@@ -292,6 +292,7 @@ public class AccessManager {
     public static void checkCreatePreOp(CreateOp op) {
         RequestCtx ctx = op.getRequestCtx();
         AciSet set = ctx.getAcis();
+        if (denyWithoutAcis(op, set)) return;
 
         if (!set.checkCreatePreOp(op))
             // Operation not permitted by any ACI
@@ -301,6 +302,7 @@ public class AccessManager {
     public static void checkDeletePreOp(DeleteOp op) {
         RequestCtx ctx = op.getRequestCtx();
         AciSet set = ctx.getAcis();
+        if (denyWithoutAcis(op, set)) return;
 
         if (!set.checkDeletePreOp(op))
            // Operation not permitted by any ACI
@@ -310,6 +312,7 @@ public class AccessManager {
     public static void checkRetrieveOp(Operation op) {
         RequestCtx ctx = op.getRequestCtx();
         AciSet set = ctx.getAcis();
+        if (denyWithoutAcis(op, set)) return;
         if(!set.checkFilterOp(op))
             markOpUnauthorized(op,"SCIM filtered search request not allowed due to attribute/rights policy.");
     }
@@ -326,6 +329,7 @@ public class AccessManager {
     public static void checkPutOp(PutOp op) {
         RequestCtx ctx = op.getRequestCtx();
         AciSet set = ctx.getAcis();
+        if (denyWithoutAcis(op, set)) return;
         if (!set.checkPutPreOp(op))
             markOpUnauthorized(op, "SCIM PUT unauthorized due to aci targetFilter rule");
     }
@@ -333,6 +337,7 @@ public class AccessManager {
     public static void checkPatchOp(PatchOp op) {
         RequestCtx ctx = op.getRequestCtx();
         AciSet set = ctx.getAcis();
+        if (denyWithoutAcis(op, set)) return;
         if (!set.checkPatchPreOp(op))
             markOpUnauthorized(op, "SCIM PATCH unauthorized due to aci targetFilter rule");
     }
@@ -347,6 +352,18 @@ public class AccessManager {
                 filters.add(filter);
         }
         return filters;
+    }
+
+    /**
+     * Fails closed when an operation reaches an access check without an evaluated ACI set (e.g. a Bulk sub-operation,
+     * whose request context is not populated by the security filter).
+     * @return true if the operation was denied.
+     */
+    private static boolean denyWithoutAcis(Operation op, AciSet set) {
+        if (set != null)
+            return false;
+        op.setCompletionError(new ForbiddenException("No access control policy was evaluated for this operation."));
+        return true;
     }
 
     private static void markOpUnauthorized(Operation op, String reason) {

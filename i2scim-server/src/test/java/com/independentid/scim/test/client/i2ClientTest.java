@@ -22,6 +22,7 @@ import com.independentid.scim.client.ScimReqParams;
 import com.independentid.scim.client.i2scimClient;
 import com.independentid.scim.client.i2scimResponse;
 import com.independentid.scim.core.ConfigMgr;
+import com.independentid.scim.core.err.InvalidPathException;
 import com.independentid.scim.core.err.InvalidSyntaxException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.JsonPatchRequest;
@@ -675,6 +676,20 @@ public class i2ClientTest {
         } catch (ParseException e) {
             fail("JSON Parsing exception: " + e.getMessage(), e);
         }
+    }
+
+    @Test
+    public void fa_PatchInvalidPathTest() throws Exception {
+        logger.info("F-a. PATCH with an undefined path is reported as InvalidPathException");
+        JsonPatchRequest req = client.getPatchRequestBuilder()
+                .withRemoveOperation("nosuchattr").build();
+        i2scimResponse resp = client.patch(user1Url, req, null);
+        assertThat(resp.getStatus()).isEqualTo(HttpStatus.SC_BAD_REQUEST);
+        assertThat(resp.hasError()).isTrue();
+        assertThat(resp.getException())
+                .isInstanceOf(InvalidPathException.class)
+                .satisfies(e -> assertThat(e.getScimType()).isEqualTo(ScimResponse.ERR_TYPE_PATH));
+        resp.close();
     }
 
     @Test

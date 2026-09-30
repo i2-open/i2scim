@@ -66,10 +66,12 @@ public class SearchOp extends GetOp {
 			bodyStream = getRequest().getInputStream();
 			//Because the backendhalder logic just uses RequestCtx, the search body is handled by RequestCtx
 			this.ctx.parseSearchBody(bodyStream);
-		} catch (IOException | ScimException e) {
-			setCompletionError(new InvalidSyntaxException(
+		} catch (ScimException e) {
+			// report the specific problem (e.g. invalidSyntax, invalidFilter, invalidValue) as-is
+			setInvalidRequest(e);
+		} catch (IOException e) {
+			setInvalidRequest(new InvalidSyntaxException(
 					"Unable to parse request body (SCIM JSON Search Schema format expected)."));
-			this.opState = OpState.invalid;
 		}
 
 	}

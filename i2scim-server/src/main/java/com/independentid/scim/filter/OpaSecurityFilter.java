@@ -142,11 +142,12 @@ public class OpaSecurityFilter implements Filter {
                     ScimSecurityFilter.assignOperationRights((HttpServletRequest) request,ctx);
                     request.setAttribute(RequestCtx.REQUEST_ATTRIBUTE, ctx);
                 } catch (ScimException e) {
-                    e.printStackTrace();
+                    // The request itself is invalid (e.g. bad filter or parameter): reject it before authorization.
+                    ScimSecurityFilter.sendScimError(response, e);
+                    return;
                 }
             }
 
-            assert ctx != null;
             String input = ctx.toOpaInput();
             logger.debug("Calling OPA at: "+configMgr.getOpaUrl());
             logger.debug("input:\n" + input);

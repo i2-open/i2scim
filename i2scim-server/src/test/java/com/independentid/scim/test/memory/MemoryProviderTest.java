@@ -148,8 +148,8 @@ public class MemoryProviderTest {
             resp = mp.create(ctx, user1);
 
             assertThat(resp.getStatus())
-                    .as("Confirm error 400 occurred (uniqueness)")
-                    .isEqualTo(ScimResponse.ST_BAD_REQUEST);
+                    .as("Confirm error 409 occurred (uniqueness)")
+                    .isEqualTo(ScimResponse.ST_CONFLICT);
             body = getResponseBody(resp, ctx);
             assertThat(body)
                     .as("Is a uniqueness error")

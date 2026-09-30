@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 i2scim is a Quarkus-based implementation of the IETF SCIM v2 protocol (RFC 7643/7644). The defining design choice is that **resource types and schema are not hard-coded** — they are loaded at startup from JSON files (`scimSchema.json`, `resourceTypes.json`, `acis.json`) supplied via path, classpath, or K8s ConfigMap. Most code operates on a generic JSON-document model rather than typed resources.
 
-Java 25 / Quarkus 3.39.5 / Jakarta EE 11. Group: `com.independentid`, version: `0.10.4`. Build with the Maven wrapper (`./mvnw`, Maven 3.9.16) — Quarkus 3.39 requires Maven ≥ 3.9.6; plain `mvn` below assumes a new-enough system Maven.
+Java 25 / Quarkus 3.40.1 / Jakarta EE 11. Group: `com.independentid`, version: `0.10.6`. Build with the Maven wrapper (`./mvnw`, Maven 3.9.16) — Quarkus 3.39 requires Maven ≥ 3.9.6; plain `mvn` below assumes a new-enough system Maven.
 
 ## Build
 
@@ -85,7 +85,7 @@ The pre-slice-6 modules (`i2scim-prov-memory`, `i2scim-prov-mongo`, `i2scim-sign
 - **RESTEasy Reactive only** (`quarkus-rest-jackson`). Do not introduce `quarkus-resteasy` (Classic) — it triggers a Quarkus capability conflict (DECISIONS.md, 2026-04-15).
 - **Apache HttpClient 5.4.x**, not 4.5. Tests use `throws Exception` to absorb HC5's checked exceptions.
 - **Micrometer**, not SmallRye Metrics (the latter is removed in Quarkus 3.x).
-- **Docker base is Chainguard JRE** (`cgr.dev/chainguard/jre:latest`, UID 65532). Chainguard's entrypoint is already `["java"]`, so the Dockerfile `CMD` must be **arguments only** (no leading `java`). If you switch to Temurin, you must add `java` back to the `CMD` — see comments in `i2scim-server/src/main/docker/Dockerfile.jvm`. Use `JAVA_TOOL_OPTIONS` (read by the JVM) rather than `JAVA_OPTS` (which exec-form CMD ignores).
+- **Docker base is Chainguard JRE** (`cgr.dev/chainguard/jre:latest`, pinned by digest in `Dockerfile.jvm` — refresh the digest each release per `docs/publishing.md`; UID 65532). Chainguard's entrypoint is already `["java"]`, so the Dockerfile `CMD` must be **arguments only** (no leading `java`). If you switch to Temurin, you must add `java` back to the `CMD` — see comments in `i2scim-server/src/main/docker/Dockerfile.jvm`. Use `JAVA_TOOL_OPTIONS` (read by the JVM) rather than `JAVA_OPTS` (which exec-form CMD ignores).
 - **POM ordering**: `<modelVersion>` must be the first child of `<project>` or submodule resolution breaks (DECISIONS.md, 2026-04-14).
 - **Java 25 module access**: any test or tool that introspects SSL or core internals needs the `--add-opens` / `--enable-native-access` flags listed above.
 - Polling retries are disabled on shutdown to avoid long delays during test cleanup — preserve this when touching `SignalsEventHandler` / `PollStream`.

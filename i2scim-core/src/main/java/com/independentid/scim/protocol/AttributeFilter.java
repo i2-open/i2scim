@@ -156,8 +156,12 @@ public class AttributeFilter extends Filter {
 
             switch (attr.getType()) {
                 case Attribute.TYPE_Binary:
-                    BinaryValue bval = new BinaryValue(attr,value);
-                    this.val = bval.getRawValue();
+                    try {
+                        BinaryValue bval = new BinaryValue(attr, unquote(value));
+                        this.val = bval.getRawValue();
+                    } catch (IllegalArgumentException e) {
+                        throw invalidValue(value, "base64 binary");
+                    }
                     break;
 
                 case Attribute.TYPE_Boolean:
@@ -165,26 +169,22 @@ public class AttributeFilter extends Filter {
                     break;
 
                 case Attribute.TYPE_Date:
-                    try {
-                        this.val = Meta.ScimDateFormat.parse(value);
-                    } catch (ParseException e) {
-                        //Ignore - throw out bad data.
-                    }
+                    this.val = parseDate(value);
                     break;
 
                 case Attribute.TYPE_Integer:
                     try {
-                        this.val = Integer.parseInt(value);
+                        this.val = Integer.parseInt(unquote(value));
                     } catch (NumberFormatException e) {
-                        // was not integer.
+                        throw invalidValue(value, "integer");
                     }
                     break;
 
                 case Attribute.TYPE_Decimal:
                     try {
-                        this.val = new BigDecimal(value);
+                        this.val = new BigDecimal(unquote(value));
                     } catch (NumberFormatException e) {
-                        // was not a decimal.
+                        throw invalidValue(value, "decimal");
                     }
                     break;
 
@@ -224,6 +224,30 @@ public class AttributeFilter extends Filter {
 
             }
         }
+    }
+
+    private static String unquote(String value) {
+        if (value.length() > 1 && value.startsWith("\"") && value.endsWith("\""))
+            return value.substring(1, value.length() - 1);
+        return value;
+    }
+
+    /**
+     * Parses a dateTime comparison value. The server's canonical format is tried first; any other RFC 3339 / xsd
+     * dateTime form (fractional seconds, offsets) is also accepted.
+     */
+    private Date parseDate(String value) throws BadFilterException {
+        String dval = unquote(value);
+        try {
+            return Meta.parseDate(dval);
+        } catch (ParseException e) {
+            throw invalidValue(value, "dateTime");
+        }
+    }
+
+    private BadFilterException invalidValue(String value, String type) {
+        return new BadFilterException("Invalid filter: value " + value + " for attribute '" + attr.getName()
+                + "' is not a valid " + type + ".");
     }
 
     /**

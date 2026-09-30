@@ -149,7 +149,7 @@ public class ValueUtil {
             return Attribute.TYPE_Boolean;
 
         try {
-            Meta.ScimDateFormat.parse(value);
+            Meta.parseDate(value);
             return Attribute.TYPE_Date;
         } catch (ParseException e) {
             // Was not a date

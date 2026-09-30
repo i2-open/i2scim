@@ -20,7 +20,7 @@
 
     <groupId>com.independentid</groupId>
     <artifactId>i2scim-root</artifactId>
-    <version>0.10.4</version>
+    <version>0.10.6</version>
     <packaging>pom</packaging>
     <name>i2scim-root</name>
     <description>i2scim.io SCIM v2 Server on Quarkus - Root Project</description>
@@ -61,7 +61,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.39.5</quarkus.platform.version>
+        <quarkus.platform.version>3.40.1</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.6.0</surefire-plugin.version>
     </properties>

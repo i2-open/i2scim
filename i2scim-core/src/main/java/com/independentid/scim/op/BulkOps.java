@@ -17,8 +17,10 @@ package com.independentid.scim.op;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.independentid.scim.core.err.ConflictException;
+import com.independentid.scim.core.err.InvalidValueException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.core.err.TooLargeException;
+import com.independentid.scim.protocol.BulkResponse;
 import com.independentid.scim.protocol.RequestCtx;
 import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.schema.SchemaException;
@@ -43,7 +45,8 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	private static final long serialVersionUID = 794465867214870343L;
 	public static final String FAIL_ON_ERRORS = "failOnErrors";
 	public static final String PREFIX_BULKID = "bulkid:";
-	public static final String PARAM_BULKID = "bulkid";
+	public static final String PARAM_BULKID = "bulkId"; // RFC 7644 Section 3.7
+	private static final String PARAM_BULKID_LEGACY = "bulkid";
 	public static final String PARAM_METHOD = "method";
 	public static final String PARAM_PATH = "path";
 	public static final String PARAM_DATA = "data";
@@ -52,7 +55,6 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	public static final String PARAM_ACCEPTDATE = "accptd";
 	public static final String PARAM_TRANID = "tid";
 
-	protected RequestCtx ctx;
 	protected final ArrayList<Operation> ops;
 	protected final HashMap<String, Operation> bulkMap;
 	protected final HashMap<Operation, List<String>> bulkValMap;
@@ -91,6 +93,15 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 
 	}
 
+	/**
+	 * RFC 7644 §3.7 names the bulk request schema {@link ScimParams#SCHEMA_API_BulkRequest}; the legacy
+	 * {@link ScimParams#SCHEMA_API_BulkRequest_Legacy} URN is accepted for backward compatibility.
+	 */
+	private static boolean isBulkRequestSchema(String schema) {
+		return schema.equalsIgnoreCase(ScimParams.SCHEMA_API_BulkRequest)
+				|| schema.equalsIgnoreCase(ScimParams.SCHEMA_API_BulkRequest_Legacy);
+	}
+
 	public void parseJson(JsonNode node) {
 		JsonNode snode = node.get(ScimParams.ATTR_SCHEMAS);
 		if (snode == null) {
@@ -103,12 +114,10 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 			Iterator<JsonNode> jiter = snode.elements();
 			while (jiter.hasNext() && invalidSchema) {
 				JsonNode anode = jiter.next();
-				if (anode.asText().equalsIgnoreCase(
-						ScimParams.SCHEMA_API_BulkRequest))
+				if (isBulkRequestSchema(anode.asText()))
 					invalidSchema = false;
 			}
-		} else if (snode.asText().equalsIgnoreCase(
-				ScimParams.SCHEMA_API_BulkRequest))
+		} else if (isBulkRequestSchema(snode.asText()))
 			invalidSchema = false;
 	
 		if (invalidSchema) {
@@ -151,8 +160,12 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 			try {
 				op = parseOperation(oper,this,requestNum, false);
 			} catch (ScimException e) {
-				setCompletionError(e);
-				return;
+				// RFC 7644 Section 3.7.3: a malformed operation fails on its own; the others are still processed.
+				op = new InvalidBulkOperation(oper, requestNum, e);
+			} catch (RuntimeException e) {
+				logger.warn("Unable to parse bulk operation " + requestNum + ": " + e, e);
+				op = new InvalidBulkOperation(oper, requestNum, new InvalidValueException(
+						"Unable to parse bulk operation: " + e.getClass().getSimpleName()));
 			}
 
 			this.ops.add(op); // add to the list of operations
@@ -256,6 +269,15 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 		
 	}
 
+	/**
+	 * @param bulkOpNode An element of the bulk request "Operations" array.
+	 * @return The operation's bulkId node (also accepting the legacy lower-case "bulkid"), or null.
+	 */
+	public static JsonNode getBulkIdNode(JsonNode bulkOpNode) {
+		JsonNode item = bulkOpNode.get(PARAM_BULKID);
+		return (item != null) ? item : bulkOpNode.get(PARAM_BULKID_LEGACY);
+	}
+
 	public static Operation parseOperation(
 			JsonNode bulkOpNode, BulkOps parent, int requestNum, boolean isReplicOp) throws ScimException {
 		if (schemaManager == null) {
@@ -266,22 +288,17 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 		}
 		RequestCtx octx = new RequestCtx(bulkOpNode, schemaManager, isReplicOp);
 
+		// The transaction id is an i2scim extension (used for replication); when absent, the generated id is kept.
 		JsonNode item = bulkOpNode.get(BulkOps.PARAM_TRANID);
-		if (item == null) {
-			throw new SchemaException(
-					"Bulk request for POST/PUT/PATCH missing required attribute 'tid'.");
-		}
-		octx.setTranId(item.asText());
+		if (item != null)
+			octx.setTranId(item.asText());
 
-		item = bulkOpNode.get(PARAM_METHOD);
-		if (item == null)
-			throw new SchemaException(
-					"Bulk request missing "+PARAM_METHOD+ "parameter.");
-		String method = item.asText();
+		// The request context has already validated (and normalized) the method.
+		String method = octx.getBulkMethod();
 
 		item = bulkOpNode.get(PARAM_DATA);
 		if (item == null) {
-			if (!octx.getBulkMethod().equals(Operation.Bulk_Method_DELETE))
+			if (!method.equals(Operation.Bulk_Method_DELETE))
 				throw new SchemaException(
 						"Bulk request for POST/PUT/PATCH missing required attribute 'data'.");
 		}
@@ -352,6 +369,7 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 	@Override
 	protected void doOperation() {
 		int batchExecNum = 0;
+		BulkResponse bulkResponse = new BulkResponse(getRequestCtx());
 		if (logger.isDebugEnabled()) {
 			logger.debug("Processing BATCH request with "+this.ops.size()+" operations.");
 		}
@@ -362,13 +380,15 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 				op.compute();
 			}
 
+			bulkResponse.addOpResp(op);
 			if (op.isError())
 				this.opFailed++;
 			else
 				this.opCompleted++;
-			if (this.opFailed >= this.failOnErrors)
+			if (this.failOnErrors > 0 && this.opFailed >= this.failOnErrors)
 				break; // stop processing as we have had too many errors
 		}
+		this.scimresp = bulkResponse;
 		
 		if (logger.isDebugEnabled()) {
 			String buf = "Bulk Ops Requesed: " + this.opRequested +
@@ -376,6 +396,35 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 					", Failed: " + this.opFailed;
 			logger.debug(buf);
 			logger.debug("=========End BATCH Request==========");
+		}
+	}
+
+	/**
+	 * Placeholder for a bulk operation that could not be parsed. It reports its error in the BulkResponse without
+	 * affecting the other operations in the request.
+	 */
+	static class InvalidBulkOperation extends Operation {
+		private static final long serialVersionUID = 1L;
+		private final String method;
+		private final String bulkId;
+
+		InvalidBulkOperation(JsonNode bulkOpNode, int requestNum, ScimException e) {
+			super((RequestCtx) null, requestNum);
+			JsonNode item = bulkOpNode == null ? null : bulkOpNode.get(PARAM_METHOD);
+			this.method = (item == null || !item.isTextual()) ? null : item.asText().toUpperCase();
+			item = bulkOpNode == null ? null : getBulkIdNode(bulkOpNode);
+			this.bulkId = (item == null || !item.isTextual()) ? null : item.asText();
+			setCompletionError(e);
+		}
+
+		@Override
+		public String getBulkId() {
+			return this.bulkId;
+		}
+
+		@Override
+		public String getBulkMethod() {
+			return this.method;
 		}
 	}
 

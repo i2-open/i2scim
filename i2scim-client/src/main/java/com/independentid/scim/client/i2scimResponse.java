@@ -18,6 +18,7 @@ package com.independentid.scim.client;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -248,71 +249,60 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
                 return; // Not an error
 
             case HttpStatus.SC_BAD_REQUEST:
-                HttpEntity entity = resp.getEntity();
-                String msg;
-                if (entity != null) {
-
-                    msg = EntityUtils.toString(entity);
-                    JsonNode node = JsonUtil.getJsonTree(msg);
-                    JsonNode typNode = node.get("scimType");
-                    String type = "";
-                    String det = null;
-                    if (typNode != null) {
-                        type = typNode.asText();
-                        JsonNode detNode = node.get("detail");
-                        if (detNode != null)
-                            det = detNode.asText();
-                    }
-                    switch (type) {
-                        case ScimResponse.ERR_TYPE_BADVAL:
-                            setError(new InvalidValueException(det == null ?
-                                    "A required value was missing or invalid" : det));
-                            return;
-                        case ScimResponse.ERR_TYPE_FILTER:
-                            setError(new BadFilterException(det == null ?
-                                    "The specified filter was invalid" : det));
-                            return;
-                        case ScimResponse.ERR_TYPE_TOOMANY:
-                            setError(new TooManyException(det == null ?
-                                    "The specified filter yields more results than the server is willing to calculate" : det));
-                            return;
-                        case ScimResponse.ERR_TYPE_UNIQUENESS:
-                            setError(new ScimException(det == null ?
-                                    "One or more unique attribute values in use." : det, ScimResponse.ERR_TYPE_UNIQUENESS));
-                            return;
-                        case ScimResponse.ERR_TYPE_MUTABILITY:
-                            setError(new ScimException(det == null ?
-                                    "An attempted modification was not compatible with an attributes mutability." : det, ScimResponse.ERR_TYPE_MUTABILITY));
-                            return;
-                        case ScimResponse.ERR_TYPE_SYNTAX:
-                            setError(new InvalidSyntaxException(det == null ?
-                                    "The request body structure was invalid." : det));
-                            return;
-                        // TODO: invalidPath implemented in i2scim server
-                        case ScimResponse.ERR_TYPE_PATH:
-                            setError(new ScimException(det == null ?
-                                    "The attribute supplied was undefined, malformed, or invalid." : det, ScimResponse.ERR_TYPE_PATH));
-                            return;
-                        case ScimResponse.ERR_TYPE_TARGET:
-                            setError(new NoTargetException(det == null ?
-                                    "The path attribute did not yield an attribute that could be operated on." : det));
-                            return;
-                        case ScimResponse.ERR_TYPE_BADVERS:
-                            setError(new ScimException(det == null ?
-                                    "The specified SCIM protocol version is not supported" : det, ScimResponse.ERR_TYPE_BADVERS));
-                            return;
-                        // TODO: i2scim currently does not report sensitive errors!
-                        case "sensitive":
-                            setError(new ScimException(det == null ?
-                                    "The specified request cannot be completed due to passing of sensitive information in a URI. Use POST." : det, "sensitive"));
-                            return;
-                        default:
-                            setError(new ScimException(det, type));
-                            return;
-                    }
-
+                ScimError err = readScimError(resp.getEntity());
+                String type = err.type();
+                String det = err.detail();
+                if (type == null) {
+                    // No SCIM error type (e.g. an empty body or a proxy error page): report the status, not a null message.
+                    setError(new ScimException(det == null ? statusMessage() : det));
+                    return;
                 }
-                return;
+                switch (type) {
+                    case ScimResponse.ERR_TYPE_BADVAL:
+                        setError(new InvalidValueException(det == null ?
+                                "A required value was missing or invalid" : det));
+                        return;
+                    case ScimResponse.ERR_TYPE_FILTER:
+                        setError(new BadFilterException(det == null ?
+                                "The specified filter was invalid" : det));
+                        return;
+                    case ScimResponse.ERR_TYPE_TOOMANY:
+                        setError(new TooManyException(det == null ?
+                                "The specified filter yields more results than the server is willing to calculate" : det));
+                        return;
+                    case ScimResponse.ERR_TYPE_UNIQUENESS:
+                        setError(new ScimException(det == null ?
+                                "One or more unique attribute values in use." : det, ScimResponse.ERR_TYPE_UNIQUENESS));
+                        return;
+                    case ScimResponse.ERR_TYPE_MUTABILITY:
+                        setError(new ScimException(det == null ?
+                                "An attempted modification was not compatible with an attributes mutability." : det, ScimResponse.ERR_TYPE_MUTABILITY));
+                        return;
+                    case ScimResponse.ERR_TYPE_SYNTAX:
+                        setError(new InvalidSyntaxException(det == null ?
+                                "The request body structure was invalid." : det));
+                        return;
+                    case ScimResponse.ERR_TYPE_PATH:
+                        setError(new InvalidPathException(det == null ?
+                                "The attribute supplied was undefined, malformed, or invalid." : det));
+                        return;
+                    case ScimResponse.ERR_TYPE_TARGET:
+                        setError(new NoTargetException(det == null ?
+                                "The path attribute did not yield an attribute that could be operated on." : det));
+                        return;
+                    case ScimResponse.ERR_TYPE_BADVERS:
+                        setError(new ScimException(det == null ?
+                                "The specified SCIM protocol version is not supported" : det, ScimResponse.ERR_TYPE_BADVERS));
+                        return;
+                    // TODO: i2scim currently does not report sensitive errors!
+                    case "sensitive":
+                        setError(new ScimException(det == null ?
+                                "The specified request cannot be completed due to passing of sensitive information in a URI. Use POST." : det, "sensitive"));
+                        return;
+                    default:
+                        setError(new ScimException(det == null ? statusMessage() : det, type));
+                        return;
+                }
 
             case HttpStatus.SC_UNAUTHORIZED:
                 setError(new UnauthorizedException("Server responded with " + resp.getReasonPhrase()));
@@ -324,7 +314,13 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
                 setError(new NotFoundException("Server responded with " + resp.getReasonPhrase()));
                 return;
             case HttpStatus.SC_CONFLICT:
-                setError(new ConflictException("Server responded with " + resp.getReasonPhrase()));
+                // RFC 7644 §3.3: uniqueness violations are 409 with scimType "uniqueness"; preserve the SCIM error type.
+                ScimError cErr = readScimError(resp.getEntity());
+                String cType = cErr.type(), cDetail = cErr.detail();
+                if (cDetail == null)
+                    cDetail = ScimResponse.ERR_TYPE_UNIQUENESS.equals(cType) ?
+                            "One or more unique attribute values in use." : statusMessage();
+                setError(new ConflictException(cDetail, cType));
                 return;
             case HttpStatus.SC_PRECONDITION_FAILED:
                 setError(new PreconditionFailException("Server responded with " + resp.getReasonPhrase()));
@@ -338,6 +334,41 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
             case HttpStatus.SC_NOT_IMPLEMENTED:
                 setError(new NotImplementedException("Server responded with " + resp.getReasonPhrase()));
         }
+    }
+
+    /** The {@code scimType} and {@code detail} members of a SCIM error response (RFC 7644 §3.12); either may be null. */
+    private record ScimError(String type, String detail) {
+    }
+
+    /**
+     * Reads the SCIM error {@code scimType} and {@code detail} from an error response entity.
+     * @param entity The response entity (may be null)
+     * @return The parsed values; members are null when the entity is absent, blank, or lacks the member.
+     */
+    private static ScimError readScimError(HttpEntity entity) throws IOException, org.apache.hc.core5.http.ParseException {
+        String type = null, detail = null;
+        if (entity != null) {
+            String body = EntityUtils.toString(entity);
+            if (body != null && !body.isBlank()) {
+                JsonNode node;
+                try {
+                    node = JsonUtil.getJsonTree(body);
+                } catch (JsonProcessingException e) {
+                    // Not a SCIM error body (e.g. an HTML page from an intermediary); the caller reports the status.
+                    return new ScimError(null, null);
+                }
+                if (node.hasNonNull("scimType") && !node.get("scimType").asText().isBlank())
+                    type = node.get("scimType").asText();
+                if (node.hasNonNull("detail") && !node.get("detail").asText().isBlank())
+                    detail = node.get("detail").asText();
+            }
+        }
+        return new ScimError(type, detail);
+    }
+
+    /** @return A generic error message built from the HTTP status code and reason phrase. */
+    private String statusMessage() {
+        return "Server responded with " + resp.getCode() + " " + resp.getReasonPhrase();
     }
 
     /**

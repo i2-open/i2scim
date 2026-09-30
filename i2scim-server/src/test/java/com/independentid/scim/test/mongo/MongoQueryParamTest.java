@@ -1,5 +1,5 @@
 /*
- * Copyright 2021.  Independent Identity Incorporated
+ * Copyright 2026.  Independent Identity Incorporated
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,17 @@
  * limitations under the License.
  */
 
-package com.independentid.scim.backend.mongo;
+package com.independentid.scim.test.mongo;
 
-import java.util.Date;
+import com.independentid.scim.test.misc.AbstractQueryParamTest;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 
-import org.bson.json.Converter;
-import org.bson.json.StrictJsonWriter;
-
-import com.independentid.scim.resource.Meta;
-
-public class MongoDateConverter implements Converter<Long> {
-
-	@Override
-	public void convert(Long value, StrictJsonWriter writer) {
-		//Instant ins = new Date(value).toInstant();
-		String sdate = Meta.formatDate(new Date(value));
-		writer.writeString(sdate);
-		
-	}
-
+/**
+ * Runs the issue #108 query parameter hardening regression tests ({@link AbstractQueryParamTest}) against the
+ * mongo provider with security disabled.
+ */
+@QuarkusTest
+@TestProfile(ScimMongoTestProfile.class)
+public class MongoQueryParamTest extends AbstractQueryParamTest {
 }

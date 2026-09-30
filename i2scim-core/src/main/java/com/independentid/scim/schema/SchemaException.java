@@ -42,5 +42,18 @@ public class SchemaException extends ScimException {
 		super(message, cause);
 	}
 
+	/**
+	 * Creates a SchemaException that reports a specific SCIM error type (RFC 7644 Section 3.12), for example
+	 * {@link com.independentid.scim.protocol.ScimResponse#ERR_TYPE_BADVAL} when a value does not conform to its
+	 * attribute's type.
+	 * @param message  The error detail.
+	 * @param scimType The SCIM error type to report.
+	 * @param cause    The underlying cause (may be null).
+	 */
+	public SchemaException(String message, String scimType, Throwable cause) {
+		super(message, cause);
+		this.scimType = scimType;
+	}
+
 
 }

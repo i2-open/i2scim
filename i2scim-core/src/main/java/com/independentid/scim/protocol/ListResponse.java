@@ -69,7 +69,7 @@ public class ListResponse extends ScimResponse {
         super();
         this.ctx = ctx;
         this.smax = maxResults;
-        if (this.ctx.count == 0 || this.ctx.count > maxResults)
+        if (this.ctx.count < 0 || this.ctx.count > maxResults)
             this.ctx.count = this.smax;
         this.totalRes = 0;
 
@@ -132,7 +132,7 @@ public class ListResponse extends ScimResponse {
         this.smax = maxResults;
         this.id = null;
         initSort(ctx);
-        if (this.ctx.count == 0 || this.ctx.count > maxResults)
+        if (this.ctx.count < 0 || this.ctx.count > maxResults)
             this.ctx.count = this.smax;
 
         this.totalRes = vals.size();

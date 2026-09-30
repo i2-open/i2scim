@@ -266,8 +266,8 @@ public class ScimAuthZCRUDTest {
         ClassicHttpResponse resp = execute(post);
 
         assertThat(resp.getCode())
-                .as("Confirm error 400 occurred (uniqueness)")
-                .isEqualTo(ScimResponse.ST_BAD_REQUEST);
+                .as("Confirm error 409 occurred (uniqueness)")
+                .isEqualTo(ScimResponse.ST_CONFLICT);
         String body = EntityUtils.toString(resp.getEntity());
         assertThat(body)
                 .as("Is a uniqueness error")

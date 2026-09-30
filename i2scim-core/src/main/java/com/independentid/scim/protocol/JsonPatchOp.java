@@ -24,6 +24,8 @@ import com.independentid.scim.resource.Value;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
 
+import java.util.Locale;
+
 public class JsonPatchOp {
 
     public final static String OP_ACTION_ADD = "add";
@@ -56,12 +58,14 @@ public class JsonPatchOp {
         if (onode == null)
             throw new SchemaException("Missing attribute 'op' defining the SCIM patch operation type.");
 
+        // op values are matched case-insensitively for interop (e.g. Entra ID sends "Add"/"Replace"); the
+        // normalised lowercase value is what the rest of the pipeline compares against the OP_ACTION_* constants.
         String type = onode.asText();
-        switch (type) {
+        switch (type.toLowerCase(Locale.ROOT)) {
             case OP_ACTION_ADD:
             case OP_ACTION_REMOVE:
             case OP_ACTION_REPLACE:
-                op = type;
+                op = type.toLowerCase(Locale.ROOT);
                 break;
             default:
                 throw new InvalidValueException("Invalid SCIM Patch operation value for 'op'. Found: " + type);

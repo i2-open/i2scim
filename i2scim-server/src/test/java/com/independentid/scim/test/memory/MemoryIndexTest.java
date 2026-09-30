@@ -223,8 +223,8 @@ public class MemoryIndexTest {
         resp = provider.create(ctx, user1);
 
         Assertions.assertThat(resp.getStatus())
-                .as("Confirm error 400 occurred (uniqueness)")
-                .isEqualTo(ScimResponse.ST_BAD_REQUEST);
+                .as("Confirm error 409 occurred (uniqueness)")
+                .isEqualTo(ScimResponse.ST_CONFLICT);
         String body = getResponseBody(resp, ctx);
         Assertions.assertThat(body)
                 .as("Is a uniqueness error")

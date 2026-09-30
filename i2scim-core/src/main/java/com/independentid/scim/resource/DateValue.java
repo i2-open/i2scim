@@ -46,7 +46,7 @@ public class DateValue extends Value {
 	}
 	
 	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
-		String dateValue = Meta.ScimDateFormat.format(this.value);
+		String dateValue = Meta.formatDate(this.value);
 		gen.writeString(dateValue);
 	}
 	
@@ -55,19 +55,19 @@ public class DateValue extends Value {
 			throw new SchemaException("Was expecting a String value but encountered null");
 		if (!this.jtype.equals(JsonNodeType.STRING))
 			throw new SchemaException("Invalid field data endpoint. Expecting 'string' datetime."+node.toString());
-		this.value = Meta.ScimDateFormat.parse(node.asText());
+		this.value = Meta.parseDate(node.asText());
 	}
 
 	@Override
 	public JsonNode toJsonNode(ObjectNode parent, String aname) {
 		if (parent == null)
 			parent = JsonUtil.getMapper().createObjectNode();
-		parent.put(aname,Meta.ScimDateFormat.format(this.value));
+		parent.put(aname,Meta.formatDate(this.value));
 		return parent;
 	}
 	
 	public String getRawValue() {
-		return Meta.ScimDateFormat.format(this.value);
+		return Meta.formatDate(this.value);
 	}
 	
 	public Date getDateValue() {
@@ -75,7 +75,7 @@ public class DateValue extends Value {
 	}
 
 	public String toString() {
-		return Meta.ScimDateFormat.format(this.value);
+		return Meta.formatDate(this.value);
 	}
 
 	@Override

@@ -16,6 +16,8 @@
 package com.independentid.scim.protocol;
 
 import com.fasterxml.jackson.core.JsonGenerator;
+import com.independentid.scim.core.err.InternalException;
+import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.op.Operation;
 
 import java.io.IOException;
@@ -26,7 +28,6 @@ import java.util.ArrayList;
  * 3.7.3 RFC7644
  */
 public class BulkResponse extends ScimResponse {
-	//TODO: This code has not JUnit code and is not fully implemented.
 	protected final RequestCtx ctx;
 	protected final ArrayList<Operation> ops;
 	protected int httpstat = 200;
@@ -74,6 +75,21 @@ public class BulkResponse extends ScimResponse {
 		this.detail = detail;
 	}
 
+	/**
+	 * Serializes the BulkResponse and sets the HTTP status of the overall request (normally 200).
+	 */
+	@Override
+	public void serialize(JsonGenerator gen, RequestCtx ctx) throws IOException {
+		if (ctx != null && ctx.getHttpServletResponse() != null)
+			ctx.getHttpServletResponse().setStatus(this.httpstat);
+		serialize(gen, ctx, false);
+	}
+
+	@Override
+	public int getStatus() {
+		return this.httpstat;
+	}
+
 	public void serialize(JsonGenerator gen, RequestCtx ctx, boolean forHash) throws IOException {
 		if (this.httpstat >= 400) {
 			gen.writeStartObject();
@@ -97,19 +113,49 @@ public class BulkResponse extends ScimResponse {
 		gen.writeEndArray();
 		gen.writeArrayFieldStart("Operations");
 
-		// Write all the operations out.
-		for (Operation op : this.ops) {
-			if (!op.isDone())
-				throw new IOException("Not all operations are done: " + op);
-			//TODO is this the correct response
-			op.doResponse(gen);
-		}
+		// Write the result of each operation that was processed.
+		for (Operation op : this.ops)
+			writeOperationResult(gen, op);
 
 		gen.writeEndArray();
 		gen.writeEndObject();
 
 	}
 
+	/**
+	 * Writes a single operation result per RFC 7644 Section 3.7.3: method, bulkId, location, version, status (as a
+	 * string) and, for a failed operation, the SCIM Error in "response".
+	 * @param gen The JsonGenerator to write to.
+	 * @param op A processed bulk {@link Operation}.
+	 * @throws IOException if the result could not be written.
+	 */
+	protected void writeOperationResult(JsonGenerator gen, Operation op) throws IOException {
+		gen.writeStartObject();
+		if (op.getBulkMethod() != null)
+			gen.writeStringField("method", op.getBulkMethod());
+		if (op.getBulkId() != null)
+			gen.writeStringField("bulkId", op.getBulkId());
+
+		if (op.isError()) {
+			Exception e = op.getCompletionException();
+			ScimException se = (e instanceof ScimException) ? (ScimException) e
+					: new InternalException("Internal error processing operation.");
+			gen.writeStringField("status", String.valueOf(se.getStatus()));
+			gen.writeFieldName("response");
+			se.writeError(gen);
+		} else {
+			ScimResponse sresp = op.getScimResponse();
+			if (sresp != null) {
+				if (sresp.getLocation() != null)
+					gen.writeStringField("location", sresp.getLocation());
+				if (sresp.getETag() != null)
+					gen.writeStringField("version", sresp.getETag());
+				gen.writeStringField("status", String.valueOf(sresp.getStatus()));
+			} else
+				gen.writeStringField("status", String.valueOf(ScimResponse.ST_OK));
+		}
+		gen.writeEndObject();
+	}
 
 }
 

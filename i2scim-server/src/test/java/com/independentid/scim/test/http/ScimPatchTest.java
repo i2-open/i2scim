@@ -57,7 +57,9 @@ import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -279,6 +281,20 @@ public class ScimPatchTest {
     }
 
     @Test
+    public void ca_GroupAddMembersArray() throws Exception {
+        logger.info("\tC-a. Group members add with an array (issue #109)");
+        String user1id = user1url.substring(user1url.lastIndexOf('/') + 1);
+        String user2id = user2url.substring(user2url.lastIndexOf('/') + 1);
+
+        // Both users are already members: the array add must merge without duplicating or nesting.
+        ClassicHttpResponse resp = sendPatch(grpUrl, "[{\"op\":\"add\",\"path\":\"members\",\"value\":["
+                + memberObj(user1url) + "," + memberObj(user2url) + "]}]");
+        assertThat(resp.getCode()).isEqualTo(ScimResponse.ST_OK);
+        JsonNode members = JsonUtil.getJsonTree(EntityUtils.toString(resp.getEntity())).get("members");
+        assertFlatValues(members, "value", user1id, user2id);
+    }
+
+    @Test
     public void d_CheckPatchUser() throws Exception {
         logger.info("D. Checking Patch User");
 
@@ -379,6 +395,93 @@ public class ScimPatchTest {
         assertThat(respbody)
                 .as("The pre-existing email is retained")
                 .contains("jsmith@example.com");
+
+        // Issue #109: assert on the parsed result, not on substrings -- the emails array must be flat.
+        JsonNode emails = JsonUtil.getJsonTree(respbody).get("emails");
+        assertFlatValues(emails, "value", "jsmith@example.com", "jim@smithsrule.com", newEmail);
+    }
+
+    /** Issue #109: asserts a multi-valued attribute is a flat array of objects holding exactly the expected values. */
+    static void assertFlatValues(JsonNode array, String sub, String... expected) {
+        assertThat(array).as("multi-valued attribute present").isNotNull();
+        assertThat(array.isArray()).isTrue();
+        List<String> vals = new ArrayList<>();
+        for (JsonNode item : array) {
+            assertThat(item.isObject()).as("member is an object, not a nested array: " + array).isTrue();
+            vals.add(item.path(sub).asText());
+        }
+        assertThat(vals).containsExactlyInAnyOrder(expected);
+    }
+
+    private ClassicHttpResponse sendPatch(String url, String operationsJson) throws Exception {
+        String body = "{\"schemas\":[\"" + ScimParams.SCHEMA_API_PatchOp + "\"],\"Operations\":" + operationsJson + "}";
+        HttpPatch patch = new HttpPatch(TestUtils.mapPathToReqUrl(baseUrl, url));
+        patch.setEntity(new StringEntity(body));
+        return TestUtils.executeRequest(patch);
+    }
+
+    @Test
+    public void db_UnparseableAddIsInvalidValue() throws Exception {
+        logger.info("D-b. Unparseable add value is 400 invalidValue (issue #109)");
+        ClassicHttpResponse resp = sendPatch(user2url, "[{\"op\":\"add\",\"path\":\"emails\",\"value\":12345}]");
+        assertThat(resp.getCode()).isEqualTo(ScimResponse.ST_BAD_REQUEST);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains("invalidValue");
+    }
+
+    @Test
+    public void dc_ValueFilterOnAbsentAttributeIsNotServerError() throws Exception {
+        logger.info("D-c. Value filter on an absent attribute is noTarget or no-op (issue #109)");
+        ClassicHttpResponse resp = sendPatch(user1url, "[{\"op\":\"remove\",\"path\":\"x509Certificates\"}]");
+        assertThat(resp.getCode()).isIn(ScimResponse.ST_OK, ScimResponse.ST_NOCONTENT);
+
+        resp = sendPatch(user1url, "[{\"op\":\"remove\",\"path\":\"x509Certificates[value eq \\\"abc\\\"]\"}]");
+        assertThat(resp.getCode()).as("remove of absent value is a no-op").isIn(ScimResponse.ST_OK, ScimResponse.ST_NOCONTENT);
+
+        resp = sendPatch(user1url, "[{\"op\":\"replace\",\"path\":\"x509Certificates[value eq \\\"abc\\\"]\",\"value\":{\"value\":\"def\"}}]");
+        assertThat(resp.getCode()).isEqualTo(ScimResponse.ST_BAD_REQUEST);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains("noTarget");
+    }
+
+    @Test
+    public void dd_UnknownSubAttributeInRemovePathIsBadRequest() throws Exception {
+        logger.info("D-d. Unknown sub-attribute in a remove path is 400 (issue #109)");
+        ClassicHttpResponse resp = sendPatch(user1url, "[{\"op\":\"remove\",\"path\":\"emails[type eq \\\"work\\\"].bogus\"}]");
+        assertThat(resp.getCode()).isEqualTo(ScimResponse.ST_BAD_REQUEST);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains(ScimResponse.ERR_TYPE_PATH);
+    }
+
+    @Test
+    public void de_OpValueIsCaseInsensitive() throws Exception {
+        logger.info("D-e. PATCH op values are matched case-insensitively (issue #111)");
+        ClassicHttpResponse resp = sendPatch(user2url, "[{\"op\":\"Add\",\"path\":\"title\",\"value\":\"Case Add\"}]");
+        assertThat(resp.getCode()).isIn(ScimResponse.ST_OK, ScimResponse.ST_NOCONTENT);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains("Case Add");
+
+        resp = sendPatch(user2url, "[{\"op\":\"Replace\",\"path\":\"title\",\"value\":\"Case Replace\"}]");
+        assertThat(resp.getCode()).isIn(ScimResponse.ST_OK, ScimResponse.ST_NOCONTENT);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains("Case Replace");
+
+        resp = sendPatch(user2url, "[{\"op\":\"REMOVE\",\"path\":\"title\"}]");
+        assertThat(resp.getCode()).isIn(ScimResponse.ST_OK, ScimResponse.ST_NOCONTENT);
+        String body = EntityUtils.toString(resp.getEntity());
+        assertThat(body == null ? "" : body).doesNotContain("Case Replace");
+
+        resp = sendPatch(user2url, "[{\"op\":\"move\",\"path\":\"title\",\"value\":\"x\"}]");
+        assertThat(resp.getCode()).isEqualTo(ScimResponse.ST_BAD_REQUEST);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains(ScimResponse.ERR_TYPE_BADVAL);
+    }
+
+    @Test
+    public void df_UndefinedAttributeInPathIsInvalidPath() throws Exception {
+        logger.info("D-f. Undefined attribute in a PATCH path is 400 invalidPath (issue #111)");
+        ClassicHttpResponse resp = sendPatch(user1url, "[{\"op\":\"replace\",\"path\":\"nosuchattr\",\"value\":\"x\"}]");
+        assertThat(resp.getCode()).isEqualTo(ScimResponse.ST_BAD_REQUEST);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains(ScimResponse.ERR_TYPE_PATH);
+
+        logger.info("\t... a valid path whose value filter matches nothing is still noTarget");
+        resp = sendPatch(user1url, "[{\"op\":\"replace\",\"path\":\"emails[type eq \\\"nomatch\\\"].value\",\"value\":\"z@example.com\"}]");
+        assertThat(resp.getCode()).isEqualTo(ScimResponse.ST_BAD_REQUEST);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains(ScimResponse.ERR_TYPE_TARGET);
     }
 
     @Test

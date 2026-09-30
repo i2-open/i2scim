@@ -25,6 +25,69 @@ adapted to act as a gateway to internal proprietary identity APIs by implementin
 The published image is `independentid/i2scim-universal:<version>` (also tagged `latest`),
 built for `linux/amd64` and `linux/arm64`.
 
+### Release 0.10.6
+
+A hardening and security release. Bad client input now gets a SCIM error response instead of a
+server error, and several RFC 7644 conformance gaps are closed. There is no `0.10.5`: that tag was
+already taken on Docker Hub, so this release goes straight to `0.10.6`.
+
+* **Behaviour changes to check before upgrading**
+  * **Uniqueness conflicts return `409 Conflict`** with `scimType: uniqueness`, not `400`
+    ([#111](https://github.com/i2-open/i2scim/issues/111)). This applies to POST, PUT and PATCH,
+    on both backends. Update any client that expects `400` for a duplicate.
+  * **PATCH to an undefined attribute returns `400 invalidPath`**, not `noTarget` or `500`
+    ([#111](https://github.com/i2-open/i2scim/issues/111)). This includes undefined
+    sub-attributes such as `name.nosuchsub`.
+  * **PATCH `op` values are case-insensitive**, so `Add`, `Replace` and `Remove` are accepted
+    ([#111](https://github.com/i2-open/i2scim/issues/111)).
+  * **`count=0` returns only `totalResults`**, with no `Resources`
+    ([#108](https://github.com/i2-open/i2scim/issues/108), RFC 7644 §3.4.2.4). It used to mean
+    "no limit". Negative `count` is treated as `0`, and `startIndex` below 1 is treated as 1.
+  * **Timestamps are always UTC** ([#110](https://github.com/i2-open/i2scim/issues/110)).
+    Previously they were written in the JVM's local time zone but marked `Z`. If you ran the
+    in-memory backend on a JVM not set to UTC, stored `meta` dates from earlier versions will
+    read back shifted by that offset.
+* **Errors are `400`, not `500`** ([#107](https://github.com/i2-open/i2scim/issues/107),
+  [#108](https://github.com/i2-open/i2scim/issues/108),
+  [#110](https://github.com/i2-open/i2scim/issues/110))
+  * Malformed JSON bodies return `400 invalidSyntax`.
+  * Malformed filters return `400 invalidFilter`, and non-numeric `startIndex` or `count`
+    returns `400 invalidValue`.
+  * Invalid base64 in a binary attribute returns `400 invalidValue`.
+  * Any unexpected failure still returns a SCIM error body, so clients never get a bare `500`.
+* **Bulk requests** ([#107](https://github.com/i2-open/i2scim/issues/107))
+  * A malformed operation no longer fails the whole request. Each operation gets its own
+    result, as RFC 7644 §3.7.3 requires, and `failOnErrors` is honoured.
+  * The request schema is the RFC URN `urn:ietf:params:scim:api:messages:2.0:BulkRequest`.
+  * With security enabled, bulk sub-operations are refused with a per-operation `403`. They are
+    not yet authorized individually.
+* **PATCH on multi-valued attributes** ([#105](https://github.com/i2-open/i2scim/issues/105),
+  [#109](https://github.com/i2-open/i2scim/issues/109))
+  * Adding an array of values (for example Group `members`) no longer fails with a `500`.
+  * `add`, `replace` and `remove` follow RFC 7644 §3.5.2. This fixes a case where values could
+    be lost, and handles missing targets and replace-with-array correctly.
+* **In-memory backend** ([#110](https://github.com/i2-open/i2scim/issues/110))
+  * A modify that fails part-way leaves the stored resource and its indexes unchanged.
+* **Security and platform** ([#112](https://github.com/i2-open/i2scim/issues/112))
+  * Upgraded to Quarkus 3.40.1. This brings in jackson-databind 2.21.7, which fixes
+    CVE-2026-91776 and CVE-2026-91777 (deserialization denial of service).
+  * The Chainguard JRE base image is pinned by digest, so image builds are reproducible.
+* **Publishing**
+  * The supported image is `independentid/i2scim-universal` on Docker Hub, built and pushed
+    with `./build.sh -p`.
+  * CI no longer pushes images to GHCR. It only builds the image to validate the Dockerfile.
+    Images previously pushed to GHCR carried the last release's version label, so ignore any
+    `ghcr.io/i2-open/i2scim` image you may have pulled.
+* **API changes for `i2scim-core` and `i2scim-client` library users**
+  * `Meta.ScimDateFormat` was removed because a shared `SimpleDateFormat` is not thread-safe.
+    Use `Meta.SCIM_DATE_PATTERN`, `Meta.formatDate(Date)` and `Meta.parseDate(String)` instead.
+  * `BulkOps.PARAM_BULKID` is now `bulkId`, as in RFC 7644 §3.7. The legacy `bulkid` is still
+    accepted on input.
+  * The legacy bulk request URN `urn:ietf:params:scim:api:messages:2.0:BulkOps` is still
+    accepted on input (`ScimParams.SCHEMA_API_BulkRequest_Legacy`).
+  * The client reports a `400 invalidPath` as `InvalidPathException`. An error response with no
+    SCIM error body now yields a `ScimException` describing the HTTP status.
+
 ### Release 0.10.4
 
 A maintenance release: a platform upgrade and a schema fix. The `0.10.2` and `0.10.3` images on
@@ -178,7 +241,7 @@ First public preview. Deployable on K8S with a MongoDB or in-memory backend.
 
 ## Building and Running
 
-i2scim is a three-module Maven project (`i2scim-core`, `i2scim-client`, `i2scim-server`) on Java 25 and Quarkus 3.39.x.
+i2scim is a three-module Maven project (`i2scim-core`, `i2scim-client`, `i2scim-server`) on Java 25 and Quarkus 3.40.x.
 
 ```bash
 # Build everything (skips tests by default):
@@ -193,6 +256,8 @@ mvn -pl i2scim-server quarkus:dev
 # Build a multi-arch Docker image and push to docker.io/independentid:
 ./build.sh -p --tag <ver>
 ```
+
+Releases are cut from a GitHub release and the Docker Hub image is pushed with `./build.sh -p`; see [Releasing the Docker image](publishing.md#releasing-the-docker-image-active-process) for the checklist (including refreshing the pinned Chainguard base-image digest).
 
 The published Docker image is `independentid/i2scim-universal:<tag>`. The same image runs against the in-memory backend or MongoDB; the choice is made at runtime via `scim.prov.providerClass`. See [Configuration](Configuration.md) for the full property list and [k8s/README.md](../i2scim-server/k8s/README.md) for cluster deployment.
 

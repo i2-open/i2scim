@@ -185,8 +185,8 @@ public class ScimUserCRUDTest {
             resp = addUser(client, testUserFile1);
 
             assertThat(resp.getCode())
-                    .as("Confirm error 400 occurred (uniqueness)")
-                    .isEqualTo(ScimResponse.ST_BAD_REQUEST);
+                    .as("Confirm error 409 occurred (uniqueness)")
+                    .isEqualTo(ScimResponse.ST_CONFLICT);
             body = EntityUtils.toString(resp.getEntity());
             assertThat(body)
                     .as("Is a uniqueness error")
@@ -671,6 +671,40 @@ public class ScimUserCRUDTest {
                 .as("Contains test value")
                 .contains("Babs (TEST)");
         logger.debug("Entry retrieved:\n" + body);
+    }
+
+    /**
+     * RFC 7644 §3.3: a PUT or PATCH that introduces a uniqueness conflict returns 409 with scimType uniqueness, and
+     * the stored resource is left unchanged (issue #111).
+     */
+    @Test
+    public void ga_uniquenessConflictOnUpdateIs409() throws Exception {
+        logger.info("\tG-a. PUT/PATCH introducing a duplicate userName is 409 uniqueness");
+        String req = TestUtils.mapPathToReqUrl(baseUrl, user2url);
+
+        ClassicHttpResponse resp = TestUtils.executeRequest(new HttpGet(req));
+        assertThat(resp.getCode()).isEqualTo(ScimResponse.ST_OK);
+        ScimResource res = new ScimResource(smgr, JsonUtil.getJsonTree(EntityUtils.toString(resp.getEntity())), "Users");
+        res.addValue(new StringValue(res.getAttribute("userName", null), "bjensen@example.com"));
+
+        HttpPut put = new HttpPut(req);
+        put.setEntity(new StringEntity(res.toJsonString(), ContentType.create(ScimParams.SCIM_MIME_TYPE)));
+        resp = TestUtils.executeRequest(put);
+        assertThat(resp.getCode()).as("PUT uniqueness conflict").isEqualTo(ScimResponse.ST_CONFLICT);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains(ScimResponse.ERR_TYPE_UNIQUENESS);
+
+        HttpPatch patch = new HttpPatch(req);
+        patch.setEntity(new StringEntity("{\"schemas\":[\"" + ScimParams.SCHEMA_API_PatchOp + "\"],\"Operations\":"
+                + "[{\"op\":\"replace\",\"path\":\"userName\",\"value\":\"bjensen@example.com\"}]}",
+                ContentType.create(ScimParams.SCIM_MIME_TYPE)));
+        resp = TestUtils.executeRequest(patch);
+        assertThat(resp.getCode()).as("PATCH uniqueness conflict").isEqualTo(ScimResponse.ST_CONFLICT);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains(ScimResponse.ERR_TYPE_UNIQUENESS);
+
+        resp = TestUtils.executeRequest(new HttpGet(req));
+        assertThat(EntityUtils.toString(resp.getEntity()))
+                .as("stored resource unchanged")
+                .contains("jsmith@example.com");
     }
 
     @Test
