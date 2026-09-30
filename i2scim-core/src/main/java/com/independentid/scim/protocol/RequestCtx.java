@@ -100,7 +100,12 @@ public class RequestCtx {
 
     protected int startIndex = 1; // start with result n
 
-    protected int count = 0; // number of results to return
+    /**
+     * Value of {@link #getCount()} when the client did not specify a count.
+     */
+    public static final int COUNT_UNSPECIFIED = -1;
+
+    protected int count = COUNT_UNSPECIFIED; // number of results to return
 
     protected String etag = null;
 
@@ -552,30 +557,49 @@ public class RequestCtx {
         }
     }
 
-    public void setStartIndex(String ind) {
-        if (ind != null)
-            startIndex = Integer.parseInt(ind);
-        else
+    /**
+     * Sets the 1-based index of the first result to return. Per RFC 7644 Sec 3.4.2.4, a value less than 1 is
+     * interpreted as 1.
+     * @param ind A String value containing the requested start index. Null means the default of 1.
+     * @throws InvalidValueException if the value is not an integer.
+     */
+    public void setStartIndex(String ind) throws InvalidValueException {
+        if (ind == null) {
             startIndex = 1;
-
+            return;
+        }
+        startIndex = Math.max(1, parseIntParam(ScimParams.QUERY_startindex, ind));
     }
 
     /**
-     * @return The number of items per page to be returned. 0 means unlimited.
+     * @return The number of items per page to be returned. {@link #COUNT_UNSPECIFIED} (negative) means the client did
+     * not specify a count and the server maximum applies. 0 means only totalResults is returned (RFC 7644 Sec 3.4.2.4).
      */
     public int getCount() {
         return count;
     }
 
     /**
-     * @param ind A String value indicating the requested number of items per page. Null or "0" means unlimited.
+     * Sets the requested number of items per page. Per RFC 7644 Sec 3.4.2.4, a negative value is interpreted as 0,
+     * meaning no resources are returned other than totalResults.
+     * @param ind A String value indicating the requested number of items per page. Null means unspecified (server
+     *            maximum applies).
+     * @throws InvalidValueException if the value is not an integer.
      */
-    public void setCount(String ind) {
-        if (ind != null)
-            count = Integer.parseInt(ind);
-        else
-            count = 0;
+    public void setCount(String ind) throws InvalidValueException {
+        if (ind == null) {
+            count = COUNT_UNSPECIFIED;
+            return;
+        }
+        count = Math.max(0, parseIntParam(ScimParams.QUERY_count, ind));
+    }
 
+    private static int parseIntParam(String name, String value) throws InvalidValueException {
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            throw new InvalidValueException("Invalid value for '" + name + "': must be an integer.");
+        }
     }
 
     public void parsePath() {
