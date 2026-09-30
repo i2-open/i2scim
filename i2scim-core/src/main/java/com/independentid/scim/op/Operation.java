@@ -173,8 +173,8 @@ public class Operation extends RecursiveAction {
             if (this.ctx == null)  // If RequestCtx wasn't created by the filter, do it now
                 this.ctx = new RequestCtx(req, resp, schemaManager);
         } catch (ScimException e) {
-            setCompletionError(new InternalException("Error parsing request URL: " + e.getMessage(), e));
-            this.opState = OpState.invalid;
+            // The URL/query parameters were rejected (e.g. invalidFilter, invalidValue): report the client error as is.
+            setInvalidRequest(e);
         }
         if (this.opState != OpState.invalid &&
                 ctx.getResourceContainer() == null)
@@ -377,9 +377,10 @@ public class Operation extends RecursiveAction {
 
     private void doErrorResp(Exception ex, String scimErrMsg, JsonGenerator gen) {
         try {
-            ScimResponse sresp = new ScimResponse(400, ex.getMessage(), scimErrMsg);
+            ScimResponse sresp = new ScimResponse(ScimResponse.ST_INTERNAL, "Internal error processing request.", null);
             sresp.serialize(gen, null, false);
-            this.resp.setStatus(sresp.getStatus());
+            if (this.resp != null)
+                this.resp.setStatus(sresp.getStatus());
         } catch (IOException e) {
             logger.error("Error generating SCIM response.", e);
             this.err = e;
@@ -425,6 +426,26 @@ public class Operation extends RecursiveAction {
     protected void setInvalidRequest(ScimException e) {
         this.err = e;
         this.opState = OpState.invalid;
+    }
+
+    /**
+     * Maps an unexpected runtime failure to a SCIM error according to the lifecycle phase in which it occurred.
+     * @param phase The operation state at the time of failure.
+     * @param e The unexpected exception.
+     * @return A 400 {@link InvalidValueException} if the request was still being parsed or validated, otherwise a 500
+     * {@link InternalException}.
+     */
+    static ScimException mapUnexpectedFailure(OpState phase, RuntimeException e) {
+        switch (phase) {
+            case pending:
+            case preOp:
+            case invalid:
+                logger.warn("Request rejected: unable to parse or validate request: " + e, e);
+                return new InvalidValueException("Unable to parse or validate request: " + e.getClass().getSimpleName());
+            default:
+                logger.error("Unexpected error processing request: " + e.getMessage(), e);
+                return new InternalException("Internal error processing request.");
+        }
     }
 
     public Exception getCompletionException() {
@@ -511,8 +532,8 @@ public class Operation extends RecursiveAction {
                         + getClass().getSimpleName() + "]");
             doPreOperation();
 
-            //Now that operation should be fully parsed, run the plugins.
-            if (pluginHandler != null) {
+            //Now that operation should be fully parsed, run the plugins (unless the request was rejected).
+            if (pluginHandler != null && !this.isError()) {
                 try {
                     pluginHandler.doPreOperations(this);
                 } catch (ScimException e) {
@@ -551,6 +572,12 @@ public class Operation extends RecursiveAction {
             this.finalState = this.opState;
             this.opState = OpState.fatal;
             this.err = e;
+        } catch (RuntimeException e) {
+            // Safety net: an unexpected failure must still produce a SCIM error response rather than escaping to the
+            // container. Failures while parsing/validating the request are client errors; anything later is internal.
+            this.finalState = this.opState;
+            this.err = mapUnexpectedFailure(this.opState, e);
+            this.opState = OpState.fatal;
         }
         // Mark the request completed.
         this.stats.completeOp(isError());

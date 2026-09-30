@@ -16,13 +16,16 @@
 
 package com.independentid.scim.filter;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.independentid.scim.core.ConfigMgr;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.protocol.ScimParams;
 import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.SchemaManager;
 import com.independentid.scim.security.AccessControl;
 import com.independentid.scim.security.AccessManager;
+import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.inject.Inject;
 import jakarta.servlet.*;
@@ -109,6 +112,21 @@ public class ScimSecurityFilter implements Filter {
         }
     }
 
+    /**
+     * Writes a SCIM Error response (RFC 7644 Section 3.12) for a request rejected by a security filter before it
+     * reaches the SCIM servlet.
+     * @param response The servlet response to write to.
+     * @param e The SCIM error to report.
+     * @throws IOException if the response could not be written.
+     */
+    static void sendScimError(ServletResponse response, ScimException e) throws IOException {
+        if (logger.isDebugEnabled())
+            logger.debug("Rejecting invalid request: " + e.getMessage());
+        response.setContentType(ScimParams.SCIM_MIME_TYPE);
+        JsonGenerator gen = JsonUtil.getGenerator(response.getWriter(), false);
+        e.serialize(gen, (HttpServletResponse) response); // sets the HTTP status and closes the generator
+    }
+
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         if (enabled) {
             if (logger.isDebugEnabled())
@@ -138,10 +156,11 @@ public class ScimSecurityFilter implements Filter {
                     ctx = new RequestCtx(httpServletRequest, (HttpServletResponse) response, schemaManager);
                     request.setAttribute(RequestCtx.REQUEST_ATTRIBUTE, ctx);
                 } catch (ScimException e) {
-                    e.printStackTrace();
+                    // The request itself is invalid (e.g. bad filter or parameter): reject it before authorization.
+                    sendScimError(response, e);
+                    return;
                 }
             }
-            assert ctx != null;
             assignOperationRights(httpServletRequest, ctx);
             if (accessManager.filterRequestandInitAcis(ctx, identity)) {
                 chain.doFilter(request, response);

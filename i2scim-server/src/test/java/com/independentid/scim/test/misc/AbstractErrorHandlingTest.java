@@ -22,6 +22,7 @@ import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.serializer.JsonUtil;
 import io.quarkus.test.common.http.TestHTTPResource;
 import jakarta.inject.Inject;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPatch;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.classic.methods.HttpPut;
@@ -57,6 +58,13 @@ public abstract class AbstractErrorHandlingTest {
 
     @TestHTTPResource("/")
     protected URL baseUrl;
+
+    /**
+     * Hook for subclasses running with security enabled to add credentials to each request. Default: none.
+     * @param request The request about to be executed.
+     */
+    protected void authorize(HttpUriRequestBase request) {
+    }
 
     @Test
     public void a_init() throws Exception {
@@ -96,12 +104,27 @@ public abstract class AbstractErrorHandlingTest {
         assertScimError(post, ScimResponse.ST_BAD_REQUEST, ScimResponse.ERR_TYPE_SYNTAX);
     }
 
+    @Test
+    public void c_badFilterIsInvalidFilter() throws Exception {
+        HttpGet get = new HttpGet(TestUtils.mapPathToReqUrl(baseUrl, "/Users?filter=userName%20zz%20%22x%22"));
+
+        assertScimError(get, ScimResponse.ST_BAD_REQUEST, ScimResponse.ERR_TYPE_FILTER);
+    }
+
+    @Test
+    public void c_badSortOrderIsInvalidValue() throws Exception {
+        HttpGet get = new HttpGet(TestUtils.mapPathToReqUrl(baseUrl, "/Users?sortBy=userName&sortOrder=up"));
+
+        assertScimError(get, ScimResponse.ST_BAD_REQUEST, ScimResponse.ERR_TYPE_BADVAL);
+    }
+
     /**
      * Executes the request and asserts that the response carries the expected HTTP status and a SCIM Error body with
      * the matching status and (when not null) scimType.
      * @return the parsed SCIM Error body
      */
     protected JsonNode assertScimError(HttpUriRequestBase request, int status, String scimType) throws Exception {
+        authorize(request);
         ClassicHttpResponse resp = TestUtils.executeRequest(request);
         String body = resp.getEntity() == null ? "" : EntityUtils.toString(resp.getEntity());
         logger.info(request.getMethod() + " " + request.getRequestUri() + " -> " + resp.getCode() + "\n" + body);
