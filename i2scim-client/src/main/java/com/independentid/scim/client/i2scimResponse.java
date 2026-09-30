@@ -249,20 +249,10 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
 
             case HttpStatus.SC_BAD_REQUEST:
                 HttpEntity entity = resp.getEntity();
-                String msg;
                 if (entity != null) {
-
-                    msg = EntityUtils.toString(entity);
-                    JsonNode node = JsonUtil.getJsonTree(msg);
-                    JsonNode typNode = node.get("scimType");
-                    String type = "";
-                    String det = null;
-                    if (typNode != null) {
-                        type = typNode.asText();
-                        JsonNode detNode = node.get("detail");
-                        if (detNode != null)
-                            det = detNode.asText();
-                    }
+                    ScimError err = readScimError(entity);
+                    String type = err.type() == null ? "" : err.type();
+                    String det = err.detail();
                     switch (type) {
                         case ScimResponse.ERR_TYPE_BADVAL:
                             setError(new InvalidValueException(det == null ?
@@ -289,8 +279,8 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
                                     "The request body structure was invalid." : det));
                             return;
                         case ScimResponse.ERR_TYPE_PATH:
-                            setError(new ScimException(det == null ?
-                                    "The attribute supplied was undefined, malformed, or invalid." : det, ScimResponse.ERR_TYPE_PATH));
+                            setError(new InvalidPathException(det == null ?
+                                    "The attribute supplied was undefined, malformed, or invalid." : det));
                             return;
                         case ScimResponse.ERR_TYPE_TARGET:
                             setError(new NoTargetException(det == null ?
@@ -324,18 +314,8 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
                 return;
             case HttpStatus.SC_CONFLICT:
                 // RFC 7644 §3.3: uniqueness violations are 409 with scimType "uniqueness"; preserve the SCIM error type.
-                HttpEntity cEntity = resp.getEntity();
-                String cType = null, cDetail = null;
-                if (cEntity != null) {
-                    String cBody = EntityUtils.toString(cEntity);
-                    if (cBody != null && !cBody.isBlank()) {
-                        JsonNode cNode = JsonUtil.getJsonTree(cBody);
-                        if (cNode.hasNonNull("scimType"))
-                            cType = cNode.get("scimType").asText();
-                        if (cNode.hasNonNull("detail"))
-                            cDetail = cNode.get("detail").asText();
-                    }
-                }
+                ScimError cErr = readScimError(resp.getEntity());
+                String cType = cErr.type(), cDetail = cErr.detail();
                 if (cDetail == null)
                     cDetail = ScimResponse.ERR_TYPE_UNIQUENESS.equals(cType) ?
                             "One or more unique attribute values in use." : "Server responded with " + resp.getReasonPhrase();
@@ -353,6 +333,30 @@ public class i2scimResponse extends ScimResponse implements Iterator<ScimResourc
             case HttpStatus.SC_NOT_IMPLEMENTED:
                 setError(new NotImplementedException("Server responded with " + resp.getReasonPhrase()));
         }
+    }
+
+    /** The {@code scimType} and {@code detail} members of a SCIM error response (RFC 7644 §3.12); either may be null. */
+    private record ScimError(String type, String detail) {
+    }
+
+    /**
+     * Reads the SCIM error {@code scimType} and {@code detail} from an error response entity.
+     * @param entity The response entity (may be null)
+     * @return The parsed values; members are null when the entity is absent, blank, or lacks the member.
+     */
+    private static ScimError readScimError(HttpEntity entity) throws IOException, org.apache.hc.core5.http.ParseException {
+        String type = null, detail = null;
+        if (entity != null) {
+            String body = EntityUtils.toString(entity);
+            if (body != null && !body.isBlank()) {
+                JsonNode node = JsonUtil.getJsonTree(body);
+                if (node.hasNonNull("scimType"))
+                    type = node.get("scimType").asText();
+                if (node.hasNonNull("detail"))
+                    detail = node.get("detail").asText();
+            }
+        }
+        return new ScimError(type, detail);
     }
 
     /**
