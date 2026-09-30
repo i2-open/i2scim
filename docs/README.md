@@ -78,9 +78,15 @@ already taken on Docker Hub, so this release goes straight to `0.10.6`.
   * CI no longer pushes images to GHCR. It only builds the image to validate the Dockerfile.
     Images previously pushed to GHCR carried the last release's version label, so ignore any
     `ghcr.io/i2-open/i2scim` image you may have pulled.
-* **API change for `i2scim-core` library users:** `Meta.ScimDateFormat` was removed because a
-  shared `SimpleDateFormat` is not thread-safe. Use `Meta.formatDate(Date)` and
-  `Meta.parseDate(String)` instead.
+* **API changes for `i2scim-core` and `i2scim-client` library users**
+  * `Meta.ScimDateFormat` was removed because a shared `SimpleDateFormat` is not thread-safe.
+    Use `Meta.SCIM_DATE_PATTERN`, `Meta.formatDate(Date)` and `Meta.parseDate(String)` instead.
+  * `BulkOps.PARAM_BULKID` is now `bulkId`, as in RFC 7644 §3.7. The legacy `bulkid` is still
+    accepted on input.
+  * The legacy bulk request URN `urn:ietf:params:scim:api:messages:2.0:BulkOps` is still
+    accepted on input (`ScimParams.SCHEMA_API_BulkRequest_Legacy`).
+  * The client reports a `400 invalidPath` as `InvalidPathException`. An error response with no
+    SCIM error body now yields a `ScimException` describing the HTTP status.
 
 ### Release 0.10.4
 
