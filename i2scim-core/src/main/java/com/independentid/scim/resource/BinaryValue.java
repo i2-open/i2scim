@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.independentid.scim.protocol.RequestCtx;
+import com.independentid.scim.protocol.ScimResponse;
 import com.independentid.scim.schema.Attribute;
 import com.independentid.scim.schema.SchemaException;
 import com.independentid.scim.serializer.JsonUtil;
@@ -79,7 +80,13 @@ public class BinaryValue extends Value {
         if (node == null)
             throw new SchemaException("Was expecting a JSON string (Base64 encoded) value but encountered null");
 
-        this.value = decoder.decode(node.asText().getBytes(StandardCharsets.UTF_8));
+        try {
+            this.value = decoder.decode(node.asText().getBytes(StandardCharsets.UTF_8));
+        } catch (IllegalArgumentException e) {
+            String path = (attr == null) ? "binary attribute" : attr.getPath();
+            throw new SchemaException("Invalid base64 value for " + path + ": " + e.getMessage(),
+                    ScimResponse.ERR_TYPE_BADVAL, e);
+        }
 
         //TODO:  SHould the DER Value encoding be validated?
 		

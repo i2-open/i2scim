@@ -1108,7 +1108,11 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
                 parseAttributes(op.jsonValue,
                         (op.op.equalsIgnoreCase(JsonPatchOp.OP_ACTION_REPLACE)), false);
                 return;
-            } catch (SchemaException | ParseException e) {
+            } catch (SchemaException e) {
+                if (ScimResponse.ERR_TYPE_BADVAL.equals(e.getScimType()))
+                    throw new InvalidValueException(e.getMessage(), e);
+                throw new InvalidSyntaxException("Unable to parse value.", e);
+            } catch (ParseException e) {
                 throw new InvalidSyntaxException("Unable to parse value.", e);
             }
         }

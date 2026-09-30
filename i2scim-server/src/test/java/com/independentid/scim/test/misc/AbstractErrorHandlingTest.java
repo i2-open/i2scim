@@ -174,6 +174,73 @@ public abstract class AbstractErrorHandlingTest {
         assertBulkOpError(ops.get(0), "POST", "badData");
     }
 
+    // Issue #110: a binary attribute value that is not valid base64 is a client error (400 invalidValue).
+    private static final String BAD_BASE64 = "%%% not base64 %%%";
+
+    private static final String BAD_CERTS = "\"x509Certificates\":[{\"value\":\"" + BAD_BASE64 + "\"}]";
+
+    private static String userJson(String userName, String extra) {
+        return "{\"schemas\":[\"urn:ietf:params:scim:schemas:core:2.0:User\"],\"userName\":\"" + userName + "\""
+                + (extra == null ? "" : "," + extra) + "}";
+    }
+
+    private static String patchJson(String operation) {
+        return "{\"schemas\":[\"urn:ietf:params:scim:api:messages:2.0:PatchOp\"],\"Operations\":[" + operation + "]}";
+    }
+
+    /**
+     * Creates a user over HTTP and returns its location path (e.g. /Users/123).
+     */
+    protected String createUser(String userName) throws Exception {
+        HttpPost post = new HttpPost(TestUtils.mapPathToReqUrl(baseUrl, "/Users"));
+        post.setEntity(new StringEntity(userJson(userName, null), ContentType.APPLICATION_JSON));
+        authorize(post);
+        ClassicHttpResponse resp = TestUtils.executeRequest(post);
+        String body = resp.getEntity() == null ? "" : EntityUtils.toString(resp.getEntity());
+        assertThat(resp.getCode()).as("create " + userName + ": " + body).isEqualTo(ScimResponse.ST_CREATED);
+        String id = JsonUtil.getJsonTree(body).path(ScimParams.ATTR_ID).asText();
+        return "/Users/" + id;
+    }
+
+    private void assertInvalidBase64(HttpUriRequestBase request) throws Exception {
+        JsonNode err = assertScimError(request, ScimResponse.ST_BAD_REQUEST, ScimResponse.ERR_TYPE_BADVAL);
+        assertThat(err.path("detail").asText()).as("detail names the base64 problem").containsIgnoringCase("base64");
+    }
+
+    @Test
+    public void f_invalidBase64OnCreateIsInvalidValue() throws Exception {
+        HttpPost post = new HttpPost(TestUtils.mapPathToReqUrl(baseUrl, "/Users"));
+        post.setEntity(new StringEntity(userJson("b64Create", BAD_CERTS), ContentType.APPLICATION_JSON));
+
+        assertInvalidBase64(post);
+    }
+
+    @Test
+    public void f_invalidBase64OnPutIsInvalidValue() throws Exception {
+        String path = createUser("b64Put");
+        HttpPut put = new HttpPut(TestUtils.mapPathToReqUrl(baseUrl, path));
+        put.setEntity(new StringEntity(userJson("b64Put", BAD_CERTS), ContentType.APPLICATION_JSON));
+
+        assertInvalidBase64(put);
+    }
+
+    @Test
+    public void f_invalidBase64OnPatchIsInvalidValue() throws Exception {
+        String path = createUser("b64Patch");
+        String[] operations = {
+                "{\"op\":\"add\",\"path\":\"x509Certificates\",\"value\":[{\"value\":\"" + BAD_BASE64 + "\"}]}",
+                "{\"op\":\"replace\",\"path\":\"x509Certificates\",\"value\":[{\"value\":\"" + BAD_BASE64 + "\"}]}",
+                "{\"op\":\"add\",\"value\":{" + BAD_CERTS + "}}",
+                "{\"op\":\"replace\",\"value\":{" + BAD_CERTS + "}}"
+        };
+        for (String operation : operations) {
+            HttpPatch patch = new HttpPatch(TestUtils.mapPathToReqUrl(baseUrl, path));
+            patch.setEntity(new StringEntity(patchJson(operation), ContentType.APPLICATION_JSON));
+
+            assertInvalidBase64(patch);
+        }
+    }
+
     /**
      * Posts a bulk request and asserts a 200 BulkResponse.
      * @return the BulkResponse Operations array
