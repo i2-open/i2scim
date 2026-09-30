@@ -4,17 +4,17 @@ i2scim no longer publishes to Maven Central. The active distribution mechanism i
 
 ## Releasing the Docker image (active process)
 
-The supported image is `independentid/i2scim-universal` on Docker Hub, pushed with `./build.sh -p`. CI (`.github/workflows/build-and-attest.yml`) builds the image on every run but pushes it (to GHCR) only when a GitHub release is published, never on push. Before creating the release:
+The supported image is `independentid/i2scim-universal` on Docker Hub, pushed with `./build.sh -p`. CI (`.github/workflows/build-and-attest.yml`) builds the multi-arch image on every run to validate the Dockerfile, but never pushes it anywhere. Before creating the release:
 
 1. **Refresh the Chainguard JRE base-image digest.** `i2scim-server/src/main/docker/Dockerfile.jvm` pins `cgr.dev/chainguard/jre:latest` by digest so builds are reproducible. Chainguard rebuilds the image daily, so re-resolve it on each release cycle so every release ships on the latest stable JRE:
    ```bash
    docker buildx imagetools inspect cgr.dev/chainguard/jre:latest
    ```
    Copy the top-level (multi-arch index) `Digest:` value into the `FROM cgr.dev/chainguard/jre:latest@sha256:<digest>` line, update the "Resolved" date in the comment above it, and confirm the image still builds and starts locally (`./build.sh --tag <ver>`, then `docker run --rm independentid/i2scim-universal:<ver>`).
-2. **Bump the version** in the POMs (`./mvnw versions:set -DnewVersion=<ver>`). CI refuses to publish when the release tag and the POM version disagree.
+2. **Bump the version** in the POMs (`./mvnw versions:set -DnewVersion=<ver>`). The CI release build fails when the release tag and the POM version disagree.
 3. **Add release notes** under "Recent Updates" in `docs/README.md`.
 4. Merge to `master`, then publish a GitHub release tagged `<ver>` (CI refuses a release whose tag does not match the POM version).
-5. **Push the Docker Hub image** from the release commit: `./build.sh -p --tag <ver>` builds `independentid/i2scim-universal:<ver>` for `linux/amd64` and `linux/arm64` and also tags it `latest`. The CI release build pushes only to GHCR (`ghcr.io/i2-open/i2scim`), not to Docker Hub.
+5. **Push the Docker Hub image** from the release commit: `./build.sh -p --tag <ver>` builds `independentid/i2scim-universal:<ver>` for `linux/amd64` and `linux/arm64` and also tags it `latest`. This is the only step that publishes an image; CI does not push to Docker Hub or GHCR.
 
 ## Why publishing was dropped
 

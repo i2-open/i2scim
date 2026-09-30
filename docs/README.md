@@ -75,9 +75,9 @@ already taken on Docker Hub, so this release goes straight to `0.10.6`.
 * **Publishing**
   * The supported image is `independentid/i2scim-universal` on Docker Hub, built and pushed
     with `./build.sh -p`.
-  * CI no longer pushes an image to GHCR on every commit to `master`. Those images carried the
-    last release's version label, so ignore any `ghcr.io/i2-open/i2scim:master` image you may
-    have pulled.
+  * CI no longer pushes images to GHCR. It only builds the image to validate the Dockerfile.
+    Images previously pushed to GHCR carried the last release's version label, so ignore any
+    `ghcr.io/i2-open/i2scim` image you may have pulled.
 * **API change for `i2scim-core` library users:** `Meta.ScimDateFormat` was removed because a
   shared `SimpleDateFormat` is not thread-safe. Use `Meta.formatDate(Date)` and
   `Meta.parseDate(String)` instead.
