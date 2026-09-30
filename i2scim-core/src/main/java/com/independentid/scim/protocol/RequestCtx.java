@@ -374,7 +374,7 @@ public class RequestCtx {
         String filt = req.getParameter(ScimParams.QUERY_filter);
         if (filt == null) filter = null;
         else {
-            filter = Filter.parseFilter(URLDecoder.decode(filt,StandardCharsets.UTF_8), this);
+            filter = Filter.parseFilter(decodeFilterParam(filt), this);
             clientNoFilterSpecd = false;
         }
 
@@ -399,6 +399,19 @@ public class RequestCtx {
         if (this.sortOrder != null && !(this.sortOrder.startsWith("a")
                 || this.sortOrder.startsWith("d")))
             throw new InvalidValueException("Invalid value for 'sortOrder' specified. Must be 'ascending' or 'descending'.");
+    }
+
+    /**
+     * The servlet container has already URL-decoded the filter parameter once; the i2scim client additionally encodes
+     * the filter value, so a second decode is attempted. When the value is not a valid encoding (e.g. it contains a
+     * literal '%' from a singly-encoded request) the value as delivered by the container is used.
+     */
+    private static String decodeFilterParam(String filt) {
+        try {
+            return URLDecoder.decode(filt, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            return filt;
+        }
     }
 
     private String trimQuotes(String val) {
