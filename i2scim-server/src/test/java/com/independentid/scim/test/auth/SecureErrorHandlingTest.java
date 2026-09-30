@@ -67,4 +67,16 @@ public class SecureErrorHandlingTest extends AbstractErrorHandlingTest {
         assertBulkOpError(ops.get(0), "POST", "secGood1", ScimResponse.ST_FORBIDDEN);
         assertBulkOpError(ops.get(1), "POST", "badData");
     }
+
+    /** The legacy bulk URN is accepted; the sub-operation then fails closed with 403 as above. */
+    @Override
+    @Test
+    public void e_bulkAcceptsLegacyBulkOpsUrn() throws Exception {
+        String body = "{\"schemas\":[\"urn:ietf:params:scim:api:messages:2.0:BulkOps\"],\"Operations\":["
+                + bulkCreateUser("secLegacy1", "bulkSecLegacyUrn") + "]}";
+
+        JsonNode ops = assertBulkResponse(body);
+        assertThat(ops.size()).isEqualTo(1);
+        assertBulkOpError(ops.get(0), "POST", "secLegacy1", ScimResponse.ST_FORBIDDEN);
+    }
 }

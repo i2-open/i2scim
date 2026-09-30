@@ -93,6 +93,15 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 
 	}
 
+	/**
+	 * RFC 7644 §3.7 names the bulk request schema {@link ScimParams#SCHEMA_API_BulkRequest}; the legacy
+	 * {@link ScimParams#SCHEMA_API_BulkRequest_Legacy} URN is accepted for backward compatibility.
+	 */
+	private static boolean isBulkRequestSchema(String schema) {
+		return schema.equalsIgnoreCase(ScimParams.SCHEMA_API_BulkRequest)
+				|| schema.equalsIgnoreCase(ScimParams.SCHEMA_API_BulkRequest_Legacy);
+	}
+
 	public void parseJson(JsonNode node) {
 		JsonNode snode = node.get(ScimParams.ATTR_SCHEMAS);
 		if (snode == null) {
@@ -105,12 +114,10 @@ public class BulkOps extends Operation implements IBulkIdResolver {
 			Iterator<JsonNode> jiter = snode.elements();
 			while (jiter.hasNext() && invalidSchema) {
 				JsonNode anode = jiter.next();
-				if (anode.asText().equalsIgnoreCase(
-						ScimParams.SCHEMA_API_BulkRequest))
+				if (isBulkRequestSchema(anode.asText()))
 					invalidSchema = false;
 			}
-		} else if (snode.asText().equalsIgnoreCase(
-				ScimParams.SCHEMA_API_BulkRequest))
+		} else if (isBulkRequestSchema(snode.asText()))
 			invalidSchema = false;
 	
 		if (invalidSchema) {

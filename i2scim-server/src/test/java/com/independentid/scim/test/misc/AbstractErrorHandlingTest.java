@@ -174,6 +174,17 @@ public abstract class AbstractErrorHandlingTest {
         assertBulkOpError(ops.get(0), "POST", "badData");
     }
 
+    @Test
+    public void e_bulkAcceptsLegacyBulkOpsUrn() throws Exception {
+        // Issue #107: requests using the pre-RFC schema URN are still accepted for backward compatibility.
+        String body = "{\"schemas\":[\"urn:ietf:params:scim:api:messages:2.0:BulkOps\"],\"Operations\":["
+                + bulkCreateUser("legacy1", "bulkLegacyUrn") + "]}";
+
+        JsonNode ops = assertBulkResponse(body);
+        assertThat(ops.size()).isEqualTo(1);
+        assertBulkOpSuccess(ops.get(0), "POST", "legacy1", 201);
+    }
+
     // Issue #110: a binary attribute value that is not valid base64 is a client error (400 invalidValue).
     private static final String BAD_BASE64 = "%%% not base64 %%%";
 
