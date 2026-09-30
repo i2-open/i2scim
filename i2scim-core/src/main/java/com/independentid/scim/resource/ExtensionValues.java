@@ -173,6 +173,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 				ComplexValue cval = new ComplexValue();
 				cval.addValue(attribute, val);
 				attrs.put(rootAttribute, cval);
+				return;
 			}
 			if (rval instanceof ComplexValue) {
 				// Add the sub attribute value to the parent
@@ -187,7 +188,7 @@ public class ExtensionValues implements ScimSerializer, IBulkIdTarget {
 			MultiValue mval = (MultiValue) getValue(rootAttribute);
 			if (mval == null) {
 				mval = new MultiValue(rootAttribute, new LinkedList<>());
-				attrs.put(attribute, mval);
+				attrs.put(rootAttribute, mval);
 			}
 			mval.addValue(val);
 			return;

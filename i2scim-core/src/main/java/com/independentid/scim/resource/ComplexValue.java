@@ -146,6 +146,9 @@ public class ComplexValue extends Value {
             throws SchemaException, ParseException {
         if (node == null)
             return; //nothing to do
+        if (!node.isObject())
+            throw new SchemaException("Expecting a JSON object value for complex attribute " + attr.getName()
+                    + " but found " + node.getNodeType());
         Iterator<String> niter = node.fieldNames();
         while (niter.hasNext()) {
             String field = niter.next();

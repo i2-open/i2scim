@@ -843,7 +843,33 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
         return this.extAttrVals.get(urnName);
     }
 
+    /**
+     * RFC 7643 §2.4: at most one value of a multi-valued attribute may carry {@code primary: true}. A request that
+     * supplies more than one primary value in the same array is rejected before any operation is applied.
+     */
+    private static void checkSinglePrimary(JsonNode node) throws InvalidValueException {
+        if (node == null)
+            return;
+        if (node.isArray()) {
+            int primaries = 0;
+            for (JsonNode item : node) {
+                if (item.isObject() && item.path("primary").asBoolean(false))
+                    primaries++;
+                checkSinglePrimary(item);
+            }
+            if (primaries > 1)
+                throw new InvalidValueException("More than one value is marked primary in a multi-valued attribute.");
+        } else if (node.isObject()) {
+            for (JsonNode child : node)
+                checkSinglePrimary(child);
+        }
+    }
+
     public void modifyResource(JsonPatchRequest req, RequestCtx ctx) throws ScimException {
+
+        Iterator<JsonPatchOp> check = req.iterator();
+        while (check.hasNext())
+            checkSinglePrimary(check.next().jsonValue);
 
         Iterator<JsonPatchOp> iter = req.iterator();
         while (iter.hasNext()) {
@@ -901,7 +927,7 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
         Attribute targetAttr = path.getTargetAttribute();
         MultiValue mval = (MultiValue) target.getValue(targetAttr);
         Value targetValue = null;
-        if (path.getTargetValueFilter() != null)
+        if (path.getTargetValueFilter() != null && mval != null)
             targetValue = mval.getMatchValue(path.getTargetValueFilter());
 
         switch (op.op) {
@@ -928,8 +954,8 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
                             mval.addValue(newVal);
                         }
                         return;
-                    } catch (ParseException e) {
-                        e.printStackTrace();
+                    } catch (SchemaException | ParseException e) {
+                        throw new InvalidValueException("Unable to parse value for " + op.path + ": " + e.getMessage(), e);
                     }
                 }
                 if (path.hasVpathSubAttr() && !op.jsonValue.isObject()) {
@@ -944,14 +970,16 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
                         Value nval;
                         try {
                             nval = ValueUtil.parseJson(this, sattr, op.jsonValue, null);
+                            // Members are hashed by content: take the member out before changing it.
+                            mval.removeValue(cval);
                             if (nval instanceof BooleanValue) {
                                 BooleanValue bval = (BooleanValue) nval;
                                 if (bval.getRawValue() && sattr.getName().equals("primary"))
                                     mval.resetPrimary();
                             }
 
-                            //cval.vals.put(path.getSubAttrName(), nval);
                             cval.addValue(sattr, nval);
+                            mval.addValue(cval);
                         } catch (SchemaException | ParseException e) {
                             throw new InvalidValueException("JSON parsing error parsing value parameter.", e);
                         }
@@ -963,34 +991,27 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
                     throw new InvalidValueException("A sub-attribute was specified, but the value was a JSON object: " + op.path);
 
                 }
-				/*  Note clear what this case is addressing
-				else if (op.jsonValue.isObject()) {
-					try {
-						Value nval = ValueUtil.parseJson(this,path.getTargetAttribute(), op.jsonValue, null);
-						targetValue.
-						if (targetValue instanceof ComplexValue) {
-							ComplexValue cval = (ComplexValue) targetValue;
-
-							if (nval instanceof ComplexValue) {
-								if (((ComplexValue) nval).isPrimary()) {
-									mval.resetPrimary();
-								}
-								cval.mergeValues((ComplexValue)nval);
-							} else {
-								cval.addValue(path.getTargetAttribute(),nval);
-							}
-						} else
-							throw new ScimException("Unknown error. Expecting ComplexValue, got "+targetValue.getClass().getCanonicalName());
-
-						break;
-
-					} catch (SchemaException | ParseException e) {
-						throw new InvalidSyntaxException("Unable to parse value parameter",e);
-					}
-				}
-				break;
-
-				 */
+                if (!path.hasVpathSubAttr() && op.jsonValue.isObject()) {
+                    // RFC 7644 §3.5.2.1: add with a value filter selecting a complex value merges the supplied
+                    // sub-attributes into the matched value.
+                    if (targetValue == null)
+                        throw new NoTargetException("No value match found for the valuepath filter.");
+                    if (!(targetValue instanceof ComplexValue))
+                        throw new InvalidValueException("The value selected by " + op.path + " is not complex.");
+                    try {
+                        Value nval = ValueUtil.parseJson(this, targetAttr, op.jsonValue, null);
+                        if (!(nval instanceof ComplexValue))
+                            throw new InvalidValueException("Expecting a JSON object value for " + op.path);
+                        ComplexValue cval = (ComplexValue) targetValue;
+                        mval.removeValue(cval);
+                        cval.mergeValues((ComplexValue) nval);
+                        mval.addValue(cval);
+                    } catch (SchemaException | ParseException e) {
+                        throw new InvalidValueException("JSON parsing error parsing value parameter.", e);
+                    }
+                    return;
+                }
+                throw new InvalidValueException("The value supplied is not compatible with the add path: " + op.path);
             case JsonPatchOp.OP_ACTION_REMOVE:
                 if (targetValue == null && path.hasVpathSubAttr())
                     throw new NoTargetException("Unable to to match a record value");
@@ -1002,8 +1023,10 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
                 if (path.hasVpathSubAttr()) {
                     if (targetValue instanceof ComplexValue) {
                         ComplexValue cval = (ComplexValue) targetValue;
-                        //TODO do we care if the attribute didn't exist? Probably not
+                        // Members are hashed by content: take the member out before changing it.
+                        mval.removeValue(cval);
                         cval.removeValue(path.getSubAttribute());
+                        mval.addValue(cval);
                         return;
                     }
                     // There was a sub attribute specified, but the parent does not support sub-attributes.
@@ -1015,47 +1038,57 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
                 return;
 
             case JsonPatchOp.OP_ACTION_REPLACE:
+                // RFC 7644 §3.5.2.3: a value filter that matches nothing is noTarget.
+                if (path.getTargetValueFilter() != null && targetValue == null)
+                    throw new NoTargetException("No value match found for the valuepath filter: " + op.path);
 
-                if (path.hasVpathSubAttr() && !op.jsonValue.isObject()) {
-                    if (targetValue == null)
-                        throw new NoTargetException("No matching value found to replace " + path.getSubAttrName());
+                if (path.hasVpathSubAttr()) {
+                    if (op.jsonValue.isContainerNode())
+                        throw new InvalidValueException("Expecting a simple value to replace sub-attribute: " + op.path);
                     if (targetValue instanceof ComplexValue) {
                         ComplexValue cval = (ComplexValue) targetValue;
-                        //Attribute sattr = target.getAttribute(path.getTargetAttrName()+"."+path.getSubAttrName(), ctx);
                         Attribute sattr = path.getSubAttribute();
                         Value nval;
                         try {
                             nval = ValueUtil.parseJson(this, sattr, op.jsonValue, null);
-                            if (nval instanceof ComplexValue) {
-                                cval.replaceValues((ComplexValue) nval);
-                            } else {
-                                // TODO may need to check if sub attribute is multi-valued
-                                cval.addValue(sattr, nval);
-                            }
-
                         } catch (SchemaException | ParseException e) {
                             throw new InvalidValueException("JSON parsing error parsing value parameter.", e);
                         }
+                        // Members are hashed by content: take the member out before changing it.
+                        mval.removeValue(cval);
+                        if (nval instanceof BooleanValue && ((BooleanValue) nval).getRawValue()
+                                && sattr.getName().equalsIgnoreCase("primary"))
+                            mval.resetPrimary();
+                        cval.addValue(sattr, nval);
+                        mval.addValue(cval);
                         return;
                     }
 
                     // There was a sub attribute specified, but the parent does not support sub-attributes.
-                    // TODO what about simple "value" for mv attributes.
-                    throw new InvalidValueException("A sub-attribute was specified, but the value was a JSON object: " + op.path);
-
-                } else if (op.jsonValue.isObject() &&
-                        path.getTargetAttribute().getType()
-                                .equalsIgnoreCase(Attribute.TYPE_Complex)) {
-                    try {
-                        Value cval = ValueUtil.parseJson(this, path.getTargetAttribute(), op.jsonValue, null);
-                        if (targetValue != null)
-                            mval.removeValue(targetValue);// remove the current value if it exists
-                        mval.addValue(cval); // add the replacement
-                        return;
-                    } catch (SchemaException | ParseException e) {
-                        throw new InvalidSyntaxException("Unable to parse value parameter", e);
-                    }
+                    throw new InvalidValueException("A sub-attribute was specified for a parent attribute that is not complex: " + op.path);
                 }
+
+                Value replacement;
+                try {
+                    replacement = ValueUtil.parseJson(this, targetAttr, op.jsonValue, null);
+                } catch (SchemaException | ParseException e) {
+                    throw new InvalidValueException("Unable to parse value for " + op.path + ": " + e.getMessage(), e);
+                }
+                if (replacement == null)
+                    throw new InvalidValueException("Unable to parse value for " + op.path);
+
+                if (targetValue != null) {
+                    // Replace the single value selected by the filter.
+                    if (replacement instanceof MultiValue)
+                        throw new InvalidValueException("An array value cannot replace the single value selected by " + op.path);
+                    mval.removeValue(targetValue);
+                    mval.addValue(replacement);
+                    return;
+                }
+
+                // No filter: replace all existing values of the attribute (RFC 7644 §3.5.2.3).
+                removeValue(targetAttr);
+                addValue(replacement);
                 return;
 
             default:

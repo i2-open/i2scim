@@ -61,6 +61,8 @@ public class JsonPath {
 		filter = null;
 		if (vpathFilter != null)
 			filter = Filter.parseFilter(vpathFilter,aname, ctx);
+		if (vpSubAttr != null && targAttr.getSubAttribute(vpSubAttr) == null)
+			throw new NoTargetException("Undefined sub-attribute " + vpSubAttr + " for attribute: " + aname);
 		
 		// check to see if attribute has a multi-value parent
 		if (targAttr.isChild()){
@@ -100,6 +102,8 @@ public class JsonPath {
         filter = null;
         if (vpathFilter != null)
             filter = Filter.parseFilter(vpathFilter, aname, ctx);
+        if (vpSubAttr != null && targAttr.getSubAttribute(vpSubAttr) == null)
+            throw new NoTargetException("Undefined sub-attribute " + vpSubAttr + " for attribute: " + aname);
 
         // check to see if attribute has a multi-value parent
         if (targAttr.isChild()) {

@@ -132,9 +132,18 @@ public class MultiValue extends Value {
             return;  //Create an empty attribute.
         if (node.isArray())
             for (JsonNode item : node) {
-                if (item.isObject()) {
-                    parseJsonObject(item);
+                // RFC 7643 §2.4: complex multi-valued attributes hold objects; simple-type multi-valued attributes
+                // hold plain values. A member of the wrong JSON shape is rejected rather than silently dropped.
+                if (item.isContainerNode() && !Attribute.TYPE_Complex.equalsIgnoreCase(attr.getType()))
+                    throw new SchemaException("Unexpected JSON " + item.getNodeType() + " value in multi-valued attribute "
+                            + attr.getName());
+                if (item.isArray()) {
+                    // Tolerate data persisted before issue #109, when an array add could nest an array inside the
+                    // stored array: flatten it rather than failing to load the resource.
+                    parseJson(item);
+                    continue;
                 }
+                parseJsonObject(item);
             }
         else
             parseJsonObject(node);
@@ -184,10 +193,30 @@ public class MultiValue extends Value {
                 ((ComplexValue) aval).resetPrimary();
             }
         }
-
+        // Members are hashed by content; clearing primary changes their hash, so rebuild the set.
+        rehash();
     }
 
+    private void rehash() {
+        List<Value> current = new ArrayList<>(this.values);
+        this.values.clear();
+        this.values.addAll(current);
+    }
+
+    /**
+     * Adds a value to the multi-valued attribute. An incoming {@link MultiValue} is merged member by member (never
+     * nested). A value equal to an existing member leaves the attribute unchanged (RFC 7644 §3.5.2.1). A member with
+     * {@code primary: true} clears primary on all other members (RFC 7643 §2.4).
+     * @param val The value (or values) to be added.
+     */
     public void addValue(Value val) {
+        if (val instanceof MultiValue) {
+            for (Value member : ((MultiValue) val).values())
+                addValue(member);
+            return;
+        }
+        if (this.values.contains(val))
+            return;
         if (val instanceof ComplexValue) {
             ComplexValue cval = (ComplexValue) val;
             if (cval.isPrimary())
