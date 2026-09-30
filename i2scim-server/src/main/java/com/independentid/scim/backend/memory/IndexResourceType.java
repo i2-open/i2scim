@@ -242,9 +242,7 @@ public class IndexResourceType {
     public void deIndexResource(ScimResource res) {
         // Walk the indexed attributes (not just the resource's top-level attributes) so that sub-attribute indexes
         // such as emails.value are cleaned up as well, mirroring indexResource.
-        for (Attribute attr: presAttrs)
-            if (res.getValue(attr) != null)
-                deleteId(attr,res);
+        deIndex(res, false);
     }
 
     /**
@@ -254,6 +252,16 @@ public class IndexResourceType {
      * @return The first failure encountered, or null if every attribute was removed cleanly.
      */
     public RuntimeException deIndexResourceBestEffort(ScimResource res) {
+        return deIndex(res, true);
+    }
+
+    /**
+     * Removes the resource from the index of every indexed attribute it has a value for.
+     * @param res The resource to be removed from the index
+     * @param bestEffort When true, continue past a failure on any single attribute; when false, rethrow it.
+     * @return The first failure encountered (best effort only), or null if every attribute was removed cleanly.
+     */
+    private RuntimeException deIndex(ScimResource res, boolean bestEffort) {
         RuntimeException first = null;
         for (Attribute attr: presAttrs) {
             if (res.getValue(attr) == null)
@@ -261,6 +269,8 @@ public class IndexResourceType {
             try {
                 deleteId(attr, res);
             } catch (RuntimeException e) {
+                if (!bestEffort)
+                    throw e;
                 if (first == null)
                     first = e;
             }
