@@ -16,6 +16,7 @@
 package com.independentid.scim.protocol;
 
 import com.independentid.scim.core.err.BadFilterException;
+import com.independentid.scim.core.err.InvalidPathException;
 import com.independentid.scim.core.err.NoTargetException;
 import com.independentid.scim.core.err.ScimException;
 import com.independentid.scim.resource.ScimResource;
@@ -56,13 +57,13 @@ public class JsonPath {
 
 		targAttr = res.getAttribute(aname, ctx);
 		if (targAttr == null)
-			throw new NoTargetException("Invalid or undefined attribute: "+aname);
+			throw new InvalidPathException("Invalid or undefined attribute: "+aname);
 
 		filter = null;
 		if (vpathFilter != null)
 			filter = Filter.parseFilter(vpathFilter,aname, ctx);
 		if (vpSubAttr != null && targAttr.getSubAttribute(vpSubAttr) == null)
-			throw new NoTargetException("Undefined sub-attribute " + vpSubAttr + " for attribute: " + aname);
+			throw new InvalidPathException("Undefined sub-attribute " + vpSubAttr + " for attribute: " + aname);
 		
 		// check to see if attribute has a multi-value parent
 		if (targAttr.isChild()){
@@ -97,13 +98,13 @@ public class JsonPath {
         targAttr = ctx.getSchemaMgr().findAttribute(aname, ctx);
 
         if (targAttr == null)
-            throw new NoTargetException("Invalid or undefined attribute: " + aname);
+            throw new InvalidPathException("Invalid or undefined attribute: " + aname);
 
         filter = null;
         if (vpathFilter != null)
             filter = Filter.parseFilter(vpathFilter, aname, ctx);
         if (vpSubAttr != null && targAttr.getSubAttribute(vpSubAttr) == null)
-            throw new NoTargetException("Undefined sub-attribute " + vpSubAttr + " for attribute: " + aname);
+            throw new InvalidPathException("Undefined sub-attribute " + vpSubAttr + " for attribute: " + aname);
 
         // check to see if attribute has a multi-value parent
         if (targAttr.isChild()) {

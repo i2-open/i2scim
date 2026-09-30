@@ -447,6 +447,41 @@ public class ScimPatchTest {
         logger.info("D-d. Unknown sub-attribute in a remove path is 400 (issue #109)");
         ClassicHttpResponse resp = sendPatch(user1url, "[{\"op\":\"remove\",\"path\":\"emails[type eq \\\"work\\\"].bogus\"}]");
         assertThat(resp.getCode()).isEqualTo(ScimResponse.ST_BAD_REQUEST);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains(ScimResponse.ERR_TYPE_PATH);
+    }
+
+    @Test
+    public void de_OpValueIsCaseInsensitive() throws Exception {
+        logger.info("D-e. PATCH op values are matched case-insensitively (issue #111)");
+        ClassicHttpResponse resp = sendPatch(user2url, "[{\"op\":\"Add\",\"path\":\"title\",\"value\":\"Case Add\"}]");
+        assertThat(resp.getCode()).isIn(ScimResponse.ST_OK, ScimResponse.ST_NOCONTENT);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains("Case Add");
+
+        resp = sendPatch(user2url, "[{\"op\":\"Replace\",\"path\":\"title\",\"value\":\"Case Replace\"}]");
+        assertThat(resp.getCode()).isIn(ScimResponse.ST_OK, ScimResponse.ST_NOCONTENT);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains("Case Replace");
+
+        resp = sendPatch(user2url, "[{\"op\":\"REMOVE\",\"path\":\"title\"}]");
+        assertThat(resp.getCode()).isIn(ScimResponse.ST_OK, ScimResponse.ST_NOCONTENT);
+        String body = EntityUtils.toString(resp.getEntity());
+        assertThat(body == null ? "" : body).doesNotContain("Case Replace");
+
+        resp = sendPatch(user2url, "[{\"op\":\"move\",\"path\":\"title\",\"value\":\"x\"}]");
+        assertThat(resp.getCode()).isEqualTo(ScimResponse.ST_BAD_REQUEST);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains(ScimResponse.ERR_TYPE_BADVAL);
+    }
+
+    @Test
+    public void df_UndefinedAttributeInPathIsInvalidPath() throws Exception {
+        logger.info("D-f. Undefined attribute in a PATCH path is 400 invalidPath (issue #111)");
+        ClassicHttpResponse resp = sendPatch(user1url, "[{\"op\":\"replace\",\"path\":\"nosuchattr\",\"value\":\"x\"}]");
+        assertThat(resp.getCode()).isEqualTo(ScimResponse.ST_BAD_REQUEST);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains(ScimResponse.ERR_TYPE_PATH);
+
+        logger.info("\t... a valid path whose value filter matches nothing is still noTarget");
+        resp = sendPatch(user1url, "[{\"op\":\"replace\",\"path\":\"emails[type eq \\\"nomatch\\\"].value\",\"value\":\"z@example.com\"}]");
+        assertThat(resp.getCode()).isEqualTo(ScimResponse.ST_BAD_REQUEST);
+        assertThat(EntityUtils.toString(resp.getEntity())).contains(ScimResponse.ERR_TYPE_TARGET);
     }
 
     @Test
