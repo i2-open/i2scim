@@ -80,7 +80,11 @@
 #FROM registry.access.redhat.com/ubi8/openjdk-17:1.15-1.1679485273
 #FROM registry.access.redhat.com/ubi8/openjdk-21:latest
 #FROM chainguard/jre:latest
-FROM cgr.dev/chainguard/jre:latest
+# Chainguard JRE pinned by digest for reproducible builds (the tag is kept for readability).
+# Refresh on each release cycle: `docker buildx imagetools inspect cgr.dev/chainguard/jre:latest`
+# and replace the digest below with the index "Digest:" line (see docs/publishing.md).
+# Resolved 2026-09-30.
+FROM cgr.dev/chainguard/jre:latest@sha256:0611e5e6bd2a31269541f8d9150ce644c84be3770f5143efe2aba67529d8cc55
 ENV LANGUAGE='en_US:en'
 
 ARG GIT_COMMIT

@@ -2,6 +2,19 @@
 
 i2scim no longer publishes to Maven Central. The active distribution mechanism is the multi-arch Docker image at `docker.io/independentid/i2scim`. This document is the recipe to restore publishing if a future maintainer wants to ship `i2scim-core` and/or `i2scim-client` as JAR libraries again.
 
+## Releasing the Docker image (active process)
+
+The Docker image is published by CI (`.github/workflows/build-and-attest.yml`) only when a GitHub release is published, never on push. Before creating the release:
+
+1. **Refresh the Chainguard JRE base-image digest.** `i2scim-server/src/main/docker/Dockerfile.jvm` pins `cgr.dev/chainguard/jre:latest` by digest so builds are reproducible. Chainguard rebuilds the image daily, so re-resolve it on each release cycle so every release ships on the latest stable JRE:
+   ```bash
+   docker buildx imagetools inspect cgr.dev/chainguard/jre:latest
+   ```
+   Copy the top-level (multi-arch index) `Digest:` value into the `FROM cgr.dev/chainguard/jre:latest@sha256:<digest>` line, update the "Resolved" date in the comment above it, and confirm the image still builds and starts locally (`./build.sh --tag <ver>`, then `docker run --rm independentid/i2scim-universal:<ver>`).
+2. **Bump the version** in the POMs (`./mvnw versions:set -DnewVersion=<ver>`). CI refuses to publish when the release tag and the POM version disagree.
+3. **Add release notes** under "Recent Updates" in `docs/README.md`.
+4. Merge to `master`, then publish a GitHub release tagged `<ver>`. CI builds, attests and pushes `independentid/i2scim-universal:<ver>`.
+
 ## Why publishing was dropped
 
 The 10-module Maven structure carried publishing infrastructure on every module — GPG signing, Sonatype staging, source/javadoc JAR generation, an OSSRH `<distributionManagement>` block — but only `i2scim-core` and `i2scim-client` are library-shaped. The rest produce a Quarkus application or are scaffolding. Publishing had not been actively used and was adding maintenance overhead to every POM. Dropping it simplified the build; this recipe lets it come back without research.

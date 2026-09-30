@@ -178,7 +178,7 @@ First public preview. Deployable on K8S with a MongoDB or in-memory backend.
 
 ## Building and Running
 
-i2scim is a three-module Maven project (`i2scim-core`, `i2scim-client`, `i2scim-server`) on Java 25 and Quarkus 3.39.x.
+i2scim is a three-module Maven project (`i2scim-core`, `i2scim-client`, `i2scim-server`) on Java 25 and Quarkus 3.40.x.
 
 ```bash
 # Build everything (skips tests by default):
@@ -193,6 +193,8 @@ mvn -pl i2scim-server quarkus:dev
 # Build a multi-arch Docker image and push to docker.io/independentid:
 ./build.sh -p --tag <ver>
 ```
+
+Releases are published by CI from a GitHub release; see [Releasing the Docker image](publishing.md#releasing-the-docker-image-active-process) for the checklist (including refreshing the pinned Chainguard base-image digest).
 
 The published Docker image is `independentid/i2scim-universal:<tag>`. The same image runs against the in-memory backend or MongoDB; the choice is made at runtime via `scim.prov.providerClass`. See [Configuration](Configuration.md) for the full property list and [k8s/README.md](../i2scim-server/k8s/README.md) for cluster deployment.
 
