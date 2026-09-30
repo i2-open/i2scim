@@ -79,6 +79,9 @@ public class MongoProvider implements IScimProvider {
 	public final static String PARAM_MONGO_INDEXES = "scim.prov.mongo.indexes";
 	public final static String DEFAULT_MONGO_INDEXES = "User:userName,User:emails.value,Group:displayName";
 
+	/** MongoDB duplicate-key error code, raised when a write violates a unique index. */
+	private final static int DUPLICATE_KEY_CODE = 11000;
+
 	private static MongoProvider singleton = null;
 	
 	private static com.mongodb.client.MongoClient mclient;
@@ -257,9 +260,6 @@ public class MongoProvider implements IScimProvider {
 
 		return resp;
 	}
-
-	/** MongoDB duplicate-key error code, raised when a write violates a unique index. */
-	private static final int DUPLICATE_KEY_CODE = 11000;
 
 	/** RFC 7644 §3.3: a write that violates a unique attribute returns 409 Conflict with scimType uniqueness. */
 	private ScimResponse uniquenessConflict(MongoWriteException e) {
