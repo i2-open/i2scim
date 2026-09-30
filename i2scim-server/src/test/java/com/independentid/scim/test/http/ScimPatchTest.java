@@ -332,6 +332,55 @@ public class ScimPatchTest {
                 .contains("987-654-3210");
     }
 
+    /**
+     * Regression test for issue #105. A PATCH "add" to a multi-valued attribute supplies a
+     * JSON array as its value (RFC 7644 §3.5.2.1). That array parses to a {@link
+     * com.independentid.scim.resource.MultiValue} which must be merged into the existing
+     * MultiValue, not nested inside it. A nested MultiValue previously corrupted the backend
+     * index and produced HTTP 500 (ClassCastException "Unable to compare Value types").
+     */
+    @Test
+    public void da_CheckPatchAddArrayMultiValued() throws Exception {
+        logger.info("D-a. Checking Patch add of array-valued multi-valued attribute (issue #105)");
+
+        String newEmail = "issue105@example.com";
+
+        // Build a PatchOp whose "add" value is a JSON ARRAY, as real SCIM clients send.
+        ObjectNode reqJson = JsonUtil.getMapper().createObjectNode();
+        ArrayNode snode = reqJson.putArray(ScimParams.ATTR_SCHEMAS);
+        snode.add(ScimParams.SCHEMA_API_PatchOp);
+        ArrayNode ops = reqJson.putArray(ScimParams.ATTR_PATCH_OPS);
+        ObjectNode op = ops.addObject();
+        op.put("op", "add");
+        op.put("path", "emails");
+        ArrayNode valArray = op.putArray("value");
+        ObjectNode emailNode = valArray.addObject();
+        emailNode.put("value", newEmail);
+        emailNode.put("type", "other");
+
+        String body = reqJson.toPrettyString();
+        logger.info("\t...issue #105 patch request:\n" + body);
+
+        String req = TestUtils.mapPathToReqUrl(baseUrl, user2url);
+        HttpPatch patch = new HttpPatch(req);
+        patch.setEntity(new StringEntity(body));
+
+        ClassicHttpResponse resp = TestUtils.executeRequest(patch);
+        assertThat(resp.getCode())
+                .as("Array-valued PATCH add returns 200 OK (was 500 before issue #105 fix)")
+                .isEqualTo(ScimResponse.ST_OK);
+
+        String respbody = EntityUtils.toString(resp.getEntity());
+        logger.info("\t...issue #105 patch response:\n" + respbody);
+
+        assertThat(respbody)
+                .as("The newly added email is present")
+                .contains(newEmail);
+        assertThat(respbody)
+                .as("The pre-existing email is retained")
+                .contains("jsmith@example.com");
+    }
+
     @Test
     public void e_NoTargetTest() throws Exception {
         logger.info("E. Checking No Target Response");

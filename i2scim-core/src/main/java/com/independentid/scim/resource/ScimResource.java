@@ -910,7 +910,23 @@ public class ScimResource implements IResourceModifier, IBulkIdTarget {
                     // This is a simple add value to the array
                     try {
                         Value newVal = ValueUtil.parseJson(this, targetAttr, op.jsonValue, null);
-                        mval.addValue(newVal);
+                        if (mval == null) {
+                            // The attribute had no existing values. Let addValue create and
+                            // store the MultiValue container on the resource.
+                            addValue(newVal);
+                            return;
+                        }
+                        if (newVal instanceof MultiValue) {
+                            // RFC 7644 §3.5.2.1: an "add" on a multi-valued attribute supplies an
+                            // array, which parses to a MultiValue. Merge its members into the
+                            // existing MultiValue rather than nesting a MultiValue inside it. A
+                            // nested MultiValue corrupts the backend index (Value.compareTo throws
+                            // ClassCastException when a ComplexValue is compared to a MultiValue).
+                            for (Value member : ((MultiValue) newVal).values())
+                                mval.addValue(member);
+                        } else {
+                            mval.addValue(newVal);
+                        }
                         return;
                     } catch (ParseException e) {
                         e.printStackTrace();
