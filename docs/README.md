@@ -25,6 +25,16 @@ adapted to act as a gateway to internal proprietary identity APIs by implementin
 The published image is `independentid/i2scim-universal:<version>` (also tagged `latest`),
 built for `linux/amd64` and `linux/arm64`.
 
+### Release 0.10.7
+
+A security release. No configuration or API changes; upgrading from 0.10.6 is a drop-in image swap.
+
+* **Security:** the image is rebuilt on a refreshed Chainguard JRE base, which clears all 12
+  Critical and 41 High vulnerabilities reported against the 0.10.6 image. Every one was in the
+  base OS and Java runtime packages (OpenJDK, glibc, CA certificates, brotli), for example
+  CVE-2026-111497 (brotli) and CVE-2026-114938 (OpenJDK). The image runs on OpenJDK 27.0.1.1.
+* **Platform:** upgraded to Quarkus 3.40.1.2, a maintenance update of 3.40.1.
+
 ### Release 0.10.6
 
 A security and hardening release. There is no `0.10.5`: that tag was already taken on Docker Hub.
