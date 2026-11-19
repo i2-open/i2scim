@@ -14,7 +14,7 @@ The supported image is `independentid/i2scim-universal` on Docker Hub, pushed wi
 2. **Bump the version** in the POMs (`./mvnw versions:set -DnewVersion=<ver>`). The CI release build fails when the release tag and the POM version disagree.
 3. **Add release notes** under "Recent Updates" in `docs/README.md`.
 4. Merge to `master`, then publish a GitHub release tagged `<ver>` (CI refuses a release whose tag does not match the POM version).
-5. **Push the Docker Hub image** from the release commit: `./build.sh -p --tag <ver>` builds `independentid/i2scim-universal:<ver>` for `linux/amd64` and `linux/arm64` and also tags it `latest`. This is the only step that publishes an image; CI does not push to Docker Hub or GHCR.
+5. **Push the Docker Hub image** from the release commit: `./build.sh -p --tag <ver>` builds `independentid/i2scim-universal:<ver>` for `linux/amd64` and `linux/arm64` and also tags it `latest`. This is the only step that publishes an image; CI does not push to Docker Hub.
 
 ## Why publishing was dropped
 
